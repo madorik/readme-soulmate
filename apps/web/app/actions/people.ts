@@ -78,7 +78,10 @@ export async function createPerson(form: FormData): Promise<void> {
   const name = String(form.get("name") ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
   if (!name) redirect("/people/new?error=name");
   const contactId = await s.tx(async (q) => {
-    const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname) values ($1, $2) returning id", [s.user.id, name]);
+    // 그룹은 내 것만(DB가 확인). uuid 모양이 아니면 그룹 없음
+    const group = String(form.get("groupId") ?? "");
+    const groupId = /^[0-9a-f-]{36}$/i.test(group) ? group : null;
+    const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname, group_id) values ($1, $2, $3) returning id", [s.user.id, name, groupId]);
     await q("insert into contact_cards (contact_id, author_id) values ($1, $2)", [c!.id, s.user.id]);
     return c!.id;
   });
@@ -102,4 +105,60 @@ export async function savePersonSection(_: SaveState, form: FormData): Promise<S
   revalidatePath("/people");
   revalidatePath("/home");
   return { saved: true, error: false };
+}
+
+// ── 그룹·즐겨찾기 ─────────────────────────────────
+
+function revalidatePeople(contactId?: string) {
+  revalidatePath("/people", "layout");
+  revalidatePath("/home");
+  if (contactId) revalidatePath(`/people/${contactId}`);
+}
+
+/** 사람을 그룹에 넣기(null이면 그룹 없음). 남의 그룹은 DB가 막는다(contacts_guard) */
+export async function setContactGroup(contactId: string, groupId: string | null): Promise<{ ok: boolean }> {
+  const s = await requireSession();
+  if (typeof contactId !== "string" || (groupId !== null && typeof groupId !== "string")) return { ok: false };
+  try {
+    const row = await s.tx((q) => q.one<{ id: string }>("update contacts set group_id = $2::uuid where id::text = $1 returning id", [contactId, groupId]));
+    revalidatePeople(contactId);
+    return { ok: !!row };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** 즐겨찾기 켜고 끄기(사람들 맨 위에 고정) */
+export async function setFavorite(contactId: string, on: boolean): Promise<{ ok: boolean }> {
+  const s = await requireSession();
+  if (typeof contactId !== "string") return { ok: false };
+  const row = await s.tx((q) => q.one<{ id: string }>("update contacts set favorite = $2 where id::text = $1 returning id", [contactId, on === true]));
+  revalidatePeople(contactId);
+  return { ok: !!row };
+}
+
+/** 그룹 만들기. 같은 이름이 있으면 그 그룹을 돌려준다 */
+export async function createGroup(rawName: string): Promise<{ id: string; name: string } | null> {
+  const s = await requireSession();
+  const name = String(rawName ?? "").replace(/\s+/g, " ").trim().slice(0, 30);
+  if (!name) return null;
+  const row = await s.tx(async (q) => {
+    const same = await q.one<{ id: string; name: string }>("select id, name from contact_groups where user_id = $1 and builtin is null and name = $2", [s.user.id, name]);
+    return same ?? (await q.one<{ id: string; name: string }>("insert into contact_groups (user_id, name) values ($1, $2) returning id, name", [s.user.id, name]));
+  });
+  revalidatePeople();
+  return row ? { id: String(row.id), name: String(row.name) } : null;
+}
+
+/** 직접 만든 그룹 지우기. 그 그룹 사람들은 그룹 없음으로(기본 그룹은 DB가 막는다) */
+export async function deleteGroup(groupId: string): Promise<{ ok: boolean }> {
+  const s = await requireSession();
+  if (typeof groupId !== "string") return { ok: false };
+  try {
+    const row = await s.tx((q) => q.one<{ id: string }>("delete from contact_groups where id::text = $1 and builtin is null returning id", [groupId]));
+    revalidatePeople();
+    return { ok: !!row };
+  } catch {
+    return { ok: false };
+  }
 }

@@ -242,6 +242,27 @@ describe("주소록·메모·알림", () => {
     assert.equal((await rows(alice, "select * from notifications where kind = 'viewed' and actor_id = $1", [stranger])).length, 0);
   });
 
+  test("그룹은 내 것만 보고, 남의 그룹을 내 사람에게 못 넣고, 기본 그룹은 못 지우며, 그룹을 지우면 그룹 없음이 된다", async () => {
+    await rows(alice, "insert into contact_groups (user_id, builtin) values ($1, 'family') on conflict do nothing", [alice]);
+    const [mine] = await rows(alice, "insert into contact_groups (user_id, name) values ($1, '동창') returning id", [alice]);
+    assert.equal((await rows(bob, "select id from contact_groups where id = $1", [mine.id])).length, 0);
+    await rejects(rows(bob, "insert into contact_groups (user_id, name) values ($1, '엿보기')", [alice]), /row-level security/);
+
+    const [bc] = await rows(bob, "insert into contacts (user_id, nickname) values ($1, '누군가') returning id", [bob]);
+    await rejects(rows(bob, "update contacts set group_id = $2 where id = $1", [bc.id, mine.id]), /not your group/);
+    await rejects(rows(bob, "insert into contacts (user_id, nickname, group_id) values ($1, '또', $2)", [bob, mine.id]), /not your group/);
+
+    const [fam] = await rows(alice, "select id from contact_groups where user_id = $1 and builtin = 'family'", [alice]);
+    await rejects(rows(alice, "delete from contact_groups where id = $1", [fam.id]), /builtin group/);
+    await rejects(rows(alice, "update contact_groups set name = '우리집' where id = $1", [fam.id]), /builtin group/);
+
+    const [ac] = await rows(alice, "insert into contacts (user_id, nickname, group_id, favorite) values ($1, '친구', $2, true) returning id", [alice, mine.id]);
+    await rows(alice, "delete from contact_groups where id = $1", [mine.id]);
+    const [after] = await rows(alice, "select group_id, favorite from contacts where id = $1", [ac.id]);
+    assert.equal(after.group_id, null);
+    assert.equal(after.favorite, true);
+  });
+
   test("푸시 토큰은 내 것만", async () => {
     await rows(bob, "insert into push_tokens (user_id, token, platform) values ($1, 'tok-bob', 'android')", [bob]);
     assert.equal((await rows(carol, "select * from push_tokens where user_id = $1", [bob])).length, 0);

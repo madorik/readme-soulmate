@@ -31,6 +31,8 @@ export function personRows(people: Person[], today: YMD, locale: Locale, t: T, s
       soon: !!next && next.daysUntil <= 7,
       pickable: p.kind !== "pending" && !p.revoked,
       shareNote: p.kind === "member" && p.personId && !sharingWith.has(p.personId) ? t("people.shareOff") : "",
+      groupId: p.groupId,
+      favorite: p.favorite,
     };
   });
 }

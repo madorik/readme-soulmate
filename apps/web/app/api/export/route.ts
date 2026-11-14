@@ -1,18 +1,29 @@
 import { NextResponse } from "next/server";
-import { displayName, listNotes, listPeople, listShares, readCard, getSession } from "@/lib/data";
+import { displayName, listGroups, listNotes, listPeople, listShares, readCard, getSession } from "@/lib/data";
 
-// 내 정보 내려받기: 내 리드미, 내가 쓴 메모, 내가 보여 준 사람, 내 주소록(이름만, 내가 직접 적어 둔 사람은 적은 내용까지)
+// 내 정보 내려받기: 내 리드미, 내가 쓴 메모, 내가 보여 준 사람, 내 주소록(이름·그룹·즐겨찾기, 내가 직접 적어 둔 사람은 적은 내용까지)
 export async function GET() {
   const s = await getSession();
   if (!s) return NextResponse.json({ error: "not_signed_in" }, { status: 401 });
-  const [{ card }, shares, people] = await Promise.all([s.tx((q) => readCard(q, s.user.id)), s.tx((q) => listShares(q, s.user.id)), listPeople(s)]);
+  const [{ card }, shares, people, groups] = await Promise.all([
+    s.tx((q) => readCard(q, s.user.id)),
+    s.tx((q) => listShares(q, s.user.id)),
+    listPeople(s),
+    s.tx((q) => listGroups(q, s.user.id)),
+  ]);
+  // 기본 그룹은 코드(family·work·partner·friends), 직접 만든 그룹은 이름
+  const groupOf = (id: string | null) => {
+    const g = groups.find((x) => x.id === id);
+    return g ? (g.builtin ?? g.name) : null;
+  };
   const notes = await Promise.all(people.filter((p) => p.kind !== "pending").map(async (p) => ({ person: displayName(p), notes: await s.tx((q) => listNotes(q, s.user.id, p.contactId)) })));
   const data = {
     exportedAt: new Date().toISOString(),
     profile: { name: s.profile.displayName, email: s.user.email, locale: s.profile.locale, timeZone: s.profile.timeZone, avatar: s.profile.avatar, reminderOffsets: s.profile.reminderOffsets },
     myReadme: card,
     sharedWith: shares.map((x) => ({ name: x.name, relation: x.relation, sections: x.sections, stopped: x.revoked })),
-    people: people.map((p) => ({ name: displayName(p), kind: p.kind, ...(p.kind === "mine" ? { written: p.card } : {}) })),
+    people: people.map((p) => ({ name: displayName(p), kind: p.kind, group: groupOf(p.groupId), favorite: p.favorite, ...(p.kind === "mine" ? { written: p.card } : {}) })),
+    groups: groups.filter((g) => !g.builtin).map((g) => g.name),
     myNotes: notes.filter((n) => n.notes.length),
   };
   return new NextResponse(JSON.stringify(data, null, 2), {

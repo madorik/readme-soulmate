@@ -26,7 +26,7 @@ import { cache } from "react";
 import { getAuth } from "./auth";
 import { aad, open, seal, sealSection } from "./crypto";
 import { asUser, type Q, type Row } from "./db";
-import { detectLocale } from "./i18n";
+import { detectLocale, type T } from "./i18n";
 
 export interface Profile {
   id: string;
@@ -222,11 +222,15 @@ export interface Person {
   revoked: boolean;
   updatedAt: string | null;
   pending: { inviteId: string; state: InviteStatus; expiresAt: string } | null;
+  /** 내가 넣은 그룹(contact_groups.id) */
+  groupId: string | null;
+  /** 즐겨찾기(사람들 맨 위에 고정) */
+  favorite: boolean;
 }
 
 async function loadPeople(q: Q, me: string): Promise<Person[]> {
-  const contacts = await q<{ id: string; person_id: string | null; guest_card_id: string | null; request_invite_id: string | null; nickname: string }>(
-    "select id, person_id, guest_card_id, request_invite_id, nickname from contacts where user_id = $1 order by created_at",
+  const contacts = await q<{ id: string; person_id: string | null; guest_card_id: string | null; request_invite_id: string | null; nickname: string; group_id: string | null; favorite: boolean }>(
+    "select id, person_id, guest_card_id, request_invite_id, nickname, group_id, favorite from contacts where user_id = $1 order by created_at",
     [me],
   );
   if (!contacts.length) return [];
@@ -270,6 +274,8 @@ async function loadPeople(q: Q, me: string): Promise<Person[]> {
       const entry = cardByOwner.get(c.person_id);
       people.push({
         contactId: c.id,
+        groupId: c.group_id ? String(c.group_id) : null,
+        favorite: c.favorite === true,
         kind: "member",
         personId: c.person_id,
         name: String(p?.display_name || nickname || ""),
@@ -287,6 +293,8 @@ async function loadPeople(q: Q, me: string): Promise<Person[]> {
       const card = openGuestSections((g?.invite_id as string | null) ?? null, g?.sections);
       people.push({
         contactId: c.id,
+        groupId: c.group_id ? String(c.group_id) : null,
+        favorite: c.favorite === true,
         kind: "guest",
         personId: null,
         name: String(g?.display_name || nickname),
@@ -304,6 +312,8 @@ async function loadPeople(q: Q, me: string): Promise<Person[]> {
       const card = openContactSections(me, c.id, o.sections);
       people.push({
         contactId: c.id,
+        groupId: c.group_id ? String(c.group_id) : null,
+        favorite: c.favorite === true,
         kind: "mine",
         personId: null,
         name: nickname,
@@ -322,6 +332,8 @@ async function loadPeople(q: Q, me: string): Promise<Person[]> {
       if (!i) continue;
       people.push({
         contactId: c.id,
+        groupId: c.group_id ? String(c.group_id) : null,
+        favorite: c.favorite === true,
         kind: "pending",
         personId: null,
         name: nickname,
@@ -384,6 +396,39 @@ export interface Share {
   relation: Relation | null;
   sections: Section[];
   revoked: boolean;
+}
+
+// ── 그룹 ─────────────────────────────────────────
+
+/** 기본 그룹(사람마다 처음부터 있고, 이름은 화면 언어로). 이 순서로 보인다 */
+export const BUILTIN_GROUPS = ["family", "work", "partner", "friends"] as const;
+export type BuiltinGroup = (typeof BUILTIN_GROUPS)[number];
+
+export interface Group {
+  id: string;
+  builtin: BuiltinGroup | null;
+  /** 직접 만든 그룹의 이름(기본 그룹은 빈칸) */
+  name: string;
+}
+
+/** 내 그룹. 기본 그룹은 처음 부를 때 만든다. 순서: 기본 그룹 → 만든 순서 */
+export async function listGroups(q: Q, me: string): Promise<Group[]> {
+  const builtins = [...BUILTIN_GROUPS];
+  await q("insert into contact_groups (user_id, builtin) select $1, b from unnest($2::text[]) b on conflict (user_id, builtin) do nothing", [me, builtins]);
+  const rows = await q<{ id: string; builtin: string | null; name: string }>(
+    "select id, builtin, name from contact_groups where user_id = $1 order by array_position($2::text[], builtin) nulls last, created_at",
+    [me, builtins],
+  );
+  return rows.map((r) => ({
+    id: String(r.id),
+    builtin: (BUILTIN_GROUPS as readonly string[]).includes(r.builtin ?? "") ? (r.builtin as BuiltinGroup) : null,
+    name: String(r.name ?? ""),
+  }));
+}
+
+/** 화면에 보일 그룹 이름 */
+export function groupName(g: Pick<Group, "builtin" | "name">, t: T): string {
+  return g.builtin ? t(`group.${g.builtin}` as "group.family") : g.name;
 }
 
 /** 내가 지금 내 리드미를 보여 주는 사람 id(끈 사람은 빠진다) */

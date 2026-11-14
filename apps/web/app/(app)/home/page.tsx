@@ -116,16 +116,17 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
       </section>
 
       {question ? (
-        // 오늘의 질문: 홈에서 눈에 띄게(분홍 바탕 + 빨간 라벨 + 큰 질문 + 또렷한 답 버튼)
-        <section aria-label={t("home.question")} className="mx-4 mt-[22px] flex flex-col gap-3 rounded-2xl bg-hl px-[18px] pb-4 pt-4">
-          <div className="flex flex-col gap-1">
-            <span className="flex items-center gap-1.5 text-[12px] font-bold tracking-[0.04em] text-red">
-              <span aria-hidden="true" className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-red text-[11px] leading-none text-white">
-                Q
-              </span>
+        // 오늘의 질문: 흰 카드를 살짝 띄워 눈에 띄게(빨강은 라벨 앞 점 하나만)
+        <section
+          aria-label={t("home.question")}
+          className="mx-4 mt-[22px] flex flex-col gap-3 rounded-2xl bg-white px-[18px] pb-4 pt-[18px] shadow-[0_0_0_1px_var(--color-rule),0_6px_20px_rgba(29,33,37,0.06)]"
+        >
+          <div className="flex flex-col gap-1.5">
+            <span className="flex items-center gap-1.5 text-[12px] font-bold text-muted">
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-red" />
               {t("home.question")}
             </span>
-            <span className="text-[19px] font-bold leading-[1.35] tracking-[-0.02em]">{question.prompt[locale]}</span>
+            <span className="text-[18px] font-bold leading-[1.35] tracking-[-0.02em]">{question.prompt[locale]}</span>
           </div>
           <form action={answerQuestion} className="flex flex-wrap gap-2">
             <input type="hidden" name="id" value={question.id} />
@@ -134,7 +135,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
                 key={o.value}
                 name="value"
                 value={o.value}
-                className="h-11 rounded-full bg-white px-4 text-[14px] font-bold shadow-[0_1px_2px_rgba(196,68,58,0.12),inset_0_0_0_1px_rgba(196,68,58,0.22)] transition-transform active:scale-95"
+                className="h-10 rounded-full bg-fill px-4 text-[14px] font-semibold text-ink transition-[transform,background-color] hover:bg-rule active:scale-95"
               >
                 {o.label[locale]}
               </button>

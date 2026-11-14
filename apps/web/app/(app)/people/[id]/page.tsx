@@ -8,9 +8,10 @@ import { DateTiles } from "@/components/DateTiles";
 import { TopBar } from "@/components/chrome";
 import { Icon } from "@/components/marks";
 import { TagChip } from "@/components/PersonRow";
-import { displayName, listNotes, listPeople, listShares, requireSession, todayFor } from "@/lib/data";
+import { displayName, groupName, listGroups, listNotes, listPeople, listShares, requireSession, todayFor } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { summarize } from "@/lib/summary";
+import { PersonOrganize } from "./PersonOrganize";
 import { ShareControl } from "./ShareControl";
 
 export default async function PersonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
@@ -33,6 +34,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   const mineEmpty = mine && !SECTIONS.some((x) => p.card[x]);
   // 내가 이 사람에게 내 리드미를 보여 주는지(앱을 쓰는 사람만)
   const myShare = p.kind === "member" && p.personId ? ((await s.tx((q) => listShares(q, s.user.id))).find((x) => x.viewerId === p.personId) ?? null) : null;
+  const groups = await s.tx((q) => listGroups(q, s.user.id));
 
   return (
     <>
@@ -53,7 +55,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
       />
 
       <div className="flex items-center gap-[18px] px-6 pt-3">
-        <Avatar config={p.avatar} size={84} label={t("avatar.of", { name })} />
+        <Avatar config={p.avatar} size={84} label={t("avatar.of", { name: p.name || name })} />
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="truncate text-[32px] font-bold leading-[1.15] tracking-[-0.03em]">{p.name || name}</h1>
           {p.nickname && p.nickname !== p.name ? (
@@ -70,6 +72,22 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
           ) : null}
         </div>
       </div>
+
+      <PersonOrganize
+        contactId={p.contactId}
+        favorite={p.favorite}
+        groupId={p.groupId}
+        groups={groups.map((g) => ({ id: g.id, name: groupName(g, t) }))}
+        labels={{
+          favorite: t("person.favorite"),
+          group: t("group.label"),
+          none: t("group.none"),
+          newOption: t("group.newOption"),
+          namePlaceholder: t("group.namePlaceholder"),
+          create: t("group.create"),
+          error: t("common.error"),
+        }}
+      />
 
       {p.kind === "member" && p.personId ? (
         <ShareControl

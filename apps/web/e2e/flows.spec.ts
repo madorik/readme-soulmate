@@ -441,6 +441,48 @@ test("내 리드미: 고치기를 누르면 화면을 옮기지 않고 그 항�
   await expect(sizes).toContainText("240");
 });
 
+test("사람들: 그룹(기본 4개 + 직접 만들기)과 즐겨찾기. 목록은 즐겨찾기 → 그룹별로 묶이고 접힌다", async ({ browser }) => {
+  const jisu = await as(browser, "jisu");
+  // 도윤: 친구들 그룹 + 즐겨찾기
+  await jisu.goto("/people");
+  await jisu.getByRole("link", { name: /도윤/ }).first().click();
+  const group = jisu.getByRole("combobox", { name: "그룹" });
+  for (const builtin of ["가족", "회사", "연인", "친구들"]) await expect(group.locator("option", { hasText: builtin })).toHaveCount(1);
+  await group.selectOption({ label: "친구들" });
+  await expect(group).toHaveValue(/[0-9a-f-]{36}/);
+  const star = jisu.getByRole("button", { name: "즐겨찾기" });
+  await star.click();
+  await expect(star).toHaveAttribute("aria-pressed", "true");
+
+  // 아빠: 드롭다운에서 새 그룹 '본가'를 만들어 바로 넣는다
+  await jisu.goto("/people");
+  await jisu.getByRole("link", { name: /아빠/ }).first().click();
+  await jisu.getByRole("combobox", { name: "그룹" }).selectOption({ label: "+ 새 그룹 만들기" });
+  await jisu.getByRole("textbox", { name: "그룹 이름" }).fill("본가");
+  await jisu.getByRole("button", { name: "만들기" }).click();
+  await expect(jisu.getByRole("combobox", { name: "그룹" }).locator("option:checked")).toHaveText("본가");
+
+  // 목록: 즐겨찾기(도윤) → 본가(아빠). 본가를 접으면 아빠가 안 보이고, 다시 펴면 보인다
+  await jisu.goto("/people");
+  await expect(jisu.getByRole("region", { name: "즐겨찾기" }).getByRole("link", { name: /도윤/ })).toBeVisible();
+  const home = jisu.getByRole("region", { name: "본가" });
+  await expect(home.getByRole("link", { name: /아빠/ })).toBeVisible();
+  await shot(jisu, "18-people-groups");
+  await home.getByRole("button", { name: /^본가/ }).click();
+  await expect(home.getByRole("link", { name: /아빠/ })).toHaveCount(0);
+  await home.getByRole("button", { name: /^본가/ }).click();
+  await expect(home.getByRole("link", { name: /아빠/ })).toBeVisible();
+
+  // 목록 아래에서 새 그룹을 만들고(비어 있어도 보인다) 지운다
+  await jisu.getByRole("button", { name: "새 그룹" }).click();
+  await jisu.getByRole("textbox", { name: "그룹 이름" }).fill("동창");
+  await jisu.getByRole("button", { name: "만들기" }).click();
+  await expect(jisu.getByRole("region", { name: "동창" })).toBeVisible();
+  jisu.once("dialog", (d) => d.accept());
+  await jisu.getByRole("button", { name: "그룹 지우기 동창" }).click();
+  await expect(jisu.getByRole("region", { name: "동창" })).toHaveCount(0);
+});
+
 test("영어로 바꾸면 영어 화면", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "English" }).click();

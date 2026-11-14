@@ -1,6 +1,7 @@
 import { createPerson } from "@/app/actions/people";
 import { TopBar } from "@/components/chrome";
-import { requireSession } from "@/lib/data";
+import { Icon } from "@/components/marks";
+import { groupName, listGroups, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 
 // 직접 적어 두기: 이름(부르는 말)만 받고 빈 카드를 만든다. 내용은 그 사람 화면에서 항목별로 적는다
@@ -8,6 +9,7 @@ export default async function NewPerson({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const s = await requireSession();
   const t = makeT(s.profile.locale);
+  const groups = await s.tx((q) => listGroups(q, s.user.id));
   return (
     <form action={createPerson} className="flex flex-1 flex-col">
       <TopBar close="/people" label={t("common.close")} />
@@ -32,6 +34,21 @@ export default async function NewPerson({ searchParams }: { searchParams: Promis
             {t("people.newNameError")}
           </span>
         ) : null}
+      </label>
+      {/* 그룹(드롭다운). 새 그룹은 사람 화면이나 사람들 목록 아래에서 만든다 */}
+      <label className="flex flex-col gap-2 px-6 pt-6">
+        <span className="text-[15px] font-bold">{t("group.label")}</span>
+        <span className="relative flex">
+          <select name="groupId" defaultValue="" className="field appearance-none pr-10 font-bold">
+            <option value="">{t("group.none")}</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {groupName(g, t)}
+              </option>
+            ))}
+          </select>
+          <Icon name="chevron" size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-muted" />
+        </span>
       </label>
       <div className="sticky bottom-0 mt-auto bg-white px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
         <button className="btn-primary w-full">{t("people.create")}</button>

@@ -141,9 +141,10 @@ export async function seedDemo(uid: string, locale: Locale, today: YMD): Promise
       `update profiles set is_demo = true, display_name = $2, avatar = $3, onboarded_at = coalesce(onboarded_at, now()), system_locale = $4 where id = $1`,
       [uid, data.me.name, JSON.stringify({ tone: "blue", skin: "#F2CDB0", hair: "short", hairColor: "#1F1D2B", glasses: true }), locale],
     );
+    // 한 트랜잭션이라 now()가 같다. 넣은 순서대로 보이게 사람마다 실제 시각을 찍는다
     for (const p of data.people) {
       if (p.mine) {
-        const c = await q.one<{ id: string }>(`insert into contacts (user_id, nickname) values ($1, $2) returning id`, [uid, p.nickname]);
+        const c = await q.one<{ id: string }>(`insert into contacts (user_id, nickname, created_at) values ($1, $2, clock_timestamp()) returning id`, [uid, p.nickname]);
         await q(`insert into contact_cards (contact_id, author_id, sections) values ($1, $2, $3)`, [c!.id, uid, JSON.stringify(sealContactSections(uid, c!.id, p.card))]);
         continue;
       }
@@ -158,7 +159,7 @@ export async function seedDemo(uid: string, locale: Locale, today: YMD): Promise
         [invite!.id, uid, p.name, JSON.stringify(sealGuestSections(invite!.id, p.card))],
       );
       const contact = await q.one<{ id: string }>(
-        `insert into contacts (user_id, guest_card_id, request_invite_id, nickname) values ($1, $2, $3, $4) returning id`,
+        `insert into contacts (user_id, guest_card_id, request_invite_id, nickname, created_at) values ($1, $2, $3, $4, clock_timestamp()) returning id`,
         [uid, card!.id, invite!.id, p.nickname],
       );
       if (p.note) {

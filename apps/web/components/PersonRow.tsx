@@ -22,6 +22,10 @@ export interface PersonRow {
   pickable: boolean;
   /** 앱을 쓰는 사람인데 내 리드미를 안 보여 주면 "공유 꺼짐" */
   shareNote: string;
+  /** 내가 넣은 그룹(없으면 null) */
+  groupId: string | null;
+  /** 즐겨찾기(맨 위에 고정) */
+  favorite: boolean;
 }
 
 /** 이름 옆 태그(내가 붙인 부르는 말) */
