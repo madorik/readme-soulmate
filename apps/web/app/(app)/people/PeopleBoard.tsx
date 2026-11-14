@@ -9,7 +9,10 @@ import { RowBody, type PersonRow } from "@/components/PersonRow";
 
 interface Labels {
   title: string;
-  count: string;
+  /** 리드미 부탁하기(/request) */
+  request: string;
+  /** 직접 적기(/people/new) */
+  add: string;
   pick: string;
   cancel: string;
   hint: string;
@@ -24,8 +27,12 @@ interface Labels {
   empty: string;
 }
 
+/** 제목 오른쪽 글자 버튼(요청·추가·선택) */
+const HEAD_BUTTON = "flex min-h-11 items-center gap-1 px-2.5 text-[14.5px] font-bold";
+
 /**
- * 내 사람들. "고르기"를 누르면 사람을 고르는 모드가 되고, 고른 사람으로 메뉴 고르기·선물 고르기·공유하기를 한다.
+ * 내 사람들. 위에 요청(리드미 부탁하기)·추가(직접 적기)·선택.
+ * "선택"을 누르면 사람을 고르는 모드가 되고, 고른 사람으로 메뉴 고르기·선물 고르기·공유하기를 한다.
  * 고른 상태는 주소(pick=1&with=…&me=…)로 오가서, 메뉴 화면에서 뒤로 와도 그대로다.
  */
 export function PeopleBoard({
@@ -35,7 +42,6 @@ export function PeopleBoard({
   initial,
   initialMe,
   labels,
-  children,
 }: {
   rows: PersonRow[];
   meAvatar: AvatarConfig | null;
@@ -43,7 +49,6 @@ export function PeopleBoard({
   initial: string[];
   initialMe: boolean;
   labels: Labels;
-  children?: React.ReactNode;
 }) {
   const canPick = rows.some((r) => r.pickable);
   // 처음 상태: 주소에서 읽는다. 기기 뒤로가기로 돌아오면 Next가 예전 화면을 다시 쓰는데, 그때도 주소(고르던 체크)는 맞으므로
@@ -81,23 +86,35 @@ export function PeopleBoard({
 
   return (
     <>
-      <div className="flex items-center justify-between gap-3 pl-6 pr-3 pt-3">
-        <h1 className="headline text-[26px]">{labels.title}</h1>
-        {canPick ? (
-          <button type="button" aria-pressed={picking} onClick={() => setPicking(!picking)} className="flex min-h-11 items-center gap-1.5 px-3 text-[14.5px] font-bold">
-            {picking ? labels.cancel : (
-              <>
-                <Icon name="check" size={17} />
-                {labels.pick}
-              </>
-            )}
-          </button>
-        ) : (
-          <span className="px-3 text-[13px] text-muted">{labels.count}</span>
-        )}
+      <div className="flex items-center justify-between gap-2 pl-6 pr-2 pt-3">
+        <h1 className="headline shrink-0 text-[26px]">{labels.title}</h1>
+        <div className="flex items-center">
+          {picking ? null : (
+            <>
+              <Link href="/request" className={HEAD_BUTTON}>
+                <Icon name="personAdd" size={17} />
+                {labels.request}
+              </Link>
+              <Link href="/people/new" className={HEAD_BUTTON}>
+                <Icon name="plus" size={17} />
+                {labels.add}
+              </Link>
+            </>
+          )}
+          {canPick ? (
+            <button type="button" aria-pressed={picking} onClick={() => setPicking(!picking)} className={HEAD_BUTTON}>
+              {picking ? labels.cancel : (
+                <>
+                  <Icon name="check" size={17} />
+                  {labels.pick}
+                </>
+              )}
+            </button>
+          ) : null}
+        </div>
       </div>
 
-      {picking ? <p className="px-6 pt-1 text-[13.5px] leading-[1.55] text-muted">{labels.hint}</p> : children}
+      {picking ? <p className="px-6 pt-1 text-[13.5px] leading-[1.55] text-muted">{labels.hint}</p> : null}
 
       {rows.length ? (
         <ul className="flex flex-col px-6 pt-3">
@@ -129,7 +146,7 @@ export function PeopleBoard({
                 <button
                   type="button"
                   aria-pressed={on}
-                  aria-label={labels.pickOne.replace("{name}", r.name)}
+                  aria-label={labels.pickOne.replace("{name}", r.tag ? `${r.name} ${r.tag}` : r.name)}
                   disabled={!r.pickable}
                   onClick={() => toggle(r.contactId)}
                   className={`flex h-[60px] w-12 shrink-0 items-center justify-end ${r.pickable ? "" : "opacity-40"}`}

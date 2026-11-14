@@ -7,9 +7,11 @@ import { CardView } from "@/components/CardView";
 import { DateTiles } from "@/components/DateTiles";
 import { TopBar } from "@/components/chrome";
 import { Icon } from "@/components/marks";
-import { displayName, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
+import { TagChip } from "@/components/PersonRow";
+import { displayName, listNotes, listPeople, listShares, requireSession, todayFor } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { summarize } from "@/lib/summary";
+import { ShareControl } from "./ShareControl";
 
 export default async function PersonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
   const { id } = await params;
@@ -30,6 +32,8 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   const askHref = `/request?to=${encodeURIComponent(p.contactId)}`;
   const mine = p.kind === "mine";
   const mineEmpty = mine && !SECTIONS.some((x) => p.card[x]);
+  // 내가 이 사람에게 내 리드미를 보여 주는지(앱을 쓰는 사람만)
+  const myShare = p.kind === "member" && p.personId ? ((await s.tx((q) => listShares(q, s.user.id))).find((x) => x.viewerId === p.personId) ?? null) : null;
 
   return (
     <>
@@ -53,7 +57,11 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         <Avatar config={p.avatar} size={84} label={t("avatar.of", { name })} />
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="truncate text-[32px] font-bold leading-[1.15] tracking-[-0.03em]">{p.name || name}</h1>
-          {p.nickname && p.nickname !== p.name ? <span className="text-[15px] font-bold">{p.nickname}</span> : null}
+          {p.nickname && p.nickname !== p.name ? (
+            <span className="flex">
+              <TagChip large>{p.nickname}</TagChip>
+            </span>
+          ) : null}
           {mine ? (
             <span className="text-[12.5px] text-muted">{t("person.mineNote")}</span>
           ) : p.kind === "guest" ? (
@@ -63,6 +71,17 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
           ) : null}
         </div>
       </div>
+
+      {p.kind === "member" && p.personId ? (
+        <ShareControl
+          locale={locale}
+          personId={p.personId}
+          name={name}
+          initialOn={!!myShare && !myShare.revoked}
+          initialSections={myShare?.sections ?? []}
+          neverShared={!myShare}
+        />
+      ) : null}
 
       {p.kind === "pending" && p.pending ? (
         <section className="flex flex-col gap-3 px-6 pt-8">

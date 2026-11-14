@@ -97,6 +97,11 @@ export default async function InvitePage({ params, searchParams }: { params: Pro
       {session ? (
         <form action={acceptInvite} className="mt-auto flex flex-col gap-4 px-6 pt-8">
           <input type="hidden" name="token" value={token} />
+          {/* 내 사람들에 들어갈 때 붙일 태그(부르는 말). 안 적으면 이름만 */}
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[14px] font-bold">{t("accept.tag", { name })}</span>
+            <input name="tag" maxLength={40} placeholder={t("accept.tagPlaceholder")} className="field" />
+          </label>
           <SendBack locale={locale} name={name} />
           <button className="btn-primary">{t("accept.open")}</button>
           {p.expires_at ? <span className="text-center text-[12.5px] text-muted">{t("accept.expiresIn", { n: daysLeft(String(p.expires_at)) })}</span> : null}

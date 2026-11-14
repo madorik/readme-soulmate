@@ -386,6 +386,12 @@ export interface Share {
   revoked: boolean;
 }
 
+/** 내가 지금 내 리드미를 보여 주는 사람 id(끈 사람은 빠진다) */
+export async function activeShareIds(q: Q, me: string): Promise<Set<string>> {
+  const rows = await q<{ viewer_id: string }>("select viewer_id from grants where owner_id = $1 and revoked_at is null", [me]);
+  return new Set(rows.map((r) => String(r.viewer_id)));
+}
+
 export async function listShares(q: Q, me: string): Promise<Share[]> {
   const rows = await q(
     `select g.viewer_id, g.relation, g.sections, g.revoked_at, p.display_name, p.avatar

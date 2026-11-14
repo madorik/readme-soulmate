@@ -4,6 +4,7 @@ import { signOut } from "@/app/actions/auth";
 import { cancelInvite, setGrant, setGrantSections } from "@/app/actions/share";
 import { Avatar } from "@/components/Avatar";
 import { TabBar } from "@/components/chrome";
+import { LanguageSetting } from "@/components/LanguageSetting";
 import { SwitchLook } from "@/components/marks";
 import { listOpenInvites, listShares, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
@@ -28,8 +29,9 @@ export default async function Privacy() {
           </a>
         </div>
       ) : null}
-      <div className="flex flex-col gap-1 px-6 pt-3.5">
-        <span className="text-[17px] font-bold">{t("privacy.count", { n: active })}</span>
+      <h2 className="section-title px-6 pt-5">{t("privacy.shareSettings")}</h2>
+      <div className="flex flex-col gap-1 px-6 pt-2">
+        <span className="text-[15.5px] font-bold">{t("privacy.count", { n: active })}</span>
         <span className="text-[13.5px] leading-[1.5] text-muted">{t("privacy.noSearch")}</span>
       </div>
 
@@ -99,7 +101,9 @@ export default async function Privacy() {
         <li className="border-t border-rule" />
       </ul>
 
-      <div className="mx-6 mt-6 flex flex-col">
+      <h2 className="section-title px-6 pt-8">{t("privacy.appSettings")}</h2>
+      <div className="mx-6 mt-2 flex flex-col">
+        <LanguageSetting choice={s.profile.localeChoice} back="/privacy" t={t} className="border-t border-rule" />
         <AppLockSetting locale={locale} enabled={s.profile.appLock} />
         <form action={setPreference} className="flex min-h-16 items-center gap-3 border-t border-rule">
           <input type="hidden" name="key" value="notify_views" />
@@ -125,14 +129,6 @@ export default async function Privacy() {
           <button className="flex min-h-11 items-center text-[14px] font-bold">{t("privacy.signOut")}</button>
         </form>
         <DeleteAccount locale={locale} />
-      </div>
-      <div className="flex justify-center gap-x-4 px-6 pt-2 text-[12.5px] font-semibold text-muted">
-        <a href={`/privacy-policy?lang=${locale}`} className="flex min-h-11 items-center">
-          {t("legal.privacy")}
-        </a>
-        <a href={`/terms?lang=${locale}`} className="flex min-h-11 items-center">
-          {t("legal.terms")}
-        </a>
       </div>
       <div className="h-6" />
       <TabBar active="privacy" t={t} />

@@ -6,7 +6,7 @@ import { TabBar, Wordmark } from "@/components/chrome";
 import { EmptyPortrait, EventPortrait } from "@/components/EventArt";
 import { Icon, MarkerCircle } from "@/components/marks";
 import { PeopleList } from "@/components/PeopleList";
-import { displayName, listPeople, readCard, requireSession, todayFor } from "@/lib/data";
+import { activeShareIds, displayName, listPeople, readCard, requireSession, todayFor } from "@/lib/data";
 import { eventName, eventsFor } from "@/lib/events";
 import { makeT } from "@/lib/i18n";
 
@@ -17,7 +17,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
   const { locale } = s.profile;
   const t = makeT(locale);
   const today = todayFor(s.profile);
-  const [people, mine] = await Promise.all([listPeople(s), s.tx((q) => readCard(q, s.user.id))]);
+  const [people, mine, sharingWith] = await Promise.all([listPeople(s), s.tx((q) => readCard(q, s.user.id)), s.tx((q) => activeShareIds(q, s.user.id))]);
   const events = eventsFor(people, today);
   const next = events.find((e) => e.daysUntil <= 60) ?? null;
   const nextPerson = next ? (people.find((p) => p.contactId === next.contactId) ?? null) : null;
@@ -146,7 +146,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
         <span className="num text-[13px] text-muted">{people.length}</span>
       </div>
       {people.length ? (
-        <PeopleList people={people} today={today} locale={locale} t={t} />
+        <PeopleList people={people} today={today} locale={locale} t={t} sharingWith={sharingWith} />
       ) : (
         <div className="flex flex-col gap-3 px-6 pt-2">
           <p className="text-[14px] leading-[1.6] text-muted">{t("home.empty")}</p>

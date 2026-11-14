@@ -51,7 +51,7 @@ export function SwitchLook({ on }: { on: boolean }) {
 
 type IconName =
   | "back" | "close" | "lock" | "alert" | "mic" | "camera" | "link" | "share" | "gift" | "external" | "bell"
-  | "plus" | "check" | "calendar" | "people" | "card" | "globe" | "personAdd" | "chevron" | "trash" | "pick" | "map" | "eye";
+  | "plus" | "check" | "calendar" | "people" | "card" | "globe" | "personAdd" | "chevron" | "trash" | "pick" | "map" | "eye" | "settings";
 
 const ICONS: Record<IconName, React.ReactNode> = {
   back: <path d="M15 18l-6-6 6-6" />,
@@ -143,6 +143,11 @@ const ICONS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
       <circle cx="12" cy="10" r="2.4" />
+    </>
+  ),  settings: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </>
   ),
 };

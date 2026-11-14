@@ -6,6 +6,16 @@ import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, META
 export const SECTIONS = ["safety", "taste", "sizes", "gifts", "favorites", "dates"] as const;
 export type Section = (typeof SECTIONS)[number];
 
+/** 내가 고치고 공유를 고를 때 보이는 순서: 챙길 날 → 건강(알레르기) → 자주 쓰는 입맛 → 선물 힌트 → 사이즈 → 있으면 좋은 것 */
+export const SECTIONS_BY_IMPORTANCE = ["dates", "safety", "taste", "gifts", "sizes", "favorites"] as const satisfies readonly Section[];
+
+/** 관계별로 처음 보여 줄 항목. DB accept_share의 '받으면서 내 것도 보내기' 기본값과 같다 */
+export function defaultShareSections(relation: Relation | null): Section[] {
+  if (relation === "partner") return [...SECTIONS];
+  if (relation === "friend") return ["safety", "taste", "gifts", "favorites", "dates"];
+  return ["safety", "taste", "sizes", "favorites", "dates"];
+}
+
 /** 서버 키로 암호화해서 저장하는 항목 */
 export const SENSITIVE_SECTIONS: readonly Section[] = ["safety", "sizes", "dates"];
 

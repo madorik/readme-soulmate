@@ -38,7 +38,7 @@ export function TabBar({ active, t }: { active: "home" | "people" | "me" | "priv
     { key: "home", href: "/home", icon: "calendar", label: t("nav.home") },
     { key: "people", href: "/people", icon: "people", label: t("nav.people") },
     { key: "me", href: "/me", icon: "card", label: t("nav.me") },
-    { key: "privacy", href: "/privacy", icon: "lock", label: t("nav.privacy") },
+    { key: "privacy", href: "/privacy", icon: "settings", label: t("nav.privacy") },
   ] as const;
   return (
     <nav
