@@ -1,11 +1,9 @@
 import { RELATIONS, SECTIONS } from "@readme/core";
-import { setPreference } from "@/app/actions/account";
 import { cancelInvite, setGrant, setGrantSections } from "@/app/actions/share";
 import { Avatar } from "@/components/Avatar";
 import { TabBar } from "@/components/chrome";
 import { LanguageSetting } from "@/components/LanguageSetting";
-import { SwitchLook } from "@/components/marks";
-import { listOpenInvites, listShares, requireSession } from "@/lib/data";
+import { listOpenInvites, listPeople, listShares, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { AppLockSetting, ReminderSetting } from "./Settings";
 
@@ -13,8 +11,10 @@ export default async function Privacy() {
   const s = await requireSession();
   const { locale } = s.profile;
   const t = makeT(locale);
-  const [shares, invites] = await Promise.all([s.tx((q) => listShares(q, s.user.id)), s.tx((q) => listOpenInvites(q))]);
-  const active = shares.filter((x) => !x.revoked).length;
+  const [shares, invites, people] = await Promise.all([s.tx((q) => listShares(q, s.user.id)), s.tx((q) => listOpenInvites(q)), listPeople(s)]);
+  // 사람들에 있는 사람은 그 사람 화면에서 켜고 끈다. 여기엔 사람들에 없는데 내 리드미를 보는 사람만(내 링크를 받고 자기 것은 안 보낸 사람)
+  const inPeople = new Set(people.map((p) => p.personId).filter((id): id is string => !!id));
+  const outside = shares.filter((x) => !inPeople.has(x.viewerId));
   const relationLabel = (code: string | null) => RELATIONS.find((r) => r.code === code)?.label[locale] ?? "";
 
   return (
@@ -28,13 +28,14 @@ export default async function Privacy() {
           </a>
         </div>
       ) : null}
-      <h2 className="section-title px-6 pt-5">{t("privacy.shareSettings")}</h2>
-      <div className="flex flex-col gap-1 px-6 pt-2">
-        <span className="text-[15.5px] font-bold">{t("privacy.count", { n: active })}</span>
-      </div>
+      {/* 공유 설정: 사람들에 없는데 내 리드미를 보는 사람, 아직 안 열린 링크. 둘 다 없으면 칸을 숨긴다 */}
+      {outside.length || invites.length ? <h2 className="section-title px-6 pt-5">{t("privacy.shareSettings")}</h2> : null}
 
-      <ul className="mx-6 mt-3 flex flex-col">
-        {shares.map((x) => {
+      {outside.length ? (
+        <>
+          <h2 className="px-6 pb-1.5 pt-5 text-[13px] font-bold text-muted">{t("privacy.outside")}</h2>
+          <ul className="mx-6 flex flex-col">
+        {outside.map((x) => {
           const name = x.name || "?";
           const scope = x.revoked
             ? t("privacy.cutDone")
@@ -75,10 +76,12 @@ export default async function Privacy() {
             </li>
           );
         })}
-        <li className="border-t border-rule" />
-      </ul>
+            <li className="border-t border-rule" />
+          </ul>
+        </>
+      ) : null}
 
-      {/* 보낸 링크는 있을 때만 */}
+      {/* 아직 아무도 안 연 링크는 있을 때만(퍼지면 아무나 열 수 있으니 취소할 곳) */}
       {invites.length ? (
         <>
           <h2 className="px-6 pb-1.5 pt-5 text-[13px] font-bold text-muted">{t("privacy.links")}</h2>
@@ -103,17 +106,6 @@ export default async function Privacy() {
       <div className="mx-6 mt-2 flex flex-col">
         <LanguageSetting choice={s.profile.localeChoice} back="/privacy" t={t} className="border-t border-rule" />
         <AppLockSetting locale={locale} enabled={s.profile.appLock} />
-        <form action={setPreference} className="flex min-h-16 items-center gap-3 border-t border-rule">
-          <input type="hidden" name="key" value="notify_views" />
-          <input type="hidden" name="value" value={s.profile.notifyViews ? "0" : "1"} />
-          <div className="flex flex-1 flex-col gap-0.5">
-            <span className="text-[15.5px] font-bold">{t("privacy.views")}</span>
-            <span className="text-[12.5px] text-muted">{t("privacy.viewsSub")}</span>
-          </div>
-          <button aria-label={t("privacy.views")} aria-pressed={s.profile.notifyViews} className="flex h-11 w-14 shrink-0 items-center justify-end">
-            <SwitchLook on={s.profile.notifyViews} />
-          </button>
-        </form>
         <div id="reminders" className="border-t border-rule py-4">
           <ReminderSetting locale={locale} offsets={s.profile.reminderOffsets} />
         </div>

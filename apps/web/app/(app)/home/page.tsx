@@ -34,9 +34,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
       <div className="flex items-center justify-between pl-6 pr-3">
         <Wordmark />
         <div className="flex items-center">
-          <Link href="/request" aria-label={t("home.addPerson")} className="flex h-11 w-11 items-center justify-center">
-            <Icon name="personAdd" size={21} strokeWidth={1.5} />
-          </Link>
           <Link href="/me" aria-label={t("home.myCard")} className="flex h-11 w-11 items-center justify-center">
             <Avatar config={s.profile.avatar} size={32} label={t("home.myCard")} />
           </Link>
@@ -119,15 +116,26 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
       </section>
 
       {question ? (
-        <section className="mx-4 mt-[22px] flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-2xl bg-fill py-3.5 pl-[18px] pr-3.5">
-          <div className="flex min-w-[150px] flex-1 flex-col gap-[3px]">
-            <span className="text-[11.5px] text-muted">{t("home.question")}</span>
-            <span className="text-[15px] font-medium">{question.prompt[locale]}</span>
+        // 오늘의 질문: 홈에서 눈에 띄게(분홍 바탕 + 빨간 라벨 + 큰 질문 + 또렷한 답 버튼)
+        <section aria-label={t("home.question")} className="mx-4 mt-[22px] flex flex-col gap-3 rounded-2xl bg-hl px-[18px] pb-4 pt-4">
+          <div className="flex flex-col gap-1">
+            <span className="flex items-center gap-1.5 text-[12px] font-bold tracking-[0.04em] text-red">
+              <span aria-hidden="true" className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-red text-[11px] leading-none text-white">
+                Q
+              </span>
+              {t("home.question")}
+            </span>
+            <span className="text-[19px] font-bold leading-[1.35] tracking-[-0.02em]">{question.prompt[locale]}</span>
           </div>
-          <form action={answerQuestion} className="flex flex-wrap gap-1.5">
+          <form action={answerQuestion} className="flex flex-wrap gap-2">
             <input type="hidden" name="id" value={question.id} />
             {question.options.map((o) => (
-              <button key={o.value} name="value" value={o.value} className="h-11 rounded-xl bg-white px-3.5 text-[13px] font-medium shadow-[inset_0_0_0_1px_var(--color-edge)]">
+              <button
+                key={o.value}
+                name="value"
+                value={o.value}
+                className="h-11 rounded-full bg-white px-4 text-[14px] font-bold shadow-[0_1px_2px_rgba(196,68,58,0.12),inset_0_0_0_1px_rgba(196,68,58,0.22)] transition-transform active:scale-95"
+              >
                 {o.label[locale]}
               </button>
             ))}

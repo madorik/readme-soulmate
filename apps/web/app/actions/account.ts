@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/data";
 
-const PREFS = ["notify_views", "app_lock"] as const;
+const PREFS = ["app_lock"] as const;
 
 export async function setPreference(form: FormData): Promise<void> {
   const s = await requireSession();

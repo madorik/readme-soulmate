@@ -27,7 +27,6 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   const name = displayName(p);
   const today = todayFor(s.profile);
   const notes = p.kind === "pending" ? [] : await s.tx((q) => listNotes(q, s.user.id, p.contactId));
-  if (p.kind === "member" && p.personId && !p.revoked) await s.tx((q) => q("select record_view($1)", [p.personId]));
   const updated = p.updatedAt ? parseYmd(p.updatedAt.slice(0, 10)) : null;
   const askHref = `/request?to=${encodeURIComponent(p.contactId)}`;
   const mine = p.kind === "mine";

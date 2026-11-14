@@ -35,7 +35,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
             <b>Answering a request without the app</b>: the name you type and the answers you send. Allergy answers are saved only if you agree on that screen.
           </li>
           <li>
-            <b>Settings and device</b>: language, time zone, reminder timing, whether view alerts and app lock are on, and the device language. If you allow notifications on a phone, reminders are
+            <b>Settings and device</b>: language, time zone, reminder timing, whether app lock is on, and the device language. If you allow notifications on a phone, reminders are
             scheduled on the device itself.
           </li>
           <li>
@@ -157,7 +157,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           <b>앱 없이 요청에 답한 경우</b>: 적은 이름과 보낸 답. 알레르기 답은 그 화면에서 동의한 경우에만 저장합니다.
         </li>
         <li>
-          <b>설정과 기기</b>: 언어, 시간대, 알림 시점, 열람 알림·앱 잠금 사용 여부, 기기 언어. 휴대폰에서 알림을 허용하면 생일 알림은 기기 안에서 예약됩니다.
+          <b>설정과 기기</b>: 언어, 시간대, 알림 시점, 앱 잠금 사용 여부, 기기 언어. 휴대폰에서 알림을 허용하면 생일 알림은 기기 안에서 예약됩니다.
         </li>
         <li>
           <b>자동으로 만들어지는 정보</b>: 로그인 유지를 위한 쿠키, 호스팅 업체가 남기는 접속 기록(IP 주소, 브라우저·기기 종류, 접속 시각)

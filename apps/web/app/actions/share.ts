@@ -111,7 +111,12 @@ export async function setShareWith(personId: string, on: boolean): Promise<Share
          on conflict (owner_id, viewer_id) do update set revoked_at = null`,
         [me, personId, relation, sections],
       );
-      await q("insert into contacts (user_id, person_id) values ($1, $2) on conflict (user_id, person_id) do nothing", [personId, me]);
+      // 상대 사람들에 내 이름도 적어 둔다(내가 나중에 공유를 끄면 상대는 내 프로필을 못 읽는다)
+      await q("insert into contacts (user_id, person_id, nickname) values ($1, $2, $3) on conflict (user_id, person_id) do nothing", [
+        personId,
+        me,
+        s.profile.displayName.slice(0, 40),
+      ]);
     });
   }
   revalidateShares();
@@ -146,6 +151,13 @@ export async function acceptInvite(form: FormData): Promise<void> {
     const row = await session.tx(async (q) => {
       const r = await q.one<{ id: string }>("select accept_share($1, $2, $3) as id", [tokenHash, code, form.get("sendBack") === "1"]);
       if (r && tag) await q("update contacts set nickname = $2 where id = $1", [r.id, tag]);
+      // 태그를 안 적었으면 지금 보이는 이름을 적어 둔다. 상대 이름은 공유를 받는 동안만 보여서, 나중에 상대가 공유를 끄면 이름이 사라진다
+      else if (r)
+        await q(
+          `update contacts c set nickname = left(p.display_name, 40)
+             from profiles p where c.id = $1 and c.nickname = '' and p.id = c.person_id and p.display_name <> ''`,
+          [r.id],
+        );
       return r;
     });
     contactId = row!.id;
