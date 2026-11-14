@@ -33,7 +33,8 @@ export function Wordmark({ size = 22 }: { size?: number }) {
   );
 }
 
-export function TabBar({ active, t }: { active: "home" | "people" | "me" | "privacy"; t: T }) {
+/** fab: 탭 막대 바로 위 오른쪽에 떠 있는 버튼(사람들 화면의 추가 등) */
+export function TabBar({ active, t, fab }: { active: "home" | "people" | "me" | "privacy"; t: T; fab?: React.ReactNode }) {
   const tabs = [
     { key: "home", href: "/home", icon: "calendar", label: t("nav.home") },
     { key: "people", href: "/people", icon: "people", label: t("nav.people") },
@@ -46,6 +47,7 @@ export function TabBar({ active, t }: { active: "home" | "people" | "me" | "priv
       className="sticky bottom-0 mt-auto grid grid-cols-4 border-t border-rule bg-white/95 px-2 pt-1.5 backdrop-blur"
       style={{ paddingBottom: "max(var(--sab), 10px)" }}
     >
+      {fab ? <div className="absolute bottom-full right-4 mb-4">{fab}</div> : null}
       {tabs.map((tab) => {
         const on = tab.key === active;
         return (

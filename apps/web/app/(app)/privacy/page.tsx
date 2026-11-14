@@ -1,6 +1,5 @@
-import { RELATIONS, SECTIONS, daysLeft } from "@readme/core";
+import { RELATIONS, SECTIONS } from "@readme/core";
 import { setPreference } from "@/app/actions/account";
-import { signOut } from "@/app/actions/auth";
 import { cancelInvite, setGrant, setGrantSections } from "@/app/actions/share";
 import { Avatar } from "@/components/Avatar";
 import { TabBar } from "@/components/chrome";
@@ -8,7 +7,7 @@ import { LanguageSetting } from "@/components/LanguageSetting";
 import { SwitchLook } from "@/components/marks";
 import { listOpenInvites, listShares, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
-import { AppLockSetting, DeleteAccount, ReminderSetting } from "./Settings";
+import { AppLockSetting, ReminderSetting } from "./Settings";
 
 export default async function Privacy() {
   const s = await requireSession();
@@ -32,11 +31,9 @@ export default async function Privacy() {
       <h2 className="section-title px-6 pt-5">{t("privacy.shareSettings")}</h2>
       <div className="flex flex-col gap-1 px-6 pt-2">
         <span className="text-[15.5px] font-bold">{t("privacy.count", { n: active })}</span>
-        <span className="text-[13.5px] leading-[1.5] text-muted">{t("privacy.noSearch")}</span>
       </div>
 
       <ul className="mx-6 mt-3 flex flex-col">
-        {shares.length === 0 ? <li className="border-t border-rule py-4 text-[14px] text-muted">{t("privacy.nobody")}</li> : null}
         {shares.map((x) => {
           const name = x.name || "?";
           const scope = x.revoked
@@ -81,25 +78,26 @@ export default async function Privacy() {
         <li className="border-t border-rule" />
       </ul>
 
-      <h2 className="px-6 pb-1.5 pt-5 text-[13px] font-bold text-muted">{t("privacy.links")}</h2>
-      <ul className="mx-6 flex flex-col">
-        {invites.length === 0 ? <li className="border-t border-rule py-3.5 text-[14px] text-muted">{t("privacy.noLinks")}</li> : null}
-        {invites.map((i) => (
-          <li key={i.id} className="flex min-h-[62px] items-center gap-3 border-t border-rule">
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="text-[15.5px] font-bold">
-                {i.kind === "share" ? t("privacy.linkShare", { relation: relationLabel(i.relation) || t("app.name") }) : t("privacy.linkRequest", { name: i.recipientName })}
-              </span>
-              <span className="text-[12.5px] text-muted">{t("privacy.linkPending", { n: daysLeft(i.expiresAt) })}</span>
-            </div>
-            <form action={cancelInvite}>
-              <input type="hidden" name="id" value={i.id} />
-              <button className="flex min-h-11 items-center pl-3 pr-1 text-[14px] font-bold text-red">{t("privacy.linkCancel")}</button>
-            </form>
-          </li>
-        ))}
-        <li className="border-t border-rule" />
-      </ul>
+      {/* 보낸 링크는 있을 때만 */}
+      {invites.length ? (
+        <>
+          <h2 className="px-6 pb-1.5 pt-5 text-[13px] font-bold text-muted">{t("privacy.links")}</h2>
+          <ul className="mx-6 flex flex-col">
+            {invites.map((i) => (
+              <li key={i.id} className="flex min-h-[56px] items-center gap-3 border-t border-rule">
+                <span className="min-w-0 flex-1 text-[15.5px] font-bold">
+                  {i.kind === "share" ? t("privacy.linkShare", { relation: relationLabel(i.relation) || t("app.name") }) : t("privacy.linkRequest", { name: i.recipientName })}
+                </span>
+                <form action={cancelInvite}>
+                  <input type="hidden" name="id" value={i.id} />
+                  <button className="flex min-h-11 items-center pl-3 pr-1 text-[14px] font-bold text-red">{t("privacy.linkCancel")}</button>
+                </form>
+              </li>
+            ))}
+            <li className="border-t border-rule" />
+          </ul>
+        </>
+      ) : null}
 
       <h2 className="section-title px-6 pt-8">{t("privacy.appSettings")}</h2>
       <div className="mx-6 mt-2 flex flex-col">
@@ -121,16 +119,7 @@ export default async function Privacy() {
         </div>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-x-5 px-6 pt-6">
-        <a href="/api/export" className="flex min-h-11 items-center text-[14px] font-bold">
-          {t("privacy.export")}
-        </a>
-        <form action={signOut}>
-          <button className="flex min-h-11 items-center text-[14px] font-bold">{t("privacy.signOut")}</button>
-        </form>
-        <DeleteAccount locale={locale} />
-      </div>
-      <div className="h-6" />
+      <div className="h-8" />
       <TabBar active="privacy" t={t} />
     </>
   );

@@ -9,10 +9,8 @@ import { RowBody, type PersonRow } from "@/components/PersonRow";
 
 interface Labels {
   title: string;
-  /** 리드미 부탁하기(/request) */
+  /** 리드미 요청(/request). 직접 적기는 오른쪽 아래 떠 있는 버튼(AddFab) */
   request: string;
-  /** 직접 적기(/people/new) */
-  add: string;
   pick: string;
   cancel: string;
   hint: string;
@@ -27,11 +25,11 @@ interface Labels {
   empty: string;
 }
 
-/** 제목 오른쪽 글자 버튼(요청·추가·선택) */
+/** 제목 오른쪽 글자 버튼(리드미 요청·선택) */
 const HEAD_BUTTON = "flex min-h-11 items-center gap-1 px-2.5 text-[14.5px] font-bold";
 
 /**
- * 내 사람들. 위에 요청(리드미 부탁하기)·추가(직접 적기)·선택.
+ * 내 사람들. 위에 리드미 요청·선택, 직접 적기는 오른쪽 아래 떠 있는 버튼.
  * "선택"을 누르면 사람을 고르는 모드가 되고, 고른 사람으로 메뉴 고르기·선물 고르기·공유하기를 한다.
  * 고른 상태는 주소(pick=1&with=…&me=…)로 오가서, 메뉴 화면에서 뒤로 와도 그대로다.
  */
@@ -72,6 +70,11 @@ export function PeopleBoard({
   useEffect(() => {
     if (window.location.pathname + window.location.search !== here) window.history.replaceState(window.history.state, "", here);
   }, [here]);
+  // 선택 중에는 오른쪽 아래 '직접 적기' 버튼(AddFab)을 숨긴다
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-people-picking", picking);
+    return () => document.documentElement.removeAttribute("data-people-picking");
+  }, [picking]);
   const ready = picked.length > 0;
   const action = (href: string, label: string) =>
     ready ? (
@@ -90,16 +93,10 @@ export function PeopleBoard({
         <h1 className="headline shrink-0 text-[26px]">{labels.title}</h1>
         <div className="flex items-center">
           {picking ? null : (
-            <>
-              <Link href="/request" className={HEAD_BUTTON}>
-                <Icon name="personAdd" size={17} />
-                {labels.request}
-              </Link>
-              <Link href="/people/new" className={HEAD_BUTTON}>
-                <Icon name="plus" size={17} />
-                {labels.add}
-              </Link>
-            </>
+            <Link href="/request" className={HEAD_BUTTON}>
+              <Icon name="card" size={17} />
+              {labels.request}
+            </Link>
           )}
           {canPick ? (
             <button type="button" aria-pressed={picking} onClick={() => setPicking(!picking)} className={HEAD_BUTTON}>
@@ -172,7 +169,8 @@ export function PeopleBoard({
           </div>
         </div>
       ) : (
-        <div className="h-6" />
+        // 오른쪽 아래 떠 있는 버튼에 마지막 줄이 가리지 않게
+        <div className="h-24" />
       )}
     </>
   );

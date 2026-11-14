@@ -196,7 +196,7 @@ test("직접 적어 두기: 앱을 안 쓰는 사람도 적어 두면 나만 보
   await cron(); // 이미 잡힌 알림은 먼저 만들어 두고, 아래에서 새로 생긴 것만 센다
   const jisu = await as(browser, "jisu");
   await jisu.goto("/people");
-  await jisu.getByRole("link", { name: "추가", exact: true }).click();
+  await jisu.getByRole("link", { name: "직접 적기" }).click();
   await expect(jisu).toHaveURL(/\/people\/new/);
   await jisu.getByLabel("이름이나 부르는 말").fill("할머니");
   await jisu.getByRole("button", { name: "만들기" }).click();
@@ -330,7 +330,12 @@ test("내 정보 내려받기와 계정 삭제", async ({ browser }) => {
   expect(res.status()).toBe(200);
   const data = await res.json();
   expect(data.myReadme.dates.birthday).toEqual({ calendar: "lunar", month: 11, day: 3, leap: false });
+  // 설정에는 없고, 내 리드미 > 프로필 고치기 아래 '계정'에 있다
   await dad.goto("/privacy");
+  await expect(dad.getByRole("button", { name: "계정 삭제" })).toHaveCount(0);
+  await dad.goto("/me/avatar");
+  await expect(dad.getByRole("link", { name: "내 정보 내려받기" })).toBeVisible();
+  await expect(dad.getByRole("button", { name: "로그아웃" })).toBeVisible();
   await dad.getByRole("button", { name: "계정 삭제" }).click();
   await dad.getByRole("button", { name: "모두 지우기" }).click();
   await expect(dad.getByRole("heading", { name: /말 안 해도/ })).toBeVisible();
@@ -424,7 +429,11 @@ test("사람들 > 고르기: 사람을 고르면 알레르기를 빼고 메뉴�
   await page.getByRole("button", { name: "데모로 둘러보기" }).click();
   await expect(page).toHaveURL(/\/home/);
   await page.getByRole("link", { name: "사람들" }).click();
+  // 직접 적기는 오른쪽 아래 떠 있는 버튼. 선택 중에는 숨는다
+  await expect(page.getByRole("link", { name: "직접 적기" })).toBeVisible();
+  await shot(page, "17-people-fab");
   await page.getByRole("button", { name: "선택" }).click();
+  await expect(page.getByRole("link", { name: "직접 적기" })).toHaveCount(0);
   await page.getByRole("button", { name: "아내 선택" }).click();
   await page.getByRole("button", { name: "단짝 선택" }).click();
   // 고르는 중에 사람을 누르면 상세로 가고, 뒤로(화면 버튼·브라우저 뒤로가기) 오면 체크가 그대로
