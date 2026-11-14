@@ -13,10 +13,10 @@ export function FavoritesEditor({ value, onChange, locale }: { value: FavoritesD
     const list = value[key] ?? [];
     onChange({ ...value, [key]: list.includes(code) ? list.filter((x) => x !== code) : [...list, code] });
   };
-  const chips = (key: CodeKey, label: string, list: CatalogItem[], cols: number) => (
+  const chips = (key: CodeKey, label: string, list: CatalogItem[]) => (
     <div className="flex flex-col gap-1">
       <span className="text-[13.5px] font-bold">{label}</span>
-      <div className="grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      <div className="flex flex-wrap gap-2 pt-1">
         {list.map((i) => (
           <CircleOption key={i.code} label={i.label[locale]} on={(value[key] ?? []).includes(i.code)} color="ink" onToggle={() => toggle(key, i.code)} textClass="!text-[15px] whitespace-nowrap" />
         ))}
@@ -40,9 +40,9 @@ export function FavoritesEditor({ value, onChange, locale }: { value: FavoritesD
       {group(
         t("fav.style"),
         <>
-          {chips("patterns", t("fav.patterns"), PATTERNS, 3)}
-          {chips("styles", t("fav.styles"), STYLES, 3)}
-          {chips("metals", t("fav.metals"), METALS, 3)}
+          {chips("patterns", t("fav.patterns"), PATTERNS)}
+          {chips("styles", t("fav.styles"), STYLES)}
+          {chips("metals", t("fav.metals"), METALS)}
         </>,
       )}
       {group(
@@ -56,7 +56,7 @@ export function FavoritesEditor({ value, onChange, locale }: { value: FavoritesD
       {group(
         t("fav.watch"),
         <>
-          {chips("movieGenres", t("fav.movieGenres"), MOVIE_GENRES, 3)}
+          {chips("movieGenres", t("fav.movieGenres"), MOVIE_GENRES)}
           {field("movie")}
           {field("drama")}
           {field("shows")}
@@ -65,14 +65,14 @@ export function FavoritesEditor({ value, onChange, locale }: { value: FavoritesD
       {group(
         t("fav.listen"),
         <>
-          {chips("musicGenres", t("fav.musicGenres"), MUSIC_GENRES, 3)}
+          {chips("musicGenres", t("fav.musicGenres"), MUSIC_GENRES)}
           {field("song")}
         </>,
       )}
       {group(
         t("fav.life"),
         <>
-          {chips("seasons", t("fav.seasons"), SEASONS, 4)}
+          {chips("seasons", t("fav.seasons"), SEASONS)}
           {field("dessert")}
           {field("travel")}
           {field("animal")}

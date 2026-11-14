@@ -59,7 +59,7 @@ export default async function Reminder({ params, searchParams }: { params: Promi
 
       {next && spec ? (
         <div className="flex items-center gap-[22px] pl-[34px] pr-6 pt-1.5">
-          <span className="num relative text-[112px] font-extralight !leading-[0.9] tracking-[-0.04em] text-red">
+          <span className="num relative text-[112px] font-extralight !leading-[0.9] tracking-[-0.04em] text-accent">
             {next.date.d}
             <MarkerCircle pad={[18, 12]} width={2.2} />
           </span>
@@ -107,7 +107,7 @@ export default async function Reminder({ params, searchParams }: { params: Promi
         <div className="border-t border-rule" />
       </section>
 
-      <div className="sticky bottom-0 mt-auto flex flex-col gap-2.5 bg-white px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
+      <div className="sticky bottom-0 mt-auto flex flex-col gap-2.5 bg-bg px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
         {next && next.daysUntil > 0 && s.profile.reminderOffsets.includes(0) ? <span className="text-[13px] text-muted">{t("reminder.again")}</span> : null}
         <div className="grid grid-cols-2 gap-2.5">
           <ShareTextButton text={shareText} label={t("reminder.together")} doneLabel={t("reminder.shared")} className="btn-outline" />

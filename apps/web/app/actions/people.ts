@@ -162,3 +162,19 @@ export async function deleteGroup(groupId: string): Promise<{ ok: boolean }> {
     return { ok: false };
   }
 }
+
+/** 사람들 목록에서 끌어 놓기: 그룹과 즐겨찾기를 한 번에 바꾼다(즐겨찾기 칸에 놓으면 즐겨찾기, 그룹 칸에 놓으면 그 그룹·즐겨찾기 해제) */
+export async function moveContact(contactId: string, target: { groupId: string | null; favorite: boolean }): Promise<{ ok: boolean }> {
+  const s = await requireSession();
+  const groupId = target?.groupId ?? null;
+  if (typeof contactId !== "string" || (groupId !== null && !/^[0-9a-f-]{36}$/i.test(groupId))) return { ok: false };
+  try {
+    const row = await s.tx((q) =>
+      q.one<{ id: string }>("update contacts set group_id = $2::uuid, favorite = $3 where id::text = $1 returning id", [contactId, groupId, target.favorite === true]),
+    );
+    revalidatePeople(contactId);
+    return { ok: !!row };
+  } catch {
+    return { ok: false };
+  }
+}

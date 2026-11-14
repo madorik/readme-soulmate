@@ -76,7 +76,7 @@ export default async function PlanGift({ searchParams }: { searchParams: Promise
                 <Avatar config={p.avatar} size={40} label={t("avatar.of", { name })} />
                 <div className="flex min-w-0 flex-1 flex-col gap-px">
                   <span className="truncate text-[16px] font-bold">{name}</span>
-                  {next ? <span className={`text-[12.5px] ${next.daysUntil <= 30 ? "text-red" : "text-muted"}`}>{t("plan.nextDate", { event: eventName(next, t, locale), n: next.daysUntil })}</span> : null}
+                  {next ? <span className={`text-[12.5px] ${next.daysUntil <= 30 ? "font-bold text-accent" : "text-muted"}`}>{t("plan.nextDate", { event: eventName(next, t, locale), n: next.daysUntil })}</span> : null}
                 </div>
                 <Link href={`/people/${p.contactId}/reminder`} className="flex min-h-11 items-center gap-0.5 text-[13px] font-medium text-muted">
                   {t("plan.seeHints")}

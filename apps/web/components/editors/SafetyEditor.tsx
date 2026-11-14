@@ -46,7 +46,6 @@ export function SafetyEditor({
     if (found.allergens.some((c) => allergens.rest.some((i) => i.code === c)) || found.dislikes.some((c) => dislikes.rest.some((i) => i.code === c))) setMore(true);
   };
 
-  const cols = large ? "grid-cols-3" : "grid-cols-4";
   return (
     <div className="flex flex-col gap-6">
       {showVoice ? (
@@ -64,11 +63,11 @@ export function SafetyEditor({
         <SectionHeading tone="red" right={t("safety.allergensVisible")}>
           {t("safety.allergens")}
         </SectionHeading>
-        <div className={`grid ${cols} gap-y-1 border-t border-rule pt-1.5`}>
+        <div className="flex flex-wrap gap-2 pt-1">
           {[...allergens.first, ...(more ? allergens.rest : [])].map((i) => (
-            <CircleOption key={i.code} label={i.label[locale]} on={value.allergens.includes(i.code)} onToggle={() => toggle("allergens", i.code)} large={large} />
+            <CircleOption key={i.code} label={i.label[locale]} color="warn" on={value.allergens.includes(i.code)} onToggle={() => toggle("allergens", i.code)} large={large} />
           ))}
-          <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className={`font-bold text-muted ${large ? "h-[52px] text-[17px]" : "h-[46px] text-[15px]"}`}>
+          <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className={`chip !bg-transparent font-bold text-muted !shadow-[inset_0_0_0_1.5px_var(--color-edge)] ${large ? "!min-h-12 text-[16.5px]" : ""}`}>
             {more ? t("safety.less") : t("safety.more")}
           </button>
         </div>
@@ -76,7 +75,7 @@ export function SafetyEditor({
 
       <div className="flex flex-col gap-1.5">
         <SectionHeading>{t("safety.dislikes")}</SectionHeading>
-        <div className={`grid ${cols} gap-y-1 border-t border-rule pt-1.5`}>
+        <div className="flex flex-wrap gap-2 pt-1">
           {[...dislikes.first, ...(more ? dislikes.rest : [])].map((i) => (
             <CircleOption key={i.code} label={i.label[locale]} color="ink" on={value.dislikes.includes(i.code)} onToggle={() => toggle("dislikes", i.code)} large={large} />
           ))}
@@ -86,7 +85,7 @@ export function SafetyEditor({
       {more ? (
         <div className="flex flex-col gap-1.5">
           <SectionHeading>{t("safety.diets")}</SectionHeading>
-          <div className={`grid ${large ? "grid-cols-2" : "grid-cols-3"} gap-y-1 border-t border-rule pt-1.5`}>
+          <div className="flex flex-wrap gap-2 pt-1">
             {DIETS.map((i) => (
               <CircleOption key={i.code} label={i.label[locale]} color="ink" on={value.diets.includes(i.code)} onToggle={() => toggle("diets", i.code)} large={large} />
             ))}

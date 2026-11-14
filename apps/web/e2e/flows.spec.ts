@@ -123,9 +123,11 @@ test("리드미 요청하기 → 앱 없이 웹에서 '맞아요'로 답하기 �
   const today = todayIn("Asia/Seoul");
   const n = nextOccurrence({ calendar: "lunar", month: 11, day: 3 }, today)!;
   await expect(page.getByRole("link", { name: /아빠/ })).toBeVisible();
+  await shot(page, "08-home");
+  // 홈의 내 사람들은 얼굴 줄이라 날짜는 사람들 목록에서 본다
+  await page.goto("/people");
   const solar = lunarToSolar(n.date.y, 11, 3)!;
   await expect(page.getByText(`${solar.m}.${solar.d}`).first()).toBeVisible();
-  await shot(page, "08-home");
   await page.getByRole("link", { name: /아빠/ }).click();
   await page.getByRole("link", { name: "선물 고르기" }).click();
   await shot(page, "09-reminder");
@@ -493,6 +495,36 @@ test("사람들: 그룹(기본 4개 + 직접 만들기)과 즐겨찾기. 목록�
   jisu.once("dialog", (d) => d.accept());
   await jisu.getByRole("button", { name: "그룹 지우기 동창" }).click();
   await expect(jisu.getByRole("region", { name: "동창" })).toHaveCount(0);
+
+  // 끌어서 옮기기: 본가의 아빠를 가족 칸에 놓으면 가족으로 간다(화면은 그대로)
+  const from = await jisu.getByRole("region", { name: "본가" }).getByRole("link", { name: /아빠/ }).boundingBox();
+  const to = await jisu.getByRole("region", { name: "가족" }).getByRole("button", { name: /^가족/ }).boundingBox();
+  await jisu.mouse.move(from!.x + 60, from!.y + from!.height / 2);
+  await jisu.mouse.down();
+  await jisu.mouse.move(from!.x + 70, from!.y + from!.height / 2 + 10, { steps: 3 });
+  await jisu.mouse.move(to!.x + 60, to!.y + to!.height / 2, { steps: 12 });
+  await jisu.mouse.up();
+  await expect(jisu).toHaveURL(/\/people$/);
+  await expect(jisu.getByRole("region", { name: "가족" }).getByRole("link", { name: /아빠/ })).toBeVisible();
+  await jisu.reload();
+  await expect(jisu.getByRole("region", { name: "가족" }).getByRole("link", { name: /아빠/ })).toBeVisible();
+});
+
+test("챙길 날 오른쪽 위 내 얼굴: 내 프로필(닉네임·프로필 사진)과 로그아웃", async ({ browser }) => {
+  const jisu = await as(browser, "jisu");
+  await jisu.goto("/home");
+  await jisu.getByRole("button", { name: "내 프로필 메뉴" }).click();
+  await expect(jisu.getByRole("menuitem", { name: "로그아웃" })).toBeVisible();
+  await jisu.getByRole("menuitem", { name: "내 프로필" }).click();
+  await expect(jisu).toHaveURL(/\/me\/avatar$/);
+  await expect(jisu.getByRole("heading", { name: "내 프로필" })).toBeVisible();
+  await expect(jisu.getByText("닉네임", { exact: true })).toBeVisible();
+  await expect(jisu.getByRole("heading", { name: "프로필 사진" })).toBeVisible();
+  // 바깥을 누르면 메뉴가 닫힌다
+  await jisu.goto("/home");
+  await jisu.getByRole("button", { name: "내 프로필 메뉴" }).click();
+  await jisu.mouse.click(20, 400);
+  await expect(jisu.getByRole("menuitem", { name: "로그아웃" })).toHaveCount(0);
 });
 
 test("영어로 바꾸면 영어 화면", async ({ page }) => {

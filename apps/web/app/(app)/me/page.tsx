@@ -9,7 +9,7 @@ import { summarize } from "@/lib/summary";
 import { MyReadmeList } from "./MyReadmeList";
 
 /** 미리보기·공유하기: 같은 테두리 동그라미(.pill과 같은 선) */
-const ICON_BUTTON = "flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-[inset_0_0_0_1px_var(--color-edge)]";
+const ICON_BUTTON = "flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)]";
 
 export default async function Me() {
   const s = await requireSession();
@@ -19,11 +19,13 @@ export default async function Me() {
   const name = s.profile.displayName;
   return (
     <>
-      <div className="flex items-center gap-[18px] px-6 pt-4">
-        <Avatar config={s.profile.avatar} size={84} label={t("avatar.of", { name })} />
+      <div className="flex items-center gap-4 pl-5 pr-4 pt-5">
+        <Link href="/me/avatar" className="shrink-0 rounded-full">
+          <Avatar config={s.profile.avatar} size={82} label={t("avatar.of", { name })} />
+        </Link>
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="truncate text-[30px] font-bold leading-[1.15] tracking-[-0.03em]">{name}</h1>
-          <Link href="/me/avatar" className="text-[13.5px] font-bold text-muted underline underline-offset-4">
+          <Link href="/me/avatar" className="self-start text-[14px] font-bold text-muted underline decoration-[1.5px] underline-offset-[5px]">
             {t("me.face")}
           </Link>
         </div>

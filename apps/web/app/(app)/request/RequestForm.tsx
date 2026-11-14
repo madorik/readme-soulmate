@@ -54,14 +54,14 @@ export function RequestForm({ locale, name: initialName, topics: initialTopics }
 
       <div className="flex flex-col gap-0.5 px-6 pt-5">
         <span className="text-[15px] font-bold">{t("request.topics")}</span>
-        <div className="flex flex-wrap gap-x-3.5">
+        <div className="flex flex-wrap gap-2">
           {SECTIONS.map((s) => (
             <CircleOption
               key={s}
               label={t(`request.topic.${s}` as "request.topic.dates")}
               on={topics.includes(s)}
               onToggle={() => setTopics(topics.includes(s) ? topics.filter((x) => x !== s) : SECTIONS.filter((x) => x === s || topics.includes(x)))}
-              textClass="px-1 !text-[16px]"
+              textClass="!text-[15.5px]"
             />
           ))}
         </div>
@@ -123,7 +123,7 @@ export function RequestForm({ locale, name: initialName, topics: initialTopics }
                     color="ink"
                     on={unsure.includes(s)}
                     onToggle={() => setUnsure(unsure.includes(s) ? unsure.filter((x) => x !== s) : [...unsure, s])}
-                    textClass="self-start !text-[14.5px] px-1"
+                    textClass="self-start !text-[14.5px]"
                   />
                 </div>
               ) : null}

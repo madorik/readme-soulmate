@@ -13,7 +13,8 @@ import { TasteEditor } from "@/components/editors/TasteEditor";
 import { useT } from "@/components/editors/shared";
 
 /** 탭 막대(높이 57px + 아래 안전 영역) 바로 위 */
-const ABOVE_TAB_BAR = "calc(57px + max(var(--sab), 10px))";
+// 떠 있는 탭 막대(위 여백 12 + 막대 66) 바로 위
+const ABOVE_TAB_BAR = "calc(78px + max(var(--sab), 14px))";
 
 /**
  * 리드미 항목 하나 고치기. contactId가 있으면 내가 직접 적어 둔 그 사람의 카드에, 없으면 내 리드미에 저장한다.
@@ -49,7 +50,7 @@ export function SectionForm<S extends Section>({ section, initial, locale, conta
         {section === "favorites" ? <FavoritesEditor value={value as CardData["favorites"]} onChange={change} locale={locale} /> : null}
       </div>
       <div
-        className={inline ? "sticky z-10 flex flex-col gap-2 bg-white pb-3 pt-4" : "sticky bottom-0 mt-auto flex flex-col gap-2 bg-white px-6 pt-4"}
+        className={inline ? "sticky z-10 flex flex-col gap-2 bg-white pb-3 pt-4" : "sticky bottom-0 mt-auto flex flex-col gap-2 bg-bg px-5 pt-4"}
         style={inline ? { bottom: ABOVE_TAB_BAR } : { paddingBottom: "max(var(--sab), 16px)" }}
       >
         {state.saved && !dirty ? (

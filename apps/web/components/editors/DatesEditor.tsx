@@ -82,7 +82,7 @@ export function DateSpecPicker({
             role="radio"
             aria-checked={spec.calendar === c && !!value}
             onClick={() => set({ calendar: c })}
-            className={`relative flex min-h-11 items-center px-1 text-[22px] font-bold ${spec.calendar === c && value ? "text-red" : "text-muted"}`}
+            className={`relative flex min-h-11 items-center px-1 text-[22px] font-bold ${spec.calendar === c && value ? "text-accent" : "text-muted"}`}
           >
             <span className="relative">
               {t(c === "solar" ? "dates.solar" : "dates.lunar")}
@@ -203,11 +203,11 @@ function WeekOf({ day, locale }: { day: YMD; locale: Locale }) {
           const lunar = solarToLunar(d);
           return (
             <div key={i} className="flex flex-col items-center gap-[5px] pb-2.5 pt-2">
-              <span className={`num relative text-[26px] ${on || i === 0 ? "text-red" : i === 6 ? "text-sat" : ""}`}>
+              <span className={`num relative text-[26px] ${on ? "text-accent" : i === 0 ? "text-red" : i === 6 ? "text-sat" : ""}`}>
                 {d.d}
                 {on ? <MarkerCircle pad={[12, 7]} width={2.6} /> : null}
               </span>
-              <span className={`text-[10px] ${on ? "font-bold text-red" : "text-muted"}`}>{lunar ? `${lunar.m}.${lunar.d}` : ""}</span>
+              <span className={`text-[10px] ${on ? "font-bold text-accent" : "text-muted"}`}>{lunar ? `${lunar.m}.${lunar.d}` : ""}</span>
             </div>
           );
         })}
@@ -221,14 +221,14 @@ export function ReminderPicker({ value, onChange, locale }: { value: ReminderOff
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[16px] font-bold">{t("remind.when")}</span>
-      <div className="flex justify-between">
+      <div className="flex flex-wrap gap-2 pt-1">
         {REMINDER_OFFSETS.map((o) => (
           <CircleOption
             key={o}
             label={t(`remind.${o}` as "remind.7")}
             on={value.includes(o)}
             onToggle={() => onChange(value.includes(o) ? value.filter((x) => x !== o) : REMINDER_OFFSETS.filter((x) => x === o || value.includes(x)))}
-            textClass="px-2.5 !text-[16px] whitespace-nowrap"
+            textClass="whitespace-nowrap"
           />
         ))}
       </div>

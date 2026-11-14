@@ -3,13 +3,21 @@
 import type { AvatarConfig } from "@readme/core";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { createGroup, deleteGroup } from "@/app/actions/people";
+import { createGroup, deleteGroup, moveContact } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";
+import { Mascot } from "@/components/Mascot";
 import { DrawnCheck, Icon } from "@/components/marks";
 import { RowBody, type PersonRow } from "@/components/PersonRow";
+import { useDragToGroup } from "./useDragToGroup";
 
 interface Labels {
   title: string;
+  /** "{n}명 · 즐겨찾기 {f}명" */
+  summary: string;
+  all: string;
+  bannerTitle: string;
+  bannerBody: string;
+  bannerCta: string;
   pick: string;
   cancel: string;
   hint: string;
@@ -64,11 +72,13 @@ function sectionsOf(rows: PersonRow[], groups: BoardGroup[], labels: Labels): Se
 
 const COLLAPSED_KEY = "readme.people.collapsed";
 
-/** 제목 오른쪽 글자 버튼(새 그룹·선택) */
-const HEAD_BUTTON = "flex min-h-11 items-center gap-1 px-2.5 text-[14.5px] font-bold";
+/** 그룹 칩(위 가로 줄): 고르면 하늘 그라데이션 */
+const groupChip = (on: boolean) =>
+  `flex h-[38px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[14px] ${on ? "grad font-bold" : "bg-white font-medium shadow-[inset_0_0_0_1.5px_var(--color-rule)]"}`;
 
 /**
  * 내 사람들. 그룹 목록으로 보인다(즐겨찾기 → 그룹 → 그룹 없음, 누르면 접힌다). 위에 새 그룹·선택, 직접 적기는 오른쪽 아래 떠 있는 버튼.
+ * 사람을 길게 눌러(마우스는 끌어) 다른 그룹 칸에 놓으면 그 그룹으로 옮긴다.
  * "선택"을 누르면 사람을 고르는 모드가 되고, 고른 사람으로 메뉴 고르기·선물 고르기·공유하기를 한다.
  * 고른 상태는 주소(pick=1&with=…&me=…)로 오가서, 메뉴 화면에서 뒤로 와도 그대로다.
  */
@@ -138,8 +148,8 @@ export function PeopleBoard({
       /* 기억만 못 할 뿐 */
     }
   }
-  // 새 그룹 만들기(위 버튼이면 위에, 목록 끝 +면 끝에 이름 칸)·직접 만든 그룹 지우기(서버가 /people을 다시 그린다)
-  const [making, setMaking] = useState<"top" | "bottom" | null>(null);
+  // 새 그룹 만들기(위 버튼)·직접 만든 그룹 지우기(서버가 /people을 다시 그린다)
+  const [making, setMaking] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [busy, startBusy] = useTransition();
   function makeGroup() {
@@ -148,7 +158,7 @@ export function PeopleBoard({
     startBusy(async () => {
       if (await createGroup(name)) {
         setGroupName("");
-        setMaking(null);
+        setMaking(false);
       }
     });
   }
@@ -158,7 +168,32 @@ export function PeopleBoard({
       await deleteGroup(id);
     });
   }
-  const sections = sectionsOf(rows, groups, labels);
+  // 끌어 놓기: 놓는 즉시 화면에서 옮기고(서버가 다시 그리면 그 값으로), 실패하면 되돌린다
+  const [moved, setMoved] = useState<Record<string, { groupId: string | null; favorite: boolean }>>({});
+  useEffect(() => setMoved({}), [rows]);
+  const shown = rows.map((r) => (moved[r.contactId] ? { ...r, ...moved[r.contactId] } : r));
+  const drag = useDragToGroup({
+    enabled: !picking,
+    onDrop: (id, target) => {
+      const row = shown.find((r) => r.contactId === id);
+      if (!row) return;
+      // 즐겨찾기 칸이면 즐겨찾기(그룹은 그대로), 그룹 없음이면 그룹 빼기, 그룹 칸이면 그 그룹(즐겨찾기는 풀린다)
+      const next = target === "fav" ? { groupId: row.groupId, favorite: true } : target === "none" ? { groupId: null, favorite: false } : { groupId: target, favorite: false };
+      setMoved((m) => ({ ...m, [id]: next }));
+      startBusy(async () => {
+        const r = await moveContact(id, next);
+        if (!r.ok)
+          setMoved((m) => {
+            const { [id]: _, ...rest } = m;
+            return rest;
+          });
+      });
+    },
+  });
+  const sections = sectionsOf(shown, groups, labels);
+  // 위 그룹 칩으로 한 그룹만 보기(없어진 그룹이면 전체)
+  const [filter, setFilter] = useState("all");
+  const visible = filter === "all" || !sections.some((sec) => sec.key === filter) ? sections : sections.filter((sec) => sec.key === filter);
   const groupForm = (
     <form
       className="flex gap-2"
@@ -188,60 +223,113 @@ export function PeopleBoard({
         {label}
       </Link>
     ) : (
-      <span aria-disabled="true" className="btn-primary !bg-[#b6b9bd]">
+      <span aria-disabled="true" className="btn-primary ![background:#dfe7f1] !text-[#6f7b8f] !shadow-none">
         {label}
       </span>
     );
+  const favCount = rows.filter((r) => r.favorite).length;
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 pl-6 pr-2 pt-3">
-        <h1 className="headline shrink-0 text-[26px]">{labels.title}</h1>
-        <div className="flex items-center">
+      <div className="flex items-end justify-between gap-2 pl-5 pr-4 pt-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="headline text-[26px]">{labels.title}</h1>
+          {rows.length ? <span className="text-[13px] font-medium text-muted">{labels.summary.replace("{n}", String(rows.length)).replace("{f}", String(favCount))}</span> : null}
+        </div>
+        {canPick ? (
+          <button type="button" aria-pressed={picking} onClick={() => setPicking(!picking)} className={`pill !h-10 shrink-0 !gap-1.5 !px-3.5 ${picking ? "grad !shadow-none" : ""}`}>
+            {picking ? (
+              labels.cancel
+            ) : (
+              <>
+                <Icon name="check" size={17} strokeWidth={2} />
+                {labels.pick}
+              </>
+            )}
+          </button>
+        ) : null}
+      </div>
+
+      {rows.length || groups.length ? (
+        <div role="group" aria-label={labels.title} className="flex gap-2 overflow-x-auto px-5 pb-1 pt-3.5 [scrollbar-width:none]">
+          <button type="button" aria-pressed={filter === "all"} onClick={() => setFilter("all")} className={groupChip(filter === "all")}>
+            {labels.all}
+            <span className="num text-[13px] !font-bold">{rows.length}</span>
+          </button>
+          {sections.map((sec) => (
+            <button key={sec.key} type="button" aria-pressed={filter === sec.key} onClick={() => setFilter(filter === sec.key ? "all" : sec.key)} className={groupChip(filter === sec.key)}>
+              {sec.key === "fav" ? (
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="var(--color-marker)">
+                  <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
+                </svg>
+              ) : null}
+              {sec.title}
+              <span className={`num text-[13px] !font-bold ${filter === sec.key ? "" : "text-muted"}`}>{sec.rows.length}</span>
+            </button>
+          ))}
           {picking ? null : (
-            <button type="button" aria-expanded={making === "top"} onClick={() => setMaking(making === "top" ? null : "top")} className={HEAD_BUTTON}>
-              <Icon name="plus" size={17} />
+            <button
+              type="button"
+              aria-expanded={making}
+              onClick={() => setMaking(!making)}
+              className="flex h-[38px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full border-[1.5px] border-dashed border-[#bfd6ee] px-3.5 text-[14px] font-bold text-accent"
+            >
+              <Icon name="plus" size={15} strokeWidth={2.2} />
               {labels.newGroup}
             </button>
           )}
-          {canPick ? (
-            <button type="button" aria-pressed={picking} onClick={() => setPicking(!picking)} className={HEAD_BUTTON}>
-              {picking ? labels.cancel : (
-                <>
-                  <Icon name="check" size={17} />
-                  {labels.pick}
-                </>
-              )}
-            </button>
-          ) : null}
         </div>
-      </div>
+      ) : null}
 
-      {picking ? <p className="px-6 pt-1 text-[13.5px] leading-[1.55] text-muted">{labels.hint}</p> : null}
-      {!picking && making === "top" ? <div className="px-6 pt-3">{groupForm}</div> : null}
+      {picking ? <p className="px-5 pt-2 text-[13.5px] leading-[1.55] text-muted">{labels.hint}</p> : null}
+      {!picking && making ? <div className="px-4 pt-3">{groupForm}</div> : null}
+
+      {picking ? null : (
+        <section className="grad-hero relative mx-4 mt-3.5 flex items-center gap-2 overflow-hidden rounded-3xl py-4 pl-5 pr-3">
+          <span aria-hidden="true" className="absolute -bottom-14 -right-8 h-36 w-36 rounded-full bg-white/25" />
+          <div className="relative flex min-w-0 flex-1 flex-col gap-1.5">
+            <span className="text-[16.5px] font-bold leading-[1.35] tracking-[-0.02em]">{labels.bannerTitle}</span>
+            <span className="text-[12.5px] leading-[1.5] text-ink-2">{labels.bannerBody}</span>
+            <Link href="/request" className="mt-1.5 flex h-9 items-center gap-0.5 self-start rounded-full bg-white pl-3.5 pr-2.5 text-[13.5px] font-bold text-accent">
+              {labels.bannerCta}
+              <Icon name="chevron" size={15} strokeWidth={2.2} />
+            </Link>
+          </div>
+          <span className="relative">
+            <Mascot size={86} bubble="question" />
+          </span>
+        </section>
+      )}
 
       {rows.length ? (
-        <div className="flex flex-col px-6 pt-3">
+        <div className="flex flex-col px-4 pt-1" onClickCapture={drag.onClickCapture}>
           {picking ? (
-            <div className="border-b border-rule">
-              <button type="button" aria-pressed={withMe} onClick={() => setWithMe(!withMe)} className="flex min-h-[60px] w-full items-center gap-3 text-left">
-                <Avatar config={meAvatar} size={36} label={labels.meName} />
-                <span className="flex-1 text-[15px] font-medium">{labels.withMe}</span>
+            <div className="card mt-3 px-3.5">
+              <button type="button" aria-pressed={withMe} onClick={() => setWithMe(!withMe)} className="flex min-h-[64px] w-full items-center gap-3 text-left">
+                <Avatar config={meAvatar} size={44} label={labels.meName} />
+                <span className="flex-1 text-[15.5px] font-bold">{labels.withMe}</span>
                 <DrawnCheck on={withMe} />
               </button>
             </div>
           ) : null}
-          {sections.map((sec) => {
+          {visible.map((sec) => {
             const open = !collapsed.includes(sec.key);
             const pickIds = sec.rows.filter((r) => r.pickable).map((r) => r.contactId);
             const allPicked = pickIds.length > 0 && pickIds.every((id) => picked.includes(id));
+            // 끄는 중 손가락 아래 칸(원래 칸이 아니면) 강조
+            const target = !!drag.dragging && drag.over === sec.key && drag.dragging.from !== sec.key;
             return (
-              <section key={sec.key} aria-label={sec.title}>
-                <div className="flex items-center gap-1 border-b border-rule pt-3">
-                    <button type="button" aria-expanded={open} onClick={() => fold(sec.key)} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left">
-                      <span className="truncate text-[13.5px] font-bold">{sec.title}</span>
-                      <span className="num text-[12.5px] text-muted">{sec.rows.length}</span>
-                      <Icon name="chevron" size={16} className={`ml-auto text-muted transition-transform duration-200 ${open ? "-rotate-90" : "rotate-90"}`} />
+              <section
+                key={sec.key}
+                aria-label={sec.title}
+                data-drop={picking ? undefined : sec.key}
+                className={`-mx-1.5 mt-2 rounded-[26px] px-1.5 pb-1.5 transition-colors ${target ? "bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-sky)]" : ""}`}
+              >
+                <div className="flex items-center gap-1 pl-1.5">
+                    <button type="button" aria-expanded={open} onClick={() => fold(sec.key)} className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-left">
+                      <span className={`truncate text-[15px] font-bold ${target ? "text-accent" : ""}`}>{sec.title}</span>
+                      <span className="num text-[13px] !font-bold text-muted">{sec.rows.length}</span>
+                      <Icon name="chevron" size={16} className={`ml-0.5 text-muted transition-transform duration-200 ${open ? "rotate-90" : ""}`} />
                     </button>
                     {picking && pickIds.length ? (
                       <button
@@ -266,22 +354,27 @@ export function PeopleBoard({
                       </button>
                     ) : null}
                 </div>
-                {open ? (
-                  <ul className="flex flex-col">
+                {open && sec.rows.length ? (
+                  <ul className="card flex flex-col px-3.5">
                     {sec.rows.map((r) => {
                       const label = labels.avatarOf.replace("{name}", r.name);
                       if (!picking)
                         return (
-                          <li key={r.contactId} className="border-b border-rule">
-                            <Link href={`/people/${r.contactId}`} className="flex min-h-[60px] items-center gap-3">
+                          <li
+                            key={r.contactId}
+                            onPointerDown={(e) => drag.onPointerDown(e, r.contactId, r.name, sec.key)}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className={`select-none border-t border-rule first:border-t-0 [-webkit-touch-callout:none] ${drag.dragging?.id === r.contactId ? "opacity-40" : ""}`}
+                          >
+                            <Link href={`/people/${r.contactId}`} draggable={false} className="flex min-h-[70px] items-center gap-3">
                               <RowBody row={r} avatarLabel={label} />
                             </Link>
                           </li>
                         );
                       const on = picked.includes(r.contactId);
                       return (
-                        <li key={r.contactId} className="flex items-center border-b border-rule">
-                          <Link href={`/people/${r.contactId}?back=${encodeURIComponent(here)}`} className={`flex min-h-[60px] min-w-0 flex-1 items-center gap-3 ${r.pickable ? "" : "opacity-40"}`}>
+                        <li key={r.contactId} className="flex items-center border-t border-rule first:border-t-0">
+                          <Link href={`/people/${r.contactId}?back=${encodeURIComponent(here)}`} className={`flex min-h-[70px] min-w-0 flex-1 items-center gap-3 ${r.pickable ? "" : "opacity-40"}`}>
                             <RowBody row={r} avatarLabel={label} />
                           </Link>
                           <button
@@ -290,7 +383,7 @@ export function PeopleBoard({
                             aria-label={labels.pickOne.replace("{name}", r.tag ? `${r.name} ${r.tag}` : r.name)}
                             disabled={!r.pickable}
                             onClick={() => toggle(r.contactId)}
-                            className={`flex h-[60px] w-12 shrink-0 items-center justify-end ${r.pickable ? "" : "opacity-40"}`}
+                            className={`flex h-[70px] w-12 shrink-0 items-center justify-end ${r.pickable ? "" : "opacity-40"}`}
                           >
                             <DrawnCheck on={on} />
                           </button>
@@ -304,23 +397,11 @@ export function PeopleBoard({
           })}
         </div>
       ) : (
-        <p className="px-6 pt-5 text-[14px] leading-[1.6] text-muted">{labels.empty}</p>
-      )}
-
-      {/* 그룹 목록 끝 + 새 그룹(선택 중에는 숨김) */}
-      {picking ? null : making === "bottom" ? (
-        <div className="px-6 pt-4">{groupForm}</div>
-      ) : (
-        <div className="px-6 pt-1">
-          <button type="button" onClick={() => setMaking("bottom")} className="flex min-h-12 w-full items-center gap-1.5 text-[14px] font-bold text-muted">
-            <Icon name="plus" size={16} />
-            {labels.newGroup}
-          </button>
-        </div>
+        <p className="px-5 pt-5 text-[14px] leading-[1.6] text-muted">{labels.empty}</p>
       )}
 
       {picking ? (
-        <div className="sticky mt-auto flex flex-col gap-2 bg-white/95 px-6 pb-3 pt-3 backdrop-blur" style={{ bottom: "calc(56px + max(var(--sab), 10px))" }}>
+        <div className="sticky mt-auto flex flex-col gap-2 bg-bg/95 px-5 pb-3 pt-3 backdrop-blur" style={{ bottom: "calc(78px + max(var(--sab), 14px))" }}>
           <span role="status" className="text-[12.5px] text-muted">
             {ready ? labels.selected.replace("{n}", String(picked.length)) : labels.pickSome}
           </span>
@@ -331,8 +412,9 @@ export function PeopleBoard({
         </div>
       ) : (
         // 오른쪽 아래 떠 있는 버튼에 마지막 줄이 가리지 않게
-        <div className="h-24" />
+        <div className="h-20" />
       )}
+      {drag.ghost}
     </>
   );
 }

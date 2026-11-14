@@ -70,7 +70,7 @@ export function VoiceButton({ locale, onHeard, onError, label }: { locale: Local
 
   if (!supported) return null;
   return (
-    <button type="button" onClick={toggle} aria-pressed={listening} className={`pill self-start ${listening ? "bg-ink text-white shadow-none" : ""}`}>
+    <button type="button" onClick={toggle} aria-pressed={listening} className={`pill self-start ${listening ? "grad !shadow-none" : ""}`}>
       <Icon name="mic" size={17} />
       {listening ? t("input.voiceListening") : (label ?? t("input.voice"))}
     </button>

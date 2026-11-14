@@ -13,7 +13,7 @@ export function LanguageSetting({ choice, back, t, className = "" }: { choice: L
         {(["system", "ko", "en"] as const).map((l) => {
           const on = (choice ?? "system") === l;
           return (
-            <button key={l} name="locale" value={l} aria-pressed={on} className={`h-10 whitespace-nowrap rounded-full px-3 text-[14px] font-bold ${on ? "bg-ink text-white" : "text-muted"}`}>
+            <button key={l} name="locale" value={l} aria-pressed={on} className={`h-10 whitespace-nowrap rounded-full px-3 text-[14px] font-bold ${on ? "chip-on" : "text-muted"}`}>
               {l === "system" ? t("privacy.languageSystem") : l === "ko" ? "한국어" : "English"}
             </button>
           );

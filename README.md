@@ -3,7 +3,7 @@
 가까운 사람(배우자·애인·가족·친한 친구)끼리 취향, 못 먹는 음식, 사이즈, 생일을 **본인이 직접 적고**, **고른 사람에게만** 보여 주는 앱.
 "아빠 리드미 보냈는데 답장해줘"처럼 쓴다. 한국어·영어, iOS·Android·웹.
 
-계획과 완료 기준은 [PLAN.md](./PLAN.md), 디자인 시안은 캔버스(https://claude.ai/artifact/9paJQ7bmzf4cayyWUyMpaa, 시안의 임시 로고 hint → README).
+계획과 완료 기준은 [PLAN.md](./PLAN.md), 디자인 시안은 캔버스 v3 "하늘 그라데이션 + 선 캐릭터"(https://claude.ai/artifact/BPLLQSFsKmMPRxxBuzJUcE).
 
 ## 구조
 

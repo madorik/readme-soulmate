@@ -139,7 +139,7 @@ export async function seedDemo(uid: string, locale: Locale, today: YMD): Promise
     if (!row || row.is_demo) return true;
     await q(
       `update profiles set is_demo = true, display_name = $2, avatar = $3, onboarded_at = coalesce(onboarded_at, now()), system_locale = $4 where id = $1`,
-      [uid, data.me.name, JSON.stringify({ tone: "blue", skin: "#F2CDB0", hair: "short", hairColor: "#1F1D2B", glasses: true }), locale],
+      [uid, data.me.name, JSON.stringify({ hair: "bob", body: "shirt", item: "pencil", glasses: "round", bg: "sky", cloth: "#FFFFFF", hairColor: "#22304A" }), locale],
     );
     // 한 트랜잭션이라 now()가 같다. 넣은 순서대로 보이게 사람마다 실제 시각을 찍는다
     for (const p of data.people) {

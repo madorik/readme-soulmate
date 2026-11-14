@@ -26,7 +26,7 @@ function GiftsLite({ value, onChange, locale }: { value: GiftsData; onChange: (v
       <TextField label={t("gift.flowers")} value={value.flowers} onChange={(flowers) => onChange({ ...value, flowers })} placeholder={t("gift.flowersPlaceholder")} />
       <div className="flex flex-col gap-1">
         <span className="text-[14px] font-bold">{t("gift.giftCard")}</span>
-        <div className="flex gap-6">
+        <div className="flex flex-wrap gap-2">
           <CircleOption large label={t("gift.giftCardYes")} on={value.giftCard === "yes"} onToggle={() => onChange({ ...value, giftCard: value.giftCard === "yes" ? null : "yes" })} />
           <CircleOption large color="ink" label={t("gift.giftCardNo")} on={value.giftCard === "no"} onToggle={() => onChange({ ...value, giftCard: value.giftCard === "no" ? null : "no" })} />
         </div>
@@ -125,7 +125,7 @@ export function AnswerForm({
                         type="button"
                         aria-pressed={mode === m}
                         onClick={() => setModes((x) => ({ ...x, [s]: m }))}
-                        className={`h-12 flex-1 rounded-full text-[16px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-ink)] ${mode === m ? "bg-ink text-white" : ""}`}
+                        className={`h-12 flex-1 rounded-full text-[16px] font-bold ${mode === m ? "grad" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
                       >
                         {t(m === "ok" ? "answer.right" : "answer.fix")}
                       </button>
@@ -150,7 +150,7 @@ export function AnswerForm({
                   ) : null}
                 </div>
               ) : mode === "none" ? (
-                <button type="button" onClick={() => setModes((x) => ({ ...x, [s]: "new" }))} className="pill self-start bg-ink text-white">
+                <button type="button" onClick={() => setModes((x) => ({ ...x, [s]: "new" }))} className="pill grad self-start !shadow-none">
                   {t("answer.none")}
                 </button>
               ) : null}

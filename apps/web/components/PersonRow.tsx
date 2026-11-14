@@ -31,7 +31,7 @@ export interface PersonRow {
 /** 이름 옆 태그(내가 붙인 부르는 말) */
 export function TagChip({ children, large = false }: { children: React.ReactNode; large?: boolean }) {
   return (
-    <span className={`max-w-[9em] shrink-0 truncate rounded-md bg-fill font-medium text-ink-2 shadow-[inset_0_0_0_1px_var(--color-rule)] ${large ? "px-2 py-[3px] text-[13px]" : "px-1.5 py-px text-[11.5px]"}`}>
+    <span className={`max-w-[9em] shrink-0 truncate rounded-md bg-fill font-bold text-muted ${large ? "px-2 py-[3px] text-[13px]" : "px-1.5 py-px text-[11.5px]"}`}>
       {children}
     </span>
   );
@@ -41,18 +41,18 @@ export function TagChip({ children, large = false }: { children: React.ReactNode
 export function RowBody({ row, avatarLabel }: { row: PersonRow; avatarLabel: string }) {
   return (
     <>
-      <Avatar config={row.avatar} size={36} label={avatarLabel} />
-      <span className="flex min-w-0 flex-1 flex-col gap-px">
+      <Avatar config={row.avatar} size={46} label={avatarLabel} />
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-[15px] font-medium">{row.name}</span>
+          <span className="truncate text-[16px] font-bold tracking-[-0.01em]">{row.name}</span>
           {row.tag ? <TagChip>{row.tag}</TagChip> : null}
         </span>
-        {row.sub || row.shareNote ? <span className="truncate text-[11.5px] text-muted">{[row.sub, row.shareNote].filter(Boolean).join(" · ")}</span> : null}
+        {row.sub || row.shareNote ? <span className="truncate text-[12.5px] text-muted">{[row.sub, row.shareNote].filter(Boolean).join(" · ")}</span> : null}
       </span>
       {row.date ? (
         <span className="flex flex-col items-end gap-px">
-          <span className="num text-[17px]">{row.date}</span>
-          <span className={`text-[11px] ${row.soon ? "text-red" : "text-muted"}`}>{row.dateSub}</span>
+          <span className="num text-[16px] !font-semibold">{row.date}</span>
+          <span className={`text-[11.5px] ${row.soon ? "font-bold text-accent" : "text-muted"}`}>{row.dateSub}</span>
         </span>
       ) : null}
     </>

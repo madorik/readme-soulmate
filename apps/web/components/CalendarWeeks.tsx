@@ -34,17 +34,17 @@ export function CalendarWeeks({
             const isToday = today && sameYmd(day, today);
             const isCircled = circled && sameYmd(day, circled.date);
             const lunar = solarToLunar(day);
-            const color = isCircled || wd === 0 ? "text-red" : wd === 6 ? "text-sat" : "";
+            const color = isCircled ? "text-accent" : wd === 0 ? "text-red" : wd === 6 ? "text-sat" : "";
             return (
               <div key={`${day.m}-${day.d}`} className="flex flex-col items-center gap-1.5 pb-3 pt-2.5">
                 <span className={`num relative text-[26px] ${isToday ? "font-bold" : "font-light"} ${color}`}>
                   {day.d}
                   {isCircled ? <MarkerCircle pad={[12, 8]} width={1.9} /> : null}
                 </span>
-                <span className={`text-[10.5px] ${isCircled ? "font-medium text-red" : isToday ? "font-bold" : "text-muted"}`}>
+                <span className={`text-[10.5px] ${isCircled ? "font-bold text-accent" : isToday ? "font-bold" : "text-muted"}`}>
                   {isToday ? (locale === "ko" ? "오늘" : "Today") : lunar ? `${lunar.leap ? "윤" : ""}${lunar.m}.${lunar.d}` : ""}
                 </span>
-                {isCircled && circled.label ? <span className="whitespace-nowrap text-[11px] font-bold text-red">{circled.label}</span> : null}
+                {isCircled && circled.label ? <span className="whitespace-nowrap text-[11px] font-bold text-accent">{circled.label}</span> : null}
               </div>
             );
           })}

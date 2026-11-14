@@ -38,7 +38,7 @@ export function ShareForm({ locale }: { locale: Locale }) {
       <input type="hidden" name="sections" value={JSON.stringify(sections)} />
       <div className="flex flex-col gap-1 px-6 pt-5">
         <span className="text-[15px] font-bold">{t("share.relation")}</span>
-        <div role="radiogroup" aria-label={t("share.relation")} className="flex flex-wrap gap-x-5">
+        <div role="radiogroup" aria-label={t("share.relation")} className="flex flex-wrap gap-2">
           {RELATIONS.map((r) => (
             <CircleOption
               key={r.code}
@@ -48,7 +48,7 @@ export function ShareForm({ locale }: { locale: Locale }) {
                 setRelation(r.code);
                 setSections(RELATION_PRESETS[r.code]);
               }}
-              textClass="!text-[18px] !font-bold px-1"
+              textClass="!text-[16px]"
             />
           ))}
         </div>

@@ -80,9 +80,9 @@ export function ShareControl({
       {on ? (
         <div className="flex flex-col gap-0.5 pb-3">
           <span className="text-[12.5px] font-bold text-muted">{t("person.shareWhat", { name })}</span>
-          <div className="flex flex-wrap gap-x-3">
+          <div className="flex flex-wrap gap-2">
             {SECTIONS_BY_IMPORTANCE.map((s) => (
-              <CircleOption key={s} label={t(`request.topic.${s}` as "request.topic.dates")} on={sections.includes(s)} onToggle={() => pick(s)} textClass="px-1 !text-[15px]" />
+              <CircleOption key={s} label={t(`request.topic.${s}` as "request.topic.dates")} on={sections.includes(s)} onToggle={() => pick(s)} textClass="!text-[15px]" />
             ))}
           </div>
         </div>

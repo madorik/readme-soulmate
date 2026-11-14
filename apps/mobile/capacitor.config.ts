@@ -14,7 +14,7 @@ const config: CapacitorConfig = {
   appId: "kr.readme.app",
   appName: "리드미",
   webDir: "www",
-  backgroundColor: "#FFFFFF",
+  backgroundColor: "#F3F8FF",
   server: {
     url: serverUrl,
     cleartext: serverUrl.startsWith("http:"),

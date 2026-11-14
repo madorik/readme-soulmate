@@ -23,6 +23,11 @@ export default async function People({ searchParams }: { searchParams: Promise<{
         initialMe={sp.me !== "0"}
         labels={{
           title: t("home.people"),
+          summary: t("people.summary", { n: "{n}", f: "{f}" }),
+          all: t("people.all"),
+          bannerTitle: t("people.bannerTitle"),
+          bannerBody: t("people.bannerBody"),
+          bannerCta: t("home.ask"),
           pick: t("people.pick"),
           cancel: t("people.pickCancel"),
           hint: t("people.pickHint"),

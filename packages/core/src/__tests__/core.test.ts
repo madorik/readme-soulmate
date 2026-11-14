@@ -175,12 +175,28 @@ test("초대 토큰과 코드", async () => {
 });
 
 test("아바타 값 정리", () => {
-  assert.deepEqual(sanitizeAvatar({ tone: "red", hair: "bob", skin: "#000", glasses: "yes" }), {
-    tone: "red",
-    skin: "#F2CDB0",
-    hair: "bob",
-    hairColor: "#1F1D2B",
-    glasses: false,
+  // 모르는 값은 기본값으로
+  assert.deepEqual(sanitizeAvatar({ hair: "mohawk", body: "suit", item: "sword", glasses: "yes", bg: "red", cloth: "#000", hairColor: "#000" }), {
+    hair: "short",
+    body: "shirt",
+    item: "none",
+    glasses: "none",
+    bg: "sky",
+    cloth: "#FFFFFF",
+    hairColor: "#22304A",
+  });
+  // 새 값은 그대로
+  const v3 = { hair: "bangs", body: "knit", item: "pencil", glasses: "sun", bg: "lilac", cloth: "#FF9DB0", hairColor: "#D9A15B" };
+  assert.deepEqual(sanitizeAvatar(v3), v3);
+  // 예전(v2) 값은 읽을 때 새 값으로: 옷 톤 → 배경·옷 색, 안경 켬 → 동그란 안경, 아주 짧게 → 짧은 머리
+  assert.deepEqual(sanitizeAvatar({ tone: "blue", skin: "#F2CDB0", hair: "crop", hairColor: "#9A98A3", glasses: true }), {
+    hair: "short",
+    body: "shirt",
+    item: "none",
+    glasses: "round",
+    bg: "sky",
+    cloth: "#8CC8FF",
+    hairColor: "#A9B2C2",
   });
 });
 

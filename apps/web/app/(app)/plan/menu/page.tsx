@@ -49,7 +49,7 @@ export default async function PlanMenu({ searchParams }: { searchParams: Promise
             <span key={x.code} className="flex items-baseline gap-2">
               <span className={`relative text-[16px] font-bold ${red ? "text-red" : ""}`}>
                 {labelOf(catalog, x.code, locale)}
-                {red ? <MarkerCircle pad={[7, 4]} /> : null}
+                {red ? <MarkerCircle color="warn" pad={[7, 4]} /> : null}
               </span>
               <span className="text-[12px] text-muted">{x.who.join(", ")}</span>
             </span>
@@ -65,7 +65,7 @@ export default async function PlanMenu({ searchParams }: { searchParams: Promise
           <div className="flex min-w-0 flex-col gap-1">
             <span className="text-[16.5px] font-bold">{label}</span>
             <span className="flex flex-wrap gap-x-2.5 gap-y-1 text-[12.5px]">
-              {v.likedBy.length ? <span className="text-red">{t("plan.likedBy", { names: v.likedBy.join(", ") })}</span> : null}
+              {v.likedBy.length ? <span className="font-bold text-accent">{t("plan.likedBy", { names: v.likedBy.join(", ") })}</span> : null}
               {v.milder ? <span className="text-muted">{t("plan.milder")}</span> : null}
               {v.reasons.map((r, i) => (
                 <span key={i} className="text-muted">

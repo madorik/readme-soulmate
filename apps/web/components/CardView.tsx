@@ -92,7 +92,7 @@ export function CardView({
               {safety.allergens.map((c) => (
                 <span key={c} className="relative text-[26px] font-bold tracking-[-0.03em] text-red">
                   {labelOf(ALLERGENS, c, locale)}
-                  <MarkerCircle pad={[12, 7]} width={1.9} />
+                  <MarkerCircle color="warn" pad={[12, 7]} width={2} />
                 </span>
               ))}
               <span className="text-[14.5px] font-medium text-red">{t("person.allergy")}</span>

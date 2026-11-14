@@ -30,7 +30,7 @@ export function MyReadmeList({ rows, card, locale, labels }: { rows: MyRow[]; ca
   }
 
   return (
-    <ul className="mx-6 mt-6 flex flex-col">
+    <ul className="card mx-4 mt-5 flex flex-col px-[18px]">
       {rows.map(({ section, title, sub, line }) => {
         const isOpen = open === section;
         return (
@@ -39,14 +39,14 @@ export function MyReadmeList({ rows, card, locale, labels }: { rows: MyRow[]; ca
             ref={(el) => {
               items.current[section] = el;
             }}
-            className="scroll-mt-2 border-t border-rule last:border-b"
+            className="scroll-mt-2 border-t border-rule first:border-t-0"
           >
-            <button type="button" aria-expanded={isOpen} aria-controls={`edit-${section}`} onClick={() => toggle(section)} className="flex min-h-[64px] w-full items-center gap-3 py-2 text-left">
+            <button type="button" aria-expanded={isOpen} aria-controls={`edit-${section}`} onClick={() => toggle(section)} className="flex min-h-[76px] w-full items-center gap-2.5 py-3 text-left">
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-[15.5px] font-bold">{title}</span>
-                <span className={`text-[13px] text-muted ${isOpen ? "" : "truncate"}`}>{isOpen ? sub : line || labels.empty}</span>
+                <span className="text-[16.5px] font-bold tracking-[-0.02em]">{title}</span>
+                <span className={`text-[13.5px] text-muted ${isOpen ? "" : "truncate"}`}>{isOpen ? sub : line || labels.empty}</span>
               </span>
-              <span className="text-[13.5px] font-bold">{isOpen ? labels.close : labels.edit}</span>
+              <span className="shrink-0 text-[14px] font-bold">{isOpen ? labels.close : labels.edit}</span>
               <Icon name="chevron" size={18} className={`text-muted transition-transform duration-200 ${isOpen ? "-rotate-90" : "rotate-90"}`} />
             </button>
             {isOpen ? (

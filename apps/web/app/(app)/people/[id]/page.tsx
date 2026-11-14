@@ -194,13 +194,13 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
       </details>
 
       {mine ? (
-        <div className="sticky bottom-0 mt-auto bg-white px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
+        <div className="sticky bottom-0 mt-auto bg-bg px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
           <Link href={`/people/${p.contactId}/reminder`} className="btn-primary w-full">
             {t("person.pickGift")}
           </Link>
         </div>
       ) : p.kind !== "pending" && !p.revoked ? (
-        <div className="sticky bottom-0 mt-auto grid grid-cols-2 gap-2.5 bg-white px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
+        <div className="sticky bottom-0 mt-auto grid grid-cols-2 gap-2.5 bg-bg px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
           <Link href={askHref} className="btn-outline">
             {t("person.askMore")}
           </Link>

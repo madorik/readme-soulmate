@@ -20,7 +20,7 @@ export function DateTiles({ dates, today, locale, t }: { dates: DatesData | unde
             <span className="text-[12.5px] font-medium">
               {next ? (
                 <>
-                  <span className={next.daysUntil <= 30 ? "text-red" : "text-muted"}>{next.daysUntil === 0 ? t("start.today") : t("person.daysLeft", { n: next.daysUntil })}</span>
+                  <span className={next.daysUntil <= 30 ? "font-bold text-accent" : "text-muted"}>{next.daysUntil === 0 ? t("start.today") : t("person.daysLeft", { n: next.daysUntil })}</span>
                   <span className="text-muted">
                     {t("common.and")}
                     {item.spec.calendar === "lunar" ? formatSpec(item.spec, locale) : weekdayLong(next.date, locale)}

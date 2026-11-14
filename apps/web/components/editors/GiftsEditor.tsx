@@ -28,7 +28,7 @@ export function GiftsEditor({ value, onChange, locale }: { value: GiftsData; onC
             return (
               <button key={c.code} type="button" aria-pressed={on} aria-label={c.label[locale]} onClick={() => toggleColor(c.code)} className="flex h-11 w-11 items-center justify-center">
                 <Circled on={on} pad={[7, 7]} width={2.4}>
-                  <span className="block h-[26px] w-[26px] rounded-full" style={{ background: c.hex, boxShadow: "inset 0 0 0 1.5px rgba(29,33,37,0.16)" }} />
+                  <span className="block h-[26px] w-[26px] rounded-full" style={{ background: c.hex, boxShadow: "inset 0 0 0 1.5px rgba(34,48,74,0.16)" }} />
                 </Circled>
               </button>
             );
@@ -48,7 +48,7 @@ export function GiftsEditor({ value, onChange, locale }: { value: GiftsData; onC
       <TextField label={t("gift.flowers")} value={value.flowers} onChange={(flowers) => onChange({ ...value, flowers })} placeholder={t("gift.flowersPlaceholder")} />
       <div className="flex flex-col gap-1.5">
         <SectionHeading>{t("gift.giftCard")}</SectionHeading>
-        <div className="flex gap-6 border-t border-rule pt-1.5">
+        <div className="flex flex-wrap gap-2 pt-1">
           <CircleOption label={t("gift.giftCardYes")} on={value.giftCard === "yes"} onToggle={() => onChange({ ...value, giftCard: value.giftCard === "yes" ? null : "yes" })} />
           <CircleOption label={t("gift.giftCardNo")} color="ink" on={value.giftCard === "no"} onToggle={() => onChange({ ...value, giftCard: value.giftCard === "no" ? null : "no" })} />
         </div>

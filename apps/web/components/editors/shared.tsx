@@ -1,7 +1,7 @@
 "use client";
 
 import { translate, type Locale, type MessageKey, type Vars } from "@readme/core";
-import { Circled, DrawnCheck } from "../marks";
+import { CheckGlyph, DrawnCheck } from "../marks";
 
 export type TFn = (key: MessageKey, vars?: Vars) => string;
 
@@ -9,19 +9,19 @@ export function useT(locale: Locale): TFn {
   return (key, vars) => translate(locale, key, vars);
 }
 
-/** 설문지처럼 동그라미 쳐서 고르는 단어 하나 */
+/** 눌러서 고르는 칩 하나. warn이면 켰을 때 분홍(알레르기) */
 export function CircleOption({
   label,
   on,
   onToggle,
-  color = "red",
+  color = "ink",
   large = false,
   textClass = "",
 }: {
   label: string;
   on: boolean;
   onToggle: () => void;
-  color?: "red" | "ink";
+  color?: "red" | "ink" | "warn";
   large?: boolean;
   textClass?: string;
 }) {
@@ -30,18 +30,20 @@ export function CircleOption({
       type="button"
       aria-pressed={on}
       onClick={onToggle}
-      className={`flex items-center justify-center ${on ? "font-bold" : "font-medium"} ${large ? "h-[52px] text-[18px]" : "h-[46px] text-[16px]"} ${on && color === "red" ? "text-red" : "text-ink"} ${textClass}`}
+      className={`chip ${color === "warn" ? "chip-warn" : ""} ${large ? "!min-h-12 !px-[18px] text-[16.5px]" : ""} ${textClass}`}
     >
-      <Circled on={on} color={color} pad={[11, 9]} width={color === "red" ? 2.4 : 2.2}>
-        <span className="px-0.5">{label}</span>
-      </Circled>
+      {on ? <CheckGlyph /> : null}
+      {label}
     </button>
   );
 }
 
+/** 칩을 담는 줄(넘치면 다음 줄로) */
+export const CHIP_ROW = "flex flex-wrap gap-2";
+
 export function CheckRow({ on, onToggle, label, sub }: { on: boolean; onToggle: () => void; label: string; sub?: string }) {
   return (
-    <button type="button" aria-pressed={on} onClick={onToggle} className="flex min-h-[58px] w-full items-center gap-3.5 border-t border-rule text-left">
+    <button type="button" aria-pressed={on} onClick={onToggle} className="flex min-h-[58px] w-full items-center gap-3.5 border-t border-rule text-left first:border-t-0">
       <DrawnCheck on={on} />
       <span className="flex flex-col gap-0.5">
         <span className="text-[15.5px] font-bold">{label}</span>

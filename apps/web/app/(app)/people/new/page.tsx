@@ -50,7 +50,7 @@ export default async function NewPerson({ searchParams }: { searchParams: Promis
           <Icon name="chevron" size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-muted" />
         </span>
       </label>
-      <div className="sticky bottom-0 mt-auto bg-white px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
+      <div className="sticky bottom-0 mt-auto bg-bg px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
         <button className="btn-primary w-full">{t("people.create")}</button>
       </div>
     </form>

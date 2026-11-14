@@ -1,0 +1,156 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+// 사람들 목록에서 사람을 끌어 다른 그룹 칸에 놓기.
+// 휴대폰 웹뷰는 HTML 드래그를 못 쓰니 포인터 이벤트로 직접 한다:
+//  - 터치: 길게(350ms) 누르면 집는다. 그 전에 움직이면 스크롤로 보고 놓아준다.
+//  - 마우스: 누른 채 6px 넘게 끌면 집는다.
+// 놓을 곳은 손가락 아래의 [data-drop] 칸. 화면 위·아래 끝에서는 저절로 스크롤한다.
+
+const LONG_PRESS_MS = 350;
+const TOUCH_SLOP = 8;
+const MOUSE_SLOP = 6;
+/** 아래쪽 자동 스크롤 시작선(탭 막대 위) */
+const BOTTOM_EDGE = 130;
+const TOP_EDGE = 90;
+
+interface Press {
+  id: string;
+  name: string;
+  from: string;
+  pointerType: string;
+  x0: number;
+  y0: number;
+  started: boolean;
+  timer: number;
+}
+
+export function useDragToGroup({ enabled, onDrop }: { enabled: boolean; onDrop: (contactId: string, target: string) => void }) {
+  const [dragging, setDragging] = useState<{ id: string; name: string; from: string } | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const press = useRef<Press | null>(null);
+  const pos = useRef({ x: 0, y: 0 });
+  const overRef = useRef<string | null>(null);
+  const ghost = useRef<HTMLDivElement>(null);
+  const suppressClick = useRef(false);
+  const raf = useRef(0);
+  const dropRef = useRef(onDrop);
+  dropRef.current = onDrop;
+  const cleanupRef = useRef<() => void>(() => {});
+
+  useEffect(() => () => cleanupRef.current(), []);
+
+  function placeGhost() {
+    if (ghost.current) ghost.current.style.transform = `translate(${pos.current.x - 28}px, ${pos.current.y - 34}px)`;
+  }
+
+  function findTarget() {
+    const el = document.elementFromPoint(pos.current.x, pos.current.y);
+    const key = el?.closest("[data-drop]")?.getAttribute("data-drop") ?? null;
+    if (key !== overRef.current) {
+      overRef.current = key;
+      setOver(key);
+    }
+  }
+
+  function autoScroll() {
+    const p = press.current;
+    if (!p?.started) return;
+    const y = pos.current.y;
+    const h = window.innerHeight;
+    const step = y < TOP_EDGE ? -Math.ceil((TOP_EDGE - y) / 6) : y > h - BOTTOM_EDGE ? Math.ceil((y - (h - BOTTOM_EDGE)) / 6) : 0;
+    if (step) {
+      window.scrollBy(0, step);
+      findTarget();
+    }
+    raf.current = requestAnimationFrame(autoScroll);
+  }
+
+  function begin(p: Press) {
+    p.started = true;
+    setDragging({ id: p.id, name: p.name, from: p.from });
+    overRef.current = p.from;
+    setOver(p.from);
+    navigator.vibrate?.(12);
+    raf.current = requestAnimationFrame(autoScroll);
+  }
+
+  function onPointerDown(e: React.PointerEvent, id: string, name: string, from: string) {
+    if (!enabled || (e.pointerType === "mouse" && e.button !== 0)) return;
+    cleanupRef.current();
+    const p: Press = { id, name, from, pointerType: e.pointerType, x0: e.clientX, y0: e.clientY, started: false, timer: 0 };
+    press.current = p;
+    pos.current = { x: e.clientX, y: e.clientY };
+    if (e.pointerType !== "mouse") p.timer = window.setTimeout(() => begin(p), LONG_PRESS_MS);
+
+    const move = (ev: PointerEvent) => {
+      pos.current = { x: ev.clientX, y: ev.clientY };
+      const dist = Math.hypot(ev.clientX - p.x0, ev.clientY - p.y0);
+      if (!p.started) {
+        if (p.pointerType === "mouse") {
+          if (dist <= MOUSE_SLOP) return;
+          begin(p);
+        } else {
+          if (dist > TOUCH_SLOP) cleanup(); // 집기 전에 움직이면 스크롤
+          return;
+        }
+      }
+      placeGhost();
+      findTarget();
+    };
+    // 집은 뒤에는 화면이 같이 스크롤되지 않게(터치)
+    const blockScroll = (ev: TouchEvent) => {
+      if (p.started && ev.cancelable) ev.preventDefault();
+    };
+    const up = () => {
+      const target = overRef.current;
+      const started = p.started;
+      cleanup();
+      if (!started) return;
+      suppressClick.current = true;
+      window.setTimeout(() => (suppressClick.current = false), 0);
+      if (target && target !== p.from) dropRef.current(p.id, target);
+    };
+    const cleanup = () => {
+      window.clearTimeout(p.timer);
+      cancelAnimationFrame(raf.current);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cleanup);
+      document.removeEventListener("touchmove", blockScroll);
+      if (press.current === p) press.current = null;
+      overRef.current = null;
+      setDragging(null);
+      setOver(null);
+      cleanupRef.current = () => {};
+    };
+    cleanupRef.current = cleanup;
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cleanup);
+    document.addEventListener("touchmove", blockScroll, { passive: false });
+  }
+
+  /** 끌다 놓은 직후의 클릭(링크 이동·그룹 접기)은 막는다 */
+  function onClickCapture(e: React.MouseEvent) {
+    if (suppressClick.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      suppressClick.current = false;
+    }
+  }
+
+  const ghostEl = dragging ? (
+    <div
+      ref={ghost}
+      aria-hidden="true"
+      className="pointer-events-none fixed left-0 top-0 z-50 max-w-[60vw] truncate rounded-xl bg-white px-3.5 py-2.5 text-[15px] font-bold shadow-[0_0_0_2px_var(--color-sky),0_10px_28px_rgba(34,48,74,0.2)]"
+      style={{ transform: `translate(${pos.current.x - 28}px, ${pos.current.y - 34}px)` }}
+    >
+      {dragging.name}
+    </div>
+  ) : null;
+
+  return { dragging, over, onPointerDown, onClickCapture, ghost: ghostEl };
+}

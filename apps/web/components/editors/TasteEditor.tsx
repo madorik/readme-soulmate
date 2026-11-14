@@ -9,7 +9,7 @@ export function SpicyScale({ value, onChange, locale, large = false }: { value: 
   return (
     <div className="flex flex-col gap-1.5">
       <SectionHeading right={value != null ? SPICY_LEVELS[value]?.[locale] : undefined}>{t("taste.spicy")}</SectionHeading>
-      <div className="grid grid-cols-5 border-t border-rule pt-1.5">
+      <div className="grid grid-cols-5 gap-2 pt-1">
         {SPICY_LEVELS.map((label, i) => (
           <CircleOption
             key={i}
@@ -17,7 +17,7 @@ export function SpicyScale({ value, onChange, locale, large = false }: { value: 
             on={value === i}
             onToggle={() => onChange(value === i ? null : i)}
             large={large}
-            textClass="num !text-[24px]"
+            textClass="num !text-[20px] !px-0 w-full"
           />
         ))}
       </div>
@@ -35,7 +35,7 @@ export function AlcoholPicker({ value, onChange, locale }: { value: AlcoholData;
   return (
     <div className="flex flex-col gap-1.5">
       <SectionHeading>{t("taste.alcohol")}</SectionHeading>
-      <div className="grid grid-cols-4 border-t border-rule pt-1.5">
+      <div className="flex flex-wrap gap-2 pt-1">
         {ALCOHOL_LEVELS.map((l) => (
           <CircleOption
             key={l.code}
@@ -50,7 +50,7 @@ export function AlcoholPicker({ value, onChange, locale }: { value: AlcoholData;
       {value.level && value.level !== "none" ? (
         <>
           <span className="pt-2 text-[13px] text-muted">{t("taste.alcoholKinds")}</span>
-          <div className="grid grid-cols-4">
+          <div className="flex flex-wrap gap-2">
             {ALCOHOL_KINDS.map((k) => (
               <CircleOption
                 key={k.code}

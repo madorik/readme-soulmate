@@ -1,24 +1,29 @@
-// 손으로 그린 표시들. 붉은 동그라미는 "잊으면 안 되는 것"과 "고른 것"에만 쓴다(시안 C2).
+// 표시들(시안 v3). 고른 것·챙길 날은 연하늘 바탕 + 하늘 테두리, 경고(알레르기)만 분홍.
 
-const CIRCLE_PATH = "M14 58 C6 30 30 8 56 8 C82 8 96 30 93 54 C90 80 66 94 44 92 C20 90 4 72 10 46 C13 32 26 18 42 12";
-
-/** 감싼 글자 둘레에 손으로 그린 동그라미. 부모는 position: relative 여야 한다 */
-export function MarkerCircle({ color = "red", pad = [11, 9], width = 1.9 }: { color?: "red" | "ink"; pad?: [number, number]; width?: number }) {
+/**
+ * 감싼 글자 둘레의 둥근 강조(예전 손그림 동그라미 자리). 부모는 position: relative 여야 한다.
+ * 글자 위에 겹쳐도 글자가 흐려지지 않게 옅은 색을 곱하기로 섞는다. warn이면 분홍(알레르기)
+ */
+export function MarkerCircle({ color = "red", pad = [11, 9], width = 2 }: { color?: "red" | "ink" | "warn"; pad?: [number, number]; width?: number }) {
+  const warn = color === "warn";
   return (
-    <svg
+    <span
       aria-hidden="true"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      className="pointer-events-none absolute overflow-visible"
-      style={{ left: -pad[0], top: -pad[1], width: `calc(100% + ${pad[0] * 2}px)`, height: `calc(100% + ${pad[1] * 2}px)` }}
-    >
-      <path d={CIRCLE_PATH} fill="none" stroke={color === "red" ? "var(--color-marker)" : "var(--color-ink)"} strokeWidth={width} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-    </svg>
+      className="pointer-events-none absolute rounded-full mix-blend-multiply"
+      style={{
+        left: -pad[0],
+        top: -pad[1],
+        right: -pad[0],
+        bottom: -pad[1],
+        background: warn ? "rgba(255, 170, 186, 0.28)" : "rgba(140, 200, 255, 0.24)",
+        boxShadow: `inset 0 0 0 ${width}px ${warn ? "#f2a7b6" : "var(--color-sky)"}`,
+      }}
+    />
   );
 }
 
-/** 글자에 동그라미를 칠 수 있는 자리 */
-export function Circled({ on, color = "red", pad, width, children, className = "" }: { on: boolean; color?: "red" | "ink"; pad?: [number, number]; width?: number; children: React.ReactNode; className?: string }) {
+/** 글자에 둥근 강조를 칠 수 있는 자리 */
+export function Circled({ on, color = "red", pad, width, children, className = "" }: { on: boolean; color?: "red" | "ink" | "warn"; pad?: [number, number]; width?: number; children: React.ReactNode; className?: string }) {
   return (
     <span className={`relative ${className}`}>
       {children}
@@ -27,13 +32,15 @@ export function Circled({ on, color = "red", pad, width, children, className = "
   );
 }
 
-/** 네모 칸 + 손으로 그린 빨간 체크 */
+/** 둥근 네모 체크 칸: 켜면 파랑 바탕에 흰 체크 */
 export function DrawnCheck({ on }: { on: boolean }) {
   return (
-    <span className="relative inline-block h-[22px] w-[22px] shrink-0 rounded-[5px] border border-[#b6b9bd] bg-white">
+    <span
+      className={`flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[8px] transition-colors ${on ? "bg-accent text-white" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
+    >
       {on ? (
-        <svg aria-hidden="true" viewBox="0 0 32 32" className="absolute overflow-visible" style={{ left: -2, top: -9, width: 30, height: 30 }}>
-          <path d="M5 17 C8 19 10 22 12 26 C16 16 22 8 30 2" fill="none" stroke="var(--color-marker)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12.5l4.5 4.5L19 7.5" />
         </svg>
       ) : null}
     </span>
@@ -43,9 +50,18 @@ export function DrawnCheck({ on }: { on: boolean }) {
 /** 켜고 끄는 스위치의 모양(누르는 건 감싼 button이 한다) */
 export function SwitchLook({ on }: { on: boolean }) {
   return (
-    <span className={`flex h-7 w-[46px] items-center rounded-full p-[3px] transition-colors ${on ? "justify-end bg-ink" : "justify-start bg-[#d6d8d4]"}`}>
-      <span className="h-[22px] w-[22px] rounded-full bg-white" />
+    <span className={`flex h-7 w-[46px] items-center rounded-full p-[3px] transition-colors ${on ? "justify-end bg-accent" : "justify-start bg-[#d3dce8]"}`}>
+      <span className="h-[22px] w-[22px] rounded-full bg-white shadow-[0_1px_3px_rgba(34,48,74,0.18)]" />
     </span>
+  );
+}
+
+/** 작은 체크 표시(칩 안) */
+export function CheckGlyph({ size = 14 }: { size?: number }) {
+  return (
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
   );
 }
 
