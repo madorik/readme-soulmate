@@ -5,7 +5,7 @@ import { makeT } from "@/lib/i18n";
 import { AddFab } from "./AddFab";
 import { PeopleBoard } from "./PeopleBoard";
 
-// 내 사람들: 위에 리드미 요청·선택(사람을 골라 메뉴 고르기·선물 고르기·공유하기), 오른쪽 아래에 직접 적기
+// 내 사람들: 그룹 목록. 위에 새 그룹·선택(사람을 골라 메뉴 고르기·선물 고르기·공유하기), 오른쪽 아래에 직접 적기
 export default async function People({ searchParams }: { searchParams: Promise<{ pick?: string; with?: string; me?: string }> }) {
   const sp = await searchParams;
   const s = await requireSession();
@@ -23,7 +23,6 @@ export default async function People({ searchParams }: { searchParams: Promise<{
         initialMe={sp.me !== "0"}
         labels={{
           title: t("home.people"),
-          request: t("people.request"),
           pick: t("people.pick"),
           cancel: t("people.pickCancel"),
           hint: t("people.pickHint"),
@@ -43,6 +42,7 @@ export default async function People({ searchParams }: { searchParams: Promise<{
           create: t("group.create"),
           deleteGroup: t("group.delete"),
           deleteConfirm: t("group.deleteConfirm", { name: "{name}" }),
+          pickGroup: t("people.pickGroup", { name: "{name}" }),
         }}
       />
       <TabBar active="people" t={t} fab={<AddFab label={t("people.add")} />} />

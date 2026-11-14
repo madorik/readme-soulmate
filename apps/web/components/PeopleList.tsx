@@ -6,7 +6,9 @@ import { RowBody, type PersonRow } from "./PersonRow";
 
 /** sharingWith: 내가 지금 내 리드미를 보여 주는 사람 id(앱을 쓰는 사람 중 여기 없으면 "공유 꺼짐") */
 export function personRows(people: Person[], today: YMD, locale: Locale, t: T, sharingWith: ReadonlySet<string>): PersonRow[] {
-  return people.map((p) => {
+  // 즐겨찾기 → 그룹 있는 사람 → 나머지(같은 칸 안에서는 추가한 순서)
+  const rank = (p: Person) => (p.favorite ? 0 : p.groupId ? 1 : 2);
+  return [...people].sort((a, b) => rank(a) - rank(b)).map((p) => {
     // 목록에는 그 사람 이름을 쓰고, 내가 붙인 부르는 말은 옆에 태그로
     const name = p.name || displayName(p);
     const tag = p.nickname && p.nickname !== name ? p.nickname : "";

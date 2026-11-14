@@ -240,7 +240,7 @@ test("직접 적어 두기: 앱을 안 쓰는 사람도 적어 두면 나만 보
   await jisu.getByRole("link", { name: "직접 적기" }).click();
   await expect(jisu).toHaveURL(/\/people\/new/);
   await jisu.getByLabel("이름이나 부르는 말").fill("할머니");
-  await jisu.getByRole("button", { name: "만들기" }).click();
+  await jisu.getByRole("button", { name: "만들기", exact: true }).click();
   await expect(jisu.getByRole("heading", { name: "할머니" })).toBeVisible();
   await expect(jisu.getByText("내가 적어 둔 리드미예요. 나만 봐요")).toBeVisible();
   await expect(jisu.getByText(/아직 적은 게 없어요/)).toBeVisible();
@@ -459,7 +459,7 @@ test("사람들: 그룹(기본 4개 + 직접 만들기)과 즐겨찾기. 목록�
   await jisu.getByRole("link", { name: /아빠/ }).first().click();
   await jisu.getByRole("combobox", { name: "그룹" }).selectOption({ label: "+ 새 그룹 만들기" });
   await jisu.getByRole("textbox", { name: "그룹 이름" }).fill("본가");
-  await jisu.getByRole("button", { name: "만들기" }).click();
+  await jisu.getByRole("button", { name: "만들기", exact: true }).click();
   await expect(jisu.getByRole("combobox", { name: "그룹" }).locator("option:checked")).toHaveText("본가");
 
   // 목록: 즐겨찾기(도윤) → 본가(아빠). 본가를 접으면 아빠가 안 보이고, 다시 펴면 보인다
@@ -468,15 +468,27 @@ test("사람들: 그룹(기본 4개 + 직접 만들기)과 즐겨찾기. 목록�
   const home = jisu.getByRole("region", { name: "본가" });
   await expect(home.getByRole("link", { name: /아빠/ })).toBeVisible();
   await shot(jisu, "18-people-groups");
+  // 즐겨찾기가 맨 위, 그다음 사람이 있는 그룹, 빈 그룹은 뒤로
+  const order = await jisu.locator("section[aria-label]").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
+  expect(order.slice(0, 2)).toEqual(["즐겨찾기", "본가"]);
+  expect(order.indexOf("가족")).toBeGreaterThan(1);
   await home.getByRole("button", { name: /^본가/ }).click();
   await expect(home.getByRole("link", { name: /아빠/ })).toHaveCount(0);
   await home.getByRole("button", { name: /^본가/ }).click();
   await expect(home.getByRole("link", { name: /아빠/ })).toBeVisible();
+  // 기본 그룹은 비어 있어도 목록에 보인다
+  await expect(jisu.getByRole("region", { name: "가족" })).toBeVisible();
 
-  // 목록 아래에서 새 그룹을 만들고(비어 있어도 보인다) 지운다
-  await jisu.getByRole("button", { name: "새 그룹" }).click();
+  // 선택 중에는 그룹 머리 체크로 그 그룹 사람을 한 번에 고른다
+  await jisu.getByRole("button", { name: "선택" }).click();
+  await jisu.getByRole("button", { name: "본가 모두 선택" }).click();
+  await expect(jisu.getByRole("button", { name: /아빠 선택/ })).toHaveAttribute("aria-pressed", "true");
+  await jisu.getByRole("button", { name: "취소" }).click();
+
+  // 위쪽 '새 그룹'으로 그룹을 만들고(비어 있어도 보인다) 지운다
+  await jisu.getByRole("button", { name: "새 그룹" }).first().click();
   await jisu.getByRole("textbox", { name: "그룹 이름" }).fill("동창");
-  await jisu.getByRole("button", { name: "만들기" }).click();
+  await jisu.getByRole("button", { name: "만들기", exact: true }).click();
   await expect(jisu.getByRole("region", { name: "동창" })).toBeVisible();
   jisu.once("dialog", (d) => d.accept());
   await jisu.getByRole("button", { name: "그룹 지우기 동창" }).click();

@@ -10,8 +10,6 @@ import { RowBody, type PersonRow } from "@/components/PersonRow";
 
 interface Labels {
   title: string;
-  /** 리드미 요청(/request). 직접 적기는 오른쪽 아래 떠 있는 버튼(AddFab) */
-  request: string;
   pick: string;
   cancel: string;
   hint: string;
@@ -32,6 +30,8 @@ interface Labels {
   deleteGroup: string;
   /** "{name} 그룹을 지울까요?…" */
   deleteConfirm: string;
+  /** 선택 중 그룹 머리 체크: "{name} 모두 선택" */
+  pickGroup: string;
 }
 
 export interface BoardGroup {
@@ -49,27 +49,26 @@ interface Section {
   deletable: string | null;
 }
 
-/** 즐겨찾기 → 그룹 순서대로 → 그룹 없음. 기본 그룹은 사람이 있을 때만, 직접 만든 그룹은 비어도 보인다 */
+/** 즐겨찾기(항상 맨 위) → 사람이 있는 그룹 → 그룹 없음 → 빈 그룹(머리만) */
 function sectionsOf(rows: PersonRow[], groups: BoardGroup[], labels: Labels): Section[] {
   const out: Section[] = [];
   const favs = rows.filter((r) => r.favorite);
   if (favs.length) out.push({ key: "fav", title: labels.favorites, rows: favs, deletable: null });
-  for (const g of groups) {
-    const list = rows.filter((r) => !r.favorite && r.groupId === g.id);
-    if (list.length || g.custom) out.push({ key: g.id, title: g.name, rows: list, deletable: g.custom ? g.id : null });
-  }
+  const byGroup = groups.map((g) => ({ key: g.id, title: g.name, rows: rows.filter((r) => !r.favorite && r.groupId === g.id), deletable: g.custom ? g.id : null }));
+  out.push(...byGroup.filter((sec) => sec.rows.length));
   const loose = rows.filter((r) => !r.favorite && !groups.some((g) => g.id === r.groupId));
   if (loose.length) out.push({ key: "none", title: labels.noGroup, rows: loose, deletable: null });
+  out.push(...byGroup.filter((sec) => !sec.rows.length));
   return out;
 }
 
 const COLLAPSED_KEY = "readme.people.collapsed";
 
-/** 제목 오른쪽 글자 버튼(리드미 요청·선택) */
+/** 제목 오른쪽 글자 버튼(새 그룹·선택) */
 const HEAD_BUTTON = "flex min-h-11 items-center gap-1 px-2.5 text-[14.5px] font-bold";
 
 /**
- * 내 사람들. 위에 리드미 요청·선택, 직접 적기는 오른쪽 아래 떠 있는 버튼.
+ * 내 사람들. 그룹 목록으로 보인다(즐겨찾기 → 그룹 → 그룹 없음, 누르면 접힌다). 위에 새 그룹·선택, 직접 적기는 오른쪽 아래 떠 있는 버튼.
  * "선택"을 누르면 사람을 고르는 모드가 되고, 고른 사람으로 메뉴 고르기·선물 고르기·공유하기를 한다.
  * 고른 상태는 주소(pick=1&with=…&me=…)로 오가서, 메뉴 화면에서 뒤로 와도 그대로다.
  */
@@ -103,6 +102,9 @@ export function PeopleBoard({
   const [picked, setPicked] = useState<string[]>(start.ids.filter((id) => rows.some((r) => r.contactId === id && r.pickable)));
   const [withMe, setWithMe] = useState(start.me);
   const toggle = (id: string) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : rows.map((r) => r.contactId).filter((x) => x === id || picked.includes(x)));
+  // 그룹 머리 체크: 그 그룹에서 고를 수 있는 사람을 한 번에 넣고 뺀다
+  const toggleMany = (ids: string[], on: boolean) =>
+    setPicked(on ? rows.map((r) => r.contactId).filter((x) => ids.includes(x) || picked.includes(x)) : picked.filter((x) => !ids.includes(x)));
   const q = new URLSearchParams();
   if (picked.length) q.set("with", picked.join(","));
   q.set("me", withMe ? "1" : "0");
@@ -136,8 +138,8 @@ export function PeopleBoard({
       /* 기억만 못 할 뿐 */
     }
   }
-  // 새 그룹 만들기·직접 만든 그룹 지우기(서버가 /people을 다시 그린다)
-  const [making, setMaking] = useState(false);
+  // 새 그룹 만들기(위 버튼이면 위에, 목록 끝 +면 끝에 이름 칸)·직접 만든 그룹 지우기(서버가 /people을 다시 그린다)
+  const [making, setMaking] = useState<"top" | "bottom" | null>(null);
   const [groupName, setGroupName] = useState("");
   const [busy, startBusy] = useTransition();
   function makeGroup() {
@@ -146,7 +148,7 @@ export function PeopleBoard({
     startBusy(async () => {
       if (await createGroup(name)) {
         setGroupName("");
-        setMaking(false);
+        setMaking(null);
       }
     });
   }
@@ -157,8 +159,28 @@ export function PeopleBoard({
     });
   }
   const sections = sectionsOf(rows, groups, labels);
-  // 그룹을 하나도 안 썼으면(그룹 없음 하나뿐) 머리 없이 예전처럼
-  const plain = sections.length === 1 && sections[0]!.key === "none";
+  const groupForm = (
+    <form
+      className="flex gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        makeGroup();
+      }}
+    >
+      <input
+        value={groupName}
+        onChange={(e) => setGroupName(e.target.value)}
+        maxLength={30}
+        autoFocus
+        placeholder={labels.groupNamePlaceholder}
+        aria-label={labels.groupNamePlaceholder}
+        className="field min-w-0 flex-1"
+      />
+      <button disabled={busy || !groupName.trim()} className="btn-primary !h-12 shrink-0 px-5">
+        {labels.create}
+      </button>
+    </form>
+  );
   const ready = picked.length > 0;
   const action = (href: string, label: string) =>
     ready ? (
@@ -177,10 +199,10 @@ export function PeopleBoard({
         <h1 className="headline shrink-0 text-[26px]">{labels.title}</h1>
         <div className="flex items-center">
           {picking ? null : (
-            <Link href="/request" className={HEAD_BUTTON}>
-              <Icon name="card" size={17} />
-              {labels.request}
-            </Link>
+            <button type="button" aria-expanded={making === "top"} onClick={() => setMaking(making === "top" ? null : "top")} className={HEAD_BUTTON}>
+              <Icon name="plus" size={17} />
+              {labels.newGroup}
+            </button>
           )}
           {canPick ? (
             <button type="button" aria-pressed={picking} onClick={() => setPicking(!picking)} className={HEAD_BUTTON}>
@@ -196,6 +218,7 @@ export function PeopleBoard({
       </div>
 
       {picking ? <p className="px-6 pt-1 text-[13.5px] leading-[1.55] text-muted">{labels.hint}</p> : null}
+      {!picking && making === "top" ? <div className="px-6 pt-3">{groupForm}</div> : null}
 
       {rows.length ? (
         <div className="flex flex-col px-6 pt-3">
@@ -209,16 +232,28 @@ export function PeopleBoard({
             </div>
           ) : null}
           {sections.map((sec) => {
-            const open = plain || !collapsed.includes(sec.key);
+            const open = !collapsed.includes(sec.key);
+            const pickIds = sec.rows.filter((r) => r.pickable).map((r) => r.contactId);
+            const allPicked = pickIds.length > 0 && pickIds.every((id) => picked.includes(id));
             return (
               <section key={sec.key} aria-label={sec.title}>
-                {plain ? null : (
-                  <div className="flex items-center gap-1 border-b border-rule pt-3">
+                <div className="flex items-center gap-1 border-b border-rule pt-3">
                     <button type="button" aria-expanded={open} onClick={() => fold(sec.key)} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left">
                       <span className="truncate text-[13.5px] font-bold">{sec.title}</span>
                       <span className="num text-[12.5px] text-muted">{sec.rows.length}</span>
                       <Icon name="chevron" size={16} className={`ml-auto text-muted transition-transform duration-200 ${open ? "-rotate-90" : "rotate-90"}`} />
                     </button>
+                    {picking && pickIds.length ? (
+                      <button
+                        type="button"
+                        aria-pressed={allPicked}
+                        aria-label={labels.pickGroup.replace("{name}", sec.title)}
+                        onClick={() => toggleMany(pickIds, !allPicked)}
+                        className="flex h-11 w-12 shrink-0 items-center justify-end"
+                      >
+                        <DrawnCheck on={allPicked} />
+                      </button>
+                    ) : null}
                     {sec.deletable && !picking ? (
                       <button
                         type="button"
@@ -230,8 +265,7 @@ export function PeopleBoard({
                         <Icon name="trash" size={16} />
                       </button>
                     ) : null}
-                  </div>
-                )}
+                </div>
                 {open ? (
                   <ul className="flex flex-col">
                     {sec.rows.map((r) => {
@@ -273,31 +307,12 @@ export function PeopleBoard({
         <p className="px-6 pt-5 text-[14px] leading-[1.6] text-muted">{labels.empty}</p>
       )}
 
-      {/* 새 그룹 만들기(선택 중에는 숨김) */}
-      {picking ? null : making ? (
-        <form
-          className="flex gap-2 px-6 pt-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            makeGroup();
-          }}
-        >
-          <input
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
-            maxLength={30}
-            autoFocus
-            placeholder={labels.groupNamePlaceholder}
-            aria-label={labels.groupNamePlaceholder}
-            className="field min-w-0 flex-1"
-          />
-          <button disabled={busy || !groupName.trim()} className="btn-primary !h-12 shrink-0 px-5">
-            {labels.create}
-          </button>
-        </form>
+      {/* 그룹 목록 끝 + 새 그룹(선택 중에는 숨김) */}
+      {picking ? null : making === "bottom" ? (
+        <div className="px-6 pt-4">{groupForm}</div>
       ) : (
-        <div className="px-6 pt-2">
-          <button type="button" onClick={() => setMaking(true)} className="flex min-h-11 items-center gap-1.5 text-[14px] font-bold text-muted">
+        <div className="px-6 pt-1">
+          <button type="button" onClick={() => setMaking("bottom")} className="flex min-h-12 w-full items-center gap-1.5 text-[14px] font-bold text-muted">
             <Icon name="plus" size={16} />
             {labels.newGroup}
           </button>

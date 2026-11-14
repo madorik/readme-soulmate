@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createGroup, setContactGroup, setFavorite } from "@/app/actions/people";
+import { createGroup, setContactGroup } from "@/app/actions/people";
 import { Icon } from "@/components/marks";
 
 export interface GroupOption {
@@ -11,58 +11,28 @@ export interface GroupOption {
 
 const NEW = "__new";
 
-/** 별 모양: 켜지면 빨갛게 채운다 */
-export function Star({ on, size = 18 }: { on: boolean; size?: number }) {
-  return (
-    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" className={on ? "text-marker" : "text-ink"}>
-      <path
-        d="M12 3.6l2.55 5.2 5.7.82-4.13 4.03.98 5.69L12 16.66l-5.1 2.68.98-5.69L3.75 9.62l5.7-.82z"
-        fill={on ? "currentColor" : "none"}
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 /**
- * 사람 화면 위쪽: 즐겨찾기 별 + 그룹 고르기(드롭다운). 고르는 즉시 저장한다.
- * 드롭다운 맨 끝 '새 그룹 만들기'를 고르면 이름 칸이 열리고, 만들면 바로 그 그룹에 넣는다.
+ * 사람 화면 위쪽: 그룹 고르기(드롭다운) + 바로 새 그룹 만들기(+). 고르는 즉시 저장한다.
+ * +를 누르거나 드롭다운 맨 끝 '새 그룹 만들기'를 고르면 이름 칸이 열리고, 만들면 바로 그 그룹에 넣는다.
+ * 즐겨찾기는 이름 줄 오른쪽 끝 하트(FavoriteHeart)
  */
 export function PersonOrganize({
   contactId,
-  favorite,
   groupId,
   groups: initialGroups,
   labels,
 }: {
   contactId: string;
-  favorite: boolean;
   groupId: string | null;
   groups: GroupOption[];
-  labels: { favorite: string; group: string; none: string; newOption: string; namePlaceholder: string; create: string; error: string };
+  labels: { group: string; none: string; newOption: string; namePlaceholder: string; create: string; error: string };
 }) {
-  const [fav, setFav] = useState(favorite);
   const [group, setGroup] = useState(groupId ?? "");
   const [groups, setGroups] = useState(initialGroups);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState(false);
   const [pending, start] = useTransition();
-
-  function toggleFav() {
-    const next = !fav;
-    setFav(next);
-    setError(false);
-    start(async () => {
-      const r = await setFavorite(contactId, next);
-      if (!r.ok) {
-        setFav(!next);
-        setError(true);
-      }
-    });
-  }
 
   function pickGroup(value: string) {
     if (value === NEW) {
@@ -104,15 +74,6 @@ export function PersonOrganize({
   return (
     <div className="mx-6 mt-5 flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={toggleFav}
-          aria-pressed={fav}
-          className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-white px-3.5 text-[14px] font-bold shadow-[inset_0_0_0_1px_var(--color-edge)]"
-        >
-          <Star on={fav} />
-          {labels.favorite}
-        </button>
         <label className="relative flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-white pl-3.5 pr-3 shadow-[inset_0_0_0_1px_var(--color-edge)]">
           <span className="shrink-0 text-[13px] font-bold text-muted">{labels.group}</span>
           <select
@@ -132,6 +93,15 @@ export function PersonOrganize({
           </select>
           <Icon name="chevron" size={16} className="pointer-events-none absolute right-3 rotate-90 text-muted" />
         </label>
+        <button
+          type="button"
+          aria-label={labels.newOption}
+          aria-expanded={creating}
+          onClick={() => setCreating(!creating)}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_var(--color-edge)]"
+        >
+          <Icon name="plus" size={18} />
+        </button>
       </div>
       {creating ? (
         <form

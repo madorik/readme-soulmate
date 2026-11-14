@@ -11,6 +11,7 @@ import { TagChip } from "@/components/PersonRow";
 import { displayName, groupName, listGroups, listNotes, listPeople, listShares, requireSession, todayFor } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { summarize } from "@/lib/summary";
+import { FavoriteHeart } from "./FavoriteHeart";
 import { PersonOrganize } from "./PersonOrganize";
 import { ShareControl } from "./ShareControl";
 
@@ -56,8 +57,12 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
 
       <div className="flex items-center gap-[18px] px-6 pt-3">
         <Avatar config={p.avatar} size={84} label={t("avatar.of", { name: p.name || name })} />
-        <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="truncate text-[32px] font-bold leading-[1.15] tracking-[-0.03em]">{p.name || name}</h1>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          {/* 이름 줄 오른쪽 끝 하트 = 즐겨찾기 */}
+          <div className="flex items-center gap-2">
+            <h1 className="min-w-0 truncate text-[32px] font-bold leading-[1.15] tracking-[-0.03em]">{p.name || name}</h1>
+            <FavoriteHeart contactId={p.contactId} initial={p.favorite} label={t("person.favorite")} />
+          </div>
           {p.nickname && p.nickname !== p.name ? (
             <span className="flex">
               <TagChip large>{p.nickname}</TagChip>
@@ -75,11 +80,9 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
 
       <PersonOrganize
         contactId={p.contactId}
-        favorite={p.favorite}
         groupId={p.groupId}
         groups={groups.map((g) => ({ id: g.id, name: groupName(g, t) }))}
         labels={{
-          favorite: t("person.favorite"),
           group: t("group.label"),
           none: t("group.none"),
           newOption: t("group.newOption"),
