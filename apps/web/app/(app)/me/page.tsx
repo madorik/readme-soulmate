@@ -1,4 +1,4 @@
-import { SECTIONS } from "@readme/core";
+import type { Section } from "@readme/core";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { TabBar } from "@/components/chrome";
@@ -6,6 +6,9 @@ import { Icon } from "@/components/marks";
 import { readCard, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { summarize } from "@/lib/summary";
+
+/** 내 리드미 목록 순서: 챙길 날 → 건강(알레르기) → 자주 쓰는 입맛 → 선물 힌트 → 사이즈 → 있으면 좋은 것 */
+const ME_ORDER = ["dates", "safety", "taste", "gifts", "sizes", "favorites"] as const satisfies readonly Section[];
 
 /** 미리보기·공유하기: 같은 테두리 동그라미(.pill과 같은 선) */
 const ICON_BUTTON = "flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-[inset_0_0_0_1px_var(--color-edge)]";
@@ -38,13 +41,13 @@ export default async function Me() {
       </div>
 
       <ul className="mx-6 mt-6 flex flex-col">
-        {SECTIONS.map((section) => {
+        {ME_ORDER.map((section) => {
           const line = summarize(section, card[section], locale, t);
           return (
             <li key={section} className="border-t border-rule last:border-b">
               <Link href={`/me/edit/${section}`} className="flex min-h-[64px] items-center gap-3 py-2">
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className={`text-[15.5px] font-bold ${section === "safety" ? "text-red" : ""}`}>{t(`section.${section}` as "section.safety")}</span>
+                  <span className="text-[15.5px] font-bold">{t(`section.${section}` as "section.safety")}</span>
                   <span className="truncate text-[13px] text-muted">{line || t("me.empty")}</span>
                 </span>
                 <span className="text-[13.5px] font-bold">{t("me.edit")}</span>
