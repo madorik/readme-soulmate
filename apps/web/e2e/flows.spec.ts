@@ -90,7 +90,7 @@ test("리드미 부탁하기 → 앱 없이 웹에서 '맞아요'로 답하기 �
   const page = await as(browser, "jisu");
   await page.goto("/request");
   await page.getByPlaceholder("예: 아빠, 장인어른").fill("아빠");
-  await page.getByRole("button", { name: /생일\s*아직 비어 있어요/ }).click(); // 미리 적기 펼치기
+  await page.getByRole("button", { name: /생일·기념일\s*아직 비어 있어요/ }).click(); // 미리 적기 펼치기
   await page.getByRole("radio", { name: "음력" }).click();
   await page.getByLabel("월").selectOption("11");
   await page.getByLabel("일").selectOption("3");

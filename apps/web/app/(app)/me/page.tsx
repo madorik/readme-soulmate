@@ -7,6 +7,9 @@ import { readCard, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { summarize } from "@/lib/summary";
 
+/** 미리보기·공유하기: 같은 테두리 동그라미(.pill과 같은 선) */
+const ICON_BUTTON = "flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-[inset_0_0_0_1px_var(--color-edge)]";
+
 export default async function Me() {
   const s = await requireSession();
   const { locale } = s.profile;
@@ -23,9 +26,15 @@ export default async function Me() {
             {t("me.face")}
           </Link>
         </div>
-        <Link href="/share" className="pill ml-auto shrink-0 !bg-ink !text-white !shadow-none">
-          {t("me.send")}
-        </Link>
+        {/* 받는 사람에게 보이는 모습(미리보기)과 공유하기는 아이콘으로만 */}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <Link href="/me/preview" aria-label={t("me.previewButton")} className={ICON_BUTTON}>
+            <Icon name="eye" size={20} strokeWidth={1.7} />
+          </Link>
+          <Link href="/share" aria-label={t("me.send")} className={ICON_BUTTON}>
+            <Icon name="share" size={19} strokeWidth={1.7} />
+          </Link>
+        </div>
       </div>
 
       <ul className="mx-6 mt-6 flex flex-col">
@@ -46,13 +55,6 @@ export default async function Me() {
         })}
       </ul>
 
-      {/* 받는 사람에게 보이는 모습은 따로(내 리드미에는 내 정보만) */}
-      <div className="px-6 pt-6">
-        <Link href="/me/preview" className="btn-outline">
-          <Icon name="eye" size={18} />
-          {t("me.previewButton")}
-        </Link>
-      </div>
       <div className="h-8" />
       <TabBar active="me" t={t} />
     </>

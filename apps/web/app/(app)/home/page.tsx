@@ -3,9 +3,10 @@ import Link from "next/link";
 import { answerQuestion } from "@/app/actions/card";
 import { Avatar } from "@/components/Avatar";
 import { TabBar, Wordmark } from "@/components/chrome";
+import { EmptyPortrait, EventPortrait } from "@/components/EventArt";
 import { Icon, MarkerCircle } from "@/components/marks";
 import { PeopleList } from "@/components/PeopleList";
-import { listPeople, readCard, requireSession, todayFor } from "@/lib/data";
+import { displayName, listPeople, readCard, requireSession, todayFor } from "@/lib/data";
 import { eventName, eventsFor } from "@/lib/events";
 import { makeT } from "@/lib/i18n";
 
@@ -19,6 +20,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
   const [people, mine] = await Promise.all([listPeople(s), s.tx((q) => readCard(q, s.user.id))]);
   const events = eventsFor(people, today);
   const next = events.find((e) => e.daysUntil <= 60) ?? null;
+  const nextPerson = next ? (people.find((p) => p.contactId === next.contactId) ?? null) : null;
+  // 두 달 안에는 없지만 그 뒤에 있는 날(빈 화면에서 '다음은 …'으로 알려 준다)
+  const later = next ? null : (events[0] ?? null);
   const question = questionFor(today, mine.card);
   const names = weekdayNames(locale);
   const days = Array.from({ length: 8 }, (_, i) => addDays(today, i));
@@ -52,10 +56,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
               ) : (
                 <span className="num text-[104px] font-extralight leading-[0.82] tracking-[-0.04em]">{next.daysUntil}</span>
               )}
-              <div className="flex min-w-0 flex-col gap-1 pb-0.5">
+              <div className="flex min-w-0 flex-1 flex-col gap-1 pb-0.5">
                 {next.daysUntil > 0 ? <span className="text-[12px] font-bold tracking-[0.04em] text-red">{next.daysUntil === 1 ? t("home.dayToGo") : t("home.daysToGo")}</span> : null}
                 <span className="text-[21px] font-bold leading-[1.25] tracking-[-0.02em]">{eventName(next, t, locale)}</span>
               </div>
+              <EventPortrait
+                href={`/people/${next.contactId}`}
+                avatar={nextPerson?.avatar ?? null}
+                name={nextPerson ? displayName(nextPerson) : next.name}
+                kind={next.kind}
+              />
             </div>
             <span className="pt-3 text-[13px] text-muted">
               {next.spec.calendar === "lunar" ? `${formatSpec(next.spec, locale)}${t("common.and")}` : ""}
@@ -67,7 +77,23 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
             </Link>
           </>
         ) : (
-          <p className="pt-4 text-[14px] leading-[1.6] text-muted">{t("home.noUpcoming")}</p>
+          <>
+            <div className="flex items-center gap-4 pt-[18px]">
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <span className="text-[21px] font-bold leading-[1.25] tracking-[-0.02em]">{later ? t("home.quietTitle") : t("home.noUpcomingTitle")}</span>
+                <span className="text-[13px] leading-[1.55] text-muted">
+                  {later ? t("home.quietBody", { event: eventName(later, t, locale), date: formatDayFull(later.date, locale) }) : t("home.noUpcomingBody")}
+                </span>
+              </div>
+              <EmptyPortrait />
+            </div>
+            {later ? null : (
+              <Link href="/request" className="mt-[18px] flex min-h-12 items-center justify-between border-y border-rule text-[14.5px] font-medium">
+                {t("home.askDates")}
+                <Icon name="chevron" size={18} strokeWidth={1.6} className="text-muted" />
+              </Link>
+            )}
+          </>
         )}
       </section>
 
