@@ -1,0 +1,38 @@
+{
+  "name": "readme",
+  "private": true,
+  "version": "0.0.1",
+  "description": "리드미 - 소울메이트 컨닝페이퍼. 가까운 사람끼리 취향·못 먹는 음식·사이즈·생일을 나누는 앱",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.15.1",
+  "scripts": {
+    "dev": "pnpm --filter @readme/web dev",
+    "build": "pnpm --filter @readme/web build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "tsx --test 'packages/core/src/**/__tests__/*.test.ts' 'apps/web/lib/**/__tests__/*.test.ts'",
+    "test:db": "tsx --test 'db/tests/*.test.ts'",
+    "e2e": "pnpm --filter @readme/web e2e",
+    "db:start": "docker start readme-pg 2>/dev/null || docker run -d --name readme-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=readme -p 127.0.0.1:55433:5432 postgres:17",
+    "db:stop": "docker stop readme-pg",
+    "db:migrate": "node --env-file-if-exists=apps/web/.env.local scripts/migrate.mjs",
+    "db:reset": "node --env-file-if-exists=apps/web/.env.local scripts/migrate.mjs --reset",
+    "env:local": "node scripts/write-local-env.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.23.1",
+    "pg": "8.16.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "unrs-resolver",
+      "sharp"
+    ]
+  }
+}

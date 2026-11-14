@@ -1,0 +1,13 @@
+# Vercel에 올리지 않는 것(비밀값·빌드 결과·네이티브 프로젝트)
+node_modules
+**/node_modules
+.next
+**/.next
+.env*
+**/.env*
+!**/.env.example
+.vercel
+apps/mobile/android
+apps/mobile/ios
+**/test-results
+**/playwright-report

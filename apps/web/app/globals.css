@@ -1,0 +1,263 @@
+@import "tailwindcss";
+
+/* 시안 C2 "여백 미니멀 + 붉은 동그라미": 흰 바탕, 먹색 글자, 가는 선과 여백. 붉은 동그라미는 잊으면 안 되는 것에만 */
+@theme {
+  --color-paper: #ffffff;
+  --color-ink: #1d2125;
+  --color-ink-2: #3b4046;
+  /* 흰 바탕 작은 글씨도 4.5:1이 넘는 회색 */
+  --color-muted: #6e737a;
+  /* 구분선(가는 선)과 입력칸 테두리 */
+  --color-rule: #ececea;
+  --color-edge: #dadbd8;
+  --color-fill: #f6f6f4;
+  /* 붉은 글자(4.5:1)와 손으로 그린 동그라미 선 */
+  --color-red: #c4443a;
+  --color-marker: #e0574b;
+  --color-sat: #4a6283;
+  --color-hl: #fbe3df;
+  --color-sticky: #f6f6f4;
+  --color-kakao: #fee500;
+  --color-kakao-ink: #191919;
+  --color-ok: #1e7d55;
+
+  --font-sans: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-num: var(--font-manrope), system-ui, sans-serif;
+}
+
+@layer base {
+  /* 휴대폰 상태바·아래 막대 높이. 브라우저 env()와 앱(Capacitor SystemBars)이 넣는 --safe-area-inset-* 중 큰 값 */
+  :root {
+    --sat: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+    --sab: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    background: var(--color-paper);
+  }
+  body {
+    color: var(--color-ink);
+    background: var(--color-paper);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    /* 한글은 띄어쓰기에서만 줄을 바꾼다(좁은 화면에서 '토요\n일'처럼 끊기지 않게). 아주 긴 낱말만 어디서든 끊는다 */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+  :focus-visible {
+    outline: 2px solid rgb(29 33 37 / 0.45);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* 숫자(날짜·D-day): 가는 기하 산세리프. 크게 쓸 때는 font-extralight/font-light로 더 가늘게 */
+  .num {
+    font-family: var(--font-num);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .wordmark {
+    font-family: var(--font-num);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+  .headline {
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.3;
+  }
+  /* 오늘·새로 바뀐 것: 옅은 붉은 밑줄 형광 */
+  .hl {
+    background: linear-gradient(transparent 58%, var(--color-hl) 58%, var(--color-hl) 94%, transparent 94%);
+    padding: 0 2px;
+  }
+  .btn-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--color-ink);
+    color: #fff;
+    font-weight: 700;
+    font-size: 15.5px;
+  }
+  .btn-primary:disabled {
+    background: #b6b9bd;
+  }
+  .btn-outline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 52px;
+    border-radius: 14px;
+    box-shadow: inset 0 0 0 1px var(--color-edge);
+    background: #fff;
+    font-weight: 500;
+    font-size: 15px;
+  }
+  .btn-kakao {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--color-kakao);
+    color: var(--color-kakao-ink);
+    font-weight: 700;
+    font-size: 15.5px;
+  }
+  .btn-soft {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 46px;
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 1px var(--color-edge);
+    background: #fff;
+    font-weight: 500;
+    font-size: 14px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--color-edge);
+    background: #fff;
+    font-weight: 500;
+    font-size: 14px;
+  }
+  .field {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 1px var(--color-edge);
+    background: #fff;
+    font-size: 16px;
+  }
+  .field:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 1.5px var(--color-ink);
+  }
+  .label {
+    font-size: 13px;
+    color: var(--color-muted);
+  }
+  .section-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .row {
+    display: flex;
+    gap: 12px;
+    padding: 13px 0;
+    border-top: 1px solid var(--color-rule);
+  }
+}
+
+/* 앱 화면 폭: 휴대폰 한 손 폭. 큰 화면에서는 가운데 */
+.screen {
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding-top: max(var(--sat), 12px);
+  padding-bottom: max(var(--sab), 16px);
+}
+
+/* 약관·처리방침 본문(components/LegalPage.tsx) */
+.legal {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--color-ink-2);
+}
+.legal h2 {
+  margin-top: 28px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.legal p,
+.legal ul,
+.legal ol {
+  margin-top: 10px;
+}
+.legal ul {
+  list-style: disc;
+  padding-left: 20px;
+}
+.legal ol {
+  list-style: decimal;
+  padding-left: 20px;
+}
+.legal li + li {
+  margin-top: 6px;
+}
+.legal b {
+  color: var(--color-ink);
+}
+.legal a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.legal table {
+  margin-top: 10px;
+  width: 100%;
+  font-size: 13.5px;
+  border-collapse: collapse;
+}
+.legal th,
+.legal td {
+  border-top: 1px solid var(--color-rule);
+  padding: 8px 6px 8px 0;
+  text-align: left;
+  vertical-align: top;
+}
+
+/* 화면 끝까지 그리는 앱에서 스크롤한 내용이 상태바·아래 막대 뒤로 비치지 않게 가리는 흰 띠(높이가 0이면 안 보인다) */
+.bar-mask-top,
+.bar-mask-bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: var(--color-paper);
+  pointer-events: none;
+}
+.bar-mask-top {
+  top: 0;
+  height: var(--sat);
+}
+.bar-mask-bottom {
+  bottom: 0;
+  height: var(--sab);
+}

@@ -1,0 +1,273 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import {
+  ageLine,
+  groupMemo,
+  judgeMenus,
+  mealBrief,
+  orderNote,
+  ageOn,
+  applyAnswer,
+  describeRing,
+  describeShoe,
+  describeTop,
+  dueReminders,
+  eventTitle,
+  en,
+  formatDaysLeft,
+  formatSpec,
+  hashToken,
+  inviteStatus,
+  isEmptySection,
+  josa,
+  ko,
+  normalizeCode,
+  parseFoodSpeech,
+  placeholders,
+  questionFor,
+  randomCode,
+  randomToken,
+  RELATION_PRESETS,
+  safeUrl,
+  sanitizeAvatar,
+  sanitizeOffsets,
+  sanitizeSection,
+  sanitizeSections,
+  shoeUs,
+  translate,
+  zodiacOf,
+  upcomingEvents,
+  type MessageKey,
+} from "../index";
+
+const TODAY = { y: 2026, m: 11, d: 13 };
+
+test("한·영 문구: 같은 키, 같은 변수", () => {
+  const koKeys = Object.keys(ko).sort();
+  const enKeys = Object.keys(en).sort();
+  assert.deepEqual(enKeys, koKeys);
+  for (const key of koKeys as MessageKey[]) {
+    assert.deepEqual(placeholders(en[key]), placeholders(ko[key]), key);
+    assert.ok(en[key].length > 0, key);
+  }
+});
+
+test("조사: 받침에 맞춰", () => {
+  assert.equal(josa("어머니 생일", "이에요"), "어머니 생일이에요");
+  assert.equal(josa("데이트", "이에요"), "데이트예요");
+  assert.equal(josa("지수", "이"), "지수가");
+  assert.equal(josa("서울", "으로"), "서울로");
+  assert.equal(josa("집", "으로"), "집으로");
+  assert.equal(translate("ko", "home.today", { event: "결혼기념일" }), "오늘은 결혼기념일이에요");
+  assert.equal(translate("en", "home.today", { event: "Mom's birthday" }), "Mom's birthday is today");
+});
+
+test("카드 정리: 모르는 코드·위험한 주소는 버린다", () => {
+  const safety = sanitizeSection("safety", { allergens: ["shrimp", "crab", "nope", "shrimp"], dislikes: ["cucumber"], diets: ["vegan", 3], extra: 1 });
+  assert.deepEqual(safety, { allergens: ["shrimp", "crab"], allergyNote: "", dislikes: ["cucumber"], diets: ["vegan"] });
+  const gifts = sanitizeSection("gifts", {
+    wishlist: [
+      { title: "캠핑 의자", url: "javascript:alert(1)" },
+      { title: "도자기 클래스", url: "example.com/class" },
+      { title: "", url: "https://x.y" },
+    ],
+    giftCard: "maybe",
+    colors: ["sage", "cream", "bogus"],
+  });
+  assert.deepEqual(gifts.wishlist, [
+    { title: "캠핑 의자", url: "" },
+    { title: "도자기 클래스", url: "https://example.com/class" },
+  ]);
+  assert.equal(gifts.giftCard, null);
+  assert.deepEqual(gifts.colors, ["sage", "cream"]);
+  assert.equal(safeUrl("data:text/html,hi"), "");
+});
+
+test("카드 정리: 숫자 범위와 날짜", () => {
+  const sizes = sanitizeSection("sizes", { top: " 55 ", shoe: "235", ring: 99, bottom: "26" });
+  assert.deepEqual(sizes, { top: "55", bottom: "26", shoe: 235, ring: null });
+  const dates = sanitizeSection("dates", {
+    birthday: { calendar: "lunar", month: 10, day: 12, leap: "x" },
+    anniversaries: [{ label: "결혼기념일", spec: { calendar: "solar", month: 5, day: 18 } }, { label: "", spec: { calendar: "solar", month: 1, day: 1 } }],
+  });
+  assert.equal(dates.birthday, null, "leap이 불리언이 아니면 버린다");
+  assert.equal(dates.anniversaries.length, 1);
+  const taste = sanitizeSection("taste", { likes: "마라탕, 떡볶이,마라탕", spicy: 3 });
+  assert.deepEqual(taste, { likes: ["마라탕", "떡볶이"], spicy: 3, drinks: "", alcohol: { level: null, kinds: [] } });
+  assert.equal(isEmptySection("taste", taste), false);
+  assert.equal(isEmptySection("sizes", sanitizeSection("sizes", {})), true);
+});
+
+test("관계별 기본 공개 항목", () => {
+  assert.deepEqual(RELATION_PRESETS.family, ["safety", "taste", "sizes", "favorites", "dates"]);
+  assert.deepEqual(sanitizeSections(["dates", "safety", "bogus", "dates"]), ["safety", "dates"]);
+});
+
+test("사이즈 환산", () => {
+  assert.equal(shoeUs(235), "6.5");
+  assert.equal(shoeUs(240), "7");
+  assert.deepEqual(describeShoe(235, "en"), { value: "235", unit: "mm", hint: "About US women's 6.5" });
+  assert.deepEqual(describeRing(11, "en"), { value: "11", unit: "KR", hint: "About US 6" });
+  assert.deepEqual(describeTop("55", "en"), { value: "55", unit: "KR", hint: "About US S" });
+  assert.deepEqual(describeTop("55", "ko"), { value: "55", unit: "S", hint: null });
+});
+
+test("다가오는 날과 오늘 보낼 알림", () => {
+  const events = upcomingEvents(
+    [
+      { contactId: "mom", name: "어머니", birthday: { calendar: "lunar", month: 10, day: 12 } },
+      { contactId: "jisu", name: "지수", birthday: { calendar: "solar", month: 12, day: 3 }, anniversaries: [{ label: "결혼기념일", spec: { calendar: "solar", month: 5, day: 18 } }] },
+      { contactId: "dad", name: "아버지", birthday: { calendar: "lunar", month: 11, day: 3 } },
+    ],
+    TODAY,
+  );
+  assert.deepEqual(
+    events.map((e) => [e.contactId, e.kind, e.daysUntil]),
+    [
+      ["mom", "birthday", 7],
+      ["jisu", "birthday", 20],
+      ["dad", "birthday", 28],
+      ["jisu", "anniversary", 186],
+    ],
+  );
+  const due = dueReminders(events, [7, 0]);
+  assert.equal(due.length, 1);
+  assert.equal(due[0]!.event.contactId, "mom");
+  assert.deepEqual(sanitizeOffsets([7, 5, 0, "3"]), [7, 0]);
+});
+
+test("날짜 표기", () => {
+  assert.equal(formatSpec({ calendar: "lunar", month: 10, day: 12 }, "ko"), "음력 10월 12일");
+  assert.equal(formatSpec({ calendar: "lunar", month: 5, day: 1, leap: true }, "en"), "Lunar leap 5/1");
+  assert.equal(formatSpec({ calendar: "solar", month: 12, day: 3 }, "en"), "Dec 3");
+  assert.equal(formatDaysLeft(0, "ko"), "오늘");
+  assert.equal(formatDaysLeft(7, "en"), "In 7 days");
+});
+
+test("오늘의 질문: 답한 건 건너뛰고, 답은 카드 칸에", () => {
+  const q = questionFor(TODAY, {});
+  assert.ok(q);
+  const all = questionFor(TODAY, {
+    taste: { likes: [], spicy: 2, drinks: "라떼", alcohol: { level: null, kinds: [] } },
+    gifts: { colors: [], loves: [], scent: "우디", flowers: "튤립", giftCard: "yes", wishlist: [], skip: [], brands: [] },
+    favorites: sanitizeSection("favorites", { seasons: ["autumn"], musicGenres: ["indie"], movieGenres: ["comedy"], patterns: ["stripe"], metals: ["silver"], styles: ["minimal"] }),
+  });
+  assert.equal(all, null);
+  assert.deepEqual(applyAnswer({}, "drinks", "아메리카노"), { taste: { likes: [], spicy: null, drinks: "아메리카노", alcohol: { level: null, kinds: [] } } });
+  assert.equal(applyAnswer({}, "giftCard", "no").gifts?.giftCard, "no");
+});
+
+test("초대 토큰과 코드", async () => {
+  const a = randomToken();
+  const b = randomToken();
+  assert.notEqual(a, b);
+  assert.match(a, /^[A-Za-z0-9_-]{43}$/);
+  assert.match(await hashToken(a), /^[0-9a-f]{64}$/);
+  assert.equal(await hashToken("x"), await hashToken("x"));
+  const code = randomCode();
+  assert.match(code, /^[A-HJKMNP-Z2-9]{6}$/);
+  assert.equal(normalizeCode(` ${code.slice(0, 3).toLowerCase()}-${code.slice(3)} `), code);
+  assert.equal(normalizeCode("ABC0EF"), null);
+  const now = new Date("2026-11-13T00:00:00Z");
+  assert.equal(inviteStatus({ expires_at: "2026-11-20T00:00:00Z", used_at: null, canceled_at: null }, now), "active");
+  assert.equal(inviteStatus({ expires_at: "2026-11-12T00:00:00Z", used_at: null, canceled_at: null }, now), "expired");
+  assert.equal(inviteStatus({ expires_at: "2026-11-20T00:00:00Z", used_at: "x", canceled_at: null }, now), "used");
+});
+
+test("아바타 값 정리", () => {
+  assert.deepEqual(sanitizeAvatar({ tone: "red", hair: "bob", skin: "#000", glasses: "yes" }), {
+    tone: "red",
+    skin: "#F2CDB0",
+    hair: "bob",
+    hairColor: "#1F1D2B",
+    glasses: false,
+  });
+});
+
+test("말로 입력: 알레르기와 못 먹는 것을 나눠 찾는다", () => {
+  assert.deepEqual(parseFoodSpeech("나 오이 싫어하고 새우 알레르기 있어"), { allergens: ["shrimp"], dislikes: ["cucumber"] });
+  assert.deepEqual(parseFoodSpeech("고수랑 곱창은 못 먹어요. 게임은 좋아해요"), { allergens: [], dislikes: ["cilantro", "offal"] });
+  assert.deepEqual(parseFoodSpeech("I'm allergic to peanuts and I hate cilantro"), { allergens: ["peanut"], dislikes: ["cilantro"] });
+  assert.deepEqual(parseFoodSpeech("게 알러지 있고 굴도 안 먹어"), { allergens: ["crab"], dislikes: ["oyster"] });
+  assert.deepEqual(parseFoodSpeech(""), { allergens: [], dislikes: [] });
+});
+
+test("생년월일: 만 나이·띠·큰 생일·기념일 N주년(음력은 음력 연도)", () => {
+  // 양력 1990-11-20: 오늘(2026-11-13) 기준 아직 생일 전이라 만 35세, 말띠
+  const solar = { calendar: "solar" as const, month: 11, day: 20, year: 1990 };
+  assert.equal(ageOn(solar, TODAY), 35);
+  assert.equal(zodiacOf(solar)?.ko, "말");
+  assert.equal(ageLine(solar, TODAY, "ko"), "만 35세 · 말띠");
+  assert.equal(ageLine({ calendar: "solar", month: 11, day: 20 }, TODAY, "ko"), "");
+  // 생일이 오늘이면 오늘 바뀐 나이
+  assert.equal(ageOn({ calendar: "solar", month: 11, day: 13, year: 1990 }, TODAY), 36);
+  // 1월생은 음력 설 전이면 전 해 띠: 1990-01-20(양력)은 음력 1989년 → 뱀띠
+  assert.equal(zodiacOf({ calendar: "solar", month: 1, day: 20, year: 1990 })?.ko, "뱀");
+  // 음력 1956년 10월 13일생: 올해 음력 10.13(양력 2026-11-21)에 만 70세 → 칠순
+  const lunar = { calendar: "lunar" as const, month: 10, day: 13, leap: false, year: 1956 };
+  assert.equal(ageOn(lunar, TODAY), 69);
+  assert.equal(eventTitle("ko", { kind: "birthday", name: "엄마", spec: lunar, date: { y: 2026, m: 11, d: 21 } }), "엄마 칠순");
+  assert.equal(eventTitle("en", { kind: "birthday", name: "Mom", spec: lunar, date: { y: 2026, m: 11, d: 21 } }), "Mom's 70th birthday");
+  assert.equal(eventTitle("ko", { kind: "birthday", name: "아빠", spec: solar, date: { y: 2026, m: 11, d: 20 } }), "아빠 생일");
+  // 기념일: 연도를 알면 N주년
+  const wedding = { calendar: "solar" as const, month: 5, day: 2, year: 2016 };
+  assert.equal(eventTitle("ko", { kind: "anniversary", name: "지수", label: "결혼기념일", spec: wedding, date: { y: 2027, m: 5, d: 2 } }), "지수 결혼기념일 11주년");
+  // 연도는 1900~2100만, 숫자가 아니면 버린다
+  assert.equal(sanitizeSection("dates", { birthday: { calendar: "solar", month: 3, day: 1, year: 1800 } }).birthday, null);
+  assert.deepEqual(sanitizeSection("dates", { birthday: { calendar: "solar", month: 2, day: 29, year: 1996 } }).birthday, { calendar: "solar", month: 2, day: 29, year: 1996 });
+  assert.equal(sanitizeSection("dates", { birthday: { calendar: "solar", month: 2, day: 29, year: 1997 } }).birthday, null);
+});
+
+test("새 칸: 술·브랜드는 정해진 코드와 모양만 남긴다", () => {
+  const taste = sanitizeSection("taste", { alcohol: { level: "some", kinds: ["wine", "beer", "nope"] } });
+  assert.deepEqual(taste.alcohol, { level: "some", kinds: ["wine", "beer"] });
+  // 안 마신다면 종류는 비운다
+  assert.deepEqual(sanitizeSection("taste", { alcohol: { level: "none", kinds: ["soju"] } }).alcohol, { level: "none", kinds: [] });
+  // 예전 데이터(술 칸 없음)도 읽힌다
+  assert.deepEqual(sanitizeSection("taste", { likes: ["떡볶이"] }).alcohol, { level: null, kinds: [] });
+  assert.deepEqual(sanitizeSection("gifts", { brands: "무인양품, 이솝" }).brands, ["무인양품", "이솝"]);
+});
+
+test("같이 고르기: 알레르기·식단은 빼고, 안 먹는 것·너무 매운 건 아쉬운 메뉴, 좋아하는 메뉴가 앞에", () => {
+  const all = ["safety", "taste", "sizes", "gifts", "dates"] as const;
+  const wife = { key: "w", name: "지수", sections: all, card: { safety: sanitizeSection("safety", { allergens: ["shrimp", "crab"], dislikes: ["cilantro"] }), taste: sanitizeSection("taste", { likes: ["마라탕", "연어 초밥", "크림 파스타"], spicy: 3 }) } };
+  const friend = { key: "f", name: "준호", sections: all, card: { safety: sanitizeSection("safety", { allergens: ["peanut"] }), taste: sanitizeSection("taste", { likes: ["곱창", "평양냉면"], spicy: 4, alcohol: { level: "none" } }) } };
+  const mom = { key: "m", name: "엄마", sections: ["safety", "taste"] as const, card: { safety: sanitizeSection("safety", { dislikes: ["raw"], diets: [] }), taste: sanitizeSection("taste", { spicy: 1 }) } };
+  const v = judgeMenus([wife, friend, mom]);
+  const by = (code: string) => v.find((x) => x.item.code === code)!;
+  assert.equal(by("seafood_stew").status, "avoid");
+  assert.equal(by("malatang").status, "avoid"); // 땅콩(준호), 지수가 좋아해도
+  assert.deepEqual(by("malatang").likedBy, ["지수"]);
+  assert.equal(by("sushi").status, "soft"); // 엄마는 날것 안 먹음
+  assert.equal(by("jokbal").status, "avoid"); // 새우젓
+  assert.equal(by("gopchang").status, "ok");
+  assert.equal(by("gopchang").milder, true); // 엄마 매운맛 1
+  // 다 같이 먹을 수 있고 좋아하는 사람이 있는 메뉴가 맨 앞(덜 맵게가 필요 없는 것 먼저)
+  assert.deepEqual(v.slice(0, 2).map((x) => x.item.code), ["naengmyeon", "pasta"]);
+  // 볼 수 없는 항목은 쓰지 않는다
+  const hidden = judgeMenus([{ ...wife, sections: ["dates"] as const }]);
+  assert.equal(hidden.find((x) => x.item.code === "seafood_stew")!.status, "ok");
+  // 식당에 말할 것(이름 없이), 같이 가는 사람에게 보낼 메모(이름은 고를 때만)
+  const brief = mealBrief([wife, friend, mom]);
+  assert.equal(orderNote(brief, "ko"), "새우, 게, 땅콩은 빼 주세요(알레르기). 고수, 날것도 빼 주세요. 덜 맵게 해 주세요.");
+  const memo = groupMemo(brief, "ko");
+  assert.ok(memo.includes("알레르기: 새우, 게, 땅콩") && !memo.includes("지수"));
+  assert.ok(groupMemo(brief, "ko", true).includes("새우(지수)"));
+  assert.ok(memo.includes("안 마시는 사람이 있어요"));
+  // 채식이면 채식으로 시킬 수 있는 메뉴만
+  const veg = { key: "v", name: "채식", sections: all, card: { safety: sanitizeSection("safety", { diets: ["vegan"] }) } };
+  assert.deepEqual(judgeMenus([veg]).filter((x) => x.status === "ok").map((x) => x.item.code), ["salad"]);
+});
+
+test("좋아하는 것들: 고르는 칸은 정해진 코드만, 적는 칸은 글. 오늘의 질문 답은 그 칸에 더한다", () => {
+  const f = sanitizeSection("favorites", { patterns: ["stripe", "nope"], idol: " 아이유 ", seasons: ["autumn"], book: 3 });
+  assert.deepEqual(f.patterns, ["stripe"]);
+  assert.equal(f.idol, "아이유");
+  assert.equal(f.book, "");
+  assert.equal(isEmptySection("favorites", sanitizeSection("favorites", {})), true);
+  assert.equal(isEmptySection("favorites", f), false);
+  const added = applyAnswer({ favorites: f }, "season", "winter").favorites!;
+  assert.deepEqual(added.seasons, ["autumn", "winter"]);
+  assert.equal(added.idol, "아이유");
+  assert.deepEqual(applyAnswer({}, "metal", "gold").favorites?.metals, ["gold"]);
+});
