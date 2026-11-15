@@ -21,14 +21,11 @@ export function TopBar({ back, close, label, center, right }: { back?: string; c
   );
 }
 
-/** 로고: 한국어는 기억해 + 망고 알약 안의 유(= 기억해유, 이름 그대로), 영어는 Remember + You */
+/** 로고: 이름 그대로 글자만(한국어 '기억해유', 영어 'Remember You'). 글자에 알약·강조를 씌우지 않는다 */
 export function Wordmark({ size = 22, locale = "ko" }: { size?: number; locale?: Locale }) {
   return (
-    <span role="img" aria-label={BRAND[locale].name} className="wordmark inline-flex items-center gap-[0.14em] leading-[44px]" style={{ fontSize: size }}>
-      {locale === "en" ? "Remember" : "기억해"}
-      <span className="grad rounded-[0.36em] px-[0.26em] leading-[1.32]" style={{ fontSize: Math.round(size * 0.86) }}>
-        {locale === "en" ? "You" : "유"}
-      </span>
+    <span className="wordmark inline-flex items-center leading-[44px]" style={{ fontSize: size }}>
+      {BRAND[locale].name}
     </span>
   );
 }
