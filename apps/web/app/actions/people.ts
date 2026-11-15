@@ -222,6 +222,19 @@ export async function setFolderMembers(folderId: string, contactIds: string[]): 
   }
 }
 
+/** 사람 하나를 폴더에 넣기(사람들 목록에서 폴더 칸으로 끌어 놓을 때). 이미 있으면 그대로 */
+export async function addToFolder(folderId: string, contactId: string): Promise<{ ok: boolean }> {
+  const s = await requireSession();
+  if (typeof folderId !== "string" || !UUID.test(folderId) || typeof contactId !== "string" || !UUID.test(contactId)) return { ok: false };
+  try {
+    await s.tx((q) => q("insert into contact_group_members (group_id, contact_id, user_id) values ($1, $2, $3) on conflict do nothing", [folderId, contactId, s.user.id]));
+    revalidatePeople(contactId);
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
+}
+
 /** 한 사람이 든 폴더를 이 목록으로 맞춘다(사람 화면의 폴더 고르기). 내 폴더만 들어간다(RLS) */
 export async function setPersonFolders(contactId: string, folderIds: string[]): Promise<{ ok: boolean }> {
   const s = await requireSession();

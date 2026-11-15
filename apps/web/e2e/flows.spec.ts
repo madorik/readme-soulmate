@@ -478,7 +478,7 @@ test("내 리드미: 고치기를 누르면 화면을 옮기지 않고 그 항�
   await expect(jisu.getByRole("button", { name: "가을", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
-test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴더)와 즐겨찾기", async ({ browser }) => {
+test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴더), 폴더 없는 사람만 목록에, 끌어서 폴더에 넣기, 즐겨찾기", async ({ browser }) => {
   const jisu = await as(browser, "jisu");
   // 기본 폴더 네 개가 사람들 위에 보인다
   await jisu.goto("/people");
@@ -510,12 +510,30 @@ test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴
   await expect(jisu.getByRole("link", { name: "가족", exact: true })).toBeVisible();
   await expect(jisu.getByRole("link", { name: "본가", exact: true })).toBeVisible();
 
-  // 목록: 즐겨찾기(단짝)가 맨 위, 이름 밑에 든 폴더
+  // 목록에는 아직 폴더에 없는 사람만(폴더에 넣은 단짝·아빠는 빠진다)
   await jisu.goto("/people");
   await expect(jisu.getByRole("link", { name: /^본가 / })).toContainText("1명");
-  await expect(jisu.getByRole("link", { name: /아빠/ }).first()).toContainText("가족 · 본가");
-  const everyone = await jisu.locator('a[href^="/people/"]:not([href*="folder"])').evaluateAll((els) => els.map((el) => el.textContent ?? ""));
-  expect(everyone[0]).toContain("단짝");
+  const unfiled = jisu.locator('li a[href^="/people/"]:not([href*="folder"])');
+  await expect(unfiled.filter({ hasText: "아빠" })).toHaveCount(0);
+  await expect(unfiled.filter({ hasText: "단짝" })).toHaveCount(0);
+
+  // 끌어서 폴더에: 폴더 없는 첫 사람을 회사 칸에 놓으면 회사에 들어가고 목록에서 빠진다(새로 고쳐도 그대로)
+  const first = unfiled.first();
+  const href = await first.getAttribute("href");
+  const work = jisu.getByRole("link", { name: /^회사 / });
+  const from = await first.boundingBox();
+  const to = await work.boundingBox();
+  await jisu.mouse.move(from!.x + 60, from!.y + from!.height / 2);
+  await jisu.mouse.down();
+  await jisu.mouse.move(from!.x + 70, from!.y + from!.height / 2 - 10, { steps: 3 });
+  await jisu.mouse.move(to!.x + to!.width / 2, to!.y + to!.height / 2, { steps: 12 });
+  await jisu.mouse.up();
+  await expect(jisu).toHaveURL(/\/people$/);
+  await expect(jisu.locator(`li a[href="${href}"]`)).toHaveCount(0);
+  await expect(work).toContainText("1명");
+  await jisu.reload();
+  await expect(jisu.locator(`li a[href="${href}"]`)).toHaveCount(0);
+  await expect(jisu.getByRole("link", { name: /^회사 / })).toContainText("1명");
   await shot(jisu, "18-people-folders");
 
   // 폴더 안: 가족에 단짝도 넣는다
@@ -553,7 +571,6 @@ test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴
   await jisu.getByRole("dialog").getByRole("button", { name: "폴더 지우기" }).click();
   await expect(jisu).toHaveURL(/\/people$/);
   await expect(jisu.getByRole("link", { name: /^동창 / })).toHaveCount(0);
-  await expect(jisu.getByRole("link", { name: /아빠/ }).first()).toBeVisible();
 });
 
 test("챙길 날 오른쪽 위 내 얼굴: 내 프로필(닉네임·프로필 사진)과 로그아웃", async ({ browser }) => {

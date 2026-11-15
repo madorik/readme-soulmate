@@ -2,7 +2,8 @@
 
 import type { AvatarConfig } from "@readme/core";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { addToFolder } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";
 import { FolderArt, FolderMini } from "@/components/FolderArt";
 import { FolderSheet } from "@/components/FolderSheet";
@@ -10,6 +11,7 @@ import { Mascot } from "@/components/Mascot";
 import { DrawnCheck, Icon } from "@/components/marks";
 import { RowBody, type PersonRow } from "@/components/PersonRow";
 import type { FolderSheetLabels, FolderView } from "@/lib/folders";
+import { useDragToFolder } from "./useDragToFolder";
 
 interface Labels {
   title: string;
@@ -29,7 +31,8 @@ interface Labels {
   pickOne: string;
   empty: string;
   folders: string;
-  everyone: string;
+  /** 아래 목록 제목: 폴더 없음 */
+  unfiled: string;
   newFolder: string;
   /** "{n}명" */
   count: string;
@@ -38,7 +41,8 @@ interface Labels {
 }
 
 /**
- * 내 사람들: 위에 폴더 칸(누르면 그 폴더, 맨 끝은 새 폴더), 아래에 모든 사람(즐겨찾기 먼저, 이름 밑에 든 폴더).
+ * 내 사람들: 위에 폴더 칸(누르면 그 폴더, 맨 끝은 새 폴더), 아래에 아직 폴더에 없는 사람(즐겨찾기 먼저).
+ * 아래 사람을 길게 눌러(마우스는 끌어) 위 폴더 칸에 놓으면 그 폴더에 들어간다.
  * "선택"을 누르면 사람을 고르는 모드가 되고(폴더 칩으로 그 폴더 사람을 한 번에), 고른 사람으로 메뉴 고르기·선물 고르기를 한다.
  * 고른 상태는 주소(pick=1&with=…&me=…)로 오가서, 메뉴 화면에서 뒤로 와도 그대로다.
  */
@@ -93,9 +97,31 @@ export function PeopleBoard({
   }, [picking]);
   const [making, setMaking] = useState(false);
 
+  // 끌어 놓기: 놓는 즉시 화면에서 넣고(서버가 다시 그리면 그 값으로), 실패하면 되돌린다
+  // 화면에서 먼저 넣은 것은 서버가 새 목록(rows)을 주면 버린다
+  const [local, setLocal] = useState<{ rows: PersonRow[]; added: Record<string, string[]> }>({ rows, added: {} });
+  const added = local.rows === rows ? local.added : {};
+  const [, startDrop] = useTransition();
+  const drag = useDragToFolder({
+    enabled: !picking,
+    onDrop: (contactId, folderId) => {
+      setLocal((l) => {
+        const cur = l.rows === rows ? l.added : {};
+        return { rows, added: { ...cur, [contactId]: [...(cur[contactId] ?? []), folderId] } };
+      });
+      startDrop(async () => {
+        const r = await addToFolder(folderId, contactId);
+        if (!r.ok)
+          setLocal((l) => ({ rows, added: Object.fromEntries(Object.entries(l.rows === rows ? l.added : {}).filter(([id]) => id !== contactId)) }));
+      });
+    },
+  });
+  const membersOf = (f: FolderView) => [...f.memberIds, ...Object.keys(added).filter((id) => added[id]!.includes(f.id) && !f.memberIds.includes(id))];
+  const unfiled = rows.filter((r) => !r.folderIds.length && !added[r.contactId]?.length);
+
   const byId = new Map(rows.map((r) => [r.contactId, r]));
   const facesOf = (f: FolderView) =>
-    f.memberIds
+    membersOf(f)
       .map((id) => byId.get(id))
       .filter((r): r is PersonRow => !!r)
       .map((r) => ({ key: r.contactId, avatar: r.avatar, label: r.name }));
@@ -188,19 +214,30 @@ export function PeopleBoard({
           </ul>
         </div>
       ) : (
-        <>
+        <div onClickCapture={drag.onClickCapture}>
           <h2 className="flex items-baseline gap-1.5 px-6 pb-3 pt-5">
             <span className="section-title">{labels.folders}</span>
             <span className="num text-[14px] !font-bold text-muted">{folders.length}</span>
           </h2>
           <div className="grid grid-cols-3 gap-2.5 px-4">
-            {folders.map((f) => (
-              <Link key={f.id} href={`/people/folder/${f.id}`} className="flex min-w-0 flex-col items-center gap-2 rounded-[22px] bg-paper px-1.5 pb-3 pt-4 transition-transform active:scale-[0.97]">
-                <FolderArt icon={f.icon} color={f.color} size={77} faces={facesOf(f)} />
-                <span className="w-full truncate text-center text-[15px] font-bold tracking-[-0.02em]">{f.name}</span>
-                <span className="-mt-1.5 text-[12.5px] text-muted">{labels.count.replace("{n}", String(f.memberIds.length))}</span>
-              </Link>
-            ))}
+            {folders.map((f) => {
+              // 끄는 중 손가락 아래 폴더는 망고 테두리로
+              const target = !!drag.dragging && drag.over === f.id;
+              return (
+                <Link
+                  key={f.id}
+                  href={`/people/folder/${f.id}`}
+                  data-drop={f.id}
+                  className={`flex min-w-0 flex-col items-center gap-2 rounded-[22px] px-1.5 pb-3 pt-4 transition-[transform,background-color,box-shadow] active:scale-[0.97] ${
+                    target ? "scale-[1.04] bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-sky)]" : "bg-paper"
+                  }`}
+                >
+                  <FolderArt icon={f.icon} color={f.color} size={77} faces={facesOf(f)} />
+                  <span className="w-full truncate text-center text-[15px] font-bold tracking-[-0.02em]">{f.name}</span>
+                  <span className="-mt-1.5 text-[12.5px] text-muted">{labels.count.replace("{n}", String(membersOf(f).length))}</span>
+                </Link>
+              );
+            })}
             <button
               type="button"
               onClick={() => setMaking(true)}
@@ -211,22 +248,30 @@ export function PeopleBoard({
             </button>
           </div>
 
-          <h2 className="flex items-baseline gap-1.5 px-6 pb-2.5 pt-7">
-            <span className="section-title">{labels.everyone}</span>
-            {rows.length ? <span className="num text-[14px] !font-bold text-muted">{rows.length}</span> : null}
-          </h2>
-          {rows.length ? (
-            <ul className="card mx-4 flex flex-col px-3.5">
-              {rows.map((r) => (
-                <li key={r.contactId} className="border-t border-rule first:border-t-0">
-                  <Link href={`/people/${r.contactId}`} className="flex min-h-[70px] items-center gap-3">
-                    <RowBody row={r} avatarLabel={labels.avatarOf.replace("{name}", r.name)} />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="px-6 pt-1 text-[14px] leading-[1.6] text-muted">{labels.empty}</p>
+          {/* 아직 폴더에 없는 사람만. 다 넣었으면 이 칸은 없다 */}
+          {unfiled.length ? (
+            <>
+              <h2 className="flex items-baseline gap-1.5 px-6 pb-2.5 pt-7">
+                <span className="section-title">{labels.unfiled}</span>
+                <span className="num text-[14px] !font-bold text-muted">{unfiled.length}</span>
+              </h2>
+              <ul className="card mx-4 flex flex-col px-3.5">
+                {unfiled.map((r) => (
+                  <li
+                    key={r.contactId}
+                    onPointerDown={(e) => drag.onPointerDown(e, r.contactId, r.name, "list")}
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`select-none border-t border-rule first:border-t-0 [-webkit-touch-callout:none] ${drag.dragging?.id === r.contactId ? "opacity-40" : ""}`}
+                  >
+                    <Link href={`/people/${r.contactId}`} draggable={false} className="flex min-h-[70px] items-center gap-3">
+                      <RowBody row={r} avatarLabel={labels.avatarOf.replace("{name}", r.name)} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : rows.length ? null : (
+            <p className="px-6 pt-6 text-[14px] leading-[1.6] text-muted">{labels.empty}</p>
           )}
 
           <section className="grad-hero relative mx-4 mt-4 flex items-center gap-2 overflow-hidden rounded-3xl py-4 pl-5 pr-3">
@@ -242,7 +287,7 @@ export function PeopleBoard({
               <Mascot size={86} bubble="question" />
             </span>
           </section>
-        </>
+        </div>
       )}
 
       {picking ? (
@@ -260,6 +305,7 @@ export function PeopleBoard({
         <div className="h-24" />
       )}
       {making ? <FolderSheet labels={sheet} onClose={() => setMaking(false)} /> : null}
+      {drag.ghost}
     </>
   );
 }

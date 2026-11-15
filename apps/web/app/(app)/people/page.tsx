@@ -7,7 +7,7 @@ import { AddFab } from "./AddFab";
 import { PeopleBoard } from "./PeopleBoard";
 import { aiConfigured } from "@/lib/ai";
 
-// 내 사람들: 폴더 칸 + 모든 사람. 위에 선택(사람을 골라 메뉴 고르기·선물 고르기), 오른쪽 아래에 사람 더하기
+// 내 사람들: 폴더 칸 + 폴더 없는 사람(끌어서 폴더에 넣는다). 위에 선택(사람을 골라 메뉴 고르기·선물 고르기), 오른쪽 아래에 사람 더하기
 export default async function People({ searchParams }: { searchParams: Promise<{ pick?: string; with?: string; me?: string }> }) {
   const sp = await searchParams;
   const s = await requireSession();
@@ -42,7 +42,7 @@ export default async function People({ searchParams }: { searchParams: Promise<{
           pickOne: t("people.pickOne", { name: "{name}" }),
           empty: t("people.empty"),
           folders: t("folder.label"),
-          everyone: t("people.everyone"),
+          unfiled: t("folder.none"),
           newFolder: t("folder.new"),
           count: t("folder.count", { n: "{n}" }),
           pickFolder: t("people.pickGroup", { name: "{name}" }),
