@@ -317,6 +317,16 @@
     transform: rotate(var(--tilt, 0deg));
   }
 }
+@keyframes hero-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @keyframes login-bob {
   0%,
   100% {
@@ -355,6 +365,10 @@
   transform: rotate(var(--tilt, 0deg));
   animation: login-note-in 0.55s cubic-bezier(0.25, 1, 0.35, 1.15) both;
 }
+/* 시작 화면 제목·소개: 그림과 같이 살짝 떠오른다 */
+.hero-rise {
+  animation: hero-rise-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
 .login-bob {
   animation: login-bob 4.2s ease-in-out 0.7s infinite;
 }
@@ -368,7 +382,8 @@
   .login-fade,
   .login-note,
   .login-bob,
-  .login-shadow {
+  .login-shadow,
+  .hero-rise {
     animation: none;
   }
 }
