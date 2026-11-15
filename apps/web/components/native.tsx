@@ -142,7 +142,8 @@ export function NativeBridge({ locale, appLock, reminders, pushEnabled }: { loca
           .map((r) => ({ ...r, at: new Date(r.y, r.m - 1, r.d, 9, 0, 0) }))
           .filter((r) => r.at.getTime() > now)
           .slice(0, 60)
-          .map((r) => ({ id: r.id, title: r.title, body: r.body, schedule: { at: r.at, allowWhileIdle: true }, extra: { path: r.path } }));
+          // 생일 아침 알림은 몇 분 늦어도 괜찮다. 정확한 알람을 바라면 안드로이드가 '알람 및 리마인더' 설정 화면을 띄우므로 끈다
+          .map((r) => ({ id: r.id, title: r.title, body: r.body, schedule: { at: r.at, allowWhileIdle: true }, isExactNotification: false, extra: { path: r.path } }));
         if (list.length) await LocalNotifications.schedule({ notifications: list });
         await LocalNotifications.addListener("localNotificationActionPerformed", (a) => {
           const path = (a.notification.extra as { path?: string } | undefined)?.path;
