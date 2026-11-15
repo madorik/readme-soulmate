@@ -1,11 +1,18 @@
 "use client";
 
-import type { Locale } from "@readme/core";
+import type { AvatarConfig, Locale } from "@readme/core";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
+import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/marks";
 import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/CaptureBadge";
+import { TagChip } from "@/components/PersonRow";
+import { insertMention, mentionAt, mentionLabel, resolveMentions, type MentionPerson } from "@/lib/mention";
+import { matchesPerson } from "@/lib/search";
+
+/** @로 부를 수 있는 사람(즐겨찾기가 먼저) */
+export type MentionOption = MentionPerson & { avatar: AvatarConfig | null };
 
 // 음성 인식: 브라우저는 Web Speech API, 앱(Capacitor)은 SpeechRecognition 플러그인이 있으면 그것.
 // 둘 다 없으면 글로 적는다(휴대폰 키보드의 받아쓰기 마이크로도 말할 수 있다).
@@ -201,6 +208,9 @@ type Labels = CaptureBadgeLabels & {
   clear: string;
   listening: string;
   placeholder: string;
+  placeholderText: string;
+  mention: string;
+  mentionList: string;
   save: string;
   saved: string;
   isNew: string;
@@ -213,7 +223,7 @@ type Labels = CaptureBadgeLabels & {
   micError: string;
 };
 
-export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Labels }) {
+export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; labels: Labels; people?: MentionOption[] }) {
   const canListen = useSyncExternalStore(
     () => () => {},
     () => !!webCtor() || !!nativeSpeech(),
@@ -252,6 +262,101 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
     }
   };
   const box = useRef<HTMLTextAreaElement>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
+
+  // @부름: 커서 앞이 '@낱말'이면 이름·태그로 찾은 사람을 칸 바로 밑에 보이고, 고르면 '@부름 '으로 넣는다
+  const [tagged, setTagged] = useState<{ id: string; label: string }[]>([]);
+  const [caret, setCaret] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  const [active, setActive] = useState(0);
+  const mention = dismissed || !people.length ? null : mentionAt(text, caret);
+  const options = mention ? people.filter((p) => matchesPerson(mention.query, p.name, p.tag)).slice(0, 6) : [];
+  const listOpen = options.length > 0;
+  const activeIndex = Math.min(active, Math.max(0, options.length - 1));
+  const who = resolveMentions(text, people, tagged)
+    .ids.map((id) => people.find((p) => p.id === id))
+    .filter((p): p is MentionOption => !!p);
+
+  // 글을 바꾼 바로 그 그리기에서 커서를 놓는다(다음 글자가 먼저 들어와도 엉뚱한 자리에 끼지 않게)
+  const pendingCaret = useRef<{ el: HTMLTextAreaElement | null; at: number } | null>(null);
+  useLayoutEffect(() => {
+    const p = pendingCaret.current;
+    if (!p) return;
+    pendingCaret.current = null;
+    p.el?.focus();
+    p.el?.setSelectionRange(p.at, p.at);
+  }, [text, caret]);
+  const placeCaret = (el: HTMLTextAreaElement | null, at: number) => {
+    pendingCaret.current = { el, at };
+    setCaret(at);
+  };
+  const pick = (el: HTMLTextAreaElement | null, o: MentionOption) => {
+    if (!mention) return;
+    const label = mentionLabel(o);
+    const r = insertMention(text, mention.start, caret, label);
+    setText(r.text);
+    setTagged((prev) => [...prev.filter((m) => m.id !== o.id), { id: o.id, label }]);
+    setActive(0);
+    placeCaret(el, r.caret);
+  };
+  /** @ 단추: 커서 자리에 @를 넣고 목록을 연다(한글 자판에서는 @가 멀다) */
+  const startMention = () => {
+    const el = field.current;
+    const at = el ? el.selectionStart : text.length;
+    const before = text.slice(0, at);
+    const ins = before && !/\s$/.test(before) ? " @" : "@";
+    setText(before + ins + text.slice(at));
+    setDismissed(false);
+    setActive(0);
+    placeCaret(el, at + ins.length);
+  };
+  const mentionProps = {
+    onSelect: (e: React.SyntheticEvent<HTMLTextAreaElement>) => setCaret(e.currentTarget.selectionStart),
+    onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!listOpen || e.nativeEvent.isComposing) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        setActive((activeIndex + (e.key === "ArrowDown" ? 1 : options.length - 1)) % options.length);
+      } else if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        pick(e.currentTarget, options[activeIndex]!);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setDismissed(true);
+      }
+    },
+    "aria-autocomplete": "list" as const,
+    "aria-controls": listOpen ? "mention-list" : undefined,
+    "aria-activedescendant": listOpen ? `mention-${options[activeIndex]!.id}` : undefined,
+  };
+  const onType = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setText(e.target.value);
+    setCaret(e.target.selectionStart);
+    setDismissed(false);
+    setActive(0);
+  };
+  const mentionList = (which: "field" | "box") =>
+    listOpen ? (
+      <ul id="mention-list" role="listbox" aria-label={labels.mentionList} className="card flex w-full flex-col p-1.5 text-left">
+        {options.map((o, i) => (
+          <li key={o.id} role="presentation">
+            <button
+              type="button"
+              id={`mention-${o.id}`}
+              role="option"
+              aria-selected={i === activeIndex}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => pick(which === "field" ? field.current : box.current, o)}
+              className={`flex min-h-[52px] w-full items-center gap-3 rounded-[16px] px-2.5 text-left ${i === activeIndex ? "bg-fill" : ""}`}
+            >
+              <Avatar config={o.avatar} size={34} label={mentionLabel(o)} />
+              <span className="min-w-0 truncate text-[16px] font-bold">{o.name}</span>
+              {o.tag && o.tag !== o.name ? <TagChip>{o.tag}</TagChip> : null}
+            </button>
+          </li>
+        ))}
+      </ul>
+    ) : null;
 
   useLayoutEffect(() => {
     const el = box.current;
@@ -273,7 +378,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
     if (!v || pending) return;
     start(async () => {
       setUndone(false);
-      setResult(await captureNote(v));
+      setResult(await captureNote(v, undefined, tagged));
     });
   };
 
@@ -296,6 +401,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
     setResult(null);
     heard.current = "";
     setText("");
+    setTagged([]);
     const lang = locale === "ko" ? "ko-KR" : "en-US";
     const plugin = nativeSpeech();
     if (plugin) {
@@ -397,6 +503,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
             onClick={() => {
               setResult(null);
               setText("");
+              setTagged([]);
             }}
             className="btn-primary"
           >
@@ -445,15 +552,37 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
         {toggle}
         <div className="flex flex-1 flex-col gap-2 px-4 pt-5">
           <textarea
+            ref={field}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={onType}
+            {...mentionProps}
             rows={5}
             maxLength={500}
             autoFocus={canListen}
-            placeholder={labels.placeholder}
-            aria-label={labels.placeholder}
+            placeholder={labels.placeholderText}
+            aria-label={labels.placeholderText}
             className="card min-h-[180px] w-full resize-none p-5 text-[18px] font-medium leading-[1.55] tracking-[-0.01em] outline-none placeholder:text-muted/60 focus:shadow-[inset_0_0_0_2px_var(--color-sky)]"
           />
+          {mentionList("field")}
+          {people.length ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={startMention}
+                aria-label={labels.mention}
+                className="flex h-11 min-w-11 items-center justify-center rounded-full bg-white px-3 text-[19px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-edge)]"
+              >
+                @
+              </button>
+              {who.map((p) => (
+                <span key={p.id} className="chip-on flex h-9 items-center gap-1.5 rounded-full pl-1 pr-3 text-[14px] font-bold">
+                  <Avatar config={p.avatar} size={28} label={mentionLabel(p)} />
+                  {mentionLabel(p)}
+                </span>
+              ))}
+            </div>
+          ) : null}
           <div className="flex min-h-8 items-center justify-center">{errorLine}</div>
         </div>
         <div className="bottom-bar mt-auto bg-bg px-5 pt-3">
@@ -487,13 +616,15 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
         <textarea
           ref={box}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={onType}
+          {...mentionProps}
           rows={1}
           maxLength={500}
           placeholder={labels.placeholder}
           aria-label={labels.placeholder}
           className="mt-9 max-h-[30vh] min-h-[84px] w-full resize-none overflow-y-auto bg-transparent text-center text-[20px] font-semibold leading-[1.5] tracking-[-0.02em] outline-none placeholder:font-medium placeholder:text-muted/55"
         />
+        {mentionList("box")}
         <div className="flex h-8 items-center">
           {error ? (
             errorLine

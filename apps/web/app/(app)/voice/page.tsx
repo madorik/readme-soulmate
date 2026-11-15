@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { TopBar } from "@/components/chrome";
 import { aiConfigured } from "@/lib/ai";
-import { requireSession } from "@/lib/data";
+import { listPeople, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { VoiceCapture } from "./VoiceCapture";
 
@@ -11,12 +11,17 @@ export default async function Voice() {
   const s = await requireSession();
   const { locale } = s.profile;
   const t = makeT(locale);
+  // @로 부를 사람: 이름과 내가 붙인 태그(부르는 말), 즐겨찾기가 먼저
+  const people = [...(await listPeople(s))]
+    .sort((a, b) => Number(b.favorite) - Number(a.favorite))
+    .map((p) => ({ id: p.contactId, name: p.name, tag: p.nickname && p.nickname !== p.name ? p.nickname : "", avatar: p.avatar }));
   return (
     <div className="flex flex-1 flex-col">
       <TopBar close="/home" label={t("common.close")} />
       <h1 className="headline whitespace-pre-line px-6 pt-1 text-center text-[22px] leading-[1.35]">{t("voice.headline")}</h1>
       <VoiceCapture
         locale={locale}
+        people={people}
         labels={{
           mode: t("voice.mode"),
           modeVoice: t("voice.modeVoice"),
@@ -29,6 +34,9 @@ export default async function Voice() {
           clear: t("voice.clear"),
           listening: t("voice.listening"),
           placeholder: t("voice.placeholder"),
+          placeholderText: t("voice.placeholderText"),
+          mention: t("voice.mention"),
+          mentionList: t("voice.mentionList"),
           save: t("voice.save"),
           saved: t("voice.saved"),
           isNew: t("voice.newPerson"),

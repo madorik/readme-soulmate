@@ -3,7 +3,8 @@
 import { captureField, describeCapture, isSection, mergeCapture, sanitizeSection, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { aiConfigured, classifyCapture } from "@/lib/ai";
-import { displayName, listNotes, listPeople, readCard, requireSession, sealNote, writeContactSection, writeSection } from "@/lib/data";
+import { displayName, listNotes, listPeople, readCard, requireSession, sealNote, writeContactSection, writeSection, type Person } from "@/lib/data";
+import { resolveMentions } from "@/lib/mention";
 
 /** 화면에 보일 한 줄: "아내 · 요즘 마시는 것 · 바닐라라떼" */
 export interface CaptureLine {
@@ -36,23 +37,30 @@ export interface CaptureState {
 /**
  * 말(글) 한 번을 나눠 사람 기록·내 리드미·메모에 넣는다. 없는 사람은 새로 더한다.
  * aboutId: 그 사람 화면에서 적었을 때. 다른 사람 이름이 없는 말은 그 사람 이야기로 본다
+ * picked: 글로 적기에서 @로 고른 사람(글에 '@부름'이 남아 있는 것만 쓴다). 직접 적은 @낱말도 이름·태그로 찾는다.
+ *   한 사람만 짚으면 그 사람 화면에서 적은 것처럼, 여럿이면 짚은 이름 뒤의 말을 그 사람 이야기로 본다
  */
-export async function captureNote(raw: string, aboutId?: string): Promise<CaptureState> {
+export async function captureNote(raw: string, aboutId?: string, picked?: { id: string; label: string }[]): Promise<CaptureState> {
   const s = await requireSession();
   const { locale } = s.profile;
-  const text = String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, 500);
-  if (!text) return { lines: [], undo: [], error: "nothing" };
+  const said = String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, 500);
+  if (!said) return { lines: [], undo: [], error: "nothing" };
   if (!aiConfigured()) return { lines: [], undo: [], error: "ai_off" };
   const people = await listPeople(s);
-  const about = aboutId ? people.find((p) => p.contactId === aboutId) : undefined;
+  const pickedOk = (Array.isArray(picked) ? picked : [])
+    .filter((m) => m && typeof m.id === "string" && typeof m.label === "string")
+    .map((m) => ({ id: m.id, label: m.label.slice(0, 40) }));
+  const { text, ids } = resolveMentions(
+    said,
+    people.map((p) => ({ id: p.contactId, name: p.name, tag: p.nickname })),
+    pickedOk,
+  );
+  const asCapture = (p: Person) => ({ id: p.contactId, name: p.name, nickname: p.nickname });
+  const mentioned = ids.map((id) => people.find((p) => p.contactId === id)).filter((p): p is Person => !!p);
+  const about = aboutId ? people.find((p) => p.contactId === aboutId) : mentioned.length === 1 ? mentioned[0] : undefined;
   let items;
   try {
-    items = await classifyCapture(
-      text,
-      people.map((p) => ({ id: p.contactId, name: p.name, nickname: p.nickname })),
-      locale,
-      about ? { id: about.contactId, name: about.name, nickname: about.nickname } : null,
-    );
+    items = await classifyCapture(text, people.map(asCapture), locale, about ? asCapture(about) : null, mentioned.map(asCapture));
   } catch {
     return { lines: [], undo: [], error: "failed" };
   }
