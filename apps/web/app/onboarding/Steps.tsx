@@ -44,7 +44,8 @@ export function AvatarStep({ locale, name, avatar, next, mode = "onboarding" }: 
         {onboarding ? null : nameField}
         <AvatarBuilder value={value} onChange={setValue} locale={locale} between={onboarding ? nameField : undefined} />
       </div>
-      <div className={`${onboarding ? "mt-auto" : ""} px-4 pt-4`}>
+      {/* 저장(시작) 버튼은 늘 화면 아래에 붙어 보인다 */}
+      <div className={`bottom-bar mt-auto px-4 pt-4 ${onboarding ? "bg-paper" : "bg-bg"}`}>
         <Submit>{onboarding ? t("onb.avatar.cta") : t("common.save")}</Submit>
       </div>
     </form>

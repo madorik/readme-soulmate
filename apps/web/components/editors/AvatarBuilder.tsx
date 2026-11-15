@@ -135,24 +135,27 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
 
       <div role="tabpanel" className="min-h-[252px] pt-3.5">
         {options ? (
-          <div className="grid grid-cols-3 gap-2.5">
-            {options.list.map((id) => {
-              const on = value[options.key] === id;
-              const label = t(`avatar.${options.key}.${id}` as "avatar.hair.bob");
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={on}
-                  aria-label={label}
-                  onClick={() => set({ [options.key]: id } as Partial<AvatarConfig>)}
-                  className={`flex h-[116px] flex-col items-center justify-end gap-0.5 overflow-hidden rounded-[20px] pb-2 transition-colors ${on ? "bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-accent)]" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-rule)]"}`}
-                >
-                  <AvatarArt config={{ ...value, [options.key]: id } as AvatarConfig} size={82} />
-                  <span className={`text-[12px] ${on ? "font-bold text-accent" : "font-medium text-muted"}`}>{label}</span>
-                </button>
-              );
-            })}
+          // 두 줄(여섯 개)이 넘으면 두 줄로 두고 옆으로 넘겨 본다. 다음 칸이 살짝 보이게 3.3칸 폭
+          <div className={options.list.length > 6 ? "-mx-4 snap-x overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}>
+            <div className={options.list.length > 6 ? "grid auto-cols-[calc((100%-30px)/3.3)] grid-flow-col grid-rows-2 gap-2.5" : "grid grid-cols-3 gap-2.5"}>
+              {options.list.map((id) => {
+                const on = value[options.key] === id;
+                const label = t(`avatar.${options.key}.${id}` as "avatar.hair.bob");
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={on}
+                    aria-label={label}
+                    onClick={() => set({ [options.key]: id } as Partial<AvatarConfig>)}
+                    className={`flex h-[116px] snap-start flex-col items-center justify-end gap-0.5 overflow-hidden rounded-[20px] pb-2 transition-colors ${on ? "bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-accent)]" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-rule)]"}`}
+                  >
+                    <AvatarArt config={{ ...value, [options.key]: id } as AvatarConfig} size={82} />
+                    <span className={`text-[12px] ${on ? "font-bold text-accent" : "font-medium text-muted"}`}>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-4 pt-1">

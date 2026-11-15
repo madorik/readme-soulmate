@@ -9,7 +9,7 @@ export default async function MeProfile() {
   const { locale } = s.profile;
   const t = makeT(locale);
   return (
-    <div className="page-end flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col">
       <TopBar back="/me" label={t("common.back")} />
       <h1 className="headline px-6 pt-2 text-[28px]">{t("profile.title")}</h1>
       <AvatarStep locale={locale} name={s.profile.displayName} avatar={s.profile.avatar} next="/me" mode="edit" />
