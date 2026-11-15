@@ -19,7 +19,7 @@ export async function GET() {
   const data = {
     exportedAt: new Date().toISOString(),
     profile: { name: s.profile.displayName, email: s.user.email, locale: s.profile.locale, timeZone: s.profile.timeZone, avatar: s.profile.avatar, reminderOffsets: s.profile.reminderOffsets },
-    myReadme: card,
+    aboutMe: card,
     people: people.map((p) => ({ name: displayName(p), group: groupOf(p.groupId), favorite: p.favorite, record: p.card, answered: p.answered })),
     groups: groups.filter((g) => !g.builtin).map((g) => g.name),
     myNotes: notes.filter((n) => n.notes.length),
@@ -27,7 +27,7 @@ export async function GET() {
   return new NextResponse(JSON.stringify(data, null, 2), {
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "content-disposition": `attachment; filename="readme-${new Date().toISOString().slice(0, 10)}.json"`,
+      "content-disposition": `attachment; filename="remember-you-${new Date().toISOString().slice(0, 10)}.json"`,
       "cache-control": "no-store",
     },
   });

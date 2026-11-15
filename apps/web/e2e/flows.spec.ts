@@ -72,8 +72,8 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   await expect(page.getByRole("link", { name: "미리보기" })).toHaveCount(0);
   const res = await page.request.get("/api/export");
   const data = await res.json();
-  expect(data.myReadme.safety.allergens).toContain("shrimp");
-  expect(data.myReadme.dates.birthday).toMatchObject({ calendar: "lunar", month: 10, day: 12 });
+  expect(data.aboutMe.safety.allergens).toContain("shrimp");
+  expect(data.aboutMe.dates.birthday).toMatchObject({ calendar: "lunar", month: 10, day: 12 });
   await remember("jisu", page.context());
 });
 
@@ -128,6 +128,23 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await page.goto("/home");
   await expect(page.getByRole("link", { name: /아빠/ })).toBeVisible();
   await shot(page, "08-home");
+});
+
+test("하나만 물으면 답하는 화면도 하나: 진행 막대 없이 바로 보내기", async ({ browser }) => {
+  const page = await as(browser, "jisu");
+  await page.goto("/request");
+  await page.getByPlaceholder("예: 아빠, 장인어른").fill("이모");
+  await onlyTopics(page, ["생활·여행"]);
+  const url = await makeLink(page);
+
+  const aunt = await newPage(browser);
+  await aunt.goto(url);
+  await expect(aunt.getByRole("heading", { name: "지수님이 1가지가 궁금하대요" })).toBeVisible();
+  await expect(aunt.getByText("1/2")).toHaveCount(0);
+  await expect(aunt.getByRole("button", { name: "다음", exact: true })).toHaveCount(0);
+  await aunt.getByRole("button", { name: "가을", exact: true }).click();
+  await aunt.getByRole("button", { name: "보내기", exact: true }).click();
+  await expect(aunt.getByRole("heading", { name: "마음이 전해졌어요" })).toBeVisible();
 });
 
 test("받은 답도 내가 고친다", async ({ browser }) => {
@@ -229,7 +246,7 @@ test("로그인하고 답하기: 내 리드미 값이 미리 채워지고, 내 �
   await doyun.getByRole("link", { name: "기억해유 열기" }).click();
   await expect(doyun).toHaveURL(/\/me$/);
   const mine = await (await doyun.request.get("/api/export")).json();
-  expect(mine.myReadme.sizes.shoe).toBe(235);
+  expect(mine.aboutMe.sizes.shoe).toBe(235);
 
   // 지수 쪽: 도윤의 앱 이름이 보이고, 내가 붙인 '도윤이'는 태그로
   await jisu.goto("/people");
@@ -338,7 +355,7 @@ test("생년월일: 태어난 해를 고르면 나이와 띠가 보인다", asyn
   await jisu.getByRole("button", { name: "저장" }).click();
   await expect(jisu.getByText("저장했어요.", { exact: true })).toBeVisible();
   const data = await (await jisu.request.get("/api/export")).json();
-  expect(data.myReadme.dates.birthday.year).toBe(1993);
+  expect(data.aboutMe.dates.birthday.year).toBe(1993);
 });
 
 test("좋아하는 것들: 무늬·최애를 적으면 내 리드미에 저장된다", async ({ browser }) => {
@@ -349,8 +366,8 @@ test("좋아하는 것들: 무늬·최애를 적으면 내 리드미에 저장�
   await jisu.getByRole("button", { name: "저장" }).click();
   await expect(jisu.getByText("저장했어요.", { exact: true })).toBeVisible();
   const data = await (await jisu.request.get("/api/export")).json();
-  expect(data.myReadme.favorites.idol).toBe("아이유");
-  expect(data.myReadme.favorites.patterns).toContain("stripe");
+  expect(data.aboutMe.favorites.idol).toBe("아이유");
+  expect(data.aboutMe.favorites.patterns).toContain("stripe");
 });
 
 test("설정: 알림 받기를 끄면 언제 알릴지가 숨고, 다시 켜면 보인다", async ({ browser }) => {
@@ -371,7 +388,7 @@ test("계정 삭제: 내 리드미는 지워지고, 나에게 물어본 사람�
   const res = await doyun.request.get("/api/export");
   expect(res.status()).toBe(200);
   const data = await res.json();
-  expect(data.myReadme.dates.birthday).toMatchObject({ calendar: "solar", month: 2, day: 14 });
+  expect(data.aboutMe.dates.birthday).toMatchObject({ calendar: "solar", month: 2, day: 14 });
   // 프로필 고치기에는 얼굴·이름만(로그아웃·계정 삭제 없음), 계정 삭제는 설정 맨 아래
   await doyun.goto("/me/avatar");
   await expect(doyun.getByRole("button", { name: "로그아웃" })).toHaveCount(0);

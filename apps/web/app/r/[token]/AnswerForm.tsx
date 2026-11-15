@@ -33,7 +33,15 @@ function GiftsLite({ value, onChange, locale }: { value: GiftsData; onChange: (v
           <CircleOption large color="ink" label={t("gift.giftCardNo")} on={value.giftCard === "no"} onToggle={() => onChange({ ...value, giftCard: value.giftCard === "no" ? null : "no" })} />
         </div>
       </div>
-      <TextField label={t("gift.skip")} value={skip} onChange={(v) => { setSkip(v); onChange({ ...value, skip: splitList(v) }); }} placeholder={t("gift.skipPlaceholder")} />
+      <TextField
+        label={t("gift.skip")}
+        value={skip}
+        onChange={(v) => {
+          setSkip(v);
+          onChange({ ...value, skip: splitList(v) });
+        }}
+        placeholder={t("gift.skipPlaceholder")}
+      />
     </div>
   );
 }
@@ -106,14 +114,35 @@ export function AnswerForm({
   const answered = sections.filter((s) => modes[s] != null);
   const payload = Object.fromEntries(answered.map((s) => [s, modes[s] === "none" ? emptySection(s) : modes[s] === "ok" ? prefill[s] : answers[s]]));
   const needsConsent = answered.includes("safety");
-  // 한 화면에 한 항목씩. 마지막 화면(sections.length)은 이름·동의·보내기
+  // 한 화면에 한 항목씩, 마지막 화면(sections.length)은 동의·보내기.
+  // 하나만 물었으면 화면 하나: 항목 아래에 동의를 두고 바로 보내기(진행 막대 없음)
+  const single = sections.length === 1;
   const total = sections.length + 1;
-  const last = step === sections.length;
+  const last = !single && step === sections.length;
+  const canSend = single || last;
   const go = (n: number) => {
+    if (single) return;
     setStep(Math.max(0, Math.min(sections.length, n)));
     window.scrollTo({ top: 0 });
   };
   const s = last ? null : sections[step]!;
+  const finish = (
+    <>
+      {signedIn ? (
+        <button type="button" aria-pressed={saveMine} onClick={() => setSaveMine(!saveMine)} className="flex items-start gap-3 text-left">
+          <DrawnCheck on={saveMine} />
+          <span className="text-[14px] leading-[1.5] text-ink-2">{t("answer.saveMine")}</span>
+        </button>
+      ) : null}
+      {needsConsent ? (
+        <button type="button" aria-pressed={consent} onClick={() => setConsent(!consent)} className="flex items-start gap-3 text-left">
+          <DrawnCheck on={consent} />
+          <span className="text-[14px] leading-[1.5] text-ink-2">{t("answer.consent", { from })}</span>
+        </button>
+      ) : null}
+      <span className="text-[13px] leading-[1.5] text-muted">{t("answer.footer", { from })}</span>
+    </>
+  );
 
   return (
     <form
@@ -121,7 +150,7 @@ export function AnswerForm({
       className="flex flex-1 flex-col"
       onKeyDown={(e) => {
         // 마지막 화면 전에는 엔터로 보내지지 않게
-        if (e.key === "Enter" && !last && (e.target as HTMLElement).tagName === "INPUT") e.preventDefault();
+        if (e.key === "Enter" && !canSend && (e.target as HTMLElement).tagName === "INPUT") e.preventDefault();
       }}
     >
       <input type="hidden" name="token" value={token} />
@@ -129,20 +158,24 @@ export function AnswerForm({
       <input type="hidden" name="consent" value={consent ? "1" : "0"} />
       <input type="hidden" name="saveMine" value={signedIn && saveMine ? "1" : "0"} />
 
-      {/* 진행: 뒤로 · 칸 막대 · 몇 번째 */}
-      <div className="sticky top-0 z-20 flex items-center gap-3 bg-bg px-3 pb-2 pt-2" style={{ top: "var(--sat)" }}>
-        <button type="button" onClick={() => go(step - 1)} disabled={step === 0} aria-label={t("common.back")} className="flex h-11 w-11 shrink-0 items-center justify-center disabled:opacity-0">
-          <Icon name="back" size={22} />
-        </button>
-        <div className="flex flex-1 gap-1" aria-hidden="true">
-          {Array.from({ length: total }, (_, i) => (
-            <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-sky" : "bg-rule"}`} />
-          ))}
+      {/* 진행: 뒤로 · 칸 막대 · 몇 번째(하나만 물었으면 없음) */}
+      {single ? (
+        <div className="h-3" />
+      ) : (
+        <div className="sticky top-0 z-20 flex items-center gap-3 bg-bg px-3 pb-2 pt-2" style={{ top: "var(--sat)" }}>
+          <button type="button" onClick={() => go(step - 1)} disabled={step === 0} aria-label={t("common.back")} className="flex h-11 w-11 shrink-0 items-center justify-center disabled:opacity-0">
+            <Icon name="back" size={22} />
+          </button>
+          <div className="flex flex-1 gap-1" aria-hidden="true">
+            {Array.from({ length: total }, (_, i) => (
+              <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-sky" : "bg-rule"}`} />
+            ))}
+          </div>
+          <span className="num w-11 shrink-0 text-center text-[13px] !font-bold text-muted">
+            {step + 1}/{total}
+          </span>
         </div>
-        <span className="num w-11 shrink-0 text-center text-[13px] !font-bold text-muted">
-          {step + 1}/{total}
-        </span>
-      </div>
+      )}
 
       {step === 0 ? (
         <div className="flex items-start gap-3 px-5 pt-3">
@@ -194,7 +227,13 @@ export function AnswerForm({
           {modes[s] === "fix" || modes[s] === "new" ? (
             <div className="flex flex-col gap-4">
               {s === "dates" ? (
-                <DateSpecPicker large year="birth" value={answers.dates?.birthday ?? null} onChange={(birthday) => set("dates", { birthday, anniversaries: answers.dates?.anniversaries ?? [] })} locale={locale} />
+                <DateSpecPicker
+                  large
+                  year="birth"
+                  value={answers.dates?.birthday ?? null}
+                  onChange={(birthday) => set("dates", { birthday, anniversaries: answers.dates?.anniversaries ?? [] })}
+                  locale={locale}
+                />
               ) : null}
               {s === "safety" ? <SafetyEditor large value={answers.safety ?? emptySection("safety")} onChange={(v) => set("safety", v)} locale={locale} /> : null}
               {s === "taste" ? <TasteEditor large value={answers.taste ?? emptySection("taste")} onChange={(v) => set("taste", v)} locale={locale} /> : null}
@@ -226,21 +265,10 @@ export function AnswerForm({
             <Mascot size={44} />
             <h2 className="text-[19px] font-bold tracking-[-0.02em]">{t("answer.almost")}</h2>
           </div>
-          {signedIn ? (
-            <button type="button" aria-pressed={saveMine} onClick={() => setSaveMine(!saveMine)} className="flex items-start gap-3 text-left">
-              <DrawnCheck on={saveMine} />
-              <span className="text-[14px] leading-[1.5] text-ink-2">{t("answer.saveMine")}</span>
-            </button>
-          ) : null}
-          {needsConsent ? (
-            <button type="button" aria-pressed={consent} onClick={() => setConsent(!consent)} className="flex items-start gap-3 text-left">
-              <DrawnCheck on={consent} />
-              <span className="text-[14px] leading-[1.5] text-ink-2">{t("answer.consent", { from })}</span>
-            </button>
-          ) : null}
-          <span className="text-[13px] leading-[1.5] text-muted">{t("answer.footer", { from })}</span>
+          {finish}
         </section>
       )}
+      {single ? <div className="mx-5 mt-4 flex flex-col gap-4">{finish}</div> : null}
 
       <div className="bottom-bar mt-auto flex flex-col gap-2 bg-bg px-4 pt-4">
         {state.error ? (
@@ -248,7 +276,7 @@ export function AnswerForm({
             {t(state.error === "consent" ? "answer.needConsent" : state.error === "closed" ? "accept.expired" : state.error === "self" ? "answer.self" : "common.error")}
           </p>
         ) : null}
-        {last ? (
+        {canSend ? (
           <button disabled={pending || !answered.length || (needsConsent && !consent)} className="btn-primary h-[58px] w-full text-[17px]">
             {t("answer.send")}
           </button>
