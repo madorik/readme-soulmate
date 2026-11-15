@@ -2,7 +2,7 @@
 
 import type { Locale } from "@readme/core";
 import Link from "next/link";
-import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
 import { Icon } from "@/components/marks";
 
@@ -39,6 +39,84 @@ function nativeSpeech(): NativeSpeech | null {
   return cap?.isNativePlatform?.() && cap.Plugins?.SpeechRecognition ? cap.Plugins.SpeechRecognition : null;
 }
 
+const BARS = 10;
+
+/**
+ * 마이크 양옆 음파. 브라우저는 마이크 소리 크기(AnalyserNode)만큼, 소리를 잴 수 없으면(앱의 기기 인식 등) 부드럽게 흔들리는 모양.
+ * 막대 높이는 그릴 때마다 DOM에 바로 넣는다(화면을 다시 그리지 않게)
+ */
+function Waveform({ active, measure, children }: { active: boolean; measure: boolean; children: React.ReactNode }) {
+  const left = useRef<HTMLDivElement>(null);
+  const right = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bars = (i: number) => [left.current?.children[BARS - 1 - i], right.current?.children[i]].filter(Boolean) as HTMLElement[];
+    const set = (levels: number[]) => levels.forEach((v, i) => bars(i).forEach((b) => (b.style.transform = `scaleY(${Math.max(0.12, Math.min(1, v))})`)));
+    if (!active) {
+      set(Array(BARS).fill(0.12));
+      return;
+    }
+    let raf = 0;
+    let stopped = false;
+    let stream: MediaStream | null = null;
+    let ctx: AudioContext | null = null;
+    let analyser: AnalyserNode | null = null;
+    let data = new Uint8Array(0);
+    // 소리 크기(RMS)를 부드럽게 따라가고, 막대는 그 크기만큼 물결친다. 조용해도 듣는 중에는 조금씩 움직인다
+    let level = 0;
+    const draw = (t: number) => {
+      let target: number;
+      if (analyser) {
+        analyser.getByteTimeDomainData(data);
+        let sum = 0;
+        for (const v of data) sum += ((v - 128) / 128) ** 2;
+        target = Math.min(1, Math.sqrt(sum / data.length) * 7);
+      } else {
+        target = 0.45 + 0.25 * Math.sin(t / 320);
+      }
+      level += (target - level) * 0.25;
+      set(Array.from({ length: BARS }, (_, i) => (0.3 + 0.7 * level) * (0.45 + 0.55 * Math.abs(Math.sin(t / 140 + i * 0.9))) * (1 - i / (BARS * 1.8))));
+      raf = requestAnimationFrame(draw);
+    };
+    void (async () => {
+      if (measure && navigator.mediaDevices?.getUserMedia) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+          if (stopped) return stream.getTracks().forEach((tr) => tr.stop());
+          ctx = new AudioContext();
+          analyser = ctx.createAnalyser();
+          analyser.fftSize = 512;
+          ctx.createMediaStreamSource(stream).connect(analyser);
+          data = new Uint8Array(analyser.frequencyBinCount);
+        } catch {
+          analyser = null;
+        }
+      }
+      if (!stopped) raf = requestAnimationFrame(draw);
+    })();
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(raf);
+      stream?.getTracks().forEach((tr) => tr.stop());
+      void ctx?.close().catch(() => {});
+      set(Array(BARS).fill(0.12));
+    };
+  }, [active, measure]);
+  const side = (ref: React.RefObject<HTMLDivElement | null>) => (
+    <div ref={ref} aria-hidden="true" className={`flex items-center gap-[4px] transition-opacity ${active ? "opacity-100" : "opacity-20"}`}>
+      {Array.from({ length: BARS }, (_, i) => (
+        <span key={i} className="block h-12 w-[4px] origin-center rounded-full bg-ink transition-transform duration-75" style={{ transform: "scaleY(0.12)" }} />
+      ))}
+    </div>
+  );
+  return (
+    <div className="flex items-center justify-center gap-3.5">
+      {side(left)}
+      {children}
+      {side(right)}
+    </div>
+  );
+}
+
 type Labels = {
   speak: string;
   clear: string;
@@ -71,6 +149,14 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
   const web = useRef<WebRecognition | null>(null);
   const native = useRef<{ plugin: NativeSpeech; remove: () => Promise<void> } | null>(null);
   const heard = useRef("");
+  const box = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [text, result]);
 
   useEffect(
     () => () => {
@@ -207,7 +293,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
     );
   }
 
-  // 위: 말한(적은) 문장을 크게. 아래: 탭 막대 가운데 마이크와 같은 자리에 [지우기] (마이크) [적기]
+  // 가운데: 음파 사이 마이크, 바로 밑에 받아 적는 글(작게 시작해 글만큼 늘어난다). 아래: [지우기] [적기]
   return (
     <form
       className="flex flex-1 flex-col"
@@ -216,56 +302,50 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
         submit(text);
       }}
     >
-      <div className="mx-4 mt-4 flex flex-1 flex-col rounded-3xl bg-white px-5 py-5 shadow-[0_0_0_1px_var(--color-rule)]">
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          maxLength={500}
-          placeholder={labels.placeholder}
-          aria-label={labels.placeholder}
-          className="min-h-[160px] w-full flex-1 resize-none bg-transparent text-[22px] font-bold leading-[1.5] tracking-[-0.02em] outline-none placeholder:font-semibold placeholder:text-muted/60"
-        />
-      </div>
-      {error ? (
-        <p role="alert" className="px-6 pt-3 text-[14px] text-red">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="bottom-bar mt-auto bg-bg px-4 pt-5">
+      <div className="flex flex-1 flex-col items-center justify-center px-5 pb-6">
         {canListen ? (
-          <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
-            <div className="flex justify-start pt-[22px]">
-              {text && !listening && !pending ? (
-                <button type="button" onClick={() => setText("")} className="pill !h-11 !px-4 text-[14px]">
-                  {labels.clear}
-                </button>
-              ) : null}
-            </div>
-            <div className="flex flex-col items-center gap-2">
+          <>
+            <Waveform active={listening} measure={!nativeSpeech()}>
               <button
                 type="button"
                 onClick={() => void listen()}
                 aria-pressed={listening}
                 aria-label={listening ? labels.listening : labels.speak}
                 disabled={pending}
-                className={`grad flex h-[88px] w-[88px] items-center justify-center rounded-full shadow-[var(--shadow-btn)] transition-transform active:scale-95 ${listening ? "animate-pulse" : ""}`}
+                className="grad flex h-[104px] w-[104px] shrink-0 items-center justify-center rounded-full shadow-[var(--shadow-btn)] transition-transform active:scale-95"
               >
-                <Icon name="mic" size={36} strokeWidth={2} />
+                <Icon name="mic" size={42} strokeWidth={2} />
               </button>
-              <span className="text-[13px] font-bold text-muted">{listening ? labels.listening : labels.speak}</span>
-            </div>
-            <div className="flex justify-end pt-[22px]">
-              <button disabled={pending || listening || !text.trim()} className="grad flex h-11 items-center rounded-full px-5 text-[15px] font-bold shadow-[var(--shadow-btn)] transition-opacity disabled:opacity-40 disabled:shadow-none">
-                {pending ? "…" : labels.save}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button disabled={pending || !text.trim()} className="btn-primary w-full">
-            {pending ? "…" : labels.save}
+            </Waveform>
+            <span className="pt-3 text-[13.5px] font-bold text-muted">{listening ? labels.listening : labels.speak}</span>
+          </>
+        ) : null}
+        <textarea
+          ref={box}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={1}
+          maxLength={500}
+          placeholder={labels.placeholder}
+          aria-label={labels.placeholder}
+          className={`max-h-[40vh] w-full resize-none overflow-y-auto bg-transparent text-center text-[21px] font-bold leading-[1.5] tracking-[-0.02em] outline-none placeholder:font-semibold placeholder:text-muted/60 ${canListen ? "mt-6 min-h-[96px]" : "mt-2 rounded-2xl bg-white px-4 py-4 text-left shadow-[0_0_0_1px_var(--color-rule)]"}`}
+        />
+        {error ? (
+          <p role="alert" className="pt-3 text-center text-[14px] text-red">
+            {error}
+          </p>
+        ) : null}
+      </div>
+
+      <div className={`bottom-bar mt-auto grid gap-2.5 bg-bg px-4 pt-4 ${text && !listening && !pending ? "grid-cols-[auto_1fr]" : "grid-cols-1"}`}>
+        {text && !listening && !pending ? (
+          <button type="button" onClick={() => setText("")} className="btn-outline !px-6">
+            {labels.clear}
           </button>
-        )}
+        ) : null}
+        <button disabled={pending || listening || !text.trim()} className="btn-primary w-full">
+          {pending ? "…" : labels.save}
+        </button>
       </div>
     </form>
   );
