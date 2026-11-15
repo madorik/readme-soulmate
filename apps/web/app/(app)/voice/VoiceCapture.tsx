@@ -40,24 +40,17 @@ function nativeSpeech(): NativeSpeech | null {
 }
 
 /**
- * 구슬 속 빛 덩어리 넷(흰빛 · 하늘색 · 파랑 · 청록). 저마다 다른 빠르기·방향으로 가운데를 돌며 흐릿하게 섞인다.
- * size: 구슬 지름 대비 크기, radius: 도는 반지름(구슬 지름 대비), speed: 1초에 도는 각(라디안)
- */
-const BLOBS = [
-  { color: "rgba(37,99,235,0.95)", size: 1.0, radius: 0.24, speed: 0.22, phase: 4.2 },
-  { color: "rgba(103,232,249,0.85)", size: 0.75, radius: 0.26, speed: -0.38, phase: 1.0 },
-  { color: "rgba(147,197,253,0.95)", size: 0.9, radius: 0.22, speed: -0.27, phase: 2.4 },
-  { color: "rgba(255,255,255,0.95)", size: 0.8, radius: 0.2, speed: 0.33, phase: 0 },
-] as const;
-
-/**
- * 가운데 음성 구슬(ChatGPT 음성 모드 같은). 평소엔 빛이 천천히 돌고, 목소리가 들리면 그 크기만큼 빨리 돌며 구슬이 숨 쉬듯 커진다.
+ * 가운데 물방울. 깨끗하고 투명한 물이 동그라미 안에서 출렁이는 느낌:
+ * 속은 거의 투명하고 가장자리만 빛이 꺾이듯 푸르스름하며, 왼쪽 위에 흰 반짝임과 가장자리를 따라 비친 초승달 빛, 오른쪽 아래에 모인 빛, 바닥에 그림자와 물을 지난 밝은 빛.
+ * 테두리 모양(border-radius)을 조금씩 바꿔 말랑하게 흔들리고, 속물이 출렁인다. 목소리가 클수록 크고 빠르게 흔들린다.
  * 브라우저는 마이크 소리 크기(AnalyserNode)를, 잴 수 없는 곳(앱의 기기 인식)은 듣는 동안 부드럽게 오르내리는 값을 쓴다.
  * 움직임 줄이기를 켠 사람에게는 멈춘다. 값은 그릴 때마다 DOM에 바로 넣는다(화면을 다시 그리지 않게)
  */
-function VoiceOrb({ active, measure, size = 220 }: { active: boolean; measure: boolean; size?: number }) {
-  const wrap = useRef<HTMLDivElement>(null);
-  const blobs = useRef<(HTMLDivElement | null)[]>([]);
+function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: boolean; size?: number }) {
+  const body = useRef<HTMLDivElement>(null);
+  const slosh = useRef<HTMLDivElement>(null);
+  const shine = useRef<HTMLDivElement>(null);
+  const shadow = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const still = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
@@ -67,8 +60,8 @@ function VoiceOrb({ active, measure, size = 220 }: { active: boolean; measure: b
     let analyser: AnalyserNode | null = null;
     let data = new Uint8Array(0);
     let level = 0;
+    let phase = 0;
     let last = 0;
-    const angles: number[] = BLOBS.map((b) => b.phase);
     const draw = (t: number) => {
       const dt = last ? Math.min(0.05, (t - last) / 1000) : 0;
       last = t;
@@ -82,19 +75,19 @@ function VoiceOrb({ active, measure, size = 220 }: { active: boolean; measure: b
         target = 0.35 + 0.25 * Math.sin(t / 380);
       }
       level += (target - level) * 0.14;
-      BLOBS.forEach((b, i) => {
-        const el = blobs.current[i];
-        if (!el) return;
-        if (!still) angles[i] = angles[i]! + dt * b.speed * (1 + 4 * level);
-        const r = b.radius * size * (1 + 0.35 * level);
-        const wobble = 1 + 0.18 * level * Math.sin(t / 220 + i * 1.7);
-        el.style.transform = `translate3d(${Math.cos(angles[i]!) * r}px, ${Math.sin(angles[i]!) * r}px, 0) scale(${wobble})`;
-      });
-      if (wrap.current) {
-        const breathe = still ? 1 : 1 + 0.08 * level + (active ? 0.012 * Math.sin(t / 600) : 0);
-        wrap.current.style.transform = `scale(${breathe})`;
-        wrap.current.style.boxShadow = `0 30px 70px -26px rgba(37,99,235,${0.35 + 0.4 * level}), 0 0 ${Math.round(40 * level)}px rgba(125,190,255,${0.45 * level})`;
+      if (!still) phase += dt * (1.1 + 3.2 * level);
+      const a = still ? 0 : 2.2 + 7 * level; // 테두리 출렁임(%)
+      const w = (k: number, o: number) => 50 + a * Math.sin(phase * k + o);
+      const radius = `${w(1.0, 0)}% ${w(1.3, 1.1)}% ${w(0.9, 2.3)}% ${w(1.2, 3.7)}% / ${w(1.1, 0.6)}% ${w(0.8, 2.0)}% ${w(1.4, 2.9)}% ${w(1.0, 4.4)}%`;
+      const squash = still ? 0 : (0.012 + 0.05 * level) * Math.sin(phase * 1.6);
+      const grow = 1 + (still ? 0 : 0.06 * level);
+      if (body.current) {
+        body.current.style.borderRadius = radius;
+        body.current.style.transform = `scale(${grow * (1 + squash)}, ${grow * (1 - squash)})`;
       }
+      if (slosh.current) slosh.current.style.transform = `translate(${Math.sin(phase * 0.9) * (6 + 14 * level)}px, ${Math.cos(phase * 1.2) * (4 + 10 * level)}px) rotate(${Math.sin(phase * 0.7) * 12}deg)`;
+      if (shine.current) shine.current.style.transform = `translate(${-Math.sin(phase * 0.9) * 3}px, ${-Math.cos(phase * 1.2) * 2}px) rotate(-28deg)`;
+      if (shadow.current) shadow.current.style.transform = `translateX(-50%) scale(${grow * (1 + squash * 1.5)}, 1)`;
       raf = requestAnimationFrame(draw);
     };
     void (async () => {
@@ -119,35 +112,79 @@ function VoiceOrb({ active, measure, size = 220 }: { active: boolean; measure: b
       stream?.getTracks().forEach((tr) => tr.stop());
       void ctx?.close().catch(() => {});
     };
-  }, [active, measure, size]);
+  }, [active, measure]);
   return (
-    <div
-      ref={wrap}
-      aria-hidden="true"
-      className="relative overflow-hidden rounded-full"
-      style={{ width: size, height: size, background: "linear-gradient(180deg, #e0efff 0%, #9cc8fb 48%, #3d7cf0 100%)", boxShadow: "0 30px 70px -26px rgba(37,99,235,0.35)" }}
-    >
-      <div className="absolute inset-0" style={{ filter: `blur(${Math.round(size * 0.08)}px)` }}>
-        {BLOBS.map((b, i) => (
-          <div
-            key={i}
-            ref={(el) => {
-              blobs.current[i] = el;
-            }}
-            className="absolute rounded-full will-change-transform"
-            style={{
-              width: size * b.size,
-              height: size * b.size,
-              left: (size - size * b.size) / 2,
-              top: (size - size * b.size) / 2,
-              background: `radial-gradient(circle, ${b.color} 0%, rgba(255,255,255,0) 66%)`,
-            }}
-          />
-        ))}
+    <div aria-hidden="true" className="relative" style={{ width: size, height: size + 26 }}>
+      {/* 바닥 그림자와, 물을 지나 모인 밝은 빛 */}
+      <div
+        ref={shadow}
+        className="absolute left-1/2 rounded-[50%]"
+        style={{
+          bottom: 0,
+          width: size * 0.72,
+          height: 22,
+          transform: "translateX(-50%)",
+          background: "radial-gradient(ellipse at 50% 50%, rgba(160,230,255,0.85) 0%, rgba(120,190,235,0.35) 28%, rgba(40,90,150,0.22) 55%, rgba(40,90,150,0) 75%)",
+          filter: "blur(5px)",
+        }}
+      />
+      {/* 물방울 몸 */}
+      <div
+        ref={body}
+        className="absolute left-0 top-0 overflow-hidden will-change-transform"
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle at 50% 48%, rgba(255,255,255,0.06) 0%, rgba(214,240,255,0.16) 45%, rgba(140,200,240,0.5) 78%, rgba(70,145,215,0.8) 100%)",
+          boxShadow:
+            "inset 0 0 0 1.5px rgba(255,255,255,0.75), inset 0 14px 26px rgba(40,110,180,0.22), inset 0 -18px 30px rgba(255,255,255,0.75), inset 0 -2px 10px rgba(120,200,255,0.5), 0 22px 40px -22px rgba(30,90,160,0.4)",
+        }}
+      >
+        {/* 속에서 출렁이는 물빛 */}
+        <div
+          ref={slosh}
+          className="absolute will-change-transform"
+          style={{
+            inset: "-15%",
+            background: "radial-gradient(ellipse 55% 40% at 50% 78%, rgba(80,170,235,0.28), rgba(80,170,235,0) 70%), radial-gradient(ellipse 40% 30% at 38% 40%, rgba(255,255,255,0.25), rgba(255,255,255,0) 70%)",
+          }}
+        />
+        {/* 오른쪽 아래에 모인 빛(꺾인 빛) */}
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 34% 22% at 66% 84%, rgba(255,255,255,0.9), rgba(255,255,255,0) 70%)" }} />
       </div>
-      {/* 유리 같은 윗빛과 가장자리 깊이 */}
-      <div className="pointer-events-none absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle at 32% 20%, rgba(255,255,255,0.55), rgba(255,255,255,0) 36%)" }} />
-      <div className="pointer-events-none absolute inset-0 rounded-full" style={{ boxShadow: "inset 0 -20px 40px rgba(29,78,216,0.35), inset 0 10px 26px rgba(255,255,255,0.4)" }} />
+      {/* 왼쪽 위 반짝임 */}
+      <div
+        ref={shine}
+        className="absolute"
+        style={{
+          left: size * 0.2,
+          top: size * 0.13,
+          width: size * 0.28,
+          height: size * 0.15,
+          borderRadius: "50%",
+          background: "radial-gradient(ellipse at 50% 50%, rgba(255,255,255,1) 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0) 62%)",
+          transform: "rotate(-28deg)",
+        }}
+      />
+      {/* 가장자리를 따라 비친 가는 초승달 빛 */}
+      <div
+        className="pointer-events-none absolute rounded-full"
+        style={{
+          left: size * 0.07,
+          top: size * 0.07,
+          width: size * 0.86,
+          height: size * 0.86,
+          borderTop: `${Math.round(size * 0.022)}px solid rgba(255,255,255,0.7)`,
+          borderLeft: `${Math.round(size * 0.012)}px solid rgba(255,255,255,0.35)`,
+          borderRight: "0 solid transparent",
+          borderBottom: "0 solid transparent",
+          transform: "rotate(-20deg)",
+          filter: "blur(1.5px)",
+        }}
+      />
+      <div className="absolute rounded-full bg-white/90" style={{ left: size * 0.47, top: size * 0.12, width: size * 0.045, height: size * 0.045, filter: "blur(0.5px)" }} />
     </div>
   );
 }
@@ -328,7 +365,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
     );
   }
 
-  // ChatGPT 음성 모드처럼: 가운데 구슬(누르면 듣기·멈추기), 바로 밑에 받아 적는 글. 아래: 둥근 마이크 · 기억해 두기
+  // 가운데 물방울(누르면 듣기·멈추기), 바로 밑에 받아 적는 글. 아래: 둥근 마이크 · 기억해 두기
   const idle = !!text && !listening && !pending;
   return (
     <form
@@ -347,7 +384,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
           disabled={pending || !canListen}
           className="shrink-0 rounded-full transition-transform active:scale-95 disabled:active:scale-100"
         >
-          <VoiceOrb active={listening} measure={!nativeSpeech()} />
+          <WaterDrop active={listening} measure={!nativeSpeech()} />
         </button>
         <textarea
           ref={box}
