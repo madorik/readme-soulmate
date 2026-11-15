@@ -27,12 +27,18 @@ export function MyReadmeList({
   locale,
   labels,
   initialOpen = null,
+  contactId,
+  stickyTop = BELOW_HEAD,
 }: {
   rows: MyRow[];
   card: PartialCard;
   locale: Locale;
   labels: { edit: string; close: string };
   initialOpen?: Section | null;
+  /** 있으면 그 사람 기록에 저장(사람 정보 수정 화면) */
+  contactId?: string;
+  /** 펼친 항목 머리가 붙을 위치(기본: 내 리드미의 고정 프로필 아래) */
+  stickyTop?: string;
 }) {
   const [open, setOpen] = useState<Section | null>(initialOpen);
   const items = useRef<Partial<Record<Section, HTMLLIElement | null>>>({});
@@ -60,7 +66,7 @@ export function MyReadmeList({
               items.current[section] = el;
             }}
             className="border-t border-rule first:border-t-0"
-            style={{ scrollMarginTop: BELOW_HEAD }}
+            style={{ scrollMarginTop: stickyTop }}
           >
             <button
               type="button"
@@ -68,7 +74,7 @@ export function MyReadmeList({
               aria-controls={`edit-${section}`}
               onClick={() => setOpen(isOpen ? null : section)}
               className={`flex min-h-[76px] w-full items-center gap-2.5 py-3 text-left ${isOpen ? "sticky z-20 border-b border-rule bg-white" : ""}`}
-              style={isOpen ? { top: BELOW_HEAD } : undefined}
+              style={isOpen ? { top: stickyTop } : undefined}
             >
               <SectionIcon section={section} />
               <span className="flex min-w-0 flex-1 flex-col gap-0.5 pl-1">
@@ -80,7 +86,7 @@ export function MyReadmeList({
             </button>
             {isOpen ? (
               <div id={`edit-${section}`} className="pt-3">
-                <SectionForm section={section} initial={card[section] ?? null} locale={locale} inline autoSave />
+                <SectionForm section={section} initial={card[section] ?? null} locale={locale} contactId={contactId} inline autoSave />
               </div>
             ) : null}
           </li>

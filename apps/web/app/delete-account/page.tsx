@@ -15,7 +15,7 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
         <ol>
           <li>Open Remember You and sign in.</li>
           <li>
-            Go to the <b>Me</b> tab, tap <b>Edit profile</b>, and scroll to the bottom.
+            Go to the <b>Settings</b> tab and scroll to the bottom.
           </li>
           <li>
             Tap <b>Delete account</b>, then <b>Delete everything</b>.
@@ -65,7 +65,7 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
       <ol>
         <li>기억해유를 열고 로그인합니다.</li>
         <li>
-          아래 <b>나</b> 탭에서 <b>프로필 고치기</b>를 누르고 맨 아래로 내립니다.
+          아래 <b>설정</b> 탭을 열고 맨 아래로 내립니다.
         </li>
         <li>
           <b>계정 삭제</b>를 누르고 <b>모두 지우기</b>를 누릅니다.
@@ -84,7 +84,7 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
           <b>사람들</b>: 사람을 열고 <b>메모</b>를 눌러 메모 옆 ×를 누르면 그 메모가 지워집니다.
         </li>
         <li>
-          같은 화면에서 <b>프로필 고치기</b>를 열고 맨 아래 <b>사람들에서 지우기</b>를 누르면 그 사람과 그 사람에 대한 기록·메모·물어보기 링크가 모두 지워집니다.
+          같은 화면에서 <b>프로필 수정</b>을 열고 맨 아래 <b>사람들에서 지우기</b>를 누르면 그 사람과 그 사람에 대한 기록·메모·물어보기 링크가 모두 지워집니다.
         </li>
         <li>
           <b>설정</b>: 아직 아무도 답하지 않은 물어보기 링크 옆 <b>취소</b>를 누르면 링크가 더는 열리지 않습니다.

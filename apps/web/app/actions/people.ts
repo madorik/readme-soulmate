@@ -118,7 +118,7 @@ export async function savePersonSection(_: SaveState, form: FormData): Promise<S
   } catch {
     return { saved: false, error: true };
   }
-  revalidatePath(`/people/${contactId}`);
+  revalidatePath(`/people/${contactId}`, "layout");
   revalidatePath("/people");
   revalidatePath("/home");
   return { saved: true, error: false };

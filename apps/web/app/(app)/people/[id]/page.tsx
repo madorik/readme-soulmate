@@ -1,4 +1,4 @@
-import { formatMonthDay, isSection, parseYmd, SECTIONS_BY_IMPORTANCE } from "@readme/core";
+import { formatMonthDay, parseYmd, SECTIONS_BY_IMPORTANCE } from "@readme/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cancelInvite } from "@/app/actions/request";
@@ -6,17 +6,17 @@ import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
 import { Icon } from "@/components/marks";
 import { SectionBody } from "@/components/SectionBody";
+import { SectionIcon } from "@/components/SectionIcon";
 import { aiConfigured } from "@/lib/ai";
 import { displayName, groupName, listGroups, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { FavoriteStar } from "./FavoriteStar";
 import { NotesButton } from "./NotesButton";
 import { PersonOrganize } from "./PersonOrganize";
-import { PersonRecord } from "./PersonRecord";
 import { QuickNote } from "./QuickNote";
 import { TagEditor } from "./TagEditor";
 
-export default async function PersonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string; open?: string }> }) {
+export default async function PersonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
   const { id } = await params;
   // 고르기 중에 들어왔으면 뒤로 갈 때 고르던 상태(/people?pick=1&with=…)로 돌아간다. 사람들 화면 주소만 받는다
   const sp = await searchParams;
@@ -32,6 +32,8 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   const today = todayFor(s.profile);
   const [notes, groups] = await Promise.all([s.tx((q) => listNotes(q, s.user.id, p.contactId)), s.tx((q) => listGroups(q, s.user.id))]);
   const waiting = p.asking?.state === "active" ? p.asking : null;
+  // 적어 둔 항목만(중요한 순서)
+  const filled = SECTIONS_BY_IMPORTANCE.map((section) => ({ section, body: SectionBody({ section, card: p.card, today, locale, t }) })).filter((x) => x.body != null);
 
   return (
     <>
@@ -139,23 +141,39 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         />
       ) : null}
 
-      {/* 기억해 둔 것: 항목마다 적어 둔 게 바로 보이고, 누르면 그 자리에서 고친다 */}
-      <PersonRecord
-        contactId={p.contactId}
-        card={p.card}
-        locale={locale}
-        rows={SECTIONS_BY_IMPORTANCE.map((section) => ({
-          section,
-          title: t(`section.${section}` as "section.safety"),
-          body: SectionBody({ section, card: p.card, today, locale, t }),
-        }))}
-        labels={{ edit: t("me.edit"), close: t("me.close"), write: t("person.write"), done: t("person.editDone") }}
-        initialOpen={isSection(sp.open) ? sp.open : null}
-      />
+      {/* 기억해 둔 것: 적어 둔 항목만 미리 보기. 연필(수정)을 누르면 모든 항목을 고치는 화면, 항목을 누르면 그 항목이 펼쳐진 채로 */}
+      <section aria-labelledby="mine-title" className="mx-4 mt-4 flex flex-col">
+        <div className="flex min-h-11 items-center justify-between pl-2">
+          <h2 id="mine-title" className="section-title">
+            {t("person.mineList")}
+          </h2>
+          <Link href={`/people/${p.contactId}/edit`} aria-label={t("me.edit")} className="flex h-11 w-11 items-center justify-center rounded-full text-ink-2 active:bg-fill">
+            <Icon name="pencil" size={19} strokeWidth={2} />
+          </Link>
+        </div>
+        {filled.length ? (
+          <ul className="card mt-1 flex flex-col px-[18px]">
+            {filled.map(({ section, body }) => (
+              <li key={section} className="border-t border-rule first:border-t-0">
+                <Link href={`/people/${p.contactId}/edit?open=${section}`} className="flex min-h-[56px] items-center gap-3 pb-1 pt-3">
+                  <SectionIcon section={section} size={36} />
+                  <span className={`min-w-0 flex-1 text-[16px] font-bold tracking-[-0.02em] ${section === "safety" ? "text-red" : ""}`}>{t(`section.${section}` as "section.safety")}</span>
+                  <Icon name="chevron" size={17} className="shrink-0 text-muted" />
+                </Link>
+                <div className="pb-3.5">{body}</div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Link href={`/people/${p.contactId}/edit`} className="card mt-1 flex min-h-[72px] items-center justify-center gap-1.5 text-[15px] font-bold text-accent">
+            <Icon name="plus" size={17} strokeWidth={2.4} />
+            {t("person.write")}
+          </Link>
+        )}
+      </section>
 
-      {/* 항목을 고치는 동안은 아래 버튼 줄을 숨기고, 그 자리를 화면 끝 여백으로 */}
-      <div className="page-end show-while-editing" />
-      <div className="bottom-bar hide-while-editing mt-auto grid grid-cols-2 gap-2.5 bg-bg px-6 pt-4">
+      <div className="h-6" />
+      <div className="bottom-bar mt-auto grid grid-cols-2 gap-2.5 bg-bg px-6 pt-4">
         <Link href={`/request?to=${encodeURIComponent(p.contactId)}`} className="btn-outline">
           {t("person.askMore")}
         </Link>
