@@ -38,7 +38,7 @@ cd apps/mobile && CAP_SERVER_URL=https://readme.watalabs.com npx cap sync androi
 cd ../../.. && node apps/mobile/scripts/store/release.mjs apps/mobile/android/app/build/outputs/bundle/release/app-release.aab alpha "첫 비공개 테스트"
 ```
 
-네 번째 인자로 영어 출시 노트를 줄 수 있다(`release.mjs <aab> alpha "한국어 노트" "English notes"`). 2026-11-14 기준 비공개 테스트에 0.1.1(versionCode 2)까지 올라감. 앱이 아직 한 번도 검토를 안 거쳤으면 Play가 초안 출시만 받는다. 스크립트가 알아서 초안으로 만들고, 콘솔에서 '검토를 위해 전송'을 누른다.
+네 번째 인자로 영어 출시 노트를 줄 수 있다(`release.mjs <aab> alpha "한국어 노트" "English notes"`). 2026-11-15 비공개 테스트에 0.2.0(versionCode 3) 올림(말로 적기 기기 음성 인식). R8이 Capacitor 플러그인 어노테이션을 지우면 권한 요청에서 앱이 죽으므로 `proguard-rules.pro`의 keep 규칙을 지운다면 안 된다. 앱이 아직 한 번도 검토를 안 거쳤으면 Play가 초안 출시만 받는다. 스크립트가 알아서 초안으로 만들고, 콘솔에서 '검토를 위해 전송'을 누른다.
 
 ## 3. 앱 콘텐츠(정책) 답
 
