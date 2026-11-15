@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { play, withEdit } from "./play.mjs";
 
 const STORE = fileURLToPath(new URL("../../store/", import.meta.url));
-const SITE = "https://readme.watalabs.com";
+const SITE = "https://remember-you.watalabs.com";
 const EMAIL = "watalabs.help@gmail.com";
 
 export const LISTINGS = {

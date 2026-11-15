@@ -1,5 +1,5 @@
 // Play 스토어 휴대폰 스크린샷(1080×1920, 9:16). 운영 사이트의 데모 계정으로 찍는다(데모 계정은 7일 뒤 지워진다).
-//   node apps/mobile/scripts/store-screens.mjs [사이트 주소=https://readme.watalabs.com]
+//   node apps/mobile/scripts/store-screens.mjs [사이트 주소=https://remember-you.watalabs.com]
 // 결과: apps/mobile/store/screens/{ko,en}/01-….png
 import { mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -8,7 +8,7 @@ import { dirname, resolve } from "node:path";
 const here = dirname(new URL(import.meta.url).pathname);
 const mobile = resolve(here, "..");
 const { chromium } = createRequire(resolve(mobile, "../web/package.json"))("@playwright/test");
-const SITE = (process.argv[2] || "https://readme.watalabs.com").replace(/\/+$/, "");
+const SITE = (process.argv[2] || "https://remember-you.watalabs.com").replace(/\/+$/, "");
 
 const browser = await chromium.launch();
 for (const lang of ["ko", "en"]) {

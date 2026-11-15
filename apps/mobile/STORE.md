@@ -13,10 +13,10 @@
 | 기본 언어 | 한국어(ko-KR), 번역 영어(en-US) |
 | 카테고리 | 앱 > 라이프스타일 |
 | 연락처 이메일 | watalabs.help@gmail.com |
-| 웹사이트 | https://readme.watalabs.com |
-| 개인정보 처리방침 | https://readme.watalabs.com/privacy-policy (영어 `?lang=en`) |
-| 이용약관 | https://readme.watalabs.com/terms |
-| 계정 삭제 안내 | https://readme.watalabs.com/delete-account |
+| 웹사이트 | https://remember-you.watalabs.com |
+| 개인정보 처리방침 | https://remember-you.watalabs.com/privacy-policy (영어 `?lang=en`) |
+| 이용약관 | https://remember-you.watalabs.com/terms |
+| 계정 삭제 안내 | https://remember-you.watalabs.com/delete-account |
 | 업로드 키 | `~/.readme/readme-upload.jks`, 비밀번호 `~/.readme/upload-keystore.properties`. SHA-256 `1F:27:29:AB:CB:5C:63:01:53:89:BF:EA:2F:2F:AB:76:B4:11:5B:59:FB:83:CB:64:47:45:34:82:98:28:90:1D` |
 | Play 앱 서명 키 | SHA-256 `66:D5:33:9E:B5:9D:9A:66:F2:F2:55:8C:83:C5:F0:19:A6:94:41:4F:BE:80:A3:2E:AC:AC:92:FB:50:30:EC:2D`(Google 관리, API `generatedApks`로 확인). 두 값 모두 Vercel `ANDROID_SHA256_FINGERPRINTS`에 있음 |
 | Play 앱 ID | 4975276465281685348 |
@@ -34,7 +34,7 @@
 node apps/mobile/scripts/store/listing.mjs
 
 # 운영 주소로 앱을 묶어서 서명된 AAB 만들기(versionCode는 android/app/build.gradle에서 올릴 때마다 +1)
-cd apps/mobile && CAP_SERVER_URL=https://readme.watalabs.com npx cap sync android && cd android && ./gradlew bundleRelease
+cd apps/mobile && CAP_SERVER_URL=https://remember-you.watalabs.com npx cap sync android && cd android && ./gradlew bundleRelease
 cd ../../.. && node apps/mobile/scripts/store/release.mjs apps/mobile/android/app/build/outputs/bundle/release/app-release.aab alpha "첫 비공개 테스트"
 ```
 
@@ -44,7 +44,7 @@ cd ../../.. && node apps/mobile/scripts/store/release.mjs apps/mobile/android/ap
 
 | 항목 | 답 |
 | --- | --- |
-| 개인정보처리방침 | https://readme.watalabs.com/privacy-policy |
+| 개인정보처리방침 | https://remember-you.watalabs.com/privacy-policy |
 | 로그인 세부정보(옛 앱 액세스) | 제한된 부분 있음 > 이름 `Demo account (no sign-in)`, 아이디·비밀번호 비움, 기타 정보(영어): "No credentials needed. On the first screen tap \"Try the demo\" (Korean UI: \"데모로 둘러보기\"). It signs in to a demo account preloaded with 4 sample people, with access to every feature… Invite codes are only for opening a link someone sent; you can create one from the Sharing tab." |
 | 광고 | 광고 없음 |
 | 콘텐츠 등급 | 이메일 watalabs.help@gmail.com, 카테고리 '다른 모든 앱 유형'. 다운로드 콘텐츠의 등급 요소 아니요. 사용자 콘텐츠 공유 **예** → 사용자 콘텐츠가 주요 출처 예, 노출 공유 아니요, 실제 폭력 아니요, 차단 기능 예(보내기 끊기·사람 지우기), 신고 기능 아니요, 채팅 조정 아니요, 초대된 친구로만 제한 예. 온라인 콘텐츠 아니요, 연령 제한 상품 아니요, 위치 공유·디지털 구매·현금 보상·브라우저·뉴스/교육 모두 아니요. **결과: 대부분 12세 이상**(ESRB 청소년, PEGI 보호자 지도, 대한민국 12세 이상) + 사용자 상호작용. 사용자 콘텐츠가 주요 출처라서 올라감 |
@@ -52,14 +52,14 @@ cd ../../.. && node apps/mobile/scripts/store/release.mjs apps/mobile/android/ap
 | 뉴스 앱 | 아니요 |
 | 정부 앱 / 금융 기능 | 아니요 / 없음 |
 | 건강 앱 | 건강 기능 없음(알레르기는 사용자가 적어 공유하는 정보일 뿐 건강 관리 기능이 아님. 데이터 보안에는 건강 정보로 신고) |
-| 계정 삭제 | 앱 안에서 삭제 가능(공유 관리 > 계정 삭제), 웹 URL https://readme.watalabs.com/delete-account |
+| 계정 삭제 | 앱 안에서 삭제 가능(공유 관리 > 계정 삭제), 웹 URL https://remember-you.watalabs.com/delete-account |
 | 광고 ID | 사용 안 함(병합 매니페스트에 AD_ID 권한 없음) |
-| 판매자 상태 | 예(개발자 계정 설정 상속), 서비스 약관 https://readme.watalabs.com/terms |
+| 판매자 상태 | 예(개발자 계정 설정 상속), 서비스 약관 https://remember-you.watalabs.com/terms |
 | 스토어 설정 | 카테고리 라이프스타일, 연락처 이메일·웹사이트는 API로 넣음 |
 
 ### 데이터 보안
 
-- 데이터 수집: 예. 전송 중 암호화: 예. 계정 만들기: OAuth + 기타("Demo account: \"Try the demo\" creates a temporary anonymous account with no personal info. It is deleted automatically after 7 days."). 계정 삭제 URL https://readme.watalabs.com/delete-account, 일부 데이터 삭제 URL https://readme.watalabs.com/delete-account#partial(그 페이지의 '계정은 두고 일부만 지우기').
+- 데이터 수집: 예. 전송 중 암호화: 예. 계정 만들기: OAuth + 기타("Demo account: \"Try the demo\" creates a temporary anonymous account with no personal info. It is deleted automatically after 7 days."). 계정 삭제 URL https://remember-you.watalabs.com/delete-account, 일부 데이터 삭제 URL https://remember-you.watalabs.com/delete-account#partial(그 페이지의 '계정은 두고 일부만 지우기').
 - **공유(제3자 제공): 없음.** 사용자가 직접 고른 사람에게 보여 주는 것과 위탁(Vercel·Supabase)은 Play 기준 '공유'가 아니다.
 
 | 데이터 유형 | 수집 | 필수/선택 | 목적 |

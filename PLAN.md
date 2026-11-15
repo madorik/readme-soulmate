@@ -11,7 +11,7 @@
 - 앱 이름(2026-11-15 사용자 결정): 한국어 **기억해유**(사투리처럼 친근하고 '기억해 You'로도 읽힌다), 영어 **Remember You**. 한국어는 부제 없이 **"기억해유"**로 출시(사용자 결정), 영어 스토어 제목은 "Remember You - Soulmate Cheat Sheet"
 - 로고: 이름 그대로 글자만 — "기억해유"(영어 화면 "Remember You"). 글자에 알약·강조를 씌우지 않는다(사용자)
 - 앱 안에서: 내 것은 '나에 대한 기록'(탭 이름 '나' / Me), 사람마다 '기억해 둔 것'. 낱말은 기억해 두기·챙기기·답장
-- 바꾸지 않은 것: 앱 ID `kr.readme.app`(Play에서 못 바꾼다), 도메인 readme.watalabs.com, 코드 이름(폴더 `readme`, 패키지 `@readme/*`)
+- 바꾸지 않은 것: 앱 ID `kr.readme.app`(Play에서 못 바꾼다), 도메인 remember-you.watalabs.com, 코드 이름(폴더 `readme`, 패키지 `@readme/*`)
 - 예전 이름: 리드미 - 소울메이트 컨닝페이퍼 / README - Soulmate Cheat Sheet(2026-11-13 조사: '리드미' 단독 검색은 '리드미 - 텍스트뷰어'·Co-Star 'Readme'에 밀렸다)
 
 ## 스택 (맹고와 같은 구성)
@@ -64,7 +64,7 @@
 - 2026-11-13: core 25개 단위 테스트 통과(음력·윤달·30일 대체·다음 생일·알림·사이즈·한영 문구·조사·초대 토큰). Supabase 로컬(포트 55321/55322/메일 55324) 기동, `pnpm test:db` RLS 16개 통과
 - 2026-11-14: 웹 앱 전 화면(시작·로그인·온보딩 3단계·홈·사람들·받은 리드미·생일 알림·내 리드미·항목 편집·보내기·초대 받기·코드 입력·부탁하기·웹 답하기·가입 후 가져오기·공유 관리), 크론·푸시·내보내기·앱 링크 API. `pnpm test` 29개, `pnpm test:db` 16개, `pnpm e2e` 12개 통과, `pnpm build` 통과. iOS 시뮬레이터 빌드·실행, Android 디버그 APK 빌드 성공
 - 2026-11-14: Supabase → PostgreSQL + Better Auth로 옮김. `pnpm test` 29개, `pnpm test:db` 16개(로컬·Neon 모두), `pnpm e2e` 14개 통과. https://itsreadme.vercel.app 배포(Neon 싱가포르), 운영 데모 로그인 확인. 릴리스 APK(R8, 업로드 키 서명)를 에뮬레이터에서 운영 사이트로 실행 확인. Gothic A1을 직접 호스팅(개발 서버가 구글 폰트 500여 조각을 받다 시간 초과)
-- 2026-11-14: 운영 도메인을 https://readme.watalabs.com 으로 옮김(watalabs.com은 같은 Vercel 팀 DNS). itsreadme.vercel.app은 새 도메인으로 308 리디렉션. AAB를 새 주소로 다시 묶음
+- 2026-11-14: 운영 도메인을 https://remember-you.watalabs.com 으로 옮김(watalabs.com은 같은 Vercel 팀 DNS). itsreadme.vercel.app은 새 도메인으로 308 리디렉션. AAB를 새 주소로 다시 묶음
 - 2026-11-14: Play Console에 앱을 만들고(전용 크롬 CDP) 등록정보·그래픽·AAB(API), 앱 콘텐츠 11개·스토어 설정·비공개 테스트 트랙(대한민국, 이메일 목록 나·맹고테스터)을 채워 검토에 보냄 → 같은 날 Alpha 0.1.0 게시. 계정 삭제 페이지에 '일부만 지우기'(#partial) 추가. Google OAuth 클라이언트 만들고 Vercel에 넣음(앱 게시 상태 전환은 사용자 몫)
 - 2026-11-14: 언어 설정을 프로필(내 리드미)에도 넣음(components/LanguageSetting, 공유 관리와 같이 씀). 좁은 화면 영어에서 'Languag/e'처럼 끊기던 것 고침. `pnpm e2e` 15개 통과, 운영 배포
 - 2026-11-14: '직접 적어 두기' — 앱을 안 쓰는 사람도 주소록에 넣고 항목별로 적어 둔다(나만 봄). `contact_cards` 테이블(0002, RLS: 내 주소록 칸·내 이름만), 항목은 `aad.contact`로 암호화. 사람 목록 '직접 적기' → `/people/new` → `/people/[id]/edit/[section]`(내 리드미와 같은 편집기). 생일 알림 크론·내보내기·데모(아빠)에 연결, 약관·처리방침 문구 고침. `pnpm test:db` 17개, `pnpm e2e` 16개 통과. 운영 DB 마이그레이션(0002) 후 배포, 운영 데모에서 확인

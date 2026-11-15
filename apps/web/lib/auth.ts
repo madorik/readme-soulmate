@@ -5,7 +5,7 @@ import { nextCookies } from "better-auth/next-js";
 import { anonymous } from "better-auth/plugins/anonymous";
 import { oneTimeToken } from "better-auth/plugins/one-time-token";
 import { pool } from "./db";
-import { SITE_URL } from "./site";
+import { PRODUCTION_ORIGINS, SITE_URL } from "./site";
 
 // 로그인: 구글·애플(키가 있을 때만) + 데모(익명 계정). 이메일 로그인은 없다.
 // 앱(웹뷰)에서는 구글이 웹뷰 로그인을 막아서, 시스템 브라우저로 로그인한 뒤 원타임 토큰으로 웹뷰에 세션을 넘긴다(app/auth/app).
@@ -20,7 +20,7 @@ function create() {
     baseURL: SITE_URL,
     secret: process.env.BETTER_AUTH_SECRET,
     database: pool(),
-    trustedOrigins: [SITE_URL, "https://appleid.apple.com", `${APP_ID}://`],
+    trustedOrigins: [...new Set([SITE_URL, ...PRODUCTION_ORIGINS]), "https://appleid.apple.com", `${APP_ID}://`],
     session: {
       // 앱을 오래 열어 두는 서비스라 길게(90일), 하루에 한 번 늘린다
       expiresIn: 60 * 60 * 24 * 90,
