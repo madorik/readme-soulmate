@@ -79,14 +79,8 @@ export function MyReadmeList({
                 <span className="text-[16.5px] font-bold tracking-[-0.02em]">{title}</span>
                 <span className="text-[13.5px] leading-[1.45] text-muted">{sub}</span>
               </span>
-              {/* 글자 없이 아이콘만: 접혀 있으면 연필, 펼치면 접기 화살표 */}
-              {isOpen ? (
-                <Icon name="chevron" size={18} className="shrink-0 -rotate-90 text-muted" />
-              ) : (
-                <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center text-muted">
-                  <Icon name="pencil" size={17} strokeWidth={2} />
-                </span>
-              )}
+              {/* 누르면 고친다는 건 다들 알아서 접혀 있을 때는 아무것도 없이, 펼치면 접기 화살표만 */}
+              {isOpen ? <Icon name="chevron" size={18} className="shrink-0 -rotate-90 text-muted" /> : null}
             </button>
             {isOpen ? (
               <div id={`edit-${section}`} className="pt-3">
