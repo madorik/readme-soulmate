@@ -1,6 +1,6 @@
 // 말로 적기: "와이프는 바닐라라떼를 좋아해" 같은 말을 AI가 (사람, 칸, 값)으로 나누면, 여기서 그 칸에 합친다.
 // 어느 칸에도 안 맞는 말은 그 사람의 메모로 간다(target "memo"). 순수 함수라 서버·테스트가 같이 쓴다.
-import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, PATTERNS, SEASONS, STYLES, type CatalogItem } from "./catalog";
+import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, PATTERNS, SEASONS, SPICY_LEVELS, STYLES, type CatalogItem } from "./catalog";
 import { emptySection, sanitizeSection, type CardData, type Section } from "./card";
 import type { DateSpec } from "./calendar";
 import type { Locale } from "./locale";
@@ -197,7 +197,9 @@ export function describeCapture(field: CaptureField, value: CaptureValue, locale
     case "code":
       return codeLabel(value.codes?.[0] ?? value.text ?? "");
     case "number":
-      return value.number == null ? "" : String(value.number);
+      if (value.number == null) return "";
+      if (field.key === "taste.spicy") return SPICY_LEVELS[Math.round(value.number)]?.[locale] ?? String(value.number);
+      return String(value.number);
     case "date":
     case "anniversary": {
       const d = value.date;

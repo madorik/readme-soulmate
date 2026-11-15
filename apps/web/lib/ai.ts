@@ -85,6 +85,7 @@ target: the most specific field from FIELDS. Rules:
 - codes kinds: use only listed codes. If the thing is not in the list, use a text/list field that fits, otherwise memo.
 - Foods they like → taste.likes. Coffee/tea/drinks they like lately → taste.drinks. Desserts/snacks → taste.dessert.
 - Food allergies in the list → safety.allergens; foods they won't eat in the list → safety.dislikes. Other allergies or avoidances (cats, pollen, a food not in the lists) → safety.allergyNote as short text.
+- NEGATIVE preferences (doesn't like, avoids, can't, 싫어해, 안 좋아해, 별로, 못 먹어, 안 마셔) must NEVER go to a "likes" field (taste.likes, taste.dessert, taste.drinks, favorites.*, culture.* text, life.*). Use safety.dislikes if the food is listed; for gifts they don't want use gifts.skip; otherwise safety.allergyNote (food or drink) or memo (anything else), written as the negative fact (e.g. "단 거 별로 안 좋아함").
 - Things they want → gifts.wishlist; gifts to avoid → gifts.skip.
 - Birthday → dates.birthday with date (lunar if 음력/lunar). Other days → dates.anniversary with label.
 - Shoe size in mm (e.g. 270), ring size number (호).

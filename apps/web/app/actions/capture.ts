@@ -10,6 +10,8 @@ export interface CaptureLine {
   who: string;
   /** 이번에 새로 더한 사람 */
   isNew: boolean;
+  /** 이미 그렇게 적혀 있어서 바뀐 게 없는 칸 */
+  same?: boolean;
   /** 칸 이름(메모면 '메모') */
   field: string;
   value: string;
@@ -102,7 +104,11 @@ export async function captureNote(raw: string): Promise<CaptureState> {
         if (!field) continue;
         const card = cards.get(who)!;
         const merged = mergeCapture(field, card[field.section], item);
-        if (!merged) continue;
+        if (!merged) {
+          // 값은 맞는데 이미 그대로 적혀 있으면 '이미 알고 있어요'로 보여 준다(값이 틀리면 버린다)
+          if (mergeCapture(field, null, item)) lines.push({ who: names.get(who)!, isNew, same: true, field: field.label[locale], value: describeCapture(field, item, locale), href });
+          continue;
+        }
         const key = `${who}:${field.section}`;
         if (!touched.has(key)) {
           touched.add(key);

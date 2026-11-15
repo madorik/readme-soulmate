@@ -19,6 +19,7 @@ export default async function Voice() {
         locale={locale}
         labels={{
           speak: t("voice.speak"),
+          same: t("voice.same"),
           clear: t("voice.clear"),
           listening: t("voice.listening"),
           placeholder: t("voice.placeholder"),

@@ -191,6 +191,7 @@ function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: 
 
 type Labels = {
   speak: string;
+  same: string;
   clear: string;
   listening: string;
   placeholder: string;
@@ -327,6 +328,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
                   <span className="flex items-center gap-1.5 text-[13px] font-bold text-muted">
                     {l.who}
                     {l.isNew ? <span className="chip-on rounded-full px-2 py-[1px] text-[11.5px]">{labels.isNew}</span> : null}
+                    {l.same ? <span className="rounded-full bg-fill px-2 py-[1px] text-[11.5px]">{labels.same}</span> : null}
                     <span aria-hidden="true">·</span>
                     {l.field}
                   </span>
@@ -339,7 +341,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
         <div className="bottom-bar mt-auto grid grid-cols-2 gap-2.5 bg-bg px-4 pt-4">
           <button
             type="button"
-            disabled={undone || pending}
+            disabled={undone || pending || !result.undo.length}
             onClick={() =>
               start(async () => {
                 const r = await undoCapture(result.undo);
