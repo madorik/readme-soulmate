@@ -2,7 +2,7 @@
 
 import type { Locale } from "@readme/core";
 import Link from "next/link";
-import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
 import { Icon } from "@/components/marks";
 
@@ -39,61 +39,25 @@ function nativeSpeech(): NativeSpeech | null {
   return cap?.isNativePlatform?.() && cap.Plugins?.SpeechRecognition ? cap.Plugins.SpeechRecognition : null;
 }
 
-/** 뭉게구름 하나(가로 w): 납작한 바닥 위에 몽글몽글한 봉우리 넷. 구름 전체에 한 그늘(위는 희고 바닥은 옅은 하늘색)을 씌운다 */
-type Puff = { cx: number; cy: number; w: number };
-
-function Cloud({ cx, cy, w, fill }: Puff & { fill: string }) {
-  const k = (n: number) => w * n;
-  return (
-    <g fill={fill}>
-      <ellipse cx={cx} cy={cy} rx={k(0.5)} ry={k(0.15)} />
-      <circle cx={cx - k(0.27)} cy={cy - k(0.05)} r={k(0.17)} />
-      <circle cx={cx - k(0.06)} cy={cy - k(0.15)} r={k(0.23)} />
-      <circle cx={cx + k(0.17)} cy={cy - k(0.09)} r={k(0.19)} />
-      <circle cx={cx + k(0.34)} cy={cy - k(0.01)} r={k(0.13)} />
-    </g>
-  );
-}
-
 /**
- * 구름 두 겹(멀리 작은 구름 · 가까이 큰 구름). 좌표는 구슬 지름 208 기준 한 장(타일)이고, 세 장을 이어 그려 끝없이 흘러간다.
- * 가까운 구름이 더 빨리 흐르고, 목소리가 클수록 더 빨라진다
+ * 구슬 속 빛 덩어리 넷(흰빛 · 하늘색 · 파랑 · 청록). 저마다 다른 빠르기·방향으로 가운데를 돌며 흐릿하게 섞인다.
+ * size: 구슬 지름 대비 크기, radius: 도는 반지름(구슬 지름 대비), speed: 1초에 도는 각(라디안)
  */
-const LAYERS: { puffs: Puff[]; speed: number; boost: number; opacity: number; blur: number }[] = [
-  {
-    puffs: [
-      { cx: 34, cy: 66, w: 56 },
-      { cx: 118, cy: 50, w: 70 },
-      { cx: 182, cy: 82, w: 46 },
-    ],
-    speed: 4,
-    boost: 60,
-    opacity: 0.8,
-    blur: 1.4,
-  },
-  {
-    puffs: [
-      { cx: 62, cy: 146, w: 118 },
-      { cx: 168, cy: 126, w: 92 },
-    ],
-    speed: 8,
-    boost: 130,
-    opacity: 1,
-    blur: 0.6,
-  },
-];
-
-const TILE = 208;
+const BLOBS = [
+  { color: "rgba(37,99,235,0.95)", size: 1.0, radius: 0.24, speed: 0.22, phase: 4.2 },
+  { color: "rgba(103,232,249,0.85)", size: 0.75, radius: 0.26, speed: -0.38, phase: 1.0 },
+  { color: "rgba(147,197,253,0.95)", size: 0.9, radius: 0.22, speed: -0.27, phase: 2.4 },
+  { color: "rgba(255,255,255,0.95)", size: 0.8, radius: 0.2, speed: 0.33, phase: 0 },
+] as const;
 
 /**
- * 가운데 하늘 구슬. 평소엔 뭉게구름이 은은하게 흐르고, 목소리가 들리면 그 크기만큼 구름이 빨리 흘러가고 구슬이 살짝 숨 쉰다.
+ * 가운데 음성 구슬(ChatGPT 음성 모드 같은). 평소엔 빛이 천천히 돌고, 목소리가 들리면 그 크기만큼 빨리 돌며 구슬이 숨 쉬듯 커진다.
  * 브라우저는 마이크 소리 크기(AnalyserNode)를, 잴 수 없는 곳(앱의 기기 인식)은 듣는 동안 부드럽게 오르내리는 값을 쓴다.
- * 움직임 줄이기를 켠 사람에게는 구름을 멈춘다. 값은 그릴 때마다 DOM에 바로 넣는다(화면을 다시 그리지 않게)
+ * 움직임 줄이기를 켠 사람에게는 멈춘다. 값은 그릴 때마다 DOM에 바로 넣는다(화면을 다시 그리지 않게)
  */
-function SkyOrb({ active, measure, size = 208 }: { active: boolean; measure: boolean; size?: number }) {
-  const id = useId().replace(/:/g, "");
+function VoiceOrb({ active, measure, size = 220 }: { active: boolean; measure: boolean; size?: number }) {
   const wrap = useRef<HTMLDivElement>(null);
-  const layers = useRef<(SVGSVGElement | null)[]>([]);
+  const blobs = useRef<(HTMLDivElement | null)[]>([]);
   useEffect(() => {
     const still = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
@@ -104,7 +68,7 @@ function SkyOrb({ active, measure, size = 208 }: { active: boolean; measure: boo
     let data = new Uint8Array(0);
     let level = 0;
     let last = 0;
-    const offsets = LAYERS.map((_, i) => i * TILE * 0.41);
+    const angles: number[] = BLOBS.map((b) => b.phase);
     const draw = (t: number) => {
       const dt = last ? Math.min(0.05, (t - last) / 1000) : 0;
       last = t;
@@ -117,16 +81,19 @@ function SkyOrb({ active, measure, size = 208 }: { active: boolean; measure: boo
       } else if (active) {
         target = 0.35 + 0.25 * Math.sin(t / 380);
       }
-      level += (target - level) * 0.12;
-      LAYERS.forEach((l, i) => {
-        const el = layers.current[i];
+      level += (target - level) * 0.14;
+      BLOBS.forEach((b, i) => {
+        const el = blobs.current[i];
         if (!el) return;
-        if (!still) offsets[i] = (offsets[i]! + dt * (l.speed + l.boost * level)) % TILE;
-        el.style.transform = `translate3d(${(-offsets[i]! * size) / TILE}px, 0, 0)`;
+        if (!still) angles[i] = angles[i]! + dt * b.speed * (1 + 4 * level);
+        const r = b.radius * size * (1 + 0.35 * level);
+        const wobble = 1 + 0.18 * level * Math.sin(t / 220 + i * 1.7);
+        el.style.transform = `translate3d(${Math.cos(angles[i]!) * r}px, ${Math.sin(angles[i]!) * r}px, 0) scale(${wobble})`;
       });
       if (wrap.current) {
-        wrap.current.style.transform = `scale(${1 + (still ? 0 : 0.06 * level)})`;
-        wrap.current.style.boxShadow = `0 26px 60px -22px rgba(47,111,224,${0.4 + 0.35 * level}), 0 0 0 ${Math.round(10 * level)}px rgba(150,200,255,${0.25 * level})`;
+        const breathe = still ? 1 : 1 + 0.08 * level + (active ? 0.012 * Math.sin(t / 600) : 0);
+        wrap.current.style.transform = `scale(${breathe})`;
+        wrap.current.style.boxShadow = `0 30px 70px -26px rgba(37,99,235,${0.35 + 0.4 * level}), 0 0 ${Math.round(40 * level)}px rgba(125,190,255,${0.45 * level})`;
       }
       raf = requestAnimationFrame(draw);
     };
@@ -158,51 +125,29 @@ function SkyOrb({ active, measure, size = 208 }: { active: boolean; measure: boo
       ref={wrap}
       aria-hidden="true"
       className="relative overflow-hidden rounded-full"
-      style={{
-        width: size,
-        height: size,
-        background: "linear-gradient(180deg, #5fa9f7 0%, #8ccaff 45%, #a9d9ff 62%, #5b9cf2 100%)",
-        boxShadow: "0 26px 60px -22px rgba(47,111,224,0.4)",
-      }}
+      style={{ width: size, height: size, background: "linear-gradient(180deg, #e0efff 0%, #9cc8fb 48%, #3d7cf0 100%)", boxShadow: "0 30px 70px -26px rgba(37,99,235,0.35)" }}
     >
-      {LAYERS.map((l, i) => (
-        <svg
-          key={i}
-          ref={(el) => {
-            layers.current[i] = el;
-          }}
-          width={size * 2}
-          height={size}
-          viewBox={`0 0 ${TILE * 2} ${TILE}`}
-          className="absolute left-0 top-0 will-change-transform"
-          style={{ opacity: l.opacity }}
-        >
-          <defs>
-            {l.puffs.map((p, j) => (
-              <linearGradient key={j} id={`${id}-g${i}-${j}`} gradientUnits="userSpaceOnUse" x1="0" x2="0" y1={p.cy - p.w * 0.38} y2={p.cy + p.w * 0.15}>
-                <stop offset="0" stopColor="#ffffff" />
-                <stop offset="0.55" stopColor="#fbfdff" />
-                <stop offset="1" stopColor="#d9e8fa" />
-              </linearGradient>
-            ))}
-            <filter id={`${id}-soft-${i}`} x="-10%" y="-10%" width="120%" height="120%">
-              <feGaussianBlur stdDeviation={l.blur} />
-            </filter>
-          </defs>
-          <g filter={`url(#${id}-soft-${i})`}>
-            {[-TILE, 0, TILE].map((dx) => (
-              <g key={dx} transform={`translate(${dx} 0)`}>
-                {l.puffs.map((p, j) => (
-                  <Cloud key={j} {...p} fill={`url(#${id}-g${i}-${j})`} />
-                ))}
-              </g>
-            ))}
-          </g>
-        </svg>
-      ))}
-      {/* 왼쪽 위 빛과 가장자리 깊이(구슬처럼) */}
-      <div className="pointer-events-none absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle at 30% 18%, rgba(255,255,255,0.35), rgba(255,255,255,0) 38%)" }} />
-      <div className="pointer-events-none absolute inset-0 rounded-full" style={{ boxShadow: "inset 0 -16px 32px rgba(29,78,216,0.3), inset 0 10px 24px rgba(255,255,255,0.3)" }} />
+      <div className="absolute inset-0" style={{ filter: `blur(${Math.round(size * 0.08)}px)` }}>
+        {BLOBS.map((b, i) => (
+          <div
+            key={i}
+            ref={(el) => {
+              blobs.current[i] = el;
+            }}
+            className="absolute rounded-full will-change-transform"
+            style={{
+              width: size * b.size,
+              height: size * b.size,
+              left: (size - size * b.size) / 2,
+              top: (size - size * b.size) / 2,
+              background: `radial-gradient(circle, ${b.color} 0%, rgba(255,255,255,0) 66%)`,
+            }}
+          />
+        ))}
+      </div>
+      {/* 유리 같은 윗빛과 가장자리 깊이 */}
+      <div className="pointer-events-none absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle at 32% 20%, rgba(255,255,255,0.55), rgba(255,255,255,0) 36%)" }} />
+      <div className="pointer-events-none absolute inset-0 rounded-full" style={{ boxShadow: "inset 0 -20px 40px rgba(29,78,216,0.35), inset 0 10px 26px rgba(255,255,255,0.4)" }} />
     </div>
   );
 }
@@ -383,7 +328,8 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
     );
   }
 
-  // 가운데: 하늘 구슬(누르면 듣기), 바로 밑에 받아 적는 글(작게 시작해 글만큼 늘어난다). 아래: [지우기] [적기]
+  // ChatGPT 음성 모드처럼: 가운데 구슬(누르면 듣기·멈추기), 바로 밑에 받아 적는 글. 아래: 둥근 마이크 · 기억해 두기
+  const idle = !!text && !listening && !pending;
   return (
     <form
       className="flex flex-1 flex-col"
@@ -392,22 +338,17 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
         submit(text);
       }}
     >
-      <div className="flex flex-1 flex-col items-center justify-center px-5 pb-6">
-        {canListen ? (
-          <>
-            <button
-              type="button"
-              onClick={() => void listen()}
-              aria-pressed={listening}
-              aria-label={listening ? labels.listening : labels.speak}
-              disabled={pending}
-              className="shrink-0 rounded-full transition-transform active:scale-95"
-            >
-              <SkyOrb active={listening} measure={!nativeSpeech()} />
-            </button>
-            <span className="pt-5 text-[13.5px] font-bold text-muted">{listening ? labels.listening : labels.speak}</span>
-          </>
-        ) : null}
+      <div className="flex flex-1 flex-col items-center justify-center px-5 pb-4">
+        <button
+          type="button"
+          onClick={() => void listen()}
+          aria-pressed={listening}
+          aria-label={listening ? labels.listening : labels.speak}
+          disabled={pending || !canListen}
+          className="shrink-0 rounded-full transition-transform active:scale-95 disabled:active:scale-100"
+        >
+          <VoiceOrb active={listening} measure={!nativeSpeech()} />
+        </button>
         <textarea
           ref={box}
           value={text}
@@ -416,22 +357,35 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
           maxLength={500}
           placeholder={labels.placeholder}
           aria-label={labels.placeholder}
-          className={`max-h-[40vh] w-full resize-none overflow-y-auto bg-transparent text-center text-[21px] font-bold leading-[1.5] tracking-[-0.02em] outline-none placeholder:font-semibold placeholder:text-muted/60 ${canListen ? "mt-6 min-h-[96px]" : "mt-2 rounded-2xl bg-white px-4 py-4 text-left shadow-[0_0_0_1px_var(--color-rule)]"}`}
+          className="mt-9 max-h-[30vh] min-h-[84px] w-full resize-none overflow-y-auto bg-transparent text-center text-[20px] font-semibold leading-[1.5] tracking-[-0.02em] outline-none placeholder:font-medium placeholder:text-muted/55"
         />
-        {error ? (
-          <p role="alert" className="pt-3 text-center text-[14px] text-red">
-            {error}
-          </p>
-        ) : null}
+        <div className="flex h-8 items-center">
+          {error ? (
+            <p role="alert" className="text-center text-[14px] text-red">
+              {error}
+            </p>
+          ) : idle ? (
+            <button type="button" onClick={() => setText("")} className="text-[13.5px] font-bold text-muted underline underline-offset-4">
+              {labels.clear}
+            </button>
+          ) : null}
+        </div>
       </div>
 
-      <div className={`bottom-bar mt-auto grid gap-2.5 bg-bg px-4 pt-4 ${text && !listening && !pending ? "grid-cols-[auto_1fr]" : "grid-cols-1"}`}>
-        {text && !listening && !pending ? (
-          <button type="button" onClick={() => setText("")} className="btn-outline !px-6">
-            {labels.clear}
+      <div className="bottom-bar mt-auto flex items-center gap-3 bg-bg px-5 pt-3">
+        {canListen ? (
+          <button
+            type="button"
+            onClick={() => void listen()}
+            aria-pressed={listening}
+            aria-label={listening ? labels.listening : labels.speak}
+            disabled={pending}
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-colors ${listening ? "bg-ink text-white" : "bg-white text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
+          >
+            <Icon name="mic" size={24} strokeWidth={2} />
           </button>
         ) : null}
-        <button disabled={pending || listening || !text.trim()} className="btn-primary w-full">
+        <button disabled={pending || listening || !text.trim()} className="btn-primary flex-1">
           {pending ? "…" : labels.save}
         </button>
       </div>
