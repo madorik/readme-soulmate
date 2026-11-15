@@ -46,6 +46,8 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
       <Link
         key={item.key}
         href={item.href}
+        // 탭 화면은 데이터까지 미리 받아 둔다(누르거나 좌우로 밀 때 빈 화면 없이 바로)
+        prefetch={true}
         aria-current={on ? "page" : undefined}
         className={`flex flex-col items-center justify-center gap-[3px] whitespace-nowrap text-[11.5px] ${on ? "font-bold text-accent" : "font-medium text-muted"}`}
       >

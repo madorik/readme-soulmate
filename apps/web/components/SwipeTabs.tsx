@@ -94,10 +94,10 @@ export function SwipeTabs() {
       el.style.opacity = "";
       el.animate(
         [
-          { transform: `translate3d(${dir * (swiped ? width * 0.35 : 36)}px, 0, 0)`, opacity: 0 },
+          { transform: `translate3d(${dir * (swiped ? width * 0.3 : 36)}px, 0, 0)`, opacity: 0 },
           { transform: "translate3d(0, 0, 0)", opacity: 1 },
         ],
-        { duration: swiped ? 260 : 220, easing: EASE },
+        { duration: swiped ? 240 : 200, easing: EASE },
       );
     }
   }, [index]);
@@ -170,15 +170,23 @@ export function SwipeTabs() {
       }
       busy = true;
       pending.current = dir;
-      const leave = s.els.length ? animateTo(s.els, from, -dir * s.width, s.width, 170) : Promise.resolve();
-      void leave.then(() => {
-        router.push(next);
-        safety = window.setTimeout(() => {
-          busy = false;
-          pending.current = null;
-          setX(s.els, 0, s.width);
-        }, 3000);
-      });
+      // 다음 화면은 바로 받으러 가고(움직임과 겹치게), 지금 화면은 반쯤 밀려나 흐려진 채 기다린다(빈 화면이 보이지 않게)
+      router.push(next);
+      for (const el of s.els) {
+        el.animate(
+          [
+            { transform: `translate3d(${from}px, 0, 0)`, opacity: el.style.opacity || "1" },
+            { transform: `translate3d(${-dir * s.width * 0.3}px, 0, 0)`, opacity: "0.35" },
+          ],
+          { duration: 180, easing: EASE, fill: "forwards" },
+        );
+      }
+      safety = window.setTimeout(() => {
+        busy = false;
+        pending.current = null;
+        for (const el of s.els) for (const a of el.getAnimations()) a.cancel();
+        setX(s.els, 0, s.width);
+      }, 4000);
     };
 
     document.addEventListener("touchstart", onStart, { passive: true });
