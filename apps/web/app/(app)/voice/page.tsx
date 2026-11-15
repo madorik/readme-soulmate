@@ -18,6 +18,9 @@ export default async function Voice() {
       <VoiceCapture
         locale={locale}
         labels={{
+          mode: t("voice.mode"),
+          modeVoice: t("voice.modeVoice"),
+          modeText: t("voice.modeText"),
           speak: t("voice.speak"),
           same: t("voice.same"),
           gone: t("voice.gone"),

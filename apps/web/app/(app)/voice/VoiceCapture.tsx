@@ -86,7 +86,8 @@ function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: 
         body.current.style.borderRadius = radius;
         body.current.style.transform = `scale(${grow * (1 + squash)}, ${grow * (1 - squash)})`;
       }
-      if (slosh.current) slosh.current.style.transform = `translate(${Math.sin(phase * 0.9) * (6 + 14 * level)}px, ${Math.cos(phase * 1.2) * (4 + 10 * level)}px) rotate(${Math.sin(phase * 0.7) * 12}deg)`;
+      if (slosh.current)
+        slosh.current.style.transform = `translate(${Math.sin(phase * 0.9) * (6 + 14 * level)}px, ${Math.cos(phase * 1.2) * (4 + 10 * level)}px) rotate(${Math.sin(phase * 0.7) * 12}deg)`;
       if (shine.current) shine.current.style.transform = `translate(${-Math.sin(phase * 0.9) * 3}px, ${-Math.cos(phase * 1.2) * 2}px) rotate(-28deg)`;
       if (shadow.current) shadow.current.style.transform = `translateX(-50%) scale(${grow * (1 + squash * 1.5)}, 1)`;
       raf = requestAnimationFrame(draw);
@@ -137,8 +138,7 @@ function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: 
           width: size,
           height: size,
           borderRadius: "50%",
-          background:
-            "radial-gradient(circle at 50% 48%, rgba(255,255,255,0.06) 0%, rgba(214,240,255,0.16) 45%, rgba(140,200,240,0.5) 78%, rgba(70,145,215,0.8) 100%)",
+          background: "radial-gradient(circle at 50% 48%, rgba(255,255,255,0.06) 0%, rgba(214,240,255,0.16) 45%, rgba(140,200,240,0.5) 78%, rgba(70,145,215,0.8) 100%)",
           boxShadow:
             "inset 0 0 0 1.5px rgba(255,255,255,0.75), inset 0 14px 26px rgba(40,110,180,0.22), inset 0 -18px 30px rgba(255,255,255,0.75), inset 0 -2px 10px rgba(120,200,255,0.5), 0 22px 40px -22px rgba(30,90,160,0.4)",
         }}
@@ -149,7 +149,8 @@ function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: 
           className="absolute will-change-transform"
           style={{
             inset: "-15%",
-            background: "radial-gradient(ellipse 55% 40% at 50% 78%, rgba(80,170,235,0.28), rgba(80,170,235,0) 70%), radial-gradient(ellipse 40% 30% at 38% 40%, rgba(255,255,255,0.25), rgba(255,255,255,0) 70%)",
+            background:
+              "radial-gradient(ellipse 55% 40% at 50% 78%, rgba(80,170,235,0.28), rgba(80,170,235,0) 70%), radial-gradient(ellipse 40% 30% at 38% 40%, rgba(255,255,255,0.25), rgba(255,255,255,0) 70%)",
           }}
         />
         {/* 오른쪽 아래에 모인 빛(꺾인 빛) */}
@@ -190,7 +191,12 @@ function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: 
   );
 }
 
+const MODE_KEY = "remember-you.capture-mode";
+
 type Labels = CaptureBadgeLabels & {
+  mode: string;
+  modeVoice: string;
+  modeText: string;
   speak: string;
   clear: string;
   listening: string;
@@ -222,6 +228,29 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
   const web = useRef<WebRecognition | null>(null);
   const native = useRef<{ plugin: NativeSpeech; remove: () => Promise<void> } | null>(null);
   const heard = useRef("");
+  // 말로(물방울) / 글로(적는 칸). 마지막에 고른 방식을 기억한다(이 기기에서만). 음성 인식을 못 쓰는 기기는 글로만
+  const stored = useSyncExternalStore(
+    () => () => {},
+    () => {
+      try {
+        return window.localStorage.getItem(MODE_KEY) === "text" ? "text" : "voice";
+      } catch {
+        return "voice";
+      }
+    },
+    () => "voice",
+  );
+  const [picked, setPicked] = useState<"voice" | "text" | null>(null);
+  const mode = canListen ? (picked ?? stored) : "text";
+  const choose = (m: "voice" | "text") => {
+    if (m === "text" && listening) void stopListening();
+    setPicked(m);
+    try {
+      window.localStorage.setItem(MODE_KEY, m);
+    } catch {
+      /* 다음에는 기본값 */
+    }
+  };
   const box = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
@@ -378,8 +407,63 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
     );
   }
 
-  // 가운데 물방울(누르면 듣기·멈추기), 바로 밑에 받아 적는 글. 아래: 둥근 마이크 · 기억해 두기
+  // 말로: 가운데 물방울(누르면 듣기·멈추기), 바로 밑에 받아 적는 글, 아래 둥근 마이크 · 기억해 두기
+  // 글로: 적는 칸 하나와 기억해 두기
   const idle = !!text && !listening && !pending;
+  const toggle = canListen ? (
+    <div role="radiogroup" aria-label={labels.mode} className="mx-auto mt-4 flex shrink-0 rounded-full bg-fill p-1">
+      {(["voice", "text"] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          role="radio"
+          aria-checked={mode === m}
+          onClick={() => choose(m)}
+          className={`flex h-10 items-center gap-1.5 rounded-full px-5 text-[14.5px] font-bold transition-colors ${mode === m ? "bg-white text-ink shadow-[0_1px_4px_rgba(31,35,64,0.12)]" : "text-muted"}`}
+        >
+          <Icon name={m === "voice" ? "mic" : "pencil"} size={16} strokeWidth={2} />
+          {m === "voice" ? labels.modeVoice : labels.modeText}
+        </button>
+      ))}
+    </div>
+  ) : null;
+  const errorLine = error ? (
+    <p role="alert" className="text-center text-[14px] text-red">
+      {error}
+    </p>
+  ) : null;
+
+  if (mode === "text")
+    return (
+      <form
+        className="flex flex-1 flex-col"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit(text);
+        }}
+      >
+        {toggle}
+        <div className="flex flex-1 flex-col gap-2 px-4 pt-5">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={5}
+            maxLength={500}
+            autoFocus={canListen}
+            placeholder={labels.placeholder}
+            aria-label={labels.placeholder}
+            className="card min-h-[180px] w-full resize-none p-5 text-[18px] font-medium leading-[1.55] tracking-[-0.01em] outline-none placeholder:text-muted/60 focus:shadow-[inset_0_0_0_2px_var(--color-sky)]"
+          />
+          <div className="flex min-h-8 items-center justify-center">{errorLine}</div>
+        </div>
+        <div className="bottom-bar mt-auto bg-bg px-5 pt-3">
+          <button disabled={pending || !text.trim()} className="btn-primary w-full">
+            {pending ? "…" : labels.save}
+          </button>
+        </div>
+      </form>
+    );
+
   return (
     <form
       className="flex flex-1 flex-col"
@@ -388,6 +472,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
         submit(text);
       }}
     >
+      {toggle}
       <div className="flex flex-1 flex-col items-center justify-center px-5 pb-4">
         <button
           type="button"
@@ -411,9 +496,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
         />
         <div className="flex h-8 items-center">
           {error ? (
-            <p role="alert" className="text-center text-[14px] text-red">
-              {error}
-            </p>
+            errorLine
           ) : idle ? (
             <button type="button" onClick={() => setText("")} className="text-[13.5px] font-bold text-muted underline underline-offset-4">
               {labels.clear}

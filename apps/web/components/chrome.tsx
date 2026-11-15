@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BRAND, type Locale } from "@readme/core";
 import type { T } from "@/lib/i18n";
+import { DropOrb } from "./DropOrb";
 import { Icon } from "./marks";
 
 /** 위쪽 줄: 뒤로(또는 닫기) · 가운데 글 · 오른쪽 자리 */
@@ -64,12 +65,9 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
         {tabs.slice(0, 2).map(tab)}
         {voice ? (
           <div className="flex items-start justify-center">
-            <Link
-              href="/voice"
-              aria-label={t("voice.title")}
-              className="grad -mt-5 flex h-[62px] w-[62px] items-center justify-center rounded-full shadow-[var(--shadow-btn),0_0_0_5px_var(--color-bg)] transition-transform active:scale-95"
-            >
-              <Icon name="mic" size={27} strokeWidth={2} />
+            {/* 가운데 물방울: 누르면 말로 또는 글로 기억해 두기 */}
+            <Link href="/voice" aria-label={t("voice.title")} className="-mt-5 flex h-[66px] w-[66px] items-center justify-center rounded-full bg-bg transition-transform active:scale-95">
+              <DropOrb size={58} />
             </Link>
           </div>
         ) : null}
