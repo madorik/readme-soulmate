@@ -144,7 +144,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
   return (
     <LegalPage locale="ko" path="/privacy-policy" title="개인정보 처리방침">
       <p>
-        기억해유 - 소울메이트 컨닝페이퍼(이하 &lsquo;기억해유&rsquo;)는 {OPERATOR.ko}(대표 {CEO.ko}, 이하 &lsquo;운영자&rsquo;)가 운영합니다. 기억해유는 내 취향·못 먹는 음식·사이즈·기념일을 적어 두고, 가까운
+        기억해유는 {OPERATOR.ko}(대표 {CEO.ko}, 이하 &lsquo;운영자&rsquo;)가 운영합니다. 기억해유는 내 취향·못 먹는 음식·사이즈·기념일을 적어 두고, 가까운
         사람들의 것도 적어 두거나 물어봐서 채우는 서비스입니다. 운영자는 「개인정보 보호법」을 지키며 개인정보를 아래와 같이 처리합니다.
       </p>
 

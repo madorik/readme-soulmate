@@ -71,7 +71,7 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
   return (
     <LegalPage locale="ko" path="/terms" title="이용약관">
       <p>
-        이 약관은 {OPERATOR.ko}(대표 {CEO.ko}, 이하 &lsquo;운영자&rsquo;)가 운영하는 기억해유 - 소울메이트 컨닝페이퍼(이하 &lsquo;기억해유&rsquo;)를 쓰는 조건을 정합니다. 가입하거나 기억해유를 쓰면 이 약관에
+        이 약관은 {OPERATOR.ko}(대표 {CEO.ko}, 이하 &lsquo;운영자&rsquo;)가 운영하는 기억해유를 쓰는 조건을 정합니다. 가입하거나 기억해유를 쓰면 이 약관에
         동의한 것으로 봅니다.
       </p>
 
