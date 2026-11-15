@@ -253,8 +253,9 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
     if (native.current) {
       const n = native.current;
       native.current = null;
-      await n.plugin.stop().catch(() => {});
-      await n.remove().catch(() => {});
+      // 플러그인(안드로이드)의 stop()은 끝났다는 답을 주지 않는다. 기다리지 않고 바로 마무리한다
+      void n.plugin.stop().catch(() => {});
+      void n.remove().catch(() => {});
       setListening(false);
       if (heard.current.trim()) submit(heard.current);
     }
