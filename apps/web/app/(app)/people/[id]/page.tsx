@@ -42,6 +42,20 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         label={t("common.back")}
         right={
           <div className="flex items-center gap-2 pr-1.5">
+            {/* 나만 보는 메모: 누르면 아래에서 올라오는 시트에서 보고 적는다. 위 줄에 두어 이름 자리를 넓게 */}
+            <NotesButton
+              contactId={p.contactId}
+              notes={notes.map((n) => ({ id: n.id, body: n.body, when: n.label || formatMonthDay(parseYmd(n.createdAt.slice(0, 10)) ?? today, locale) }))}
+              labels={{
+                button: t("person.memo"),
+                title: t("person.notes"),
+                add: t("person.addNote"),
+                placeholder: t("person.noteBodyPlaceholder"),
+                body: t("person.noteBody"),
+                del: t("common.delete"),
+                close: t("common.close"),
+              }}
+            />
             <PersonOrganize
               contactId={p.contactId}
               groupId={p.groupId}
@@ -90,22 +104,6 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
               }}
             />
           ) : null}
-        </div>
-        {/* 나만 보는 메모: 누르면 아래에서 올라오는 시트에서 보고 적는다 */}
-        <div className="self-start pt-2">
-          <NotesButton
-            contactId={p.contactId}
-            notes={notes.map((n) => ({ id: n.id, body: n.body, when: n.label || formatMonthDay(parseYmd(n.createdAt.slice(0, 10)) ?? today, locale) }))}
-            labels={{
-              button: t("person.memo"),
-              title: t("person.notes"),
-              add: t("person.addNote"),
-              placeholder: t("person.noteBodyPlaceholder"),
-              body: t("person.noteBody"),
-              del: t("common.delete"),
-              close: t("common.close"),
-            }}
-          />
         </div>
       </div>
 

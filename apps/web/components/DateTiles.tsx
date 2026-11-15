@@ -43,8 +43,8 @@ export function DateTiles({ dates, today, locale, t, className = "mx-6 mt-6" }: 
           <li key={i} className="flex items-center gap-3.5 rounded-2xl bg-fill py-2.5 pl-2.5 pr-3.5">
             <CalendarLeaf m={next ? next.date.m : item.spec.month} d={next ? next.date.d : item.spec.day} soon={soon} locale={locale} />
             <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-              <div className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-[15.5px] font-bold tracking-[-0.02em]">{item.label}</span>
+              <div className="flex items-start gap-2">
+                <span className="line-clamp-2 min-w-0 flex-1 text-[15.5px] font-bold leading-[1.35] tracking-[-0.02em]">{item.label}</span>
                 {next ? (
                   <span className={`num shrink-0 rounded-full px-2.5 py-[5px] text-[12px] font-bold ${soon ? "grad" : "bg-paper text-muted"}`}>
                     {next.daysUntil === 0 ? t("start.today") : `D-${next.daysUntil}`}
