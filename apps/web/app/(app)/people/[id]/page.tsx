@@ -10,7 +10,7 @@ import { SectionBody } from "@/components/SectionBody";
 import { aiConfigured } from "@/lib/ai";
 import { displayName, groupName, listGroups, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
-import { FavoriteHeart } from "./FavoriteHeart";
+import { FavoriteStar } from "./FavoriteStar";
 import { PersonOrganize } from "./PersonOrganize";
 import { PersonRecord } from "./PersonRecord";
 import { QuickNote } from "./QuickNote";
@@ -39,7 +39,8 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         back={back}
         label={t("common.back")}
         right={
-          <div className="flex items-center pr-1.5">
+          <div className="flex items-center gap-2 pr-1.5">
+            <FavoriteStar contactId={p.contactId} initial={p.favorite} label={t("person.favorite")} />
             <PersonOrganize
               contactId={p.contactId}
               groupId={p.groupId}
@@ -63,10 +64,8 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
           <Avatar config={p.avatar} size={84} label={t("avatar.of", { name: p.name || name })} />
         </Link>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          {/* 이름 줄 오른쪽 끝 하트 = 즐겨찾기 */}
           <div className="flex items-center gap-2">
             <h1 className="min-w-0 truncate text-[32px] font-bold leading-[1.15] tracking-[-0.03em]">{p.name || name}</h1>
-            <FavoriteHeart contactId={p.contactId} initial={p.favorite} label={t("person.favorite")} />
           </div>
           <Link href={`/people/${p.contactId}/profile`} className="self-start text-[14px] font-bold text-muted underline decoration-[1.5px] underline-offset-[5px]">
             {t("me.face")}

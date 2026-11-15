@@ -10,7 +10,7 @@ export type AvatarFace = (typeof AVATAR_FACES)[number];
 export const AVATAR_BODIES = ["shirt", "hoodie", "tee", "knit", "suit", "cardigan", "turtle", "zip"] as const;
 export type AvatarBody = (typeof AVATAR_BODIES)[number];
 
-export const AVATAR_ITEMS = ["none", "cap", "beanie", "headphones", "earrings", "necklace", "bowtie", "mustache", "flower", "ribbon", "pencil", "heart"] as const;
+export const AVATAR_ITEMS = ["none", "cap", "beanie", "headphones", "earrings", "necklace", "bowtie", "mustache", "flower", "ribbon", "hearts", "pencil", "heart"] as const;
 export type AvatarItem = (typeof AVATAR_ITEMS)[number];
 
 export const AVATAR_GLASSES = ["none", "round", "square", "sun"] as const;
@@ -195,6 +195,8 @@ export const ITEM_PATHS: Record<AvatarItem, { a: string; color: string; b: strin
   necklace: { a: "M100 159 L105 165 L100 171 L95 165 Z", color: "#FFC23D", b: NONE, w: NONE, l: "M89 151 C92 158 97 159 100 159 C103 159 108 158 111 151" },
   // 나비넥타이
   bowtie: { a: NONE, color: "#FFFFFF", b: "M100 157 L87 150 L87 164 Z M100 157 L113 150 L113 164 Z M97 154 H103 V160 H97 Z", w: NONE, l: NONE },
+  // 하트: 머리 옆에 떠 있는 분홍 하트 둘
+  hearts: { a: NONE, color: "#FFFFFF", b: "M152 57.9 C149.8 55.7 141 50.2 141 44.7 C141 38.8 147.6 36.6 152 41.8 C156.4 36.6 163 38.8 163 44.7 C163 50.2 154.2 55.7 152 57.9 Z M171 32.9 C169.7 31.6 164.5 28.3 164.5 25.1 C164.5 21.5 168.4 20.2 171 23.4 C173.6 20.2 177.5 21.5 177.5 25.1 C177.5 28.3 172.3 31.6 171 32.9 Z", w: NONE, l: NONE },
   // 콧수염
   mustache: { a: "M100 112 C94 106 84 108 81 115 C88 112 94 117 100 114.5 C106 117 112 112 119 115 C116 108 106 106 100 112 Z", color: "#1F2340", b: NONE, w: NONE, l: NONE },
 };

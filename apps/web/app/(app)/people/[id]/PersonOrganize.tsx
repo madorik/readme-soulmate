@@ -15,7 +15,7 @@ const NEW = "__new";
  * 사람 화면 오른쪽 위: 그룹 알약(누르면 드롭다운). 고르는 즉시 저장한다.
  * 드롭다운 맨 끝 '새 그룹 만들기'를 고르면 알약 아래에 이름 칸이 뜨고, 만들면 바로 그 그룹에 넣는다.
  * 보이는 건 알약이고, 그 위에 투명한 진짜 select를 덮어 휴대폰 기본 고르기 창과 읽어 주기를 그대로 쓴다.
- * 즐겨찾기는 이름 줄 오른쪽 끝 하트(FavoriteHeart)
+ * 즐겨찾기는 바로 왼쪽 별(FavoriteStar)
  */
 export function PersonOrganize({
   contactId,
