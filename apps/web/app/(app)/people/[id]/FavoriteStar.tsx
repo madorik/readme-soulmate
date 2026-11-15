@@ -5,7 +5,7 @@ import { setFavorite } from "@/app/actions/people";
 
 const STAR = "M12 3.6l2.55 5.2 5.7.82-4.13 4.03.98 5.69L12 16.66l-5.1 2.68.98-5.69L3.75 9.62l5.7-.82z";
 
-/** 사람 화면 오른쪽 위 그룹 옆 별: 누르면 즐겨찾기(사람들 맨 위에 고정). 프로필(얼굴·이름) 쪽에는 두지 않는다 */
+/** 사람 화면 오른쪽 위 그룹 오른쪽 별: 누르면 즐겨찾기(사람들 맨 위에 고정). 프로필(얼굴·이름) 쪽에는 두지 않는다 */
 export function FavoriteStar({ contactId, initial, label }: { contactId: string; initial: boolean; label: string }) {
   const [on, setOn] = useState(initial);
   const [pending, start] = useTransition();

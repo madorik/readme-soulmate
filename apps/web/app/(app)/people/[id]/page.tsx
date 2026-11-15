@@ -40,7 +40,6 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         label={t("common.back")}
         right={
           <div className="flex items-center gap-2 pr-1.5">
-            <FavoriteStar contactId={p.contactId} initial={p.favorite} label={t("person.favorite")} />
             <PersonOrganize
               contactId={p.contactId}
               groupId={p.groupId}
@@ -54,6 +53,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
                 error: t("common.error"),
               }}
             />
+            <FavoriteStar contactId={p.contactId} initial={p.favorite} label={t("person.favorite")} />
           </div>
         }
       />
