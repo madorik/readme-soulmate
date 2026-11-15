@@ -8,7 +8,7 @@ import { ShareTextButton } from "@/components/ShareButtons";
 export function ShareBar({ plain, named, label, doneLabel, namesLabel }: { plain: string; named?: string; label: string; doneLabel: string; namesLabel?: string }) {
   const [withNames, setWithNames] = useState(false);
   return (
-    <div className="sticky bottom-0 mt-auto flex items-center gap-3 bg-bg/95 px-6 pt-3 backdrop-blur" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
+    <div className="bottom-bar mt-auto flex items-center gap-3 bg-bg/95 px-6 pt-3 backdrop-blur">
       {named && namesLabel ? (
         <button type="button" aria-pressed={withNames} onClick={() => setWithNames(!withNames)} className="flex min-h-12 shrink-0 items-center gap-2 text-[13.5px] font-medium">
           <DrawnCheck on={withNames} />

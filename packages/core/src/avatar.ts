@@ -1,4 +1,4 @@
-// 아바타(시안 v3): 굵은 남색 선 + 흰 얼굴 + 점 눈. 머리·옷·소품·안경을 골라 조립하고, 색은 배경·옷·머리에만 쓴다.
+// 아바타(시안 v3, 맹고색): 굵은 남색 선 + 흰 얼굴 + 점 눈. 머리·옷·소품·안경을 골라 조립하고, 색은 배경·옷·머리에만 쓴다.
 // 웹 컴포넌트(components/Avatar.tsx)가 이 경로로 200×200 SVG를 그린다.
 
 export const AVATAR_HAIRS = ["bob", "short", "long", "bun", "curly", "bangs"] as const;
@@ -13,22 +13,22 @@ export type AvatarItem = (typeof AVATAR_ITEMS)[number];
 export const AVATAR_GLASSES = ["none", "round", "square", "sun"] as const;
 export type AvatarGlasses = (typeof AVATAR_GLASSES)[number];
 
-/** 배경: 하늘 계열 그라데이션 셋 + 단색 셋. [시작, 끝] */
+/** 배경: 망고·잎·귤 그라데이션 셋 + 단색 셋. [시작, 끝]. 키는 저장된 값이라 이름(sky…)은 그대로 둔다 */
 export const AVATAR_BGS = ["sky", "water", "lilac", "pale", "gray", "white"] as const;
 export type AvatarBg = (typeof AVATAR_BGS)[number];
 export const AVATAR_BG_FILLS: Record<AvatarBg, [string, string]> = {
-  sky: ["#E2F2FF", "#C9E1FF"],
-  water: ["#E4F7FA", "#C8EAF5"],
-  lilac: ["#ECEDFF", "#D6DCFF"],
-  pale: ["#E6F3FF", "#E6F3FF"],
-  gray: ["#EEF2F7", "#EEF2F7"],
+  sky: ["#FFF6DD", "#FFE08A"],
+  water: ["#EAFBEF", "#C9F0D6"],
+  lilac: ["#FFF3E6", "#FFD9B3"],
+  pale: ["#FFF4D6", "#FFF4D6"],
+  gray: ["#F1F2F7", "#F1F2F7"],
   white: ["#FFFFFF", "#FFFFFF"],
 };
 
-export const AVATAR_CLOTHS = ["#FFFFFF", "#22304A", "#8CC8FF", "#BFE0FF", "#FF9DB0"] as const;
-export const AVATAR_HAIR_COLORS = ["#22304A", "#5A4334", "#A9B2C2", "#D9A15B"] as const;
+export const AVATAR_CLOTHS = ["#FFFFFF", "#1F2340", "#FFC23D", "#34B36A", "#FF9DB0"] as const;
+export const AVATAR_HAIR_COLORS = ["#1F2340", "#5A4334", "#A3A8BC", "#D9A15B"] as const;
 
-export const AVATAR_INK = "#22304A";
+export const AVATAR_INK = "#1F2340";
 
 export interface AvatarConfig {
   hair: AvatarHair;
@@ -40,7 +40,7 @@ export interface AvatarConfig {
   hairColor: string;
 }
 
-export const DEFAULT_AVATAR: AvatarConfig = { hair: "short", body: "shirt", item: "none", glasses: "none", bg: "sky", cloth: "#FFFFFF", hairColor: "#22304A" };
+export const DEFAULT_AVATAR: AvatarConfig = { hair: "short", body: "shirt", item: "none", glasses: "none", bg: "sky", cloth: "#FFFFFF", hairColor: "#1F2340" };
 
 const NONE = "";
 
@@ -96,7 +96,7 @@ export const ITEM_PATHS: Record<AvatarItem, { a: string; color: string; b: strin
   none: { a: NONE, color: "#FFFFFF", b: NONE, w: NONE, l: NONE },
   headphones: {
     a: "M56 88 H68 V114 H56 Q51 114 51 109 V93 Q51 88 56 88 Z M132 88 H144 Q149 88 149 93 V109 Q149 114 144 114 H132 Z",
-    color: "#8CC8FF",
+    color: "#FFC23D",
     b: NONE,
     w: NONE,
     l: "M60 88 C56 40 144 40 140 88",
@@ -110,7 +110,7 @@ export const ITEM_PATHS: Record<AvatarItem, { a: string; color: string; b: strin
   },
   pencil: {
     a: "M126.8 85.6 L147.3 57.8 L153.7 62.6 L133.2 90.4 Z",
-    color: "#BFE0FF",
+    color: "#FFE08A",
     b: "M126.8 85.6 L133.2 90.4 L130 94.6 L123.6 89.8 Z",
     w: "M147.3 57.8 L158 49 L153.7 62.6 Z",
     l: NONE,
@@ -129,9 +129,11 @@ const pick = <T extends string>(list: readonly T[], v: unknown): T | null => ((l
 
 // 예전(시안 v2) 아바타 값 → 새 값. 저장된 값은 그대로 두고 읽을 때 바꾼다
 const OLD_TONE_BG: Record<string, AvatarBg> = { blue: "sky", green: "water", red: "lilac", yellow: "pale", navy: "gray" };
-const OLD_TONE_CLOTH: Record<string, string> = { blue: "#8CC8FF", navy: "#22304A", red: "#FF9DB0" };
+const OLD_TONE_CLOTH: Record<string, string> = { blue: "#1F2340", navy: "#1F2340", red: "#FF9DB0", green: "#34B36A", yellow: "#FFC23D" };
 const OLD_HAIR: Record<string, AvatarHair> = { crop: "short" };
-const OLD_HAIR_COLOR: Record<string, string> = { "#1F1D2B": "#22304A", "#3A2A22": "#5A4334", "#6B3F2A": "#5A4334", "#9A98A3": "#A9B2C2" };
+// 하늘색 시절(v3 하늘) 옷·머리색도 맹고색으로
+const OLD_CLOTH: Record<string, string> = { "#22304A": "#1F2340", "#8CC8FF": "#FFC23D", "#BFE0FF": "#FFC23D" };
+const OLD_HAIR_COLOR: Record<string, string> = { "#1F1D2B": "#1F2340", "#3A2A22": "#5A4334", "#6B3F2A": "#5A4334", "#9A98A3": "#A3A8BC", "#22304A": "#1F2340", "#A9B2C2": "#A3A8BC" };
 
 export function sanitizeAvatar(v: unknown): AvatarConfig {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
@@ -142,7 +144,7 @@ export function sanitizeAvatar(v: unknown): AvatarConfig {
     item: pick(AVATAR_ITEMS, o.item) ?? DEFAULT_AVATAR.item,
     glasses: pick(AVATAR_GLASSES, o.glasses) ?? (o.glasses === true ? "round" : DEFAULT_AVATAR.glasses),
     bg: pick(AVATAR_BGS, o.bg) ?? OLD_TONE_BG[tone] ?? DEFAULT_AVATAR.bg,
-    cloth: pick(AVATAR_CLOTHS, o.cloth) ?? OLD_TONE_CLOTH[tone] ?? DEFAULT_AVATAR.cloth,
+    cloth: pick(AVATAR_CLOTHS, o.cloth) ?? OLD_CLOTH[o.cloth as string] ?? OLD_TONE_CLOTH[tone] ?? DEFAULT_AVATAR.cloth,
     hairColor: pick(AVATAR_HAIR_COLORS, o.hairColor) ?? OLD_HAIR_COLOR[o.hairColor as string] ?? DEFAULT_AVATAR.hairColor,
   };
 }

@@ -13,7 +13,7 @@ export default async function OnboardingFood({ searchParams }: { searchParams: P
   const { card } = await s.tx((q) => readCard(q, s.user.id));
   return (
     <>
-      <StepHeader step={2} back={`/onboarding/avatar${q}`} skip={`/onboarding/birthday${q}`} t={t} title={t("onb.food.title")} body={t("onb.food.body")} />
+      <StepHeader step={2} back={`/onboarding/avatar${q}`} skip={`/onboarding/birthday${q}`} t={t} title={t("onb.food.title")} />
       <FoodStep locale={s.profile.locale} safety={card.safety ?? null} spicy={card.taste?.spicy ?? null} next={next} />
     </>
   );

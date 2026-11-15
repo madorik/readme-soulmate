@@ -8,11 +8,12 @@ import { localReminders } from "@/lib/reminders";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const s = await requireSession();
   const people = await listPeople(s);
-  const reminders = localReminders(eventsFor(people, todayFor(s.profile)), s.profile.reminderOffsets, s.profile.locale);
+  // 설정에서 알림을 끄면 기기 로컬 알림도 예약하지 않는다(이미 예약된 것은 NativeBridge가 지운다)
+  const reminders = s.profile.pushEnabled ? localReminders(eventsFor(people, todayFor(s.profile)), s.profile.reminderOffsets, s.profile.locale) : [];
   return (
     <main className="screen !pb-0">
       {children}
-      <NativeBridge locale={s.profile.locale} appLock={s.profile.appLock} reminders={reminders} pushEnabled={pushConfigured()} />
+      <NativeBridge locale={s.profile.locale} appLock={s.profile.appLock} reminders={reminders} pushEnabled={pushConfigured() && s.profile.pushEnabled} />
     </main>
   );
 }

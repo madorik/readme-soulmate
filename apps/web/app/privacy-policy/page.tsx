@@ -28,11 +28,12 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
             brands, favorites (patterns, style, celebrities, characters, teams, movies, dramas, shows, music, seasons, desserts, places, animals, books), drinking preferences, date of birth (solar or lunar; the year is optional) and anniversaries.
           </li>
           <li>
-            <b>Your people</b>: who you shared with or received from, which sections each person can see, the relation (partner, family, friend), nicknames you give, private notes you write about someone, and
-            what you write down yourself about people who don&rsquo;t use the app (name, favorites, allergies, sizes, gifts, dates).
+            <b>Your people</b>: the people you add, nicknames and groups you give them, what you write down about them (favorites, allergies, sizes, gifts, dates), the answers they send when you ask them,
+            and private notes you write about someone.
           </li>
           <li>
-            <b>Answering a request without the app</b>: the name you type and the answers you send. Allergy answers are saved only if you agree on that screen.
+            <b>Answering someone&rsquo;s questions</b>: the answers you send are saved to the asker&rsquo;s record about you. Allergy answers are sent only if you agree on that screen. If you answer while signed in,
+            the asker sees your name and avatar on that record, and you can choose to save the answers to your own README too.
           </li>
           <li>
             <b>Settings and device</b>: language, time zone, reminder timing, whether app lock is on, and the device language. If you allow notifications on a phone, reminders are
@@ -46,7 +47,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
         <h2>2. Why we use it</h2>
         <ul>
           <li>To sign you in and keep your account</li>
-          <li>To show your README to the people you chose, only the sections you allowed</li>
+          <li>To keep your README and your records about your people, and to deliver the questions you ask and the answers you receive</li>
           <li>To send birthday and anniversary reminders (solar dates are calculated from lunar ones)</li>
           <li>To answer questions and keep the service safe (preventing abuse)</li>
         </ul>
@@ -54,16 +55,17 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
 
         <h2>3. Health information (allergies)</h2>
         <p>
-          Allergies and foods you can&rsquo;t eat may be health information. We save it only after you agree, encrypt it before it is stored, and show it only to people you allowed. You can delete it or
-          withdraw consent any time by editing your README or deleting your account. Allergies you write down yourself about someone else are encrypted the same way and visible only to you.
+          Allergies and foods you can&rsquo;t eat may be health information. We save it only after you agree and encrypt it before it is stored. Your README is visible only to you. When you answer someone&rsquo;s
+          questions about allergies, you agree on that screen to send them to the asker, and the answer is saved, encrypted, to the asker&rsquo;s record. Allergies you write down about someone else are encrypted
+          the same way and visible only to you. You can delete them or withdraw consent any time by editing or deleting your account.
         </p>
 
         <h2>4. Who can see it</h2>
         <ul>
           <li>There is no public profile or search. Nobody can find you by name, email or phone number.</li>
-          <li>A share link opens for one person only and expires in 7 days. You can stop sharing with anyone at any time, and they lose access right away.</li>
-          <li>Private notes are visible only to you.</li>
-          <li>What you write yourself about someone is visible only to you. It is not shown to that person either.</li>
+          <li>Your README is visible only to you. Nobody else can read it, even people in your list.</li>
+          <li>Your records about other people and your private notes are visible only to you. They are not shown to that person either.</li>
+          <li>A question link expires in 7 days and can be answered once. Once answered, the answers belong to the asker&rsquo;s record and the asker can edit or delete them.</li>
         </ul>
 
         <h2>5. Service providers and overseas transfer</h2>
@@ -91,33 +93,39 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
               <td>Sign-in, only if you choose it</td>
               <td>USA</td>
             </tr>
+            <tr>
+              <td>OpenAI, L.L.C.</td>
+              <td>Sorting a sentence you say or type in Say it into people and sections, only when you use it</td>
+              <td>USA (sent over the network each time)</td>
+            </tr>
           </tbody>
         </table>
         <p>
           Information is stored with these providers until you delete your account. If you don&rsquo;t want overseas transfer, you can choose not to sign up or delete your account; the service can&rsquo;t
-          run without it. Voice input uses your device&rsquo;s or browser&rsquo;s speech recognition (Apple, Google, etc.); we never receive the audio. Sending a link through KakaoTalk or another app passes
+          run without it. Voice input uses your device&rsquo;s or browser&rsquo;s speech recognition (Apple, Google, etc.); we never receive the audio. In Say it, the recognized sentence and the names of your people are
+          sent to OpenAI only to sort the sentence; we don&rsquo;t keep the sentence itself, only the values saved to your records. Sending a link through KakaoTalk or another app passes
           only the link to that app.
         </p>
 
         <h2>6. How long we keep it</h2>
         <ul>
-          <li>Until you delete your account. Deleting removes your README, shares, people, notes and notifications right away; database backups roll off within 7 days.</li>
+          <li>Until you delete your account. Deleting removes your README, people, records, notes, question links and notifications right away; database backups roll off within 7 days.</li>
           <li>Demo accounts are deleted automatically 7 days after they are created.</li>
-          <li>Unused share or request links stop working after 7 days.</li>
-          <li>Answers sent without the app stay with the person who asked until they delete them or their account. To have your answer removed, email us.</li>
+          <li>Unanswered question links stop working after 7 days.</li>
+          <li>Answers you send stay in the asker&rsquo;s record until they delete them or their account. Deleting your own account doesn&rsquo;t remove them. To have your answer removed, ask the asker or email us.</li>
         </ul>
 
         <h2>7. Your rights</h2>
         <p>
-          You can view, download (Sharing &gt; Download my data), correct, or delete your information and stop sharing at any time in the app. You can also email {mail}; we reply within 10 days.
+          You can view, correct, or delete your information at any time in the app. To get a copy of your data, or for any other request, email {mail}; we reply within 10 days.
         </p>
 
         <h2>8. Security</h2>
         <ul>
           <li>All traffic is encrypted (HTTPS).</li>
-          <li>Allergies, sizes, dates of birth and anniversaries, private notes and request drafts are encrypted (AES-256-GCM) before they are stored.</li>
-          <li>The database itself checks that each person can only read their own data or sections shared with them.</li>
-          <li>Share links are random, stored only as a hash, work once, and expire.</li>
+          <li>Allergies, sizes, dates of birth and anniversaries, private notes and prefilled question values are encrypted (AES-256-GCM) before they are stored.</li>
+          <li>The database itself checks that each person can only read their own data (row-level security).</li>
+          <li>Question links are random, stored only as a hash, work once, and expire.</li>
         </ul>
 
         <h2>9. Children</h2>
@@ -136,8 +144,8 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
   return (
     <LegalPage locale="ko" path="/privacy-policy" title="개인정보 처리방침">
       <p>
-        리드미 - 소울메이트 컨닝페이퍼(이하 &lsquo;리드미&rsquo;)는 {OPERATOR.ko}(대표 {CEO.ko}, 이하 &lsquo;운영자&rsquo;)가 운영합니다. 리드미는 내 취향·못 먹는 음식·사이즈·기념일을 직접 적고, 내가 고른
-        사람에게만 보여 주는 서비스입니다. 운영자는 「개인정보 보호법」을 지키며 개인정보를 아래와 같이 처리합니다.
+        리드미 - 소울메이트 컨닝페이퍼(이하 &lsquo;리드미&rsquo;)는 {OPERATOR.ko}(대표 {CEO.ko}, 이하 &lsquo;운영자&rsquo;)가 운영합니다. 리드미는 내 취향·못 먹는 음식·사이즈·기념일을 적어 두고, 가까운
+        사람들의 것도 적어 두거나 물어봐서 채우는 서비스입니다. 운영자는 「개인정보 보호법」을 지키며 개인정보를 아래와 같이 처리합니다.
       </p>
 
       <h2>1. 처리하는 개인정보 항목</h2>
@@ -150,11 +158,11 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           <b>내 리드미</b>: 부를 이름, 아바타, 좋아하는·싫어하는 음식, <b>알레르기·못 먹는 음식(건강 정보)</b>, 옷·신발 사이즈, 받고 싶은 선물과 좋아하는 브랜드, 좋아하는 것들(무늬·스타일·연예인·캐릭터·응원팀·영화·드라마·TV·음악·계절·디저트·여행지·동물·책), 술 취향, 생년월일(양력·음력, 태어난 해는 선택)과 기념일
         </li>
         <li>
-          <b>내 사람들</b>: 주고받은 상대, 상대마다 보여 주는 항목, 관계(배우자·애인, 가족, 친구), 내가 붙인 호칭, 나만 보는 메모, 앱을 안 쓰는 사람에 대해 내가 직접 적어 둔 내용(이름, 취향, 알레르기,
-          사이즈, 선물, 기념일)
+          <b>내 사람들</b>: 내가 더한 사람, 내가 붙인 호칭과 그룹, 그 사람에 대해 적어 둔 내용(취향, 알레르기, 사이즈, 선물, 기념일), 물어봐서 받은 답, 나만 보는 메모
         </li>
         <li>
-          <b>앱 없이 요청에 답한 경우</b>: 적은 이름과 보낸 답. 알레르기 답은 그 화면에서 동의한 경우에만 저장합니다.
+          <b>물어보기에 답한 경우</b>: 보낸 답은 물어본 사람이 나에 대해 적어 둔 기록에 저장됩니다. 알레르기 답은 그 화면에서 동의한 경우에만 보냅니다. 로그인하고 답하면 물어본 사람에게 내 이름과
+          아바타가 보이고, 고르면 내 리드미에도 저장됩니다.
         </li>
         <li>
           <b>설정과 기기</b>: 언어, 시간대, 알림 시점, 앱 잠금 사용 여부, 기기 언어. 휴대폰에서 알림을 허용하면 생일 알림은 기기 안에서 예약됩니다.
@@ -167,7 +175,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
       <h2>2. 처리 목적</h2>
       <ul>
         <li>회원 확인, 로그인 유지, 계정 관리</li>
-        <li>내가 고른 사람에게 허락한 항목만 보여 주기</li>
+        <li>내 리드미와 내 사람들 기록 보관, 물어보기 전달과 받은 답 저장</li>
         <li>생일·기념일 알림(음력은 양력으로 바꿔 계산)</li>
         <li>문의 응대, 부정 이용 방지 등 서비스 안전 관리</li>
       </ul>
@@ -175,16 +183,17 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
 
       <h2>3. 민감정보(알레르기)</h2>
       <p>
-        알레르기와 못 먹는 음식은 건강에 관한 정보일 수 있어, 따로 동의를 받은 뒤에만 저장합니다. 저장하기 전에 암호화하고, 내가 허락한 사람에게만 보여 줍니다. 내 리드미에서 지우거나 계정을 삭제해
-        언제든 동의를 철회할 수 있습니다. 다른 사람에 대해 직접 적어 둔 알레르기도 같은 방식으로 암호화하고, 적은 사람만 봅니다.
+        알레르기와 못 먹는 음식은 건강에 관한 정보일 수 있어, 따로 동의를 받은 뒤에만 저장하고 저장하기 전에 암호화합니다. 내 리드미는 나만 봅니다. 물어보기에 알레르기를 답할 때는 그 화면에서
+        물어본 사람에게 보내는 데 동의를 받고, 답은 암호화해 물어본 사람의 기록에 저장합니다. 다른 사람에 대해 적어 둔 알레르기도 같은 방식으로 암호화하고, 적은 사람만 봅니다. 고치거나 지우거나
+        계정을 삭제해 언제든 동의를 철회할 수 있습니다.
       </p>
 
       <h2>4. 누가 볼 수 있나요</h2>
       <ul>
         <li>공개 프로필과 검색이 없습니다. 이름·이메일·전화번호로 나를 찾을 수 없습니다.</li>
-        <li>공유 링크는 한 사람만 7일 안에 열 수 있습니다. 언제든 보내기를 끊을 수 있고, 끊으면 바로 못 봅니다.</li>
-        <li>메모는 나만 봅니다.</li>
-        <li>다른 사람에 대해 직접 적어 둔 내용은 나만 봅니다. 그 사람에게도 보이지 않습니다.</li>
+        <li>내 리드미는 나만 봅니다. 내 사람들에 있는 사람도 읽을 수 없습니다.</li>
+        <li>다른 사람에 대해 적어 둔 기록과 메모는 나만 봅니다. 그 사람에게도 보이지 않습니다.</li>
+        <li>물어보기 링크는 7일 안에 한 번만 답할 수 있습니다. 답한 내용은 물어본 사람의 기록이 되어, 물어본 사람이 고치거나 지울 수 있습니다.</li>
       </ul>
 
       <h2>5. 처리 위탁과 국외 이전</h2>
@@ -212,30 +221,36 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
             <td>로그인(고른 경우만)</td>
             <td>미국</td>
           </tr>
+          <tr>
+            <td>OpenAI, L.L.C.</td>
+            <td>말로 적기에서 말하거나 적은 문장을 사람·항목으로 나누기(쓸 때만)</td>
+            <td>미국(쓸 때마다 네트워크로 전송)</td>
+          </tr>
         </tbody>
       </table>
       <p>
         보유 기간은 회원 탈퇴 때까지입니다. 국외 이전을 원하지 않으면 가입하지 않거나 계정을 삭제할 수 있으며, 이 경우 서비스를 쓸 수 없습니다. 말로 입력하기는 기기·브라우저의 음성 인식(Apple·Google
-        등)을 쓰며 운영자는 음성을 받지 않습니다. 카카오톡 등 다른 앱으로 보내기는 링크만 그 앱에 넘깁니다.
+        등)을 쓰며 운영자는 음성을 받지 않습니다. 말로 적기에서는 글로 바뀐 문장과 내 사람들의 이름을 문장을 나누는 데만 OpenAI에 보내고, 운영자는 문장 자체는 보관하지 않고 기록에 넣은 값만
+        저장합니다. 카카오톡 등 다른 앱으로 보내기는 링크만 그 앱에 넘깁니다.
       </p>
 
       <h2>6. 보유 기간과 파기</h2>
       <ul>
-        <li>계정을 삭제할 때까지 보관합니다. 삭제하면 리드미·공유·사람들·메모·알림을 바로 지우고, 데이터베이스 백업에서도 7일 안에 사라집니다.</li>
+        <li>계정을 삭제할 때까지 보관합니다. 삭제하면 리드미·사람들·기록·메모·물어보기 링크·알림을 바로 지우고, 데이터베이스 백업에서도 7일 안에 사라집니다.</li>
         <li>데모 계정은 만든 지 7일 뒤 자동으로 지웁니다.</li>
-        <li>쓰지 않은 공유·요청 링크는 7일 뒤 열리지 않습니다.</li>
-        <li>앱 없이 보낸 답은 요청한 사람이 지우거나 탈퇴할 때까지 그 사람에게 남습니다. 내 답을 지우고 싶으면 메일로 알려 주세요.</li>
+        <li>답하지 않은 물어보기 링크는 7일 뒤 열리지 않습니다.</li>
+        <li>내가 보낸 답은 물어본 사람이 지우거나 탈퇴할 때까지 그 사람의 기록에 남습니다. 내 계정을 지워도 지워지지 않습니다. 지우고 싶으면 물어본 사람에게 말하거나 메일로 알려 주세요.</li>
       </ul>
 
       <h2>7. 이용자의 권리</h2>
-      <p>앱에서 언제든 내 정보를 보고, 내려받고(공유 관리 &gt; 내 정보 내려받기), 고치고, 지우고, 공유를 끊을 수 있습니다. {mail}로 요청해도 되며 10일 안에 답합니다.</p>
+      <p>앱에서 언제든 내 정보를 보고, 고치고, 지울 수 있습니다. 내 정보 사본이 필요하거나 다른 요청이 있으면 {mail}로 보내 주세요. 10일 안에 답합니다.</p>
 
       <h2>8. 안전성 확보 조치</h2>
       <ul>
         <li>모든 통신을 암호화(HTTPS)합니다.</li>
-        <li>알레르기·사이즈·생년월일과 기념일·메모·요청 초안은 저장 전에 암호화(AES-256-GCM)합니다.</li>
-        <li>데이터베이스가 직접 &lsquo;본인 또는 허락받은 사람&rsquo;만 읽게 막습니다(행 수준 보안).</li>
-        <li>공유 링크는 무작위로 만들고 해시로만 보관하며, 한 번만 쓰이고 기한이 지나면 열리지 않습니다.</li>
+        <li>알레르기·사이즈·생년월일과 기념일·메모·물어볼 때 미리 채운 값은 저장 전에 암호화(AES-256-GCM)합니다.</li>
+        <li>데이터베이스가 직접 &lsquo;본인&rsquo;만 자기 정보를 읽게 막습니다(행 수준 보안).</li>
+        <li>물어보기 링크는 무작위로 만들고 해시로만 보관하며, 한 번만 쓰이고 기한이 지나면 열리지 않습니다.</li>
       </ul>
 
       <h2>9. 만 14세 미만</h2>

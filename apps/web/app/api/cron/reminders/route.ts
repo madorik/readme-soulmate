@@ -5,7 +5,7 @@ import { asSystem } from "@/lib/db";
 import { sendPush } from "@/lib/push";
 
 // 매일 아침 한 번(vercel.json): 오늘 알릴 생일·기념일을 알림으로 남기고, 푸시 키가 있으면 보낸다.
-// 시스템 권한으로 모든 사람을 보므로, 볼 수 있는 범위(철회 안 된 허락 + dates 항목, 내가 부탁해 받은 손님 카드, 내가 직접 적어 둔 카드)를 쿼리에서 직접 지킨다.
+// 시스템 권한으로 모든 사람을 보므로, 각자 자기 주소록 사람의 기록(contact_cards)만 읽도록 쿼리에서 직접 지킨다.
 
 const BATCH = 200;
 
@@ -15,12 +15,9 @@ function datesOf(payload: unknown, scope: string): DatesData | null {
 }
 
 type Source = {
-  src: "card" | "guest" | "mine";
   user_id: string;
   contact_id: string;
   name: string;
-  owner_id: string | null;
-  invite_id: string | null;
   payload: unknown;
 };
 
@@ -34,7 +31,7 @@ export async function GET(request: NextRequest) {
   for (let offset = 0; ; offset += BATCH) {
     const profiles = await asSystem((q) =>
       q<{ id: string; locale: string | null; system_locale: string; time_zone: string; reminder_offsets: number[] }>(
-        "select id, locale, system_locale, time_zone, reminder_offsets from profiles where onboarded_at is not null order by id limit $1 offset $2",
+        "select id, locale, system_locale, time_zone, reminder_offsets from profiles where onboarded_at is not null and push_enabled order by id limit $1 offset $2",
         [BATCH, offset],
       ),
     );
@@ -42,25 +39,14 @@ export async function GET(request: NextRequest) {
     users += profiles.length;
     const ids = profiles.map((p) => p.id);
 
-    // 볼 수 있는 생일 칸만: (1) 허락이 살아 있고 dates가 들어 있는 사람의 카드, (2) 내가 부탁해서 받은 손님 카드, (3) 내가 직접 적어 둔 카드
+    // 내 주소록 사람의 기록 중 생일·기념일 칸(이름은 내가 부르는 말, 없으면 이어진 앱 사용자 이름)
     const sources = await asSystem((q) =>
       q<Source>(
-        `select 'card' as src, c.user_id, c.id as contact_id, coalesce(nullif(c.nickname, ''), p.display_name, '') as name, cs.owner_id, null::uuid as invite_id, cs.payload
-           from contacts c
-           join grants g on g.owner_id = c.person_id and g.viewer_id = c.user_id and g.revoked_at is null and 'dates' = any (g.sections)
-           join card_sections cs on cs.owner_id = c.person_id and cs.section = 'dates'
-           left join profiles p on p.id = c.person_id
-          where c.user_id = any ($1)
-         union all
-         select 'guest', c.user_id, c.id, coalesce(nullif(c.nickname, ''), gc.display_name, ''), null, gc.invite_id, gc.sections -> 'dates'
-           from contacts c
-           join guest_cards gc on gc.id = c.guest_card_id and gc.requester_id = c.user_id
-          where c.user_id = any ($1) and c.person_id is null and gc.invite_id is not null and gc.sections ? 'dates'
-         union all
-         select 'mine', c.user_id, c.id, c.nickname, null, null, cc.sections -> 'dates'
+        `select c.user_id, c.id as contact_id, coalesce(nullif(c.nickname, ''), p.display_name, '') as name, cc.sections -> 'dates' as payload
            from contacts c
            join contact_cards cc on cc.contact_id = c.id and cc.author_id = c.user_id
-          where c.user_id = any ($1) and c.person_id is null and c.guest_card_id is null and cc.sections ? 'dates'`,
+           left join profiles p on p.id = c.person_id
+          where c.user_id = any ($1) and cc.sections ? 'dates'`,
         [ids],
       ),
     );
@@ -70,14 +56,7 @@ export async function GET(request: NextRequest) {
       const locale = isLocale(profile.locale) ? profile.locale : isLocale(profile.system_locale) ? profile.system_locale : "ko";
       const people: PersonDates[] = [];
       for (const s of sources.filter((x) => x.user_id === me)) {
-        const d =
-          s.src === "card" && s.owner_id
-            ? datesOf(s.payload, aad.card(s.owner_id, "dates"))
-            : s.src === "guest" && s.invite_id
-              ? datesOf(s.payload, aad.guest(s.invite_id, "dates"))
-              : s.src === "mine"
-                ? datesOf(s.payload, aad.contact(s.user_id, s.contact_id, "dates"))
-                : null;
+        const d = datesOf(s.payload, aad.contact(s.user_id, s.contact_id, "dates"));
         if (d) people.push({ contactId: s.contact_id, name: s.name, birthday: d.birthday, anniversaries: d.anniversaries });
       }
       if (!people.length) continue;

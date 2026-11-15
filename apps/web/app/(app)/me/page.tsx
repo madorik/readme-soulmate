@@ -1,17 +1,14 @@
-import { SECTIONS_BY_IMPORTANCE } from "@readme/core";
+import { SECTIONS_BY_IMPORTANCE, isSection } from "@readme/core";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { TabBar } from "@/components/chrome";
-import { Icon } from "@/components/marks";
 import { readCard, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
-import { summarize } from "@/lib/summary";
 import { MyReadmeList } from "./MyReadmeList";
+import { aiConfigured } from "@/lib/ai";
 
-/** 미리보기·공유하기: 같은 테두리 동그라미(.pill과 같은 선) */
-const ICON_BUTTON = "flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)]";
-
-export default async function Me() {
+export default async function Me({ searchParams }: { searchParams: Promise<{ open?: string }> }) {
+  const { open } = await searchParams;
   const s = await requireSession();
   const { locale } = s.profile;
   const t = makeT(locale);
@@ -19,7 +16,8 @@ export default async function Me() {
   const name = s.profile.displayName;
   return (
     <>
-      <div className="flex items-center gap-4 pl-5 pr-4 pt-5">
+      {/* 프로필 영역은 위에 고정: 항목을 펼쳐 고치는 동안에도 보인다 */}
+      <div className="sticky z-30 flex h-[var(--me-head)] items-center gap-4 bg-bg pb-3 pl-5 pr-4 pt-5" style={{ top: "var(--sat)" }}>
         <Link href="/me/avatar" className="shrink-0 rounded-full">
           <Avatar config={s.profile.avatar} size={82} label={t("avatar.of", { name })} />
         </Link>
@@ -27,15 +25,6 @@ export default async function Me() {
           <h1 className="truncate text-[30px] font-bold leading-[1.15] tracking-[-0.03em]">{name}</h1>
           <Link href="/me/avatar" className="self-start text-[14px] font-bold text-muted underline decoration-[1.5px] underline-offset-[5px]">
             {t("me.face")}
-          </Link>
-        </div>
-        {/* 받는 사람에게 보이는 모습(미리보기)과 공유하기는 아이콘으로만 */}
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Link href="/me/preview" aria-label={t("me.previewButton")} className={ICON_BUTTON}>
-            <Icon name="eye" size={20} strokeWidth={1.7} />
-          </Link>
-          <Link href="/share" aria-label={t("me.send")} className={ICON_BUTTON}>
-            <Icon name="share" size={19} strokeWidth={1.7} />
           </Link>
         </div>
       </div>
@@ -46,15 +35,15 @@ export default async function Me() {
           section,
           title: t(`section.${section}` as "section.safety"),
           sub: t(`section.${section}.sub` as "section.safety.sub"),
-          line: summarize(section, card[section], locale, t),
         }))}
         card={card}
         locale={locale}
-        labels={{ edit: t("me.edit"), close: t("me.close"), empty: t("me.empty") }}
+        labels={{ edit: t("me.edit"), close: t("me.close") }}
+        initialOpen={isSection(open) ? open : null}
       />
 
       <div className="h-8" />
-      <TabBar active="me" t={t} />
+      <TabBar active="me" t={t} voice={aiConfigured()} />
     </>
   );
 }

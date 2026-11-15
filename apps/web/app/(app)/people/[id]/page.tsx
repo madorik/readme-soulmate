@@ -1,19 +1,19 @@
 import { formatMonthDay, parseYmd, SECTIONS } from "@readme/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { addNote, deleteNote, removeContact, setNickname } from "@/app/actions/people";
+import { addNote, deleteNote, removeContact } from "@/app/actions/people";
+import { cancelInvite } from "@/app/actions/request";
 import { Avatar } from "@/components/Avatar";
 import { CardView } from "@/components/CardView";
 import { DateTiles } from "@/components/DateTiles";
 import { TopBar } from "@/components/chrome";
 import { Icon } from "@/components/marks";
-import { TagChip } from "@/components/PersonRow";
-import { displayName, groupName, listGroups, listNotes, listPeople, listShares, requireSession, todayFor } from "@/lib/data";
+import { displayName, groupName, listGroups, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { summarize } from "@/lib/summary";
 import { FavoriteHeart } from "./FavoriteHeart";
 import { PersonOrganize } from "./PersonOrganize";
-import { ShareControl } from "./ShareControl";
+import { TagEditor } from "./TagEditor";
 
 export default async function PersonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
   const { id } = await params;
@@ -28,14 +28,9 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   if (!p) notFound();
   const name = displayName(p);
   const today = todayFor(s.profile);
-  const notes = p.kind === "pending" ? [] : await s.tx((q) => listNotes(q, s.user.id, p.contactId));
-  const updated = p.updatedAt ? parseYmd(p.updatedAt.slice(0, 10)) : null;
-  const askHref = `/request?to=${encodeURIComponent(p.contactId)}`;
-  const mine = p.kind === "mine";
-  const mineEmpty = mine && !SECTIONS.some((x) => p.card[x]);
-  // 내가 이 사람에게 내 리드미를 보여 주는지(앱을 쓰는 사람만)
-  const myShare = p.kind === "member" && p.personId ? ((await s.tx((q) => listShares(q, s.user.id))).find((x) => x.viewerId === p.personId) ?? null) : null;
-  const groups = await s.tx((q) => listGroups(q, s.user.id));
+  const [notes, groups] = await Promise.all([s.tx((q) => listNotes(q, s.user.id, p.contactId)), s.tx((q) => listGroups(q, s.user.id))]);
+  const empty = !SECTIONS.some((x) => p.card[x]);
+  const waiting = p.asking?.state === "active" ? p.asking : null;
 
   return (
     <>
@@ -43,15 +38,25 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         back={back}
         label={t("common.back")}
         right={
-          mine ? (
-            <a href="#mine" className="flex min-h-11 items-center px-3 text-[14.5px] font-bold">
+          // 오른쪽 위는 그룹과, 기록 목록으로 내려가는 '고치기'
+          <div className="flex items-center gap-1 pr-1">
+            <PersonOrganize
+              contactId={p.contactId}
+              groupId={p.groupId}
+              groups={groups.map((g) => ({ id: g.id, name: groupName(g, t) }))}
+              labels={{
+                group: t("group.label"),
+                none: t("group.none"),
+                newOption: t("group.newOption"),
+                namePlaceholder: t("group.namePlaceholder"),
+                create: t("group.create"),
+                error: t("common.error"),
+              }}
+            />
+            <a href="#record" className="flex min-h-11 items-center px-2.5 text-[14.5px] font-bold">
               {t("me.edit")}
             </a>
-          ) : p.kind !== "pending" ? (
-            <Link href={askHref} className="flex min-h-11 items-center px-3 text-[14.5px] font-bold">
-              {t("person.askMore")}
-            </Link>
-          ) : undefined
+          </div>
         }
       />
 
@@ -63,91 +68,73 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
             <h1 className="min-w-0 truncate text-[32px] font-bold leading-[1.15] tracking-[-0.03em]">{p.name || name}</h1>
             <FavoriteHeart contactId={p.contactId} initial={p.favorite} label={t("person.favorite")} />
           </div>
-          {p.nickname && p.nickname !== p.name ? (
-            <span className="flex">
-              <TagChip large>{p.nickname}</TagChip>
-            </span>
-          ) : null}
-          {mine ? (
-            <span className="text-[12.5px] text-muted">{t("person.mineNote")}</span>
-          ) : p.kind === "guest" ? (
-            <span className="text-[12.5px] text-muted">{t("person.guestNote")}</span>
-          ) : updated && p.kind === "member" ? (
-            <span className="text-[12.5px] text-muted">{t("person.updated", { date: formatMonthDay(updated, locale) })}</span>
-          ) : null}
+          {/* 태그: 이름 밑에서 바로 달고 고친다(앱 사용자와 이어지지 않은 사람은 태그가 이름) */}
+          <TagEditor
+            contactId={p.contactId}
+            initial={p.nickname}
+            nameIsTag={!p.personId}
+            labels={{
+              tag: t("person.relation"),
+              add: t("person.addTag"),
+              edit: t("common.edit"),
+              rename: t("person.rename"),
+              placeholder: t("person.relationPlaceholder"),
+              save: t("common.save"),
+              cancel: t("common.cancel"),
+              error: t("common.error"),
+            }}
+          />
         </div>
       </div>
 
-      <PersonOrganize
-        contactId={p.contactId}
-        groupId={p.groupId}
-        groups={groups.map((g) => ({ id: g.id, name: groupName(g, t) }))}
-        labels={{
-          group: t("group.label"),
-          none: t("group.none"),
-          newOption: t("group.newOption"),
-          namePlaceholder: t("group.namePlaceholder"),
-          create: t("group.create"),
-          error: t("common.error"),
-        }}
-      />
-
-      {p.kind === "member" && p.personId ? (
-        <ShareControl
-          locale={locale}
-          personId={p.personId}
-          name={name}
-          initialOn={!!myShare && !myShare.revoked}
-          initialSections={myShare?.sections ?? []}
-          neverShared={!myShare}
-        />
+      {/* 물어보고 답을 기다리는 중: 아직 아무도 안 연 링크는 여기서 취소한다 */}
+      {waiting ? (
+        <div className="mx-6 mt-5 flex min-h-[52px] items-center gap-2.5 rounded-2xl bg-fill pl-4 pr-1.5">
+          <Icon name="link" size={17} strokeWidth={2} className="shrink-0 text-accent" />
+          <span className="min-w-0 flex-1 text-[14px] font-bold">{t("home.waiting")}</span>
+          <form action={cancelInvite}>
+            <input type="hidden" name="id" value={waiting.inviteId} />
+            <input type="hidden" name="back" value={`/people/${p.contactId}`} />
+            <button className="flex min-h-11 items-center px-2.5 text-[14px] font-bold text-red">{t("privacy.linkCancel")}</button>
+          </form>
+        </div>
       ) : null}
 
-      {p.kind === "pending" && p.pending ? (
-        <section className="flex flex-col gap-3 px-6 pt-8">
-          <p className="text-[15px] leading-[1.6]">
-            {p.pending.state === "canceled" ? t("accept.canceled") : p.pending.state === "expired" ? t("accept.expired") : t("home.waiting")}
-          </p>
-          <Link href={`/request?name=${encodeURIComponent(p.nickname)}`} className="btn-primary">
-            {t("home.ask")}
-          </Link>
-        </section>
-      ) : p.revoked ? (
-        <p className="px-6 pt-8 text-[15px] leading-[1.6] text-muted">{t("person.notShared", { name })}</p>
-      ) : mineEmpty ? (
+      {empty ? (
         <p className="px-6 pt-8 text-[15px] leading-[1.6] text-muted">{t("person.mineEmpty")}</p>
       ) : (
         <>
-          {p.sections.includes("dates") ? <DateTiles dates={p.card.dates} today={today} locale={locale} t={t} /> : null}
-          <CardView card={p.card} sections={p.sections} name={name} locale={locale} t={t} mine={mine} />
+          {p.card.dates ? <DateTiles dates={p.card.dates} today={today} locale={locale} t={t} /> : null}
+          <CardView card={p.card} sections={[...SECTIONS]} name={name} locale={locale} t={t} mine={!p.answered.safety} />
         </>
       )}
 
-      {mine ? (
-        <section id="mine" className="flex flex-col px-6 pt-8">
-          <h2 className="section-title mb-1">{t("person.mineList")}</h2>
-          <ul className="flex flex-col">
-            {SECTIONS.map((section) => {
-              const line = summarize(section, p.card[section], locale, t);
-              return (
-                <li key={section} className="border-t border-rule last:border-b">
-                  <Link href={`/people/${p.contactId}/edit/${section}`} className="flex min-h-[60px] items-center gap-3 py-2">
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className={`text-[15px] font-bold ${section === "safety" ? "text-red" : ""}`}>{t(`section.${section}` as "section.safety")}</span>
-                      {line ? <span className="truncate text-[13px] text-muted">{line}</span> : null}
-                    </span>
-                    <span className="text-[13.5px] font-bold">{line ? t("me.edit") : t("person.write")}</span>
-                    <Icon name="chevron" size={18} className="text-muted" />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ) : null}
+      {/* 내 기록: 항목마다 고치기. 상대가 답한 항목은 받은 날을 같이 */}
+      <section id="record" className="flex flex-col px-6 pt-8">
+        <h2 className="section-title mb-1">{t("person.mineList")}</h2>
+        <ul className="flex flex-col">
+          {SECTIONS.map((section) => {
+            const line = summarize(section, p.card[section], locale, t);
+            const at = p.answered[section];
+            const day = at ? parseYmd(at.slice(0, 10)) : null;
+            return (
+              <li key={section} className="border-t border-rule last:border-b">
+                <Link href={`/people/${p.contactId}/edit/${section}`} className="flex min-h-[60px] items-center gap-3 py-2">
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className={`text-[15px] font-bold ${section === "safety" ? "text-red" : ""}`}>{t(`section.${section}` as "section.safety")}</span>
+                    {line ? <span className="truncate text-[13px] text-muted">{line}</span> : null}
+                    {day ? <span className="text-[12px] font-bold text-accent">{t("person.answeredAt", { date: formatMonthDay(day, locale) })}</span> : null}
+                  </span>
+                  <span className="text-[13.5px] font-bold">{line ? t("me.edit") : t("person.write")}</span>
+                  <Icon name="chevron" size={18} className="text-muted" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
-      {p.kind !== "pending" ? (
-        <section id="notes" className="mx-4 mt-9 flex flex-col gap-2.5 rounded-2xl bg-fill px-5 pb-3 pt-[18px]">
+      <section id="notes" className="mx-4 mt-9 flex flex-col gap-2.5 rounded-2xl bg-fill px-5 pb-3 pt-[18px]">
           <h2 className="flex items-center gap-[7px] text-[15px] font-bold">
             <Icon name="lock" size={15} strokeWidth={2.2} />
             {t("person.notes")}
@@ -178,39 +165,23 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
             </form>
           </details>
         </section>
-      ) : null}
 
       <details className="mx-6 mt-8">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center text-[14px] font-bold text-muted">{t("person.relation")}</summary>
-        <form action={setNickname} className="flex gap-2 pb-2">
-          <input type="hidden" name="contactId" value={p.contactId} />
-          <input name="nickname" defaultValue={p.nickname} maxLength={40} placeholder={t("person.relationPlaceholder")} aria-label={t("person.relation")} className="field" />
-          <button className="btn-primary !h-12 shrink-0 px-5">{t("common.save")}</button>
-        </form>
-        <form action={removeContact} className="pt-2">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center text-[14px] font-bold text-muted">{t("person.remove")}</summary>
+        <form action={removeContact}>
           <input type="hidden" name="contactId" value={p.contactId} />
           <button className="flex min-h-11 items-center text-[14px] font-bold text-red">{t("common.delete")}</button>
         </form>
       </details>
 
-      {mine ? (
-        <div className="sticky bottom-0 mt-auto bg-bg px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
-          <Link href={`/people/${p.contactId}/reminder`} className="btn-primary w-full">
-            {t("person.pickGift")}
-          </Link>
-        </div>
-      ) : p.kind !== "pending" && !p.revoked ? (
-        <div className="sticky bottom-0 mt-auto grid grid-cols-2 gap-2.5 bg-bg px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
-          <Link href={askHref} className="btn-outline">
-            {t("person.askMore")}
-          </Link>
-          <Link href={`/people/${p.contactId}/reminder`} className="btn-primary">
-            {t("person.pickGift")}
-          </Link>
-        </div>
-      ) : (
-        <div className="h-8" />
-      )}
+      <div className="bottom-bar mt-auto grid grid-cols-2 gap-2.5 bg-bg px-6 pt-4">
+        <Link href={`/request?to=${encodeURIComponent(p.contactId)}`} className="btn-outline">
+          {t("person.askMore")}
+        </Link>
+        <Link href={`/people/${p.contactId}/reminder`} className="btn-primary">
+          {t("person.pickGift")}
+        </Link>
+      </div>
     </>
   );
 }

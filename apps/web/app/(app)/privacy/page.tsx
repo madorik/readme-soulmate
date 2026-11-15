@@ -1,21 +1,16 @@
-import { RELATIONS, SECTIONS } from "@readme/core";
-import { cancelInvite, setGrant, setGrantSections } from "@/app/actions/share";
-import { Avatar } from "@/components/Avatar";
+import { cancelInvite } from "@/app/actions/request";
 import { TabBar } from "@/components/chrome";
 import { LanguageSetting } from "@/components/LanguageSetting";
-import { listOpenInvites, listPeople, listShares, requireSession } from "@/lib/data";
+import { listOpenInvites, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
-import { AppLockSetting, ReminderSetting } from "./Settings";
+import { AppLockSetting, PushSetting, ReminderSetting } from "./Settings";
+import { aiConfigured } from "@/lib/ai";
 
 export default async function Privacy() {
   const s = await requireSession();
   const { locale } = s.profile;
   const t = makeT(locale);
-  const [shares, invites, people] = await Promise.all([s.tx((q) => listShares(q, s.user.id)), s.tx((q) => listOpenInvites(q)), listPeople(s)]);
-  // 사람들에 있는 사람은 그 사람 화면에서 켜고 끈다. 여기엔 사람들에 없는데 내 리드미를 보는 사람만(내 링크를 받고 자기 것은 안 보낸 사람)
-  const inPeople = new Set(people.map((p) => p.personId).filter((id): id is string => !!id));
-  const outside = shares.filter((x) => !inPeople.has(x.viewerId));
-  const relationLabel = (code: string | null) => RELATIONS.find((r) => r.code === code)?.label[locale] ?? "";
+  const invites = await s.tx((q) => listOpenInvites(q));
 
   return (
     <>
@@ -28,71 +23,18 @@ export default async function Privacy() {
           </a>
         </div>
       ) : null}
-      {/* 공유 설정: 사람들에 없는데 내 리드미를 보는 사람, 아직 안 열린 링크. 둘 다 없으면 칸을 숨긴다 */}
-      {outside.length || invites.length ? <h2 className="section-title px-6 pt-5">{t("privacy.shareSettings")}</h2> : null}
 
-      {outside.length ? (
-        <>
-          <h2 className="px-6 pb-1.5 pt-5 text-[13px] font-bold text-muted">{t("privacy.outside")}</h2>
-          <ul className="mx-6 flex flex-col">
-        {outside.map((x) => {
-          const name = x.name || "?";
-          const scope = x.revoked
-            ? t("privacy.cutDone")
-            : x.sections.length === SECTIONS.length
-              ? t("privacy.all")
-              : x.sections.map((sec) => t(`section.${sec}` as "section.safety")).join(t("common.and"));
-          return (
-            <li key={x.viewerId} className="border-t border-rule">
-              <div className={`flex min-h-[62px] items-center gap-3 ${x.revoked ? "opacity-50" : ""}`}>
-                <Avatar config={x.avatar} size={40} label={t("avatar.of", { name })} />
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="text-[15.5px] font-bold">
-                    {name} <span className="font-medium text-muted">{relationLabel(x.relation)}</span>
-                  </span>
-                  <span className="truncate text-[12.5px] text-muted">{scope}</span>
-                </div>
-                <form action={setGrant}>
-                  <input type="hidden" name="viewerId" value={x.viewerId} />
-                  <input type="hidden" name="cut" value={x.revoked ? "0" : "1"} />
-                  <button className={`flex min-h-11 items-center pl-3 pr-1 text-[14px] font-bold ${x.revoked ? "" : "text-red"}`}>{x.revoked ? t("privacy.restore") : t("privacy.cut")}</button>
-                </form>
-              </div>
-              {!x.revoked ? (
-                <details className="pb-2">
-                  <summary className="cursor-pointer list-none pb-1 text-[12.5px] font-bold text-muted underline underline-offset-4">{t("share.what")}</summary>
-                  <form action={setGrantSections} className="flex flex-col gap-1 pt-1">
-                    <input type="hidden" name="viewerId" value={x.viewerId} />
-                    {SECTIONS.map((sec) => (
-                      <label key={sec} className="flex min-h-10 items-center gap-2.5 text-[14px] font-semibold">
-                        <input type="checkbox" name="sections" value={sec} defaultChecked={x.sections.includes(sec)} className="h-5 w-5 accent-[var(--color-ink)]" />
-                        {t(`section.${sec}` as "section.safety")}
-                      </label>
-                    ))}
-                    <button className="btn-primary !h-11 !text-[14.5px]">{t("common.save")}</button>
-                  </form>
-                </details>
-              ) : null}
-            </li>
-          );
-        })}
-            <li className="border-t border-rule" />
-          </ul>
-        </>
-      ) : null}
-
-      {/* 아직 아무도 안 연 링크는 있을 때만(퍼지면 아무나 열 수 있으니 취소할 곳) */}
+      {/* 아직 아무도 안 연 물어보기 링크는 있을 때만(퍼지면 아무나 답할 수 있으니 취소할 곳) */}
       {invites.length ? (
         <>
-          <h2 className="px-6 pb-1.5 pt-5 text-[13px] font-bold text-muted">{t("privacy.links")}</h2>
-          <ul className="mx-6 flex flex-col">
+          <h2 className="section-title px-6 pt-5">{t("privacy.links")}</h2>
+          <ul className="mx-6 mt-2 flex flex-col">
             {invites.map((i) => (
               <li key={i.id} className="flex min-h-[56px] items-center gap-3 border-t border-rule">
-                <span className="min-w-0 flex-1 text-[15.5px] font-bold">
-                  {i.kind === "share" ? t("privacy.linkShare", { relation: relationLabel(i.relation) || t("app.name") }) : t("privacy.linkRequest", { name: i.recipientName })}
-                </span>
+                <span className="min-w-0 flex-1 text-[15.5px] font-bold">{t("privacy.linkRequest", { name: i.recipientName })}</span>
                 <form action={cancelInvite}>
                   <input type="hidden" name="id" value={i.id} />
+                  <input type="hidden" name="back" value="/privacy" />
                   <button className="flex min-h-11 items-center pl-3 pr-1 text-[14px] font-bold text-red">{t("privacy.linkCancel")}</button>
                 </form>
               </li>
@@ -106,13 +48,17 @@ export default async function Privacy() {
       <div className="mx-6 mt-2 flex flex-col">
         <LanguageSetting choice={s.profile.localeChoice} back="/privacy" t={t} className="border-t border-rule" />
         <AppLockSetting locale={locale} enabled={s.profile.appLock} />
-        <div id="reminders" className="border-t border-rule py-4">
-          <ReminderSetting locale={locale} offsets={s.profile.reminderOffsets} />
-        </div>
+        <PushSetting locale={locale} enabled={s.profile.pushEnabled} />
+        {/* 알림을 끄면 언제 알릴지는 숨긴다 */}
+        {s.profile.pushEnabled ? (
+          <div id="reminders" className="border-t border-rule py-4">
+            <ReminderSetting locale={locale} offsets={s.profile.reminderOffsets} />
+          </div>
+        ) : null}
       </div>
 
       <div className="h-8" />
-      <TabBar active="privacy" t={t} />
+      <TabBar active="privacy" t={t} voice={aiConfigured()} />
     </>
   );
 }

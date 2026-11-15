@@ -18,9 +18,24 @@ export function AppLockSetting({ locale, enabled }: { locale: Locale; enabled: b
       <input type="hidden" name="value" value={enabled ? "0" : "1"} />
       <div className="flex flex-1 flex-col gap-0.5">
         <span className="text-[15.5px] font-bold">{t("privacy.lock")}</span>
-        <span className="text-[12.5px] text-muted">{native ? t("privacy.lockSub") : t("privacy.lockUnavailable")}</span>
+        {native ? null : <span className="text-[12.5px] text-muted">{t("privacy.lockUnavailable")}</span>}
       </div>
       <button disabled={!native && !enabled} aria-label={t("privacy.lock")} aria-pressed={enabled} className="flex h-11 w-14 shrink-0 items-center justify-end disabled:opacity-40">
+        <SwitchLook on={enabled} />
+      </button>
+    </form>
+  );
+}
+
+/** 알림 받기: 끄면 푸시와 기기 로컬 알림(생일·기념일, 요청 답장, 공유 수락)을 모두 멈춘다 */
+export function PushSetting({ locale, enabled }: { locale: Locale; enabled: boolean }) {
+  const t = useT(locale);
+  return (
+    <form action={setPreference} className="flex min-h-16 items-center gap-3 border-t border-rule">
+      <input type="hidden" name="key" value="push_enabled" />
+      <input type="hidden" name="value" value={enabled ? "0" : "1"} />
+      <span className="flex-1 text-[15.5px] font-bold">{t("privacy.push")}</span>
+      <button aria-label={t("privacy.push")} aria-pressed={enabled} className="flex h-11 w-14 shrink-0 items-center justify-end">
         <SwitchLook on={enabled} />
       </button>
     </form>

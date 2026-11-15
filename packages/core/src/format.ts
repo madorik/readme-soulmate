@@ -71,3 +71,13 @@ export function formatDaysLeft(n: number, locale: Locale): string {
   if (locale === "ko") return n === 0 ? "오늘" : n === 1 ? "내일" : `${n}일 남음`;
   return n === 0 ? "Today" : n === 1 ? "Tomorrow" : `In ${n} days`;
 }
+
+const KO_UNITS = ["", "한", "두", "세", "네", "다섯", "여섯", "일곱", "여덟", "아홉"];
+const KO_TENS = ["", "열", "스물", "서른", "마흔", "쉰", "예순", "일흔", "여든", "아흔"];
+
+/** 세는 말 앞의 수를 글자로: 한국어는 고유어(1 → 한, 2 → 두, 20 → 스무, 21 → 스물한), 100 이상과 영어는 숫자 그대로 */
+export function countWord(n: number, locale: Locale): string {
+  if (locale !== "ko" || !Number.isInteger(n) || n < 1 || n > 99) return String(n);
+  if (n === 20) return "스무";
+  return (KO_TENS[Math.floor(n / 10)] ?? "") + (KO_UNITS[n % 10] ?? "");
+}

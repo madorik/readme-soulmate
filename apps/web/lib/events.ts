@@ -2,10 +2,10 @@ import { eventTitle, upcomingEvents, type Locale, type PersonDates, type Upcomin
 import type { T } from "./i18n";
 import { displayName, type Person } from "./data";
 
-/** 내가 볼 수 있는 생일·기념일만 */
+/** 내 기록에 적힌 생일·기념일 */
 export function peopleDates(people: Person[]): PersonDates[] {
   return people
-    .filter((p) => p.card.dates && p.sections.includes("dates"))
+    .filter((p) => p.card.dates)
     .map((p) => ({ contactId: p.contactId, name: displayName(p), birthday: p.card.dates!.birthday, anniversaries: p.card.dates!.anniversaries }));
 }
 

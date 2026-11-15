@@ -1,49 +1,19 @@
 "use client";
 
-import { COLORS, type GiftsData, type Locale } from "@readme/core";
+import { type GiftsData, type Locale } from "@readme/core";
 import { useState } from "react";
-import { Circled, Icon } from "../marks";
+import { Icon } from "../marks";
 import { CircleOption, SectionHeading, TextField, joinList, splitList, useT } from "./shared";
 
 export function GiftsEditor({ value, onChange, locale }: { value: GiftsData; onChange: (v: GiftsData) => void; locale: Locale }) {
   const t = useT(locale);
-  const [loves, setLoves] = useState(joinList(value.loves));
   const [skip, setSkip] = useState(joinList(value.skip));
   const [brands, setBrands] = useState(joinList(value.brands ?? []));
-  const toggleColor = (code: string) => {
-    const has = value.colors.includes(code);
-    if (!has && value.colors.length >= 5) return;
-    onChange({ ...value, colors: has ? value.colors.filter((c) => c !== code) : [...value.colors, code] });
-  };
   const setWish = (i: number, patch: Partial<GiftsData["wishlist"][number]>) =>
     onChange({ ...value, wishlist: value.wishlist.map((w, j) => (j === i ? { ...w, ...patch } : w)) });
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <SectionHeading right={`${value.colors.length}/5`}>{t("gift.colors")}</SectionHeading>
-        <div className="flex flex-wrap gap-x-1 gap-y-1">
-          {COLORS.map((c) => {
-            const on = value.colors.includes(c.code);
-            return (
-              <button key={c.code} type="button" aria-pressed={on} aria-label={c.label[locale]} onClick={() => toggleColor(c.code)} className="flex h-11 w-11 items-center justify-center">
-                <Circled on={on} pad={[7, 7]} width={2.4}>
-                  <span className="block h-[26px] w-[26px] rounded-full" style={{ background: c.hex, boxShadow: "inset 0 0 0 1.5px rgba(34,48,74,0.16)" }} />
-                </Circled>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <TextField
-        label={t("gift.loves")}
-        value={loves}
-        onChange={(v) => {
-          setLoves(v);
-          onChange({ ...value, loves: splitList(v) });
-        }}
-        placeholder={t("gift.lovesPlaceholder")}
-      />
       <TextField label={t("gift.scent")} value={value.scent} onChange={(scent) => onChange({ ...value, scent })} placeholder={t("gift.scentPlaceholder")} />
       <TextField label={t("gift.flowers")} value={value.flowers} onChange={(flowers) => onChange({ ...value, flowers })} placeholder={t("gift.flowersPlaceholder")} />
       <div className="flex flex-col gap-1.5">

@@ -93,7 +93,7 @@ export async function answerQuestion(form: FormData): Promise<void> {
   if (!QUESTIONS.some((x) => x.id === id) || !value) return;
   await s.tx(async (q) => {
     const { card } = await readCard(q, s.user.id);
-    for (const [section, data] of Object.entries(applyAnswer(card, id, value))) {
+    for (const [section, data] of Object.entries(applyAnswer(card, id, value, s.profile.locale))) {
       if (isSection(section)) await writeSection(q, s.user.id, section, data);
     }
   });

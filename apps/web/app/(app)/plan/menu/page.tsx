@@ -1,4 +1,5 @@
 import { ALCOHOL_KINDS, ALLERGENS, DIETS, DISLIKES, SPICY_LEVELS, alcoholLabel, groupMemo, judgeMenus, labelOf, mealBrief, orderNote, type MenuReason, type MenuVerdict, type WhoCode } from "@readme/core";
+import { ChiliMeter } from "@/components/Chili";
 import { redirect } from "next/navigation";
 import { TopBar } from "@/components/chrome";
 import { CopyButton } from "@/components/CopyButton";
@@ -107,7 +108,8 @@ export default async function PlanMenu({ searchParams }: { searchParams: Promise
             {brief.spicy ? (
               <div className="row">
                 <span className="w-[76px] shrink-0 pt-0.5 text-[13px] text-muted">{t("plan.spicy")}</span>
-                <span className="flex flex-1 items-baseline gap-1.5">
+                <span className="flex flex-1 flex-wrap items-center gap-x-1.5 gap-y-1">
+                  <ChiliMeter level={brief.spicy.level} size={18} />
                   <span className="text-[16px] font-bold">{t("plan.spicyUpTo", { level: SPICY_LEVELS[brief.spicy.level]?.[locale] ?? "" })}</span>
                   <span className="text-[12px] text-muted">{brief.spicy.who.join(", ")}</span>
                 </span>

@@ -1,7 +1,8 @@
-import { addDays, formatDayFull, formatSpec, questionFor, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
+import { addDays, countWord, formatDayFull, formatSpec, questionFor, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
 import Link from "next/link";
 import { answerQuestion } from "@/app/actions/card";
 import { Avatar } from "@/components/Avatar";
+import { ChiliMeter } from "@/components/Chili";
 import { TabBar, Wordmark } from "@/components/chrome";
 import { EmptyPortrait, EventPortrait } from "@/components/EventArt";
 import { Mascot } from "@/components/Mascot";
@@ -10,6 +11,7 @@ import { Icon } from "@/components/marks";
 import { displayName, listPeople, readCard, requireSession, todayFor } from "@/lib/data";
 import { eventName, eventsFor } from "@/lib/events";
 import { makeT } from "@/lib/i18n";
+import { aiConfigured } from "@/lib/ai";
 
 // 시안 v3: 다가오는 날(흰 카드, 가는 큰 숫자) → 이번 주(오늘은 하늘 그라데이션, 챙길 날엔 그 사람 얼굴) → 리디가 묻는 오늘의 질문 → 내 사람들(가로 줄)
 export default async function Home({ searchParams }: { searchParams: Promise<{ answered?: string }> }) {
@@ -48,14 +50,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
         <ProfileMenu avatar={s.profile.avatar} labels={{ menu: t("home.profileMenu"), profile: t("profile.title"), signOut: t("privacy.signOut") }} />
       </div>
 
-      <section aria-label={t("home.upcoming")} className="card mx-4 mt-2 flex flex-col px-5 pt-[18px]">
-        <span className="text-[12.5px] font-medium text-muted">
+      {/* 오늘은 카드 밖에. 카드 안 날짜는 챙길 날 것만 */}
+      <p className="flex items-center gap-2 px-5 pb-2.5 pt-1 text-[13px] font-medium text-muted">
+        <span className="rounded-full bg-ink px-2 py-[2px] text-[11.5px] font-bold text-white">{t("start.today")}</span>
+        <span>
           {formatDayFull(today, locale)}
           {lunarToday ? (locale === "ko" ? ` · 음력 ${lunarToday.m}월 ${lunarToday.d}일` : ` · Lunar ${lunarToday.m}/${lunarToday.d}`) : ""}
         </span>
+      </p>
+
+      <section aria-label={t("home.upcoming")} className="card mx-4 flex flex-col px-5 pt-[18px]">
         {next ? (
           <>
-            <div className="flex items-end gap-2.5 pt-[18px]">
+            <div className="flex items-end gap-2.5 pt-1">
               {next.daysUntil === 0 ? (
                 <span className="text-[56px] font-light leading-[0.9] tracking-[-0.04em]">{t("start.today")}</span>
               ) : (
@@ -67,9 +74,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
               </div>
               <EventPortrait href={`/people/${next.contactId}`} avatar={nextPerson?.avatar ?? null} name={nextPerson ? displayName(nextPerson) : next.name} kind={next.kind} />
             </div>
-            <span className="pt-3 text-[13px] text-muted">
-              {next.spec.calendar === "lunar" ? `${formatSpec(next.spec, locale)}${t("common.and")}` : ""}
+            {/* 챙길 날: 양력 날짜를 먼저 굵게, 음력이면 옆에 */}
+            <span className="flex items-center gap-1.5 pt-3.5 text-[14px] font-bold">
+              <Icon name="calendar" size={16} strokeWidth={2} className="shrink-0 text-accent" />
               {formatDayFull(next.date, locale)}
+              {next.spec.calendar === "lunar" ? <span className="font-medium text-muted">· {formatSpec(next.spec, locale)}</span> : null}
             </span>
             <Link href={hintHref} className="mt-[18px] flex min-h-[52px] items-center justify-between border-t border-rule text-[14.5px] font-medium">
               {t("home.hints")}
@@ -78,12 +87,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
           </>
         ) : (
           <>
-            <div className="flex items-center gap-4 pt-[18px]">
+            <div className="flex items-center gap-4 pt-1">
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <span className="text-[21px] font-bold leading-[1.25] tracking-[-0.02em]">{later ? t("home.quietTitle") : t("home.noUpcomingTitle")}</span>
-                <span className="text-[13px] leading-[1.55] text-muted">
-                  {later ? t("home.quietBody", { event: eventName(later, t, locale), date: formatDayFull(later.date, locale) }) : t("home.noUpcomingBody")}
-                </span>
+                {later ? <span className="text-[13px] leading-[1.55] text-muted">{t("home.quietBody", { event: eventName(later, t, locale), date: formatDayFull(later.date, locale) })}</span> : null}
               </div>
               <EmptyPortrait />
             </div>
@@ -99,10 +106,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
         )}
       </section>
 
-      <section aria-label={t("home.thisWeek")} className="card mx-4 mt-3.5 px-2 pb-3.5 pt-4">
+      {/* 누르면 월별 달력(카드 전체가 눌린다) */}
+      <section aria-label={t("home.thisWeek")} className="card relative mx-4 mt-3.5 px-2 pb-3.5 pt-4 transition-transform active:scale-[0.99]">
+        <Link href="/calendar" aria-label={t("home.openCalendar")} className="absolute inset-0 z-10 rounded-[24px]" />
         <div className="flex items-center justify-between px-2.5 pb-3">
           <h2 className="text-[16px] font-bold">{t("home.thisWeek")}</h2>
-          {weekEvents ? <span className="chip-on rounded-full px-2.5 py-1 text-[12.5px]">{t("home.weekCount", { n: weekEvents })}</span> : null}
+          <span className="flex items-center gap-1">
+            {weekEvents ? <span className="chip-on rounded-full px-2.5 py-1 text-[12.5px]">{t("home.weekCount", { n: countWord(weekEvents, locale) })}</span> : null}
+            <Icon name="chevron" size={18} strokeWidth={1.8} className="text-muted" />
+          </span>
         </div>
         <ol className="grid grid-cols-8">
           {days.map((day, i) => {
@@ -140,16 +152,22 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
               <span className="text-[19px] font-bold leading-[1.35] tracking-[-0.02em]">{question.prompt[locale]}</span>
             </div>
           </div>
-          <form action={answerQuestion} className="grid grid-cols-2 gap-2">
+          {/* 넷 이하면 두 줄 격자, 넘으면 옆으로 넘겨 본다(카드 밖까지 이어지게) */}
+          <form
+            action={answerQuestion}
+            className={question.options.length > 4 ? "-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "grid grid-cols-2 gap-2"}
+          >
             <input type="hidden" name="id" value={question.id} />
             {question.options.map((o) => (
               <button
                 key={o.value}
                 name="value"
                 value={o.value}
-                className="min-h-14 rounded-2xl bg-white px-3 text-[15px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-rule)] transition-[transform,background-color] hover:bg-sky-soft active:scale-95"
+                className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl bg-white px-3 py-2 text-[15px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-rule)] transition-[transform,background-color] hover:bg-sky-soft active:scale-95 ${question.options.length > 4 ? "min-w-[96px] shrink-0 snap-start whitespace-nowrap px-4" : ""}`}
               >
                 {o.label[locale]}
+                {/* 매운맛 질문은 고추 개수로도(값이 단계 0–4) */}
+                {question.id === "spicy" ? <ChiliMeter level={Number(o.value)} size={16} /> : null}
               </button>
             ))}
           </form>
@@ -189,7 +207,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
               </Link>
             ))}
             <Link href="/request" className="flex w-[60px] shrink-0 flex-col items-center gap-1.5 text-accent">
-              <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-2 border-dashed border-[#bfd6ee]">
+              <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-2 border-dashed border-[#f0d27a]">
                 <Icon name="plus" size={22} strokeWidth={2.2} />
               </span>
               <span className="text-[12.5px] font-bold">{t("home.request")}</span>
@@ -199,22 +217,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
           <div className="flex flex-col gap-3 px-1.5">
             <p className="text-[14px] leading-[1.6] text-muted">{t("home.empty")}</p>
             <div className="grid grid-cols-2 gap-2.5">
-              <Link href="/share" className="btn-outline">
-                {t("home.sendMine")}
+              <Link href="/people/new" className="btn-outline">
+                {t("people.add")}
               </Link>
               <Link href="/request" className="btn-primary">
                 {t("home.ask")}
               </Link>
             </div>
-            <Link href="/people/new" className="btn-outline">
-              {t("people.add")}
-            </Link>
           </div>
         )}
       </section>
 
       <div className="h-4" />
-      <TabBar active="home" t={t} />
+      <TabBar active="home" t={t} voice={aiConfigured()} />
     </>
   );
 }

@@ -26,18 +26,13 @@ export function planQuery(ids: string[], includeMe: boolean): string {
   return s ? `?${s}` : "";
 }
 
-/** 고를 수 있는 사람: 답을 기다리는 칸과 보기를 끊은 사람은 뺀다 */
-export function pickable(people: Person[]): Person[] {
-  return people.filter((p) => p.kind !== "pending" && !p.revoked);
-}
-
 export async function resolvePick(s: Session, sp: { with?: string; me?: string }): Promise<PlanPick> {
   const t = makeT(s.profile.locale);
   const ids = (sp.with ?? "").split(",").filter(Boolean);
-  const all = pickable(await listPeople(s));
+  const all = await listPeople(s);
   const people = ids.map((id) => all.find((p) => p.contactId === id)).filter((p): p is Person => !!p);
   const includeMe = sp.me !== "0";
-  const diners: Diner[] = people.map((p) => ({ key: p.contactId, name: displayName(p), card: p.card, sections: p.sections }));
+  const diners: Diner[] = people.map((p) => ({ key: p.contactId, name: displayName(p), card: p.card, sections: SECTIONS }));
   if (includeMe) {
     const { card } = await s.tx((q) => readCard(q, s.user.id));
     diners.unshift({ key: "me", name: t("plan.me"), card, sections: SECTIONS });

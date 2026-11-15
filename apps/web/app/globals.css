@@ -1,31 +1,31 @@
 @import "tailwindcss";
 
-/* 시안 v3 "하늘 그라데이션 + 선 캐릭터": 연한 하늘 바탕 위 흰 카드, 남색 글자와 선.
-   하늘 그라데이션은 화면당 한 덩어리(주 버튼·가장 중요한 카드)에만, 고른 것은 연하늘 바탕 + 하늘 테두리.
-   빨강은 진짜 경고(알레르기·지우기·오류)와 일요일에만 */
+/* 시안 v3 맹고색: 연회색 바탕 위 흰 카드, 남색 글자와 선. 망고 노랑(#FFC23D, 위 글자는 남색)은 주 버튼(눌리는 3D)·D-day·오늘에,
+   망고 그라데이션은 화면당 한 덩어리에만, 고른 것은 연한 망고 바탕 + 망고 테두리, 강조 글자는 진한 망고 갈색.
+   빨강은 진짜 경고(알레르기·지우기·오류)와 일요일에만. 색 이름(sky…)은 쓰는 곳이 많아 그대로 둔다 */
 @theme {
   --color-paper: #ffffff;
-  --color-bg: #f3f8ff;
-  --color-ink: #22304a;
-  --color-ink-2: #3c4a63;
+  --color-bg: #f6f7fb;
+  --color-ink: #1f2340;
+  --color-ink-2: #3a3f5c;
   /* 흰 바탕·하늘 바탕 작은 글씨도 4.5:1이 넘는 회색 */
-  --color-muted: #5e6b80;
+  --color-muted: #6b7089;
   /* 구분선(가는 선)과 입력칸 테두리 */
-  --color-rule: #e3ecf6;
-  --color-edge: #d6e2ef;
-  --color-fill: #eef2f7;
-  /* 강조 글자(4.5:1)·하늘 테두리·고른 칸 바탕 */
-  --color-accent: #2667b8;
-  --color-sky: #8cc8ff;
-  --color-sky-soft: #e6f3ff;
+  --color-rule: #e4e6ee;
+  --color-edge: #cdd1dc;
+  --color-fill: #f1f2f7;
+  /* 강조 글자(진한 망고 갈색, 흰 바탕 5.8:1)·망고 테두리·고른 칸 바탕 */
+  --color-accent: #8f5a00;
+  --color-sky: #ffc23d;
+  --color-sky-soft: #fff4d6;
   /* 경고(4.5:1)와 그 바탕 */
-  --color-red: #c23a55;
-  --color-red-soft: #ffe3e8;
+  --color-red: #c8283a;
+  --color-red-soft: #fde9ea;
   /* 즐겨찾기 하트 */
   --color-marker: #ff7a8a;
-  --color-sat: #2667b8;
-  --color-hl: #d6ebff;
-  --color-sticky: #eef2f7;
+  --color-sat: #2563eb;
+  --color-hl: #ffe9a8;
+  --color-sticky: #f1f2f7;
   --color-kakao: #fee500;
   --color-kakao-ink: #191919;
   --color-ok: #1e7d55;
@@ -39,11 +39,16 @@
   :root {
     --sat: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
     --sab: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
-    /* 하늘 그라데이션: 큰 카드(연하늘 → 하늘 → 페리윙클)와 버튼 */
-    --grad-hero: linear-gradient(140deg, #ddf1ff 0%, #bfe2ff 55%, #adcbff 100%);
-    --grad-btn: linear-gradient(120deg, #94d3ff 0%, #8db6ff 100%);
-    --shadow-btn: 0 8px 20px rgba(110, 170, 240, 0.3);
-    --shadow-float: 0 8px 24px rgba(34, 48, 74, 0.08);
+    /* 아래 고정 버튼 줄의 아래 여백: 아래 막대 가림 띠(.bar-mask-bottom) 위로 조금 더 띄워 버튼 모서리·3D 그림자가 잘리지 않게 */
+    --pb: max(calc(var(--sab) + 12px), 16px);
+    --pb-tab: max(calc(var(--sab) + 12px), 16px);
+    /* 망고: 큰 덩어리(크림 → 망고 그라데이션)와 버튼(단색 + 아래 진한 망고 그림자로 눌리는 3D) */
+    --grad-hero: linear-gradient(140deg, #fff6dd 0%, #ffe7a6 55%, #ffd36b 100%);
+    --grad-btn: #ffc23d;
+    --shadow-btn: 0 4px 0 #e09a12;
+    --shadow-float: 0 8px 24px rgba(31, 35, 64, 0.08);
+    /* 내 리드미 위에 고정되는 프로필 영역 높이(펼친 항목 머리가 그 아래에 붙는다) */
+    --me-head: 114px;
   }
   html {
     -webkit-text-size-adjust: 100%;
@@ -67,7 +72,7 @@
     color: inherit;
   }
   :focus-visible {
-    outline: 2px solid rgb(38 103 184 / 0.55);
+    outline: 2px solid rgb(31 35 64 / 0.5);
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -105,7 +110,7 @@
     background: linear-gradient(transparent 58%, var(--color-hl) 58%, var(--color-hl) 94%, transparent 94%);
     padding: 0 2px;
   }
-  /* 주 버튼: 하늘 그라데이션 + 남색 글자(밝은 하늘 위 흰 글자는 대비가 모자라다) */
+  /* 주 버튼: 망고 + 남색 글자(밝은 노랑 위 흰 글자는 대비가 모자라다), 누르면 그림자만큼 내려간다 */
   .btn-primary {
     display: flex;
     align-items: center;
@@ -118,14 +123,15 @@
     box-shadow: var(--shadow-btn);
     font-weight: 700;
     font-size: 16px;
-    transition: transform 0.12s ease-out;
+    transition: transform 0.08s ease-out, box-shadow 0.08s ease-out;
   }
   .btn-primary:active {
-    transform: scale(0.98);
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #e09a12;
   }
   .btn-primary:disabled {
-    background: #dfe7f1;
-    color: #6f7b8f;
+    background: #e4e6ee;
+    color: #6b7089;
     box-shadow: none;
   }
   .btn-outline {
@@ -140,7 +146,7 @@
     font-weight: 700;
     font-size: 15px;
   }
-  /* 그라데이션 덩어리(작은 것): D-day 배지, 고른 그룹 칩, 떠 있는 버튼 */
+  /* 망고 덩어리(작은 것): D-day 배지, 오늘, 고른 그룹 칩, 떠 있는 버튼 */
   .grad {
     background: var(--grad-btn);
     color: var(--color-ink);
@@ -154,7 +160,7 @@
     background: var(--color-paper);
     border-radius: 24px;
   }
-  /* 고르는 칩: 꺼짐은 회색 바탕, 켜짐은 연하늘 바탕 + 하늘 테두리 + 파랑 글자 */
+  /* 고르는 칩: 꺼짐은 회색 바탕, 켜짐은 연한 망고 바탕 + 망고 테두리 + 진한 망고 글자 */
   .chip {
     display: inline-flex;
     align-items: center;
@@ -180,18 +186,6 @@
     background: var(--color-red-soft);
     box-shadow: inset 0 0 0 2px #f2a7b6;
     color: var(--color-red);
-  }
-  .btn-kakao {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    height: 52px;
-    border-radius: 14px;
-    background: var(--color-kakao);
-    color: var(--color-kakao-ink);
-    font-weight: 700;
-    font-size: 15.5px;
   }
   .btn-soft {
     display: flex;
@@ -247,6 +241,23 @@
 }
 
 /* 앱 화면 폭: 휴대폰 한 손 폭. 큰 화면에서는 가운데 */
+/* 아래에 붙는 버튼 줄: 키보드가 뜨면 그 위로(--kb, KeyboardInset), 아래 막대 가림 띠 위로 여백(--pb) */
+.bottom-bar {
+  position: sticky;
+  bottom: var(--kb, 0px);
+  z-index: 20;
+  padding-bottom: var(--pb);
+}
+/* 키보드가 떠 있으면 아래 막대는 키보드 뒤라 여백은 조금만 */
+:root[data-kb] .bottom-bar {
+  padding-bottom: 12px;
+}
+
+/* 아래에 붙지 않는 화면 끝: 아래 막대 가림 띠 위로 여유 */
+.page-end {
+  padding-bottom: max(calc(var(--sab) + 24px), 32px);
+}
+
 .screen {
   min-height: 100dvh;
   max-width: 480px;
@@ -254,7 +265,7 @@
   display: flex;
   flex-direction: column;
   padding-top: max(var(--sat), 12px);
-  padding-bottom: max(var(--sab), 16px);
+  padding-bottom: var(--pb);
 }
 
 /* 약관·처리방침 본문(components/LegalPage.tsx) */

@@ -20,7 +20,7 @@ type Tab = "hair" | "body" | "item" | "glasses" | "color";
 const TABS: Tab[] = ["hair", "body", "item", "glasses", "color"];
 const TAB_KEY = { hair: "avatar.hair", body: "avatar.body", item: "avatar.item", glasses: "avatar.glasses", color: "avatar.colors" } as const;
 
-const CLOTH_LABELS = { ko: ["흰색", "남색", "하늘", "연하늘", "분홍"], en: ["White", "Navy", "Sky", "Pale blue", "Pink"] };
+const CLOTH_LABELS = { ko: ["흰색", "남색", "망고", "잎", "분홍"], en: ["White", "Navy", "Mango", "Leaf", "Pink"] };
 const HAIR_COLOR_LABELS = { ko: ["검정", "갈색", "회색", "밝은 갈색"], en: ["Black", "Brown", "Gray", "Light brown"] };
 
 const any = <T,>(list: readonly T[]): T => list[Math.floor(Math.random() * list.length)]!;
@@ -30,7 +30,7 @@ function Swatch({ fill, on, label, onPick }: { fill: string; on: boolean; label:
     <button type="button" aria-pressed={on} aria-label={label} onClick={onPick} className="flex h-11 w-11 items-center justify-center">
       <span
         className="h-10 w-10 rounded-full transition-shadow"
-        style={{ background: fill, boxShadow: on ? "inset 0 0 0 1.5px rgba(34,48,74,0.14), 0 0 0 3px var(--color-bg), 0 0 0 5.5px var(--color-accent)" : "inset 0 0 0 1.5px rgba(34,48,74,0.14)" }}
+        style={{ background: fill, boxShadow: on ? "inset 0 0 0 1.5px rgba(31,35,64,0.14), 0 0 0 3px var(--color-bg), 0 0 0 5.5px var(--color-accent)" : "inset 0 0 0 1.5px rgba(31,35,64,0.14)" }}
       />
     </button>
   );
@@ -64,7 +64,7 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
         <button
           type="button"
           onClick={shuffle}
-          className="absolute bottom-3.5 left-3.5 flex h-11 items-center gap-1.5 rounded-full bg-white pl-3 pr-3.5 text-[13.5px] font-bold shadow-[0_4px_14px_rgba(34,48,74,0.10)] active:scale-95"
+          className="absolute bottom-3.5 left-3.5 flex h-11 items-center gap-1.5 rounded-full bg-white pl-3 pr-3.5 text-[13.5px] font-bold shadow-[0_4px_14px_rgba(31,35,64,0.10)] active:scale-95"
         >
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="4" y="4" width="16" height="16" rx="4" />
@@ -80,7 +80,7 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
           aria-label={t("avatar.palette")}
           aria-pressed={tab === "color"}
           onClick={() => setTab("color")}
-          className={`absolute bottom-3.5 right-3.5 flex h-12 w-12 items-center justify-center rounded-full shadow-[0_4px_14px_rgba(34,48,74,0.10)] active:scale-95 ${tab === "color" ? "grad" : "bg-white"}`}
+          className={`absolute bottom-3.5 right-3.5 flex h-12 w-12 items-center justify-center rounded-full shadow-[0_4px_14px_rgba(31,35,64,0.10)] active:scale-95 ${tab === "color" ? "grad" : "bg-white"}`}
         >
           <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A4.6 4.6 0 0 0 21 9.8C21 6 17 3 12 3z" />

@@ -8,7 +8,6 @@ import {
   sanitizeOffsets,
   sanitizeSection,
   sanitizeSections,
-  SECTIONS,
   todayIn,
   type AvatarConfig,
   type CardData,
@@ -16,7 +15,6 @@ import {
   type Locale,
   type PartialCard,
   type ReminderOffset,
-  type Relation,
   type Section,
   type YMD,
 } from "@readme/core";
@@ -39,8 +37,9 @@ export interface Profile {
   timeZone: string;
   avatar: AvatarConfig;
   reminderOffsets: ReminderOffset[];
-  notifyViews: boolean;
   appLock: boolean;
+  /** 설정 > 알림 받기 */
+  pushEnabled: boolean;
   isDemo: boolean;
   onboardedAt: string | null;
 }
@@ -61,8 +60,8 @@ function toProfile(row: Row, detected: Locale): Profile {
     timeZone: String(row.time_zone ?? "Asia/Seoul"),
     avatar: sanitizeAvatar(row.avatar),
     reminderOffsets: Array.isArray(row.reminder_offsets) ? sanitizeOffsets(row.reminder_offsets) : DEFAULT_OFFSETS,
-    notifyViews: row.notify_views === true,
     appLock: row.app_lock === true,
+    pushEnabled: row.push_enabled !== false,
     isDemo: row.is_demo === true,
     onboardedAt: iso(row.onboarded_at),
   };
@@ -134,27 +133,7 @@ export async function writeSection<S extends Section>(q: Q, ownerId: string, sec
   return clean;
 }
 
-export function sealGuestSections(inviteId: string, card: PartialCard): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const [section, value] of Object.entries(card)) {
-    if (!isSection(section) || value == null) continue;
-    out[section] = sealSection(section, sanitizeSection(section, value), aad.guest(inviteId, section));
-  }
-  return out;
-}
-
-export function openGuestSections(inviteId: string | null, sections: unknown): PartialCard {
-  const card: PartialCard = {};
-  if (!inviteId || !sections || typeof sections !== "object") return card;
-  for (const [section, payload] of Object.entries(sections as Record<string, unknown>)) {
-    if (!isSection(section)) continue;
-    const value = openSection(section, payload, aad.guest(inviteId, section));
-    if (value) (card as Record<string, unknown>)[section] = value;
-  }
-  return card;
-}
-
-/** 내가 직접 적어 둔 사람의 카드(contact_cards.sections) 풀기 */
+/** 사람 기록(contact_cards.sections) 풀기 */
 export function openContactSections(authorId: string, contactId: string, sections: unknown): PartialCard {
   const card: PartialCard = {};
   if (!sections || typeof sections !== "object") return card;
@@ -175,53 +154,62 @@ export function sealContactSections(authorId: string, contactId: string, card: P
   return out;
 }
 
-/** 내가 적어 둔 사람의 항목 하나 저장(다른 항목은 그대로 둔다). RLS가 내 주소록 칸인지 확인한다 */
+/** 사람 기록의 항목 하나 저장(다른 항목은 그대로 둔다). 내가 고친 항목은 '답한 때' 표시를 지운다. RLS가 내 주소록 칸인지 확인한다 */
 export async function writeContactSection<S extends Section>(q: Q, authorId: string, contactId: string, section: S, input: unknown): Promise<CardData[S]> {
   const clean = sanitizeSection(section, input);
   const payload = sealSection(section, clean, aad.contact(authorId, contactId, section));
   const row = await q.one(
-    `update contact_cards set sections = sections || jsonb_build_object($3::text, $4::jsonb)
-      where contact_id = $1 and author_id = $2 returning contact_id`,
+    `insert into contact_cards as cc (contact_id, author_id, sections) values ($1, $2, jsonb_build_object($3::text, $4::jsonb))
+     on conflict (contact_id) do update set sections = cc.sections || excluded.sections, answered = cc.answered - $3::text
+     where cc.author_id = $2 returning contact_id`,
     [contactId, authorId, section, JSON.stringify(payload)],
   );
   if (!row) throw new Error("not_your_contact");
   return clean;
 }
 
-export function sealPrefill(tokenHash: string, card: PartialCard, unsure: Section[]): unknown {
-  return seal({ card, unsure }, aad.prefill(tokenHash));
+/** 물어볼 때 미리 채워 보내는 값(내 기록에서). 토큰을 아는 사람만 풀 수 있게 토큰 해시 범위로 잠근다 */
+export function sealPrefill(tokenHash: string, card: PartialCard): unknown {
+  return seal({ card }, aad.prefill(tokenHash));
 }
 
-export function openPrefill(tokenHash: string, payload: unknown): { card: PartialCard; unsure: Section[] } {
-  const raw = open(payload, aad.prefill(tokenHash)) as { card?: unknown; unsure?: unknown } | null;
+export function openPrefill(tokenHash: string, payload: unknown): PartialCard {
+  const raw = open(payload, aad.prefill(tokenHash)) as { card?: unknown } | null;
   const card: PartialCard = {};
   if (raw?.card && typeof raw.card === "object") {
     for (const [section, value] of Object.entries(raw.card as Record<string, unknown>)) {
       if (isSection(section)) (card as Record<string, unknown>)[section] = sanitizeSection(section, value);
     }
   }
-  return { card, unsure: sanitizeSections(raw?.unsure) };
+  return card;
 }
 
 // ── 내 사람들 ─────────────────────────────────────
 
+/** 물어보기 하나의 상태(가장 최근 것) */
+export interface Asking {
+  inviteId: string;
+  state: InviteStatus;
+  expiresAt: string;
+  sections: Section[];
+}
+
 export interface Person {
   contactId: string;
-  /** member: 앱에서 주고받은 사람, guest: 앱 없이 부탁에 답한 사람, mine: 내가 직접 적어 둔 사람(나만 봄), pending: 답 기다리는 중 */
-  kind: "member" | "guest" | "mine" | "pending";
+  /** 물어보기에 로그인하고 답해서 이어진 앱 사용자(얼굴·이름만 쓴다) */
   personId: string | null;
-  /** 그 사람이 정한 이름(없으면 내가 부르는 말) */
+  /** 그 사람이 정한 이름(이어진 사람만, 없으면 내가 부르는 말) */
   name: string;
-  /** 내가 부르는 말(아내, 아빠) */
+  /** 내가 부르는 말(아내, 아빠). 이어지지 않은 사람은 이게 이름 */
   nickname: string;
   avatar: AvatarConfig | null;
+  /** 내 기록: 내가 적은 것 + 물어봐서 받은 답. 언제든 내가 고친다 */
   card: PartialCard;
-  /** 내가 볼 수 있는 항목 */
-  sections: Section[];
-  relation: Relation | null;
-  revoked: boolean;
+  /** 항목별로 상대가 답한 때(ISO). 내가 고치면 빠진다 */
+  answered: Partial<Record<Section, string>>;
   updatedAt: string | null;
-  pending: { inviteId: string; state: InviteStatus; expiresAt: string } | null;
+  /** 가장 최근 물어보기 */
+  asking: Asking | null;
   /** 내가 넣은 그룹(contact_groups.id) */
   groupId: string | null;
   /** 즐겨찾기(사람들 맨 위에 고정) */
@@ -229,130 +217,56 @@ export interface Person {
 }
 
 async function loadPeople(q: Q, me: string): Promise<Person[]> {
-  const contacts = await q<{ id: string; person_id: string | null; guest_card_id: string | null; request_invite_id: string | null; nickname: string; group_id: string | null; favorite: boolean }>(
-    "select id, person_id, guest_card_id, request_invite_id, nickname, group_id, favorite from contacts where user_id = $1 order by created_at",
+  const contacts = await q<{ id: string; person_id: string | null; nickname: string; group_id: string | null; favorite: boolean }>(
+    "select id, person_id, nickname, group_id, favorite from contacts where user_id = $1 order by created_at",
     [me],
   );
   if (!contacts.length) return [];
+  const ids = contacts.map((c) => c.id);
   const personIds = contacts.map((c) => c.person_id).filter((v): v is string => !!v);
-  const guestIds = contacts.map((c) => c.guest_card_id).filter((v): v is string => !!v);
-  const inviteIds = contacts.map((c) => c.request_invite_id).filter((v): v is string => !!v);
-
-  const profiles = personIds.length ? await q("select id, display_name, avatar from profiles where id = any($1)", [personIds]) : [];
-  const grants = personIds.length ? await q("select owner_id, sections, relation, revoked_at from grants where viewer_id = $1 and owner_id = any($2)", [me, personIds]) : [];
-  const sections = personIds.length ? await q("select owner_id, section, payload, updated_at from card_sections where owner_id = any($1)", [personIds]) : [];
-  const guests = guestIds.length ? await q("select id, invite_id, display_name, sections, updated_at from guest_cards where id = any($1)", [guestIds]) : [];
-  const invites = inviteIds.length ? await q("select id, expires_at, used_at, canceled_at from invites where id = any($1)", [inviteIds]) : [];
-  const unlinked = contacts.filter((c) => !c.person_id && !c.guest_card_id).map((c) => c.id);
-  const own = unlinked.length ? await q("select contact_id, sections, updated_at from contact_cards where contact_id = any($1)", [unlinked]) : [];
-
+  const [profiles, records, asks] = await Promise.all([
+    personIds.length ? q("select id, display_name, avatar from profiles where id = any($1)", [personIds]) : Promise.resolve([]),
+    q("select contact_id, sections, answered, updated_at from contact_cards where contact_id = any($1)", [ids]),
+    q(
+      `select distinct on (contact_id) id, contact_id, sections, expires_at, used_at, canceled_at
+         from invites where contact_id = any($1) order by contact_id, created_at desc`,
+      [ids],
+    ),
+  ]);
   const profileById = new Map(profiles.map((p) => [String(p.id), p]));
-  const grantByOwner = new Map(grants.map((g) => [String(g.owner_id), g]));
-  const guestById = new Map(guests.map((g) => [String(g.id), g]));
-  const inviteById = new Map(invites.map((i) => [String(i.id), i]));
-  const ownByContact = new Map(own.map((o) => [String(o.contact_id), o]));
-  const cardByOwner = new Map<string, { card: PartialCard; updatedAt: string | null }>();
-  for (const row of sections) {
-    const owner = String(row.owner_id);
-    const section = row.section;
-    if (!isSection(section)) continue;
-    const entry = cardByOwner.get(owner) ?? { card: {}, updatedAt: null };
-    const value = openSection(section, row.payload, aad.card(owner, section));
-    if (value) (entry.card as Record<string, unknown>)[section] = value;
-    const at = iso(row.updated_at);
-    if (at && (!entry.updatedAt || at > entry.updatedAt)) entry.updatedAt = at;
-    cardByOwner.set(owner, entry);
-  }
+  const recordByContact = new Map(records.map((r) => [String(r.contact_id), r]));
+  const askByContact = new Map(asks.map((a) => [String(a.contact_id), a]));
 
-  const people: Person[] = [];
-  for (const c of contacts) {
+  return contacts.map((c) => {
     const nickname = String(c.nickname ?? "");
-    if (c.person_id) {
-      const p = profileById.get(c.person_id);
-      const g = grantByOwner.get(c.person_id);
-      const revoked = !g || g.revoked_at != null;
-      const entry = cardByOwner.get(c.person_id);
-      people.push({
-        contactId: c.id,
-        groupId: c.group_id ? String(c.group_id) : null,
-        favorite: c.favorite === true,
-        kind: "member",
-        personId: c.person_id,
-        name: String(p?.display_name || nickname || ""),
-        nickname,
-        avatar: p ? sanitizeAvatar(p.avatar) : null,
-        card: revoked ? {} : (entry?.card ?? {}),
-        sections: revoked ? [] : sanitizeSections(g?.sections),
-        relation: (g?.relation as Relation | null) ?? null,
-        revoked,
-        updatedAt: entry?.updatedAt ?? null,
-        pending: null,
-      });
-    } else if (c.guest_card_id) {
-      const g = guestById.get(c.guest_card_id);
-      const card = openGuestSections((g?.invite_id as string | null) ?? null, g?.sections);
-      people.push({
-        contactId: c.id,
-        groupId: c.group_id ? String(c.group_id) : null,
-        favorite: c.favorite === true,
-        kind: "guest",
-        personId: null,
-        name: String(g?.display_name || nickname),
-        nickname,
-        avatar: null,
-        card,
-        sections: Object.keys(card).filter(isSection),
-        relation: null,
-        revoked: false,
-        updatedAt: iso(g?.updated_at),
-        pending: null,
-      });
-    } else if (ownByContact.has(c.id)) {
-      const o = ownByContact.get(c.id)!;
-      const card = openContactSections(me, c.id, o.sections);
-      people.push({
-        contactId: c.id,
-        groupId: c.group_id ? String(c.group_id) : null,
-        favorite: c.favorite === true,
-        kind: "mine",
-        personId: null,
-        name: nickname,
-        nickname,
-        avatar: null,
-        card,
-        // 내가 적는 카드라 모든 항목이 열려 있다(안 적은 항목은 "아직 안 적었어요")
-        sections: [...SECTIONS],
-        relation: null,
-        revoked: false,
-        updatedAt: iso(o.updated_at),
-        pending: null,
-      });
-    } else if (c.request_invite_id) {
-      const i = inviteById.get(c.request_invite_id);
-      if (!i) continue;
-      people.push({
-        contactId: c.id,
-        groupId: c.group_id ? String(c.group_id) : null,
-        favorite: c.favorite === true,
-        kind: "pending",
-        personId: null,
-        name: nickname,
-        nickname,
-        avatar: null,
-        card: {},
-        sections: [],
-        relation: null,
-        revoked: false,
-        updatedAt: null,
-        pending: {
-          inviteId: c.request_invite_id,
-          state: inviteStatus({ expires_at: iso(i.expires_at)!, used_at: iso(i.used_at), canceled_at: iso(i.canceled_at) }),
-          expiresAt: iso(i.expires_at)!,
-        },
-      });
+    const p = c.person_id ? profileById.get(c.person_id) : undefined;
+    const r = recordByContact.get(c.id);
+    const a = askByContact.get(c.id);
+    const answered: Partial<Record<Section, string>> = {};
+    if (r?.answered && typeof r.answered === "object") {
+      for (const [k, v] of Object.entries(r.answered as Record<string, unknown>)) if (isSection(k) && typeof v === "string") answered[k] = v;
     }
-  }
-  return people;
+    return {
+      contactId: c.id,
+      personId: c.person_id,
+      name: String(p?.display_name || nickname),
+      nickname,
+      avatar: p ? sanitizeAvatar(p.avatar) : null,
+      card: r ? openContactSections(me, c.id, r.sections) : {},
+      answered,
+      updatedAt: iso(r?.updated_at),
+      asking: a
+        ? {
+            inviteId: String(a.id),
+            state: inviteStatus({ expires_at: iso(a.expires_at)!, used_at: iso(a.used_at), canceled_at: iso(a.canceled_at) }),
+            expiresAt: iso(a.expires_at)!,
+            sections: sanitizeSections(a.sections),
+          }
+        : null,
+      groupId: c.group_id ? String(c.group_id) : null,
+      favorite: c.favorite === true,
+    };
+  });
 }
 
 /** 요청 하나 안에서는 한 번만 읽는다(레이아웃의 알림 예약과 화면이 같이 쓴다) */
@@ -385,17 +299,6 @@ export async function listNotes(q: Q, me: string, contactId: string): Promise<No
 
 export function sealNote(me: string, contactId: string, body: string): unknown {
   return seal({ body }, aad.note(me, contactId));
-}
-
-// ── 공유 관리 ─────────────────────────────────────
-
-export interface Share {
-  viewerId: string;
-  name: string;
-  avatar: AvatarConfig;
-  relation: Relation | null;
-  sections: Section[];
-  revoked: boolean;
 }
 
 // ── 그룹 ─────────────────────────────────────────
@@ -431,46 +334,22 @@ export function groupName(g: Pick<Group, "builtin" | "name">, t: T): string {
   return g.builtin ? t(`group.${g.builtin}` as "group.family") : g.name;
 }
 
-/** 내가 지금 내 리드미를 보여 주는 사람 id(끈 사람은 빠진다) */
-export async function activeShareIds(q: Q, me: string): Promise<Set<string>> {
-  const rows = await q<{ viewer_id: string }>("select viewer_id from grants where owner_id = $1 and revoked_at is null", [me]);
-  return new Set(rows.map((r) => String(r.viewer_id)));
-}
-
-export async function listShares(q: Q, me: string): Promise<Share[]> {
-  const rows = await q(
-    `select g.viewer_id, g.relation, g.sections, g.revoked_at, p.display_name, p.avatar
-       from grants g left join profiles p on p.id = g.viewer_id
-      where g.owner_id = $1 order by g.created_at`,
-    [me],
-  );
-  return rows.map((g) => ({
-    viewerId: String(g.viewer_id),
-    name: String(g.display_name ?? ""),
-    avatar: sanitizeAvatar(g.avatar),
-    relation: (g.relation as Relation | null) ?? null,
-    sections: sanitizeSections(g.sections),
-    revoked: g.revoked_at != null,
-  }));
-}
-
+/** 아직 아무도 안 연 물어보기 링크(퍼지면 아무나 답할 수 있으니 취소할 곳) */
 export interface OpenInvite {
   id: string;
-  kind: "share" | "request";
-  relation: Relation | null;
+  contactId: string;
   recipientName: string;
   expiresAt: string;
 }
 
 export async function listOpenInvites(q: Q): Promise<OpenInvite[]> {
   const rows = await q(
-    `select id, kind, relation, recipient_name, expires_at from invites
+    `select id, contact_id, recipient_name, expires_at from invites
       where used_at is null and canceled_at is null and expires_at > now() order by created_at desc`,
   );
   return rows.map((i) => ({
     id: String(i.id),
-    kind: i.kind as "share" | "request",
-    relation: (i.relation as Relation | null) ?? null,
+    contactId: String(i.contact_id),
     recipientName: String(i.recipient_name ?? ""),
     expiresAt: iso(i.expires_at)!,
   }));

@@ -11,7 +11,7 @@ export default async function OnboardingAvatar({ searchParams }: { searchParams:
   const t = makeT(s.profile.locale);
   return (
     <>
-      <StepHeader step={1} t={t} title={t("onb.avatar.title")} body={t("onb.avatar.body")} />
+      <StepHeader step={1} t={t} title={t("onb.avatar.title")} />
       <AvatarStep locale={s.profile.locale} name={s.profile.displayName} avatar={s.profile.avatar} next={next} />
     </>
   );

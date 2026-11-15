@@ -18,10 +18,7 @@ function json(v: FormDataEntryValue | null): unknown {
 async function ownContact(contactId: string) {
   const s = await requireSession();
   const contact = await s.tx((q) =>
-    q.one<{ id: string; person_id: string | null; request_invite_id: string | null; guest_card_id: string | null }>(
-      "select id, person_id, request_invite_id, guest_card_id from contacts where id::text = $1",
-      [contactId],
-    ),
+    q.one<{ id: string; person_id: string | null }>("select id, person_id from contacts where id::text = $1", [contactId]),
   );
   if (!contact) redirect("/people");
   return { s, contact };
@@ -49,30 +46,30 @@ export async function deleteNote(form: FormData): Promise<void> {
   redirect(`/people/${contactId}#notes`);
 }
 
-export async function setNickname(form: FormData): Promise<void> {
-  const contactId = String(form.get("contactId"));
-  const { s } = await ownContact(contactId);
-  const nickname = String(form.get("nickname") ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
-  await s.tx((q) => q("update contacts set nickname = $2 where id = $1", [contactId, nickname]));
-  revalidatePath(`/people/${contactId}`);
-  revalidatePath("/home");
-  redirect(`/people/${contactId}`);
+/** 태그(내가 부르는 이름) 달기·고치기. 사람 화면 이름 밑에서 바로 저장한다(앱 사용자와 이어지지 않은 사람은 이게 이름) */
+export async function setNickname(contactId: string, raw: string): Promise<{ ok: boolean; nickname: string }> {
+  const s = await requireSession();
+  const nickname = String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+  if (typeof contactId !== "string") return { ok: false, nickname };
+  const row = await s.tx((q) => q.one<{ id: string }>(
+      // 이어지지 않은 사람은 태그가 곧 이름이라 비울 수 없다
+      "update contacts set nickname = $2 where id::text = $1 and ($2 <> '' or person_id is not null) returning id",
+      [contactId, nickname],
+    ));
+  revalidatePeople(contactId);
+  return { ok: !!row, nickname };
 }
 
-/** 주소록에서 빼기. 상대가 내게 준 허락도 같이 내려놓는다(다시 받으려면 새 링크가 필요) */
+/** 주소록에서 빼기. 기록·메모·보낸 물어보기 링크도 같이 지워진다 */
 export async function removeContact(form: FormData): Promise<void> {
   const contactId = String(form.get("contactId"));
-  const { s, contact } = await ownContact(contactId);
-  await s.tx(async (q) => {
-    if (contact.person_id) await q("delete from grants where owner_id = $1 and viewer_id = $2", [contact.person_id, s.user.id]);
-    if (contact.request_invite_id && !contact.guest_card_id) await q("select cancel_invite($1)", [contact.request_invite_id]);
-    await q("delete from contacts where id = $1", [contactId]);
-  });
+  const { s } = await ownContact(contactId);
+  await s.tx((q) => q("delete from contacts where id = $1", [contactId]));
   revalidatePath("/home");
   redirect("/people");
 }
 
-/** 직접 적어 두기: 앱을 안 쓰는 사람도 주소록에 넣고, 빈 카드를 만든 뒤 그 사람 화면으로 */
+/** 사람 더하기: 주소록에 넣고 빈 기록을 만든 뒤 그 사람 화면으로 */
 export async function createPerson(form: FormData): Promise<void> {
   const s = await requireSession();
   const name = String(form.get("name") ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
@@ -90,7 +87,7 @@ export async function createPerson(form: FormData): Promise<void> {
   redirect(`/people/${contactId}`);
 }
 
-/** 내가 적어 둔 사람의 항목 하나 저장 */
+/** 사람 기록의 항목 하나 저장(답받은 항목도 내가 고친다) */
 export async function savePersonSection(_: SaveState, form: FormData): Promise<SaveState> {
   const s = await requireSession();
   const section = form.get("section");

@@ -1,7 +1,6 @@
 "use client";
 
 import type { Locale } from "@readme/core";
-import Link from "next/link";
 import { useRef, useState } from "react";
 import { prepareDemo } from "@/app/actions/auth";
 import { authClient } from "@/lib/auth-client";
@@ -29,7 +28,7 @@ function AppleGlyph() {
 }
 
 /** 구글 · Apple · 데모. 앱에서는 구글·Apple을 시스템 브라우저로 */
-export function AuthButtons({ locale, next, google, apple, showCode = true }: { locale: Locale; next: string; google: boolean; apple: boolean; showCode?: boolean }) {
+export function AuthButtons({ locale, next, google, apple }: { locale: Locale; next: string; google: boolean; apple: boolean }) {
   const t = useT(locale);
   const native = useIsNative();
   const [busy, setBusy] = useState<null | "google" | "apple" | "demo">(null);
@@ -90,11 +89,6 @@ export function AuthButtons({ locale, next, google, apple, showCode = true }: { 
         <p role="alert" className="text-center text-[13.5px] text-red">
           {t("login.failed")}
         </p>
-      ) : null}
-      {showCode ? (
-        <Link href="/code" className="flex min-h-11 items-center justify-center text-[14px] font-bold">
-          {t("start.code")}
-        </Link>
       ) : null}
       <form ref={demoForm} action={prepareDemo} hidden>
         <input type="hidden" name="next" value={next} />

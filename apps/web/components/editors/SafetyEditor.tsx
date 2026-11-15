@@ -1,9 +1,8 @@
 "use client";
 
-import { ALLERGENS, ALLERGEN_ORDER, DIETS, DISLIKES, DISLIKE_ORDER, ordered, parseFoodSpeech, type Locale, type SafetyData } from "@readme/core";
+import { ALLERGENS, ALLERGEN_ORDER, DIETS, DISLIKES, DISLIKE_ORDER, NONE, NONE_LABEL, ordered, type Locale, type SafetyData } from "@readme/core";
 import { useState } from "react";
-import { VoiceButton } from "./VoiceButton";
-import { CircleOption, SectionHeading, TextField, useT } from "./shared";
+import { CircleOption, SectionHeading, TextField, toggleWithNone, useT } from "./shared";
 
 /** 알레르기(빨간 동그라미)와 안 먹는 것(남색 동그라미). 온보딩·내 리드미·요청 답하기에서 같이 쓴다 */
 export function SafetyEditor({
@@ -11,14 +10,12 @@ export function SafetyEditor({
   onChange,
   locale,
   large = false,
-  showVoice = true,
   showNote = true,
 }: {
   value: SafetyData;
   onChange: (v: SafetyData) => void;
   locale: Locale;
   large?: boolean;
-  showVoice?: boolean;
   showNote?: boolean;
 }) {
   const t = useT(locale);
@@ -26,44 +23,23 @@ export function SafetyEditor({
   const dislikes = ordered(DISLIKES, DISLIKE_ORDER[locale]);
   const hiddenPicked = allergens.rest.some((i) => value.allergens.includes(i.code)) || dislikes.rest.some((i) => value.dislikes.includes(i.code)) || value.diets.length > 0;
   const [more, setMore] = useState(hiddenPicked);
-  const [voiceNote, setVoiceNote] = useState<string | null>(null);
 
   const toggle = (key: "allergens" | "dislikes" | "diets", code: string) => {
-    const list = value[key];
-    onChange({ ...value, [key]: list.includes(code) ? list.filter((c) => c !== code) : [...list, code] });
+    onChange({ ...value, [key]: toggleWithNone(value[key], code) });
   };
-
-  const onHeard = (text: string) => {
-    const found = parseFoodSpeech(text);
-    const n = found.allergens.length + found.dislikes.length;
-    setVoiceNote(n ? t("input.voiceFound", { n }) : t("input.voiceNone"));
-    if (!n) return;
-    onChange({
-      ...value,
-      allergens: [...new Set([...value.allergens, ...found.allergens])],
-      dislikes: [...new Set([...value.dislikes, ...found.dislikes])],
-    });
-    if (found.allergens.some((c) => allergens.rest.some((i) => i.code === c)) || found.dislikes.some((c) => dislikes.rest.some((i) => i.code === c))) setMore(true);
-  };
+  // 첫 칸 '없음'(알레르기 없음 · 안 먹는 것 없음 · 식단 없음)
+  const none = (key: "allergens" | "dislikes" | "diets") => (
+    <CircleOption label={NONE_LABEL[locale]} color="ink" on={value[key].includes(NONE)} onToggle={() => toggle(key, NONE)} large={large} />
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      {showVoice ? (
-        <div className="flex flex-col gap-2">
-          <VoiceButton locale={locale} onHeard={onHeard} onError={(m) => setVoiceNote(m)} />
-          {voiceNote ? (
-            <p role="status" className="text-[13px] text-muted">
-              {voiceNote}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
       <div className="flex flex-col gap-1.5">
-        <SectionHeading tone="red" right={t("safety.allergensVisible")}>
+        <SectionHeading tone="red">
           {t("safety.allergens")}
         </SectionHeading>
         <div className="flex flex-wrap gap-2 pt-1">
+          {none("allergens")}
           {[...allergens.first, ...(more ? allergens.rest : [])].map((i) => (
             <CircleOption key={i.code} label={i.label[locale]} color="warn" on={value.allergens.includes(i.code)} onToggle={() => toggle("allergens", i.code)} large={large} />
           ))}
@@ -76,6 +52,7 @@ export function SafetyEditor({
       <div className="flex flex-col gap-1.5">
         <SectionHeading>{t("safety.dislikes")}</SectionHeading>
         <div className="flex flex-wrap gap-2 pt-1">
+          {none("dislikes")}
           {[...dislikes.first, ...(more ? dislikes.rest : [])].map((i) => (
             <CircleOption key={i.code} label={i.label[locale]} color="ink" on={value.dislikes.includes(i.code)} onToggle={() => toggle("dislikes", i.code)} large={large} />
           ))}
@@ -86,6 +63,7 @@ export function SafetyEditor({
         <div className="flex flex-col gap-1.5">
           <SectionHeading>{t("safety.diets")}</SectionHeading>
           <div className="flex flex-wrap gap-2 pt-1">
+            {none("diets")}
             {DIETS.map((i) => (
               <CircleOption key={i.code} label={i.label[locale]} color="ink" on={value.diets.includes(i.code)} onToggle={() => toggle("diets", i.code)} large={large} />
             ))}

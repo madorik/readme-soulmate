@@ -1,4 +1,4 @@
-import { ALCOHOL_LEVELS, ALLERGENS, COLORS, DISLIKES, MUSIC_GENRES, PATTERNS, SEASONS, SPICY_LEVELS, formatSpec, formatSpecFull, labelOf, type CardData, type Locale, type Section } from "@readme/core";
+import { NONE, ALCOHOL_LEVELS, ALLERGENS, COLORS, DISLIKES, MUSIC_GENRES, PATTERNS, SEASONS, SPICY_LEVELS, formatSpec, formatSpecFull, labelOf, type CardData, type Locale, type Section } from "@readme/core";
 import type { T } from "./i18n";
 
 /** 내 리드미 목록에 보일 한 줄 요약 */
@@ -9,7 +9,11 @@ export function summarize(section: Section, data: CardData[Section] | undefined,
     case "safety": {
       const d = data as CardData["safety"];
       const parts = [
-        d.allergens.length ? `${d.allergens.map((c) => labelOf(ALLERGENS, c, locale)).join(and)} ${t("person.allergy")}` : "",
+        d.allergens.includes(NONE)
+          ? `${t("person.allergy")} ${labelOf(ALLERGENS, NONE, locale)}`
+          : d.allergens.length
+            ? `${d.allergens.map((c) => labelOf(ALLERGENS, c, locale)).join(and)} ${t("person.allergy")}`
+            : "",
         d.dislikes.map((c) => labelOf(DISLIKES, c, locale)).join(and),
       ].filter(Boolean);
       return parts.join(" / ");
@@ -19,6 +23,7 @@ export function summarize(section: Section, data: CardData[Section] | undefined,
       return [
         d.likes.slice(0, 3).join(and),
         d.spicy != null ? `${t("taste.spicy")} ${SPICY_LEVELS[d.spicy]?.[locale]}` : "",
+        d.dessert,
         d.drinks,
         d.alcohol?.level ? `${t("taste.alcohol")} ${labelOf(ALCOHOL_LEVELS, d.alcohol.level, locale)}` : "",
       ]
@@ -38,16 +43,24 @@ export function summarize(section: Section, data: CardData[Section] | undefined,
     }
     case "gifts": {
       const d = data as CardData["gifts"];
-      return [d.colors.map((c) => labelOf(COLORS, c, locale)).join(and), d.loves.slice(0, 3).join(and), d.flowers, d.brands?.slice(0, 2).join(and) ?? "", d.wishlist.length ? `${t("gift.wishlist")} ${d.wishlist.length}` : ""]
+      return [d.flowers, d.brands?.slice(0, 2).join(and) ?? "", d.wishlist.length ? `${t("gift.wishlist")} ${d.wishlist.length}` : ""]
         .filter(Boolean)
         .join(" / ");
     }
     case "favorites": {
       const d = data as CardData["favorites"];
-      return [d.idol, d.character, d.musicGenres.slice(0, 2).map((c) => labelOf(MUSIC_GENRES, c, locale)).join(and), d.patterns.slice(0, 2).map((c) => labelOf(PATTERNS, c, locale)).join(and), d.seasons.map((c) => labelOf(SEASONS, c, locale)).join(and), d.movie]
+      return [(d.colors ?? []).map((c) => labelOf(COLORS, c, locale)).join(and), d.idol, d.character, d.patterns.slice(0, 2).map((c) => labelOf(PATTERNS, c, locale)).join(and), d.animal]
         .filter(Boolean)
         .slice(0, 4)
         .join(" / ");
+    }
+    case "culture": {
+      const d = data as CardData["culture"];
+      return [d.movie, d.drama, d.musicGenres.slice(0, 2).map((c) => labelOf(MUSIC_GENRES, c, locale)).join(and), d.song, d.book].filter(Boolean).slice(0, 4).join(" / ");
+    }
+    case "life": {
+      const d = data as CardData["life"];
+      return [d.hobbies.slice(0, 3).join(and), d.seasons.map((c) => labelOf(SEASONS, c, locale)).join(and), d.travel].filter(Boolean).join(" / ");
     }
     case "dates": {
       const d = data as CardData["dates"];

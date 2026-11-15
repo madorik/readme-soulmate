@@ -1,4 +1,4 @@
-import { ALCOHOL_LEVELS, ALLERGENS, DIETS, DISLIKES, SPICY_LEVELS, labelOf } from "./catalog";
+import { ALCOHOL_LEVELS, ALLERGENS, DIETS, DISLIKES, SPICY_LEVELS, labelOf, realCodes } from "./catalog";
 import type { PartialCard, Section } from "./card";
 import { translate } from "./i18n";
 import type { Label, Locale } from "./locale";
@@ -99,9 +99,10 @@ export function mealBrief(diners: Diner[]): MealBrief {
   for (const d of diners) {
     const safety = part(d, "safety");
     const taste = part(d, "taste");
-    for (const c of safety?.allergens ?? []) collect(brief.allergens, c, d.name);
-    for (const c of safety?.dislikes ?? []) collect(brief.dislikes, c, d.name);
-    for (const c of safety?.diets ?? []) collect(brief.diets, c, d.name);
+    // '없음'은 거를 것이 없다는 뜻이라 모으지 않는다
+    for (const c of realCodes(safety?.allergens)) collect(brief.allergens, c, d.name);
+    for (const c of realCodes(safety?.dislikes)) collect(brief.dislikes, c, d.name);
+    for (const c of realCodes(safety?.diets)) collect(brief.diets, c, d.name);
     if (taste?.spicy != null) {
       if (!brief.spicy || taste.spicy < brief.spicy.level) brief.spicy = { level: taste.spicy, who: [d.name] };
       else if (taste.spicy === brief.spicy.level) brief.spicy.who.push(d.name);

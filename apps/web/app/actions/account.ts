@@ -5,13 +5,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/data";
 
-const PREFS = ["app_lock"] as const;
+const PREFS = ["app_lock", "push_enabled"] as const;
 
 export async function setPreference(form: FormData): Promise<void> {
   const s = await requireSession();
   const key = String(form.get("key"));
   if (!(PREFS as readonly string[]).includes(key)) return;
-  await s.tx((q) => q(`update profiles set ${key} = $2 where id = $1`, [s.user.id, form.get("value") === "1"]));
+  const on = form.get("value") === "1";
+  await s.tx(async (q) => {
+    await q(`update profiles set ${key} = $2 where id = $1`, [s.user.id, on]);
+    // 알림을 끄면 이 계정의 기기 토큰도 지운다(다시 켜면 앱이 새로 등록한다)
+    if (key === "push_enabled" && !on) await q("delete from push_tokens where user_id = $1", [s.user.id]);
+  });
   revalidatePath("/privacy");
   revalidatePath("/", "layout");
 }

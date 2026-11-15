@@ -16,11 +16,9 @@ interface Labels {
   summary: string;
   all: string;
   bannerTitle: string;
-  bannerBody: string;
   bannerCta: string;
   pick: string;
   cancel: string;
-  hint: string;
   withMe: string;
   meName: string;
   selected: string;
@@ -99,7 +97,7 @@ export function PeopleBoard({
   initialMe: boolean;
   labels: Labels;
 }) {
-  const canPick = rows.some((r) => r.pickable);
+  const canPick = rows.length > 0;
   // 처음 상태: 주소에서 읽는다. 기기 뒤로가기로 돌아오면 Next가 예전 화면을 다시 쓰는데, 그때도 주소(고르던 체크)는 맞으므로
   const [start] = useState(() => {
     if (typeof window !== "undefined" && window.location.pathname === "/people") {
@@ -109,7 +107,7 @@ export function PeopleBoard({
     return { pick: initialPick, ids: initial, me: initialMe };
   });
   const [picking, setPicking] = useState(start.pick && canPick);
-  const [picked, setPicked] = useState<string[]>(start.ids.filter((id) => rows.some((r) => r.contactId === id && r.pickable)));
+  const [picked, setPicked] = useState<string[]>(start.ids.filter((id) => rows.some((r) => r.contactId === id)));
   const [withMe, setWithMe] = useState(start.me);
   const toggle = (id: string) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : rows.map((r) => r.contactId).filter((x) => x === id || picked.includes(x)));
   // 그룹 머리 체크: 그 그룹에서 고를 수 있는 사람을 한 번에 넣고 뺀다
@@ -223,7 +221,7 @@ export function PeopleBoard({
         {label}
       </Link>
     ) : (
-      <span aria-disabled="true" className="btn-primary ![background:#dfe7f1] !text-[#6f7b8f] !shadow-none">
+      <span aria-disabled="true" className="btn-primary ![background:#e4e6ee] !text-[#6b7089] !shadow-none">
         {label}
       </span>
     );
@@ -272,7 +270,7 @@ export function PeopleBoard({
               type="button"
               aria-expanded={making}
               onClick={() => setMaking(!making)}
-              className="flex h-[38px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full border-[1.5px] border-dashed border-[#bfd6ee] px-3.5 text-[14px] font-bold text-accent"
+              className="flex h-[38px] shrink-0 items-center gap-1 whitespace-nowrap rounded-full border-[1.5px] border-dashed border-[#f0d27a] px-3.5 text-[14px] font-bold text-accent"
             >
               <Icon name="plus" size={15} strokeWidth={2.2} />
               {labels.newGroup}
@@ -281,7 +279,6 @@ export function PeopleBoard({
         </div>
       ) : null}
 
-      {picking ? <p className="px-5 pt-2 text-[13.5px] leading-[1.55] text-muted">{labels.hint}</p> : null}
       {!picking && making ? <div className="px-4 pt-3">{groupForm}</div> : null}
 
       {picking ? null : (
@@ -289,7 +286,6 @@ export function PeopleBoard({
           <span aria-hidden="true" className="absolute -bottom-14 -right-8 h-36 w-36 rounded-full bg-white/25" />
           <div className="relative flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="text-[16.5px] font-bold leading-[1.35] tracking-[-0.02em]">{labels.bannerTitle}</span>
-            <span className="text-[12.5px] leading-[1.5] text-ink-2">{labels.bannerBody}</span>
             <Link href="/request" className="mt-1.5 flex h-9 items-center gap-0.5 self-start rounded-full bg-white pl-3.5 pr-2.5 text-[13.5px] font-bold text-accent">
               {labels.bannerCta}
               <Icon name="chevron" size={15} strokeWidth={2.2} />
@@ -314,7 +310,7 @@ export function PeopleBoard({
           ) : null}
           {visible.map((sec) => {
             const open = !collapsed.includes(sec.key);
-            const pickIds = sec.rows.filter((r) => r.pickable).map((r) => r.contactId);
+            const pickIds = sec.rows.map((r) => r.contactId);
             const allPicked = pickIds.length > 0 && pickIds.every((id) => picked.includes(id));
             // 끄는 중 손가락 아래 칸(원래 칸이 아니면) 강조
             const target = !!drag.dragging && drag.over === sec.key && drag.dragging.from !== sec.key;
@@ -374,16 +370,15 @@ export function PeopleBoard({
                       const on = picked.includes(r.contactId);
                       return (
                         <li key={r.contactId} className="flex items-center border-t border-rule first:border-t-0">
-                          <Link href={`/people/${r.contactId}?back=${encodeURIComponent(here)}`} className={`flex min-h-[70px] min-w-0 flex-1 items-center gap-3 ${r.pickable ? "" : "opacity-40"}`}>
+                          <Link href={`/people/${r.contactId}?back=${encodeURIComponent(here)}`} className="flex min-h-[70px] min-w-0 flex-1 items-center gap-3">
                             <RowBody row={r} avatarLabel={label} />
                           </Link>
                           <button
                             type="button"
                             aria-pressed={on}
                             aria-label={labels.pickOne.replace("{name}", r.tag ? `${r.name} ${r.tag}` : r.name)}
-                            disabled={!r.pickable}
                             onClick={() => toggle(r.contactId)}
-                            className={`flex h-[70px] w-12 shrink-0 items-center justify-end ${r.pickable ? "" : "opacity-40"}`}
+                            className="flex h-[70px] w-12 shrink-0 items-center justify-end"
                           >
                             <DrawnCheck on={on} />
                           </button>
@@ -401,7 +396,7 @@ export function PeopleBoard({
       )}
 
       {picking ? (
-        <div className="sticky mt-auto flex flex-col gap-2 bg-bg/95 px-5 pb-3 pt-3 backdrop-blur" style={{ bottom: "calc(78px + max(var(--sab), 14px))" }}>
+        <div className="sticky mt-auto flex flex-col gap-2 bg-bg/95 px-5 pb-3 pt-3 backdrop-blur" style={{ bottom: "calc(78px + var(--pb-tab))" }}>
           <span role="status" className="text-[12.5px] text-muted">
             {ready ? labels.selected.replace("{n}", String(picked.length)) : labels.pickSome}
           </span>

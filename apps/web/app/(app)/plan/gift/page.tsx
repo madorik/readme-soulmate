@@ -22,27 +22,25 @@ export default async function PlanGift({ searchParams }: { searchParams: Promise
   const and = t("common.and");
 
   const hints = (p: Person) => {
-    const can = (x: Parameters<typeof p.sections.includes>[0]) => p.sections.includes(x);
-    const g = can("gifts") ? p.card.gifts : undefined;
-    const z = can("sizes") ? p.card.sizes : undefined;
-    const f = can("favorites") ? p.card.favorites : undefined;
+    const { gifts: g, sizes: z, favorites: f, life: l, taste: tt, culture: c } = p.card;
     const style = [...(f?.patterns ?? []).map((x) => labelOf(PATTERNS, x, locale)), ...(f?.styles ?? []).map((x) => labelOf(STYLES, x, locale)), ...(f?.metals ?? []).map((x) => labelOf(METALS, x, locale))].join(and);
     const top = describeTop(z?.top ?? "", locale);
     const shoe = describeShoe(z?.shoe ?? null, locale);
     const sizes = [top ? `${t("size.top")} ${top.value}${top.unit}` : "", z?.bottom ? `${t("size.bottom")} ${z.bottom}` : "", shoe ? `${t("size.shoe")} ${shoe.value}mm` : "", z?.ring ? `${t("size.ring")} ${z.ring}` : ""].filter(Boolean).join(and);
     return [
-      g?.loves.length ? { label: t("gift.loves"), value: g.loves.join(and) } : null,
+      l?.hobbies.length ? { label: t("life.hobbies"), value: l.hobbies.join(and) } : null,
       g?.wishlist.length ? { label: t("gift.wishlist"), value: g.wishlist.map((w) => w.title).join(and) } : null,
       g?.brands?.length ? { label: t("gift.brands"), value: g.brands.join(and) } : null,
       f?.idol ? { label: t("fav.idol"), value: f.idol } : null,
       f?.character ? { label: t("fav.character"), value: f.character } : null,
       f?.team ? { label: t("fav.team"), value: f.team } : null,
+      f?.animal ? { label: t("fav.animal"), value: f.animal } : null,
       style ? { label: t("fav.style"), value: style } : null,
-      g?.colors.length ? { label: t("gift.colors"), value: g.colors.map((x) => labelOf(COLORS, x, locale)).join(and) } : null,
+      f?.colors?.length ? { label: t("gift.colors"), value: f.colors.map((x) => labelOf(COLORS, x, locale)).join(and) } : null,
       g?.flowers ? { label: t("gift.flowers"), value: g.flowers } : null,
       g?.scent ? { label: t("gift.scent"), value: g.scent } : null,
-      f?.dessert ? { label: t("fav.dessert"), value: f.dessert } : null,
-      f?.book ? { label: t("fav.book"), value: f.book } : null,
+      tt?.dessert ? { label: t("fav.dessert"), value: tt.dessert } : null,
+      c?.book ? { label: t("fav.book"), value: c.book } : null,
       g?.giftCard ? { label: t("gift.giftCard"), value: t(g.giftCard === "yes" ? "gift.giftCardYes" : "gift.giftCardNo") } : null,
       sizes ? { label: t("person.sizes"), value: sizes } : null,
       g?.skip.length ? { label: t("gift.skip"), value: g.skip.join(and), strike: true } : null,

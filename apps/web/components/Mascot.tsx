@@ -1,6 +1,6 @@
 // 마스코트 '리디': 접힌 쪽지(컨닝페이퍼) 한 장. 흰 몸 + 남색 선 + 점 눈. 오늘의 질문·요청하기·온보딩에서 말을 건다.
 
-const INK = "#22304A";
+const INK = "#1F2340";
 
 export function Mascot({ size = 48, bubble }: { size?: number; bubble?: "question" }) {
   const w = bubble ? 132 : 120;
@@ -10,8 +10,8 @@ export function Mascot({ size = 48, bubble }: { size?: number; bubble?: "questio
       <path d="M96 70 C106 66 110 58 108 50" fill="none" stroke={INK} strokeWidth="4.5" strokeLinecap="round" />
       <path d="M46 106 V118 M74 106 V118" stroke={INK} strokeWidth="4.5" strokeLinecap="round" />
       <path d="M34 20 H78 L98 40 V98 Q98 110 86 110 H34 Q22 110 22 98 V32 Q22 20 34 20 Z" fill="#FFFFFF" stroke={INK} strokeWidth="4.5" strokeLinejoin="round" />
-      <path d="M78 20 V34 Q78 40 84 40 H98 Z" fill="#DDEEFF" stroke={INK} strokeWidth="4.5" strokeLinejoin="round" />
-      <path d="M38 86 H72 M38 96 H60" stroke="#D3E3F3" strokeWidth="4" strokeLinecap="round" />
+      <path d="M78 20 V34 Q78 40 84 40 H98 Z" fill="#FFE7A6" stroke={INK} strokeWidth="4.5" strokeLinejoin="round" />
+      <path d="M38 86 H72 M38 96 H60" stroke="#E4E6EE" strokeWidth="4" strokeLinecap="round" />
       <circle cx="47" cy="58" r="4.8" fill={INK} />
       <circle cx="71" cy="58" r="4.8" fill={INK} />
       <ellipse cx="39" cy="68" rx="5.8" ry="3.4" fill="#FFBFCB" />

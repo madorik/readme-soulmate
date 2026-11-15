@@ -166,24 +166,27 @@ export const SPICY_LEVELS: Label[] = [
 ];
 
 /** 좋아하는 색 */
+/** 좋아하는 색. 앞 10가지(COLOR_BASIC_COUNT)는 기본으로 보이는 밝은 기본색, 나머지는 '색 더 보기'. 저장은 code라 순서·색감을 바꿔도 된다 */
 export const COLORS: (CatalogItem & { hex: string })[] = [
-  { ...item("black", "검정", "Black"), hex: "#1F1D2B" },
-  { ...item("white", "흰색", "White"), hex: "#FFFFFF" },
+  { ...item("red", "빨강", "Red"), hex: "#E5322B" },
+  { ...item("orange", "주황", "Orange"), hex: "#EE6C2B" },
+  { ...item("yellow", "노랑", "Yellow"), hex: "#F4BC5B" },
+  { ...item("green", "초록", "Green"), hex: "#86D07F" },
+  { ...item("blue", "파랑", "Blue"), hex: "#6CB4D9" },
+  { ...item("purple", "보라", "Purple"), hex: "#9370D2" },
+  { ...item("pink", "분홍", "Pink"), hex: "#F2A2A2" },
+  { ...item("white", "하양", "White"), hex: "#FFFFFF" },
+  { ...item("gray", "회색", "Gray"), hex: "#808080" },
+  { ...item("black", "검정", "Black"), hex: "#111111" },
   { ...item("cream", "크림", "Cream"), hex: "#F2E8D5" },
   { ...item("beige", "베이지", "Beige"), hex: "#D8C3A5" },
-  { ...item("gray", "회색", "Gray"), hex: "#9A98A3" },
   { ...item("navy", "남색", "Navy"), hex: "#16224A" },
-  { ...item("blue", "파랑", "Blue"), hex: "#2A62D9" },
   { ...item("sky", "하늘색", "Sky blue"), hex: "#9CC3F0" },
   { ...item("sage", "세이지", "Sage"), hex: "#9CB59A" },
-  { ...item("green", "초록", "Green"), hex: "#1E8C5A" },
-  { ...item("yellow", "노랑", "Yellow"), hex: "#FFD23F" },
-  { ...item("pink", "분홍", "Pink"), hex: "#F4A7B9" },
-  { ...item("red", "빨강", "Red"), hex: "#E8352C" },
   { ...item("burgundy", "버건디", "Burgundy"), hex: "#7A2234" },
-  { ...item("purple", "보라", "Purple"), hex: "#7D5BA6" },
   { ...item("brown", "갈색", "Brown"), hex: "#6B3F2A" },
 ];
+export const COLOR_BASIC_COUNT = 10;
 
 export type Relation = "partner" | "family" | "friend";
 export const RELATIONS: { code: Relation; label: Label }[] = [
@@ -196,7 +199,17 @@ export function isRelation(v: unknown): v is Relation {
   return v === "partner" || v === "family" || v === "friend";
 }
 
+/** '없음'을 고를 수 있는 칸(알레르기·안 먹어요·식단·무늬·스타일·액세서리 색·영화·음악 장르·계절)의 값. 다른 것과 같이 고르면 다른 것이 이긴다 */
+export const NONE = "none";
+export const NONE_LABEL: Record<Locale, string> = { ko: "없음", en: "None" };
+
+/** 고른 값에서 '없음'을 뺀 실제 코드 */
+export function realCodes(list: readonly string[] | undefined): string[] {
+  return (list ?? []).filter((c) => c !== NONE);
+}
+
 export function labelOf(list: CatalogItem[], code: string, locale: Locale): string {
+  if (code === NONE) return NONE_LABEL[locale];
   return list.find((i) => i.code === code)?.label[locale] ?? code;
 }
 

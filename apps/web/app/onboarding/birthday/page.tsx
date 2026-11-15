@@ -13,7 +13,7 @@ export default async function OnboardingBirthday({ searchParams }: { searchParam
   const { card } = await s.tx((q) => readCard(q, s.user.id));
   return (
     <>
-      <StepHeader step={3} back={`/onboarding/food${q}`} t={t} title={t("onb.birthday.title")} body={t("onb.birthday.body")} />
+      <StepHeader step={3} back={`/onboarding/food${q}`} t={t} title={t("onb.birthday.title")} />
       <BirthdayStep locale={s.profile.locale} birthday={card.dates?.birthday ?? null} offsets={s.profile.reminderOffsets} next={next} />
     </>
   );

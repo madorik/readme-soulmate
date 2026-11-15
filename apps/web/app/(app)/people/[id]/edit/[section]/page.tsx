@@ -5,14 +5,14 @@ import { SectionForm } from "@/components/editors/SectionForm";
 import { displayName, listPeople, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 
-// 내가 직접 적어 둔 사람의 항목 하나 고치기(내 리드미 편집과 같은 편집기)
+// 사람 기록의 항목 하나 고치기(내 리드미 편집과 같은 편집기). 답받은 항목도 고친다
 export default async function EditPersonSection({ params }: { params: Promise<{ id: string; section: string }> }) {
   const { id, section } = await params;
   if (!isSection(section)) notFound();
   const s = await requireSession();
   const t = makeT(s.profile.locale);
   const p = (await listPeople(s)).find((x) => x.contactId === id);
-  if (!p || p.kind !== "mine") notFound();
+  if (!p) notFound();
   return (
     <div className="flex flex-1 flex-col">
       <TopBar back={`/people/${p.contactId}`} label={t("common.back")} />

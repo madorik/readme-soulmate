@@ -1,7 +1,7 @@
 # 리드미 - 소울메이트 컨닝페이퍼
 
-가까운 사람(배우자·애인·가족·친한 친구)끼리 취향, 못 먹는 음식, 사이즈, 생일을 **본인이 직접 적고**, **고른 사람에게만** 보여 주는 앱.
-"아빠 리드미 보냈는데 답장해줘"처럼 쓴다. 한국어·영어, iOS·Android·웹.
+가까운 사람(배우자·애인·가족·친한 친구)의 취향, 못 먹는 음식, 사이즈, 생일을 **내 기록으로 적어 두고**, 모르는 건 **물어봐서** 채우는 앱. 내 것(내 리드미)도 적어 둔다.
+"아빠한테 물어봤는데 답해줘"처럼 쓴다. 답은 물어본 사람의 기록에 들어가고, 그 뒤로는 물어본 사람이 고친다. 한국어·영어, iOS·Android·웹.
 
 계획과 완료 기준은 [PLAN.md](./PLAN.md), 디자인 시안은 캔버스 v3 "하늘 그라데이션 + 선 캐릭터"(https://claude.ai/artifact/BPLLQSFsKmMPRxxBuzJUcE).
 
@@ -32,9 +32,9 @@ pnpm dev             # http://localhost:3200
 ## 테스트
 
 ```bash
-pnpm test            # core·암호화 단위 테스트(29개): 음력·윤달·30일 대체·다음 생일·알림·사이즈·한영 문구 짝·조사·말로 입력 해석·AES-GCM
-pnpm test:db         # RLS 통합 테스트(16개): 로그인 표 못 읽음, 남의 리드미 못 읽음, 허락한 항목만, 끊으면 바로 못 읽음, 초대 재사용·조작 불가 …
-pnpm e2e             # Playwright(14개): 가입·온보딩 → 보내기·받기 → 부탁하기·웹 답 → 끊기 → 영어 사이즈 → 메모 → 가입 후 가져오기 → 삭제 → 데모 → 기기 언어
+pnpm test            # core·암호화 단위 테스트(29개): 음력·윤달·30일 대체·다음 생일·알림·사이즈·한영 문구 짝·조사·AES-GCM
+pnpm test:db         # RLS 통합 테스트(17개): 로그인 표 못 읽음, 남의 리드미·기록 못 읽음, 물어본 항목만 내 기록에, 링크 재사용·조작 불가, 남과 이어 붙이기 불가 …
+pnpm e2e             # Playwright: 가입·온보딩 → 물어보기·웹 답 → 받은 답 고치기 → 다시 물어보기·취소 → 로그인하고 답하기 → 영어 사이즈 → 직접 적기 → 삭제 → 데모 → 기기 언어
 pnpm typecheck && pnpm lint && pnpm build
 ```
 
@@ -58,18 +58,17 @@ pnpm open:ios / pnpm open:android                          # Xcode·Android Stud
 
 ## 보안 설계
 
-- 공개 프로필·검색 없음. 연결은 초대 링크(또는 6자리 코드)로만.
-- 리드미는 항목(알레르기·음식·사이즈·선물·기념일) 단위로 저장하고, **RLS**가 "주인 또는 그 항목을 허락받은 사람"만 읽게 한다. 서버는 요청마다 트랜잭션 안에서 `set local role app_user` + `app.user_id`로 바꿔 쿼리하므로(`lib/db.ts`), 서버 코드에 실수가 있어도 DB가 남의 리드미를 돌려주지 않는다(`db/tests/rls.test.ts`). 앱 역할은 로그인 표(user·session·account)를 못 읽는다.
-- 알레르기·사이즈·메모·요청 초안은 서버 키(AES-256-GCM)로 암호화하고, 어느 사람·어느 항목의 값인지 묶어서(AAD) 다른 행에 옮겨 붙이면 풀리지 않는다.
-- 초대 토큰은 해시만 저장, 7일 만료, 한 사람만 열 수 있다. 끊으면 허락이 철회되어 바로 못 본다(사본을 주지 않는다).
-- 앱 없이 답한 내용도 답한 사람 것이고, 알레르기 같은 건강 정보는 저장 동의를 받는다(개인정보보호법 제23조 민감정보). 가입하면 자기 리드미로 가져간다.
-- "누가 봤는지 알림"은 선물 준비가 들키지 않게 기본으로 꺼 둔다.
+- 공개 프로필·검색·공유가 없다. 남의 데이터를 읽는 길이 없어서 **RLS**는 "본인 줄만"이다: 내 리드미(`card_sections`), 내 사람들(`contacts`)과 그 기록(`contact_cards`)·메모. 서버는 요청마다 트랜잭션 안에서 `set local role app_user` + `app.user_id`로 바꿔 쿼리하므로(`lib/db.ts`), 서버 코드에 실수가 있어도 DB가 남의 것을 돌려주지 않는다(`db/tests/rls.test.ts`). 앱 역할은 로그인 표(user·session·account)를 못 읽는다.
+- 물어보기(`invites`)는 내 주소록 사람에게만 만든다. 답은 시스템 함수(`submit_request_answer`)가 물어본 항목만 물어본 사람의 기록에 넣고 항목별로 받은 때(`answered`)를 남긴다. 내가 그 항목을 고치면 받은 때 표시가 빠진다. 로그인하고 답하면 주소록 칸이 그 사용자와 이어져(`person_id`, 앱 역할은 못 바꾼다) 얼굴·이름만 보인다.
+- 알레르기·사이즈·기념일·메모·물어볼 때 미리 채운 값은 서버 키(AES-256-GCM)로 암호화하고, 어느 사람·어느 항목의 값인지 묶어서(AAD) 다른 행에 옮겨 붙이면 풀리지 않는다.
+- 물어보기 토큰은 해시만 저장, 7일 만료, 한 번만 답할 수 있다. 사람을 지우면 그 사람에게 보낸 링크도 지워진다.
+- 답한 내용은 물어본 사람의 기록이 된다(답하는 화면에 알린다). 알레르기 같은 건강 정보는 보내기 전에 동의를 받는다(개인정보보호법 제23조 민감정보). 로그인하고 답하면 고른 경우 내 리드미에도 저장한다.
 - 계정 삭제는 앱 안에서 바로(앱스토어 심사 5.1.1(v)). 내 정보 내려받기(JSON) 제공.
 
 ## 운영
 
 - 웹: Vercel 프로젝트 `readme`(madoriks-projects, 루트 `apps/web`, 함수 지역 icn1(서울)) → **https://readme.watalabs.com**(watalabs.com DNS가 같은 Vercel 팀에 있다. 예전 주소 itsreadme.vercel.app은 308로 넘어온다). 배포는 저장소 루트에서 `vercel deploy --prod`(`.vercelignore`가 비밀값·네이티브 폴더를 뺀다).
-- DB: Supabase 프로젝트 `readme`(madorik's Org, Free, 서울 ap-northeast-2). Supabase의 Data API는 꺼 두었고(0006 마이그레이션으로 anon·authenticated 권한도 회수), 앱은 Postgres로만 붙는다. Vercel `DATABASE_URL` = 트랜잭션 풀러(`aws-0-ap-northeast-2.pooler.supabase.com:6543`, 사용자 `postgres.<ref>`), `DATABASE_URL_UNPOOLED` = 세션 풀러(같은 호스트 5432, 마이그레이션용). 비밀번호·ref는 `~/.readme/supabase.env`. 마이그레이션: `vercel env pull <파일> --environment production` 뒤 `node --env-file=<파일> scripts/migrate.mjs`. 무료 프로젝트는 1주일 동안 활동이 없으면 일시정지된다(매일 크론이 DB를 읽는다).
+- DB: Supabase 프로젝트 `readme`(madorik's Org, Free, 서울 ap-northeast-2). Supabase의 Data API는 꺼 두었고(0006 마이그레이션으로 anon·authenticated 권한도 회수), 앱은 Postgres로만 붙는다. Vercel `DATABASE_URL` = 트랜잭션 풀러(`aws-0-ap-northeast-2.pooler.supabase.com:6543`, 사용자 `postgres.<ref>`), `DATABASE_URL_UNPOOLED` = 세션 풀러(같은 호스트 5432, 마이그레이션용). 비밀번호·ref는 `~/.readme/supabase.env`. 마이그레이션: `vercel env pull <파일> --environment production` 뒤 `node --env-file=<파일> scripts/migrate.mjs`. **0012 → 0013 사이에만** 공유받던 리드미를 기록으로 복사해야 한다: migrate가 0013에서 멈추면 `npx tsx --env-file=<파일> scripts/records-copy.mts`(암호화 키 필요) 뒤 migrate를 한 번 더. 무료 프로젝트는 1주일 동안 활동이 없으면 일시정지된다(매일 크론이 DB를 읽는다).
 - 비밀값(`BETTER_AUTH_SECRET`, `DATA_ENCRYPTION_KEY`, `CRON_SECRET`)은 Vercel과 저장소 밖 `~/.readme/prod-secrets.env`에 있다. **암호화 키를 잃으면 저장된 알레르기·사이즈·메모를 못 읽는다.**
 - `vercel.json`이 매일 오전 8시(KST)에 생일 알림 크론을 부르고, 그때 7일 지난 데모 계정을 지운다.
 - 약관류(로그인 없이 열림, `?lang=en`): `/privacy-policy`, `/terms`, `/delete-account`.
@@ -84,7 +83,6 @@ pnpm open:ios / pnpm open:android                          # Xcode·Android Stud
 
 ## 아직 안 한 것
 
-- 앱을 새로 깔았을 때 초대 링크가 저절로 이어지는 "지연 딥링크"는 붙이지 않았다. 대신 초대 화면·공유 결과에 6자리 코드가 있고, 앱 시작 화면의 "초대 코드가 있어요"로 연다. 필요하면 Airbridge·Branch를 붙인다.
-- "사진으로 입력"(옷 태그 사진으로 사이즈 읽기)은 아직 없다. "말로 입력"은 브라우저 음성 인식이 되는 곳(크롬·사파리)에서만 보이고, iOS 앱 웹뷰에서는 숨는다.
-- 초대 코드 입력·답하기 요청에 IP 단위 횟수 제한이 없다(코드 경우의 수 약 8.9억). 정식 출시 전에 Vercel 방화벽이나 미들웨어로 막는다.
+- "사진으로 입력"(옷 태그 사진으로 사이즈 읽기)·"말로 입력"은 없다(말로 입력은 2026-11-15에 뺐다).
+- 답하기 요청에 IP 단위 횟수 제한이 없다(링크 토큰은 추측할 수 없지만). 정식 출시 전에 Vercel 방화벽이나 미들웨어로 막는다.
 - 데모 계정으로 쓰다가 앱에서 구글로 로그인하면(시스템 브라우저 경로) 데모 계정은 남았다가 7일 뒤 크론이 지운다(웹에서는 바로 지워진다).

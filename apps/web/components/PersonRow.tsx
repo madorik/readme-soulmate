@@ -6,7 +6,7 @@ import { Avatar } from "./Avatar";
 /** 사람 목록 한 줄에 보일 것(서버에서 만들어 화면 컴포넌트에 넘긴다) */
 export interface PersonRow {
   contactId: string;
-  /** 그 사람 이름(직접 적은 사람·답 기다리는 칸은 내가 적은 말) */
+  /** 그 사람 이름(앱 사용자와 이어지지 않은 사람은 내가 적은 말) */
   name: string;
   /** 내가 붙인 태그(부르는 말). 이름과 같거나 없으면 "" */
   tag: string;
@@ -18,10 +18,6 @@ export interface PersonRow {
   dateSub: string;
   /** 7일 안이면 붉게 */
   soon: boolean;
-  /** 같이 고르기에서 고를 수 있는지(답 기다리는 칸·끊긴 사람은 못 고른다) */
-  pickable: boolean;
-  /** 앱을 쓰는 사람인데 내 리드미를 안 보여 주면 "공유 꺼짐" */
-  shareNote: string;
   /** 내가 넣은 그룹(없으면 null) */
   groupId: string | null;
   /** 즐겨찾기(맨 위에 고정) */
@@ -47,7 +43,7 @@ export function RowBody({ row, avatarLabel }: { row: PersonRow; avatarLabel: str
           <span className="truncate text-[16px] font-bold tracking-[-0.01em]">{row.name}</span>
           {row.tag ? <TagChip>{row.tag}</TagChip> : null}
         </span>
-        {row.sub || row.shareNote ? <span className="truncate text-[12.5px] text-muted">{[row.sub, row.shareNote].filter(Boolean).join(" · ")}</span> : null}
+        {row.sub ? <span className="truncate text-[12.5px] text-muted">{row.sub}</span> : null}
       </span>
       {row.date ? (
         <span className="flex flex-col items-end gap-px">

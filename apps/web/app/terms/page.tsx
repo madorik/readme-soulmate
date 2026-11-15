@@ -17,8 +17,8 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
 
         <h2>1. The service</h2>
         <p>
-          README lets you write your own favorites, foods you can&rsquo;t eat, sizes and dates, share them only with people you choose, ask someone to fill in theirs, and get birthday and anniversary
-          reminders. README is free. We may add, change or stop features, and will announce major changes in advance.
+          README lets you write down your own favorites, foods you can&rsquo;t eat, sizes and dates, keep the same about the people close to you, ask them questions to fill it in, and get birthday and
+          anniversary reminders. README is free. We may add, change or stop features, and will announce major changes in advance.
         </p>
 
         <h2>2. Accounts</h2>
@@ -28,14 +28,14 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
           <li>You must be 14 or older to use README.</li>
         </ul>
 
-        <h2>3. What you write and share</h2>
+        <h2>3. What you write and ask</h2>
         <ul>
           <li>What you write belongs to you. We use it only to run README as described in the <Link href="/privacy-policy?lang=en">Privacy Policy</Link>.</li>
-          <li>Only share links with people you trust. Anyone who opens a link you sent can see the sections you chose until you stop sharing.</li>
           <li>
-            You can write down what you know about someone who doesn&rsquo;t use the app, for your own reference only. It is never sent to them or anyone else. Don&rsquo;t write things they wouldn&rsquo;t
-            want recorded, and delete it if they ask. Requests are sent to the person, and only they can answer.
+            You can write down what you know about someone, for your own reference only. It is never shown to them or anyone else. Don&rsquo;t write things they wouldn&rsquo;t want recorded, and delete it
+            if they ask.
           </li>
+          <li>Send question links only to the person you&rsquo;re asking. Whoever opens the link can answer once, and the answers are saved to your record about that person.</li>
         </ul>
 
         <h2>4. Not medical advice</h2>
@@ -46,7 +46,7 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
 
         <h2>5. Not allowed</h2>
         <ul>
-          <li>Using someone else&rsquo;s account, or trying to see information that wasn&rsquo;t shared with you</li>
+          <li>Using someone else&rsquo;s account, or trying to see someone else&rsquo;s information</li>
           <li>Harassing others, or using README for spam, ads or illegal purposes</li>
           <li>Interfering with the service (automated mass access, attacks, reverse engineering for abuse)</li>
         </ul>
@@ -59,7 +59,7 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
 
         <h2>7. Liability</h2>
         <p>
-          We work to keep README running and your data safe, but we&rsquo;re not liable for losses caused by outages beyond our control, by information users wrote, or by how you or the people you share with
+          We work to keep README running and your data safe, but we&rsquo;re not liable for losses caused by outages beyond our control, by information users wrote, or by how you or the people you ask
           use it, except where the law says otherwise.
         </p>
 
@@ -77,7 +77,7 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
 
       <h2>1. 서비스</h2>
       <p>
-        리드미는 내 취향·못 먹는 음식·사이즈·기념일을 직접 적어 내가 고른 사람에게만 보여 주고, 다른 사람에게 적어 달라고 부탁하고, 생일·기념일을 알려 주는 서비스입니다. 리드미는 무료입니다. 운영자는
+        리드미는 내 취향·못 먹는 음식·사이즈·기념일을 적어 두고, 가까운 사람들의 것도 적어 두거나 물어봐서 채우고, 생일·기념일을 알려 주는 서비스입니다. 리드미는 무료입니다. 운영자는
         기능을 더하거나 바꾸거나 멈출 수 있으며, 큰 변경은 미리 알립니다.
       </p>
 
@@ -93,11 +93,10 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
         <li>
           내가 적은 정보는 나의 것입니다. 운영자는 <Link href="/privacy-policy?lang=ko">개인정보 처리방침</Link>에 적은 대로 리드미를 운영하는 데만 씁니다.
         </li>
-        <li>링크는 믿는 사람에게만 보내 주세요. 내가 보낸 링크를 연 사람은 보내기를 끊을 때까지 내가 고른 항목을 볼 수 있습니다.</li>
         <li>
-          앱을 안 쓰는 사람에 대해 아는 것을 나만 보는 용도로 직접 적어 둘 수 있습니다. 그 사람이나 다른 누구에게도 보내지지 않습니다. 그 사람이 원하지 않을 내용은 적지 말고, 지워 달라고 하면
-          지워 주세요. 리드미 요청하기는 그 사람에게 보내지고, 답은 그 사람만 할 수 있습니다.
+          다른 사람에 대해 아는 것을 나만 보는 용도로 적어 둘 수 있습니다. 그 사람이나 다른 누구에게도 보이지 않습니다. 그 사람이 원하지 않을 내용은 적지 말고, 지워 달라고 하면 지워 주세요.
         </li>
+        <li>물어보기 링크는 물어볼 사람에게만 보내 주세요. 링크를 연 사람이 한 번 답할 수 있고, 답은 그 사람에 대한 내 기록에 저장됩니다.</li>
       </ul>
 
       <h2>4. 의료 정보가 아닙니다</h2>
@@ -108,7 +107,7 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
 
       <h2>5. 하면 안 되는 일</h2>
       <ul>
-        <li>다른 사람의 계정을 쓰거나, 나에게 공유되지 않은 정보를 보려는 시도</li>
+        <li>다른 사람의 계정을 쓰거나, 남의 정보를 보려는 시도</li>
         <li>다른 사람을 괴롭히거나, 스팸·광고·불법적인 목적으로 쓰는 일</li>
         <li>서비스 운영을 방해하는 일(자동화된 대량 접속, 공격, 악용을 위한 역설계)</li>
       </ul>
@@ -116,12 +115,12 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
 
       <h2>6. 탈퇴</h2>
       <p>
-        앱에서 언제든 계정을 삭제할 수 있습니다(공유 관리 &gt; 계정 삭제). 자세한 내용은 <Link href="/delete-account?lang=ko">계정 삭제 안내</Link>를 보세요.
+        앱에서 언제든 계정을 삭제할 수 있습니다(내 리드미 &gt; 프로필 고치기 &gt; 계정 삭제). 자세한 내용은 <Link href="/delete-account?lang=ko">계정 삭제 안내</Link>를 보세요.
       </p>
 
       <h2>7. 책임의 한계</h2>
       <p>
-        운영자는 리드미를 안정적으로 운영하고 정보를 안전하게 지키려고 노력합니다. 다만 법이 달리 정한 경우를 빼고, 운영자가 막을 수 없는 장애, 이용자가 적은 정보의 내용, 이용자와 공유받은 사람이 그
+        운영자는 리드미를 안정적으로 운영하고 정보를 안전하게 지키려고 노력합니다. 다만 법이 달리 정한 경우를 빼고, 운영자가 막을 수 없는 장애, 이용자가 적은 정보의 내용, 이용자와 물어본 사람이 그
         정보를 쓴 방식으로 생긴 손해에는 책임지지 않습니다.
       </p>
 

@@ -12,8 +12,9 @@ export interface GroupOption {
 const NEW = "__new";
 
 /**
- * 사람 화면 위쪽: 그룹 고르기(드롭다운) + 바로 새 그룹 만들기(+). 고르는 즉시 저장한다.
- * +를 누르거나 드롭다운 맨 끝 '새 그룹 만들기'를 고르면 이름 칸이 열리고, 만들면 바로 그 그룹에 넣는다.
+ * 사람 화면 오른쪽 위: 그룹 알약(누르면 드롭다운). 고르는 즉시 저장한다.
+ * 드롭다운 맨 끝 '새 그룹 만들기'를 고르면 알약 아래에 이름 칸이 뜨고, 만들면 바로 그 그룹에 넣는다.
+ * 보이는 건 알약이고, 그 위에 투명한 진짜 select를 덮어 휴대폰 기본 고르기 창과 읽어 주기를 그대로 쓴다.
  * 즐겨찾기는 이름 줄 오른쪽 끝 하트(FavoriteHeart)
  */
 export function PersonOrganize({
@@ -71,44 +72,39 @@ export function PersonOrganize({
     });
   }
 
+  const current = groups.find((g) => g.id === group);
   return (
-    <div className="mx-6 mt-5 flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <label className="relative flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-white pl-3.5 pr-3 shadow-[inset_0_0_0_1px_var(--color-edge)]">
-          <span className="shrink-0 text-[13px] font-bold text-muted">{labels.group}</span>
-          <select
-            value={creating ? NEW : group}
-            onChange={(e) => pickGroup(e.target.value)}
-            disabled={pending}
-            aria-label={labels.group}
-            className="min-w-0 flex-1 appearance-none truncate bg-transparent pr-6 text-[14.5px] font-bold outline-none"
-          >
-            <option value="">{labels.none}</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-            <option value={NEW}>{labels.newOption}</option>
-          </select>
-          <Icon name="chevron" size={16} className="pointer-events-none absolute right-3 rotate-90 text-muted" />
-        </label>
-        <button
-          type="button"
-          aria-label={labels.newOption}
-          aria-expanded={creating}
-          onClick={() => setCreating(!creating)}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1px_var(--color-edge)]"
+    <div className="relative">
+      <label className="relative flex h-10 max-w-[180px] items-center gap-1 rounded-full bg-white pl-3.5 pr-2.5 shadow-[inset_0_0_0_1px_var(--color-edge)]">
+        <span aria-hidden="true" className={`truncate text-[14px] font-bold ${current ? "" : "text-muted"}`}>
+          {current ? current.name : labels.group}
+        </span>
+        <Icon name="chevron" size={15} strokeWidth={2.2} className="shrink-0 rotate-90 text-muted" />
+        <select
+          value={creating ? NEW : group}
+          onChange={(e) => pickGroup(e.target.value)}
+          disabled={pending}
+          aria-label={labels.group}
+          className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0"
         >
-          <Icon name="plus" size={18} />
-        </button>
-      </div>
+          <option value="">{labels.none}</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+          <option value={NEW}>{labels.newOption}</option>
+        </select>
+      </label>
       {creating ? (
         <form
-          className="flex gap-2"
+          className="card absolute right-0 top-full z-40 mt-2 flex w-[min(300px,calc(100vw-32px))] gap-2 p-2.5"
           onSubmit={(e) => {
             e.preventDefault();
             create();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setCreating(false);
           }}
         >
           <input
@@ -118,15 +114,15 @@ export function PersonOrganize({
             autoFocus
             placeholder={labels.namePlaceholder}
             aria-label={labels.namePlaceholder}
-            className="field min-w-0 flex-1"
+            className="field !h-11 min-w-0 flex-1"
           />
-          <button disabled={pending || !name.trim()} className="btn-primary !h-12 shrink-0 px-5">
+          <button disabled={pending || !name.trim()} className="btn-primary !h-11 shrink-0 px-4">
             {labels.create}
           </button>
         </form>
       ) : null}
       {error ? (
-        <p role="alert" className="text-[12.5px] font-bold text-red">
+        <p role="alert" className="absolute right-0 top-full mt-1 whitespace-nowrap text-[12.5px] font-bold text-red">
           {labels.error}
         </p>
       ) : null}

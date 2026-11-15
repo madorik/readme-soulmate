@@ -32,7 +32,7 @@ export function ProfileMenu({ avatar, labels }: { avatar: AvatarConfig | null; l
         <span className="rounded-full shadow-[0_0_0_2px_#fff]"><Avatar config={avatar} size={38} label={labels.menu} /></span>
       </button>
       {open ? (
-        <div role="menu" className="absolute right-1 top-full z-40 mt-1 w-44 overflow-hidden rounded-2xl bg-white py-1 shadow-[0_0_0_1px_var(--color-rule),0_10px_28px_rgba(34,48,74,0.14)]">
+        <div role="menu" className="absolute right-1 top-full z-40 mt-1 w-44 overflow-hidden rounded-2xl bg-white py-1 shadow-[0_0_0_1px_var(--color-rule),0_10px_28px_rgba(31,35,64,0.14)]">
           <Link role="menuitem" href="/me/avatar" onClick={() => setOpen(false)} className="flex min-h-12 items-center px-4 text-[15px] font-semibold">
             {labels.profile}
           </Link>

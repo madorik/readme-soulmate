@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import { displayName, listGroups, listNotes, listPeople, listShares, readCard, getSession } from "@/lib/data";
+import { displayName, listGroups, listNotes, listPeople, readCard, getSession } from "@/lib/data";
 
-// 내 정보 내려받기: 내 리드미, 내가 쓴 메모, 내가 보여 준 사람, 내 주소록(이름·그룹·즐겨찾기, 내가 직접 적어 둔 사람은 적은 내용까지)
+// 내 정보 내려받기: 내 리드미, 내 사람들(이름·그룹·즐겨찾기·기록, 항목별로 받은 답이면 받은 때), 내가 쓴 메모
 export async function GET() {
   const s = await getSession();
   if (!s) return NextResponse.json({ error: "not_signed_in" }, { status: 401 });
-  const [{ card }, shares, people, groups] = await Promise.all([
+  const [{ card }, people, groups] = await Promise.all([
     s.tx((q) => readCard(q, s.user.id)),
-    s.tx((q) => listShares(q, s.user.id)),
     listPeople(s),
     s.tx((q) => listGroups(q, s.user.id)),
   ]);
@@ -16,13 +15,12 @@ export async function GET() {
     const g = groups.find((x) => x.id === id);
     return g ? (g.builtin ?? g.name) : null;
   };
-  const notes = await Promise.all(people.filter((p) => p.kind !== "pending").map(async (p) => ({ person: displayName(p), notes: await s.tx((q) => listNotes(q, s.user.id, p.contactId)) })));
+  const notes = await Promise.all(people.map(async (p) => ({ person: displayName(p), notes: await s.tx((q) => listNotes(q, s.user.id, p.contactId)) })));
   const data = {
     exportedAt: new Date().toISOString(),
     profile: { name: s.profile.displayName, email: s.user.email, locale: s.profile.locale, timeZone: s.profile.timeZone, avatar: s.profile.avatar, reminderOffsets: s.profile.reminderOffsets },
     myReadme: card,
-    sharedWith: shares.map((x) => ({ name: x.name, relation: x.relation, sections: x.sections, stopped: x.revoked })),
-    people: people.map((p) => ({ name: displayName(p), kind: p.kind, group: groupOf(p.groupId), favorite: p.favorite, ...(p.kind === "mine" ? { written: p.card } : {}) })),
+    people: people.map((p) => ({ name: displayName(p), group: groupOf(p.groupId), favorite: p.favorite, record: p.card, answered: p.answered })),
     groups: groups.filter((g) => !g.builtin).map((g) => g.name),
     myNotes: notes.filter((n) => n.notes.length),
   };

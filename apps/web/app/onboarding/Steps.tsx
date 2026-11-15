@@ -27,6 +27,12 @@ export function AvatarStep({ locale, name, avatar, next, mode = "onboarding" }: 
   const [value, setValue] = useState(avatar);
   const [tz] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone ?? "");
   const onboarding = mode === "onboarding";
+  const nameField = (
+    <label className={`flex min-h-14 items-center gap-3 rounded-[18px] px-4 shadow-[inset_0_0_0_1.5px_var(--color-rule)] ${onboarding ? "mt-3 bg-bg" : "mb-3 bg-paper"}`}>
+      <span className="shrink-0 text-[13px] font-bold text-muted">{onboarding ? t("onb.avatar.name") : t("profile.nickname")}</span>
+      <input name="name" defaultValue={name} required maxLength={40} className="min-w-0 flex-1 bg-transparent text-[18px] font-bold tracking-[-0.02em] outline-none" />
+    </label>
+  );
   return (
     <form action={saveAvatar} className={onboarding ? SHEET : "flex flex-col"}>
       <input type="hidden" name="avatar" value={JSON.stringify(value)} />
@@ -34,19 +40,9 @@ export function AvatarStep({ locale, name, avatar, next, mode = "onboarding" }: 
       <input type="hidden" name="next" value={next} />
       <input type="hidden" name="mode" value={mode} />
       <div className={`px-4 ${onboarding ? "pt-4" : "pt-3"}`}>
-        {/* 내 프로필에서 고칠 때는 '프로필 사진'(캐릭터 만들기) 제목을 단다 */}
-        {onboarding ? null : <h2 className="section-title pb-2.5 pl-1">{t("profile.photo")}</h2>}
-        <AvatarBuilder
-          value={value}
-          onChange={setValue}
-          locale={locale}
-          between={
-            <label className={`mt-3 flex min-h-14 items-center gap-3 rounded-[18px] px-4 shadow-[inset_0_0_0_1.5px_var(--color-rule)] ${onboarding ? "bg-bg" : "bg-paper"}`}>
-              <span className="shrink-0 text-[13px] font-bold text-muted">{onboarding ? t("onb.avatar.name") : t("profile.nickname")}</span>
-              <input name="name" defaultValue={name} required maxLength={40} className="min-w-0 flex-1 bg-transparent text-[18px] font-bold tracking-[-0.02em] outline-none" />
-            </label>
-          }
-        />
+        {/* 내 프로필에서 고칠 때는 닉네임을 맨 위에, 그 아래 캐릭터 만들기. 온보딩은 미리보기 아래에 이름 칸 */}
+        {onboarding ? null : nameField}
+        <AvatarBuilder value={value} onChange={setValue} locale={locale} between={onboarding ? nameField : undefined} />
       </div>
       <div className={`${onboarding ? "mt-auto" : ""} px-4 pt-4`}>
         <Submit>{onboarding ? t("onb.avatar.cta") : t("common.save")}</Submit>

@@ -1,9 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { BRAND } from "@readme/core";
+import { KeyboardInset } from "@/components/KeyboardInset";
 import { LocaleSync } from "@/components/LocaleSync";
 import { getSession } from "@/lib/data";
 import { chosenLocale, requestLocale } from "@/lib/i18n";
+import { ogMetadata } from "@/lib/og";
+import { SITE_URL } from "@/lib/site";
 // 한글 본문(Noto Sans KR)은 조각을 직접 호스팅한다(scripts/fetch-fonts.mjs). 숫자·로고는 Manrope
 import "./fonts.css";
 import "./globals.css";
@@ -14,8 +17,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const session = await getSession();
   const locale = await requestLocale(session?.profile.locale);
   return {
-    title: BRAND[locale].title,
-    description: locale === "ko" ? "가까운 사람끼리 취향, 못 먹는 음식, 사이즈, 생일을 나누는 컨닝페이퍼" : "A cheat sheet of favorites, food restrictions, sizes and birthdays, shared only with the people closest to you",
+    metadataBase: new URL(SITE_URL),
+    ...ogMetadata(locale, BRAND[locale].title),
     applicationName: BRAND[locale].name,
     appleWebApp: { capable: true, title: BRAND[locale].name, statusBarStyle: "default" },
     formatDetection: { telephone: false },
@@ -26,7 +29,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f3f8ff",
+  themeColor: "#f6f7fb",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div aria-hidden="true" className="bar-mask-top" />
         {children}
         <div aria-hidden="true" className="bar-mask-bottom" />
+        <KeyboardInset />
         <LocaleSync rendered={locale} chosen={chosen} signedIn={!!session} stored={session?.profile.systemLocale ?? null} />
       </body>
     </html>

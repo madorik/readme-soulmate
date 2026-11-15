@@ -1,4 +1,4 @@
-import { ALLERGENS, DISLIKES, METALS, PATTERNS, SPICY_LEVELS, eventTitle, formatDayFull, formatSpec, labelOf, monthName, nextOccurrence, weekdayLong, type DateSpec } from "@readme/core";
+import { realCodes, ALLERGENS, DISLIKES, METALS, PATTERNS, SPICY_LEVELS, eventTitle, formatDayFull, formatSpec, labelOf, monthName, nextOccurrence, weekdayLong, type DateSpec } from "@readme/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
@@ -27,10 +27,10 @@ export default async function Reminder({ params, searchParams }: { params: Promi
   const t = makeT(locale);
   const people = await listPeople(s);
   const p = people.find((x) => x.contactId === id);
-  if (!p || p.kind === "pending") notFound();
+  if (!p) notFound();
   const name = displayName(p);
   const today = todayFor(s.profile);
-  const dates = p.sections.includes("dates") ? p.card.dates : undefined;
+  const dates = p.card.dates;
   const anniversary = sp.kind === "anniversary" ? dates?.anniversaries.find((a) => a.label === sp.label) : undefined;
   const spec: DateSpec | null = anniversary?.spec ?? dates?.birthday ?? null;
   const next = spec ? nextOccurrence(spec, today) : null;
@@ -42,15 +42,15 @@ export default async function Reminder({ params, searchParams }: { params: Promi
         : t("home.event.birthday", { name });
   const notes = await s.tx((q) => listNotes(q, s.user.id, p.contactId));
   const { gifts, safety, taste, sizes } = p.card;
-  const fav = p.sections.includes("favorites") ? p.card.favorites : undefined;
-  const favHint = [fav?.idol, fav?.character, fav?.team].filter(Boolean).join(t("common.and"));
+  const { favorites: fav, life } = p.card;
+  const favHint = [fav?.idol, fav?.character, fav?.team, fav?.animal].filter(Boolean).join(t("common.and"));
   const styleHint = [...(fav?.patterns ?? []).map((c) => labelOf(PATTERNS, c, locale)), ...(fav?.metals ?? []).map((c) => labelOf(METALS, c, locale))].join(t("common.and"));
 
   const meal = [
-    ...(safety?.allergens ?? []).map((c) => `${labelOf(ALLERGENS, c, locale)} ${t("person.allergy")}`),
-    ...(safety?.dislikes ?? []).map((c) => labelOf(DISLIKES, c, locale)),
+    ...realCodes(safety?.allergens).map((c) => `${labelOf(ALLERGENS, c, locale)} ${t("person.allergy")}`),
+    ...realCodes(safety?.dislikes).map((c) => labelOf(DISLIKES, c, locale)),
   ];
-  const hasHints = !!(favHint || styleHint || fav?.dessert || gifts?.loves.length || gifts?.flowers || gifts?.scent || gifts?.wishlist.length || gifts?.skip.length || meal.length || taste?.spicy != null || notes.length || sizes?.shoe);
+  const hasHints = !!(favHint || styleHint || taste?.dessert || life?.hobbies.length || gifts?.flowers || gifts?.scent || gifts?.wishlist.length || gifts?.skip.length || meal.length || taste?.spicy != null || notes.length || sizes?.shoe);
   const shareText = next ? `${event} ${formatDayFull(next.date, locale)}${spec?.calendar === "lunar" ? ` (${formatSpec(spec, locale)})` : ""}` : event;
 
   return (
@@ -78,14 +78,14 @@ export default async function Reminder({ params, searchParams }: { params: Promi
       <section className="flex flex-col px-6 pt-6">
         <h2 className="mb-2 text-[15px] font-bold">{t("reminder.hints", { name })}</h2>
         {!hasHints ? <p className="row text-[14px] leading-[1.6] text-muted">{t("reminder.noHints", { name })}</p> : null}
-        {gifts?.loves.length ? <Hint label={t("gift.loves")}>{gifts.loves.join(t("common.and"))}</Hint> : null}
+        {life?.hobbies.length ? <Hint label={t("life.hobbies")}>{life.hobbies.join(t("common.and"))}</Hint> : null}
         {favHint ? <Hint label={t("fav.people")}>{favHint}</Hint> : null}
         {gifts?.flowers ? <Hint label={t("reminder.flowers")}>{gifts.flowers}</Hint> : null}
         {gifts?.scent ? <Hint label={t("reminder.scent")}>{gifts.scent}</Hint> : null}
         {gifts?.wishlist.length ? <Hint label={t("reminder.wish")}>{gifts.wishlist.map((w) => w.title).join(t("common.and"))}</Hint> : null}
         {sizes?.shoe ? <Hint label={t("size.shoe")}>{sizes.shoe}mm</Hint> : null}
         {styleHint ? <Hint label={t("fav.style")}>{styleHint}</Hint> : null}
-        {fav?.dessert ? <Hint label={t("fav.dessert")}>{fav.dessert}</Hint> : null}
+        {taste?.dessert ? <Hint label={t("fav.dessert")}>{taste.dessert}</Hint> : null}
         {gifts?.skip.length ? (
           <Hint label={t("reminder.skip")}>
             <span className="text-muted line-through decoration-red decoration-2">{gifts.skip.join(t("common.and"))}</span>
@@ -107,7 +107,7 @@ export default async function Reminder({ params, searchParams }: { params: Promi
         <div className="border-t border-rule" />
       </section>
 
-      <div className="sticky bottom-0 mt-auto flex flex-col gap-2.5 bg-bg px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
+      <div className="bottom-bar mt-auto flex flex-col gap-2.5 bg-bg px-6 pt-4">
         {next && next.daysUntil > 0 && s.profile.reminderOffsets.includes(0) ? <span className="text-[13px] text-muted">{t("reminder.again")}</span> : null}
         <div className="grid grid-cols-2 gap-2.5">
           <ShareTextButton text={shareText} label={t("reminder.together")} doneLabel={t("reminder.shared")} className="btn-outline" />

@@ -1,151 +1,122 @@
 "use client";
 
-import { SECTIONS, emptySection, type CardData, type DateSpec, type Locale, type PartialCard, type Section } from "@readme/core";
+import { SECTIONS, SECTIONS_BY_IMPORTANCE, type Locale, type Section } from "@readme/core";
 import { useActionState, useState } from "react";
-import { createRequest } from "@/app/actions/request";
-import type { InviteState } from "@/app/actions/share";
-import { DateSpecPicker } from "@/components/editors/DatesEditor";
-import { SafetyEditor } from "@/components/editors/SafetyEditor";
-import { SizesEditor } from "@/components/editors/SizesEditor";
-import { CircleOption, TextField, joinList, splitList, useT } from "@/components/editors/shared";
-import { Icon } from "@/components/marks";
-import { ShareButtons } from "@/components/ShareButtons";
+import { createRequest, type InviteState } from "@/app/actions/request";
+import { useT } from "@/components/editors/shared";
+import { CheckGlyph } from "@/components/marks";
+import { Mascot } from "@/components/Mascot";
+import { SectionIcon } from "@/components/SectionIcon";
+import { LinkField, ShareButtons } from "@/components/ShareButtons";
 
-const INITIAL: InviteState = { url: null, code: null, text: "", error: null };
+const INITIAL: InviteState = { url: null, text: "", error: null };
 
-export function RequestForm({ locale, name: initialName, topics: initialTopics }: { locale: Locale; name: string; topics: Section[] }) {
+/**
+ * to: 주소록 사람에게 물어볼 때(이름은 고정, 내 기록에 적힌 값은 서버가 미리 채워 보낸다). 없으면 새 사람 이름을 적는다
+ */
+export function RequestForm({ locale, to, name: initialName, topics: initialTopics }: { locale: Locale; to: string | null; name: string; topics: Section[] }) {
   const t = useT(locale);
   const [name, setName] = useState(initialName);
   const [topics, setTopics] = useState<Section[]>(initialTopics);
-  const [prefill, setPrefill] = useState<PartialCard>({});
-  const [unsure, setUnsure] = useState<Section[]>([]);
-  const [open, setOpen] = useState<Section | null>(null);
-  const [text, setText] = useState({ likes: "", loves: "" });
   const [message, setMessage] = useState(t("request.messageDefault"));
   const [state, action, pending] = useActionState(createRequest, INITIAL);
+  const quickNames = t("request.quickNames").split(",");
 
+  const topicLabel = (x: Section) => t(`request.topic.${x}` as "request.topic.dates");
+
+  // 링크가 만들어지면: 누구에게·무엇을 묻는지와 보낼 메시지를 보여 주고, 아래에서 보낸다
   if (state.url) {
     return (
-      <div className="flex flex-1 flex-col px-6 pt-6">
-        <p className="text-[15px] leading-[1.6]">{t("request.footer")}</p>
-        <div className="mt-auto pt-8">
-          <ShareButtons locale={locale} url={state.url} text={`${state.text}\n${message}`} kakaoLabel={t("request.send")} />
+      <div className="flex flex-1 flex-col">
+        <section className="grad-hero relative mx-4 mt-4 flex flex-col items-center overflow-hidden rounded-3xl px-5 pb-6 pt-6 text-center">
+          <span aria-hidden="true" className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/25" />
+          <Mascot size={84} />
+          <h2 className="headline relative pt-3 text-[22px]">{t("request.ready", { name: name.trim() })}</h2>
+          <ul className="relative flex flex-wrap justify-center gap-1.5 pt-3.5">
+            {SECTIONS_BY_IMPORTANCE.filter((x) => topics.includes(x)).map((x) => (
+              <li key={x} className="flex items-center gap-1.5 rounded-full bg-white/85 py-1 pl-1 pr-3 text-[13px] font-bold">
+                <SectionIcon section={x} size={22} />
+                {topicLabel(x)}
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section className="card mx-4 mt-3 flex flex-col gap-2.5 px-5 py-5">
+          <h3 className="text-[13.5px] font-bold text-muted">{t("request.message")}</h3>
+          <p className="whitespace-pre-line rounded-2xl rounded-tl-md bg-sky-soft px-4 py-3 text-[15px] leading-[1.55]">{`${state.text}\n${message}`}</p>
+          <LinkField url={state.url} label={t("common.copyLink")} />
+        </section>
+        <div className="bottom-bar mt-auto bg-bg px-4 pt-4">
+          <ShareButtons locale={locale} url={state.url} text={`${state.text}\n${message}`} sendLabel={t("request.send")} />
         </div>
       </div>
     );
   }
 
-  const put = <S extends Section>(s: S, v: CardData[S]) => setPrefill((p) => ({ ...p, [s]: v }));
-  const known = (s: Section) => !!prefill[s];
-
   return (
     <form action={action} className="flex flex-1 flex-col">
       <input type="hidden" name="sections" value={JSON.stringify(topics)} />
-      <input type="hidden" name="prefill" value={JSON.stringify(Object.fromEntries(Object.entries(prefill).filter(([k]) => topics.includes(k as Section))))} />
-      <input type="hidden" name="unsure" value={JSON.stringify(unsure)} />
+      {to ? <input type="hidden" name="to" value={to} /> : null}
+      <input type="hidden" name="name" value={name} />
 
-      <div className="flex flex-col gap-2 px-6 pt-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[15px] font-bold">{t("request.who")}</span>
-          <input name="name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={40} placeholder={t("request.namePlaceholder")} className="field" />
-        </label>
-        <span className="text-[12.5px] text-muted">{t("request.whoSub")}</span>
-      </div>
-
-      <div className="flex flex-col gap-0.5 px-6 pt-5">
-        <span className="text-[15px] font-bold">{t("request.topics")}</span>
-        <div className="flex flex-wrap gap-2">
-          {SECTIONS.map((s) => (
-            <CircleOption
-              key={s}
-              label={t(`request.topic.${s}` as "request.topic.dates")}
-              on={topics.includes(s)}
-              onToggle={() => setTopics(topics.includes(s) ? topics.filter((x) => x !== s) : SECTIONS.filter((x) => x === s || topics.includes(x)))}
-              textClass="!text-[15.5px]"
-            />
-          ))}
-        </div>
-      </div>
-
-      {topics.length ? (
-        <div className="flex flex-col px-6 pt-4">
-          <span className="text-[15px] font-bold">{t("request.prefill")}</span>
-          <span className="pb-2.5 pt-[3px] text-[12.5px] text-muted">{t("request.prefillSub")}</span>
-          {topics
-            .filter((s) => s !== "favorites")
-            .map((s) => (
-            <div key={s} className="border-t border-rule">
-              <button type="button" aria-expanded={open === s} onClick={() => setOpen(open === s ? null : s)} className="flex min-h-12 w-full items-center gap-2.5 text-left">
-                <span className="w-[120px] shrink-0 text-[13.5px] text-muted">{t(`request.topic.${s}` as "request.topic.dates")}</span>
-                <span className={`flex-1 text-[15px] ${known(s) ? "font-bold" : "font-semibold text-muted"}`}>{known(s) ? t("common.saved") : t("answer.empty")}</span>
-                {unsure.includes(s) ? <span className="hl text-[12.5px] font-bold">{t("request.unsure")}</span> : null}
-                <Icon name="chevron" size={18} className={`text-muted transition-transform ${open === s ? "rotate-90" : ""}`} />
+      {to ? null : (
+        <section className="card mx-4 mt-4 flex flex-col gap-3 px-5 py-5">
+          <label htmlFor="request-name" className="text-[15px] font-bold">
+            {t("request.who")}
+          </label>
+          <input id="request-name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={40} placeholder={t("request.namePlaceholder")} className="field" />
+          <div className="flex flex-wrap gap-1.5">
+            {quickNames.map((n) => (
+              <button key={n} type="button" aria-pressed={name === n} onClick={() => setName(name === n ? "" : n)} className={`chip !min-h-9 !px-3.5 !text-[14px] ${name === n ? "chip-on" : ""}`}>
+                {n}
               </button>
-              {open === s ? (
-                <div className="flex flex-col gap-3 pb-4">
-                  {s === "dates" ? (
-                    <DateSpecPicker
-                      year="birth"
-                      value={prefill.dates?.birthday ?? null}
-                      onChange={(spec: DateSpec) => put("dates", { birthday: spec, anniversaries: [] })}
-                      locale={locale}
-                      preview={false}
-                    />
-                  ) : null}
-                  {s === "safety" ? (
-                    <SafetyEditor value={prefill.safety ?? emptySection("safety")} onChange={(v) => put("safety", v)} locale={locale} showVoice={false} showNote={false} />
-                  ) : null}
-                  {s === "taste" ? (
-                    <TextField
-                      label={t("taste.likes")}
-                      value={text.likes}
-                      onChange={(v) => {
-                        setText({ ...text, likes: v });
-                        put("taste", { ...emptySection("taste"), likes: splitList(v) });
-                      }}
-                      placeholder={t("taste.likesPlaceholder")}
-                    />
-                  ) : null}
-                  {s === "sizes" ? <SizesEditor value={prefill.sizes ?? emptySection("sizes")} onChange={(v) => put("sizes", v)} locale={locale} /> : null}
-                  {s === "gifts" ? (
-                    <TextField
-                      label={t("gift.loves")}
-                      value={text.loves || joinList(prefill.gifts?.loves ?? [])}
-                      onChange={(v) => {
-                        setText({ ...text, loves: v });
-                        put("gifts", { ...emptySection("gifts"), loves: splitList(v) });
-                      }}
-                      placeholder={t("gift.lovesPlaceholder")}
-                    />
-                  ) : null}
-                  <CircleOption
-                    label={t("request.unsure")}
-                    color="ink"
-                    on={unsure.includes(s)}
-                    onToggle={() => setUnsure(unsure.includes(s) ? unsure.filter((x) => x !== s) : [...unsure, s])}
-                    textClass="self-start !text-[14.5px]"
-                  />
-                </div>
-              ) : null}
-            </div>
-          ))}
-          <div className="border-t border-rule" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className={`card mx-4 flex flex-col gap-3 px-4 py-5 ${to ? "mt-4" : "mt-3"}`}>
+        <div className="flex items-baseline justify-between px-1">
+          <h2 className="text-[15px] font-bold">{t("request.topics")}</h2>
+          <span className="num text-[13px] !font-bold text-muted">{topics.length}</span>
         </div>
-      ) : null}
+        <div className="grid grid-cols-2 gap-2">
+          {SECTIONS_BY_IMPORTANCE.map((x) => {
+            const on = topics.includes(x);
+            return (
+              <button
+                key={x}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setTopics(on ? topics.filter((y) => y !== x) : SECTIONS.filter((y) => y === x || topics.includes(y)))}
+                className={`relative flex min-h-[60px] items-center gap-2.5 rounded-2xl py-2.5 pl-2.5 pr-3 text-left transition-shadow ${on ? "bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-sky)]" : "bg-fill"}`}
+              >
+                <SectionIcon section={x} size={36} />
+                <span className={`min-w-0 flex-1 text-[14px] leading-[1.3] ${on ? "font-bold" : "font-semibold text-ink-2"}`}>{topicLabel(x)}</span>
+                {on ? (
+                  <span aria-hidden="true" className="absolute right-1.5 top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-sky text-ink">
+                    <CheckGlyph size={11} />
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
-      <label className="flex flex-col gap-2 px-6 pt-5">
-        <span className="text-[15px] font-bold">{t("request.message")}</span>
-        <textarea name="message" value={message} onChange={(e) => setMessage(e.target.value)} rows={2} maxLength={300} className="field resize-none leading-[1.55]" />
-      </label>
+      <section className="card mx-4 mt-3 flex flex-col gap-2.5 px-5 py-5">
+        <label htmlFor="request-message" className="text-[15px] font-bold">
+          {t("request.message")}
+        </label>
+        <textarea id="request-message" name="message" value={message} onChange={(e) => setMessage(e.target.value)} rows={3} maxLength={300} className="field resize-none leading-[1.55]" />
+      </section>
 
-      {state.error ? (
-        <p role="alert" className="px-6 pt-3 text-[13.5px] text-red">
-          {t(state.error === "pickOne" ? "request.pickOne" : name.trim() ? "common.error" : "request.needName")}
-        </p>
-      ) : null}
-
-      <div className="mt-auto flex flex-col gap-2.5 px-6 pt-8">
-        <span className="text-[12.5px] leading-[1.5] text-muted">{t("request.footer")}</span>
+      <div className="bottom-bar mt-auto flex flex-col gap-2 bg-bg px-4 pt-4">
+        {state.error ? (
+          <p role="alert" className="px-1 text-[13.5px] text-red">
+            {t(state.error === "pickOne" ? "request.pickOne" : name.trim() ? "common.error" : "request.needName")}
+          </p>
+        ) : null}
         <button disabled={pending || !topics.length || !name.trim()} className="btn-primary w-full">
           {t("request.make")}
         </button>

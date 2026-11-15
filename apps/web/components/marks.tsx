@@ -1,4 +1,4 @@
-// 표시들(시안 v3). 고른 것·챙길 날은 연하늘 바탕 + 하늘 테두리, 경고(알레르기)만 분홍.
+// 표시들(시안 v3 맹고색). 고른 것·챙길 날은 연한 망고 바탕 + 망고 테두리, 경고(알레르기)만 분홍.
 
 /**
  * 감싼 글자 둘레의 둥근 강조(예전 손그림 동그라미 자리). 부모는 position: relative 여야 한다.
@@ -15,7 +15,7 @@ export function MarkerCircle({ color = "red", pad = [11, 9], width = 2 }: { colo
         top: -pad[1],
         right: -pad[0],
         bottom: -pad[1],
-        background: warn ? "rgba(255, 170, 186, 0.28)" : "rgba(140, 200, 255, 0.24)",
+        background: warn ? "rgba(255, 170, 186, 0.28)" : "rgba(255, 194, 61, 0.24)",
         boxShadow: `inset 0 0 0 ${width}px ${warn ? "#f2a7b6" : "var(--color-sky)"}`,
       }}
     />
@@ -50,8 +50,8 @@ export function DrawnCheck({ on }: { on: boolean }) {
 /** 켜고 끄는 스위치의 모양(누르는 건 감싼 button이 한다) */
 export function SwitchLook({ on }: { on: boolean }) {
   return (
-    <span className={`flex h-7 w-[46px] items-center rounded-full p-[3px] transition-colors ${on ? "justify-end bg-accent" : "justify-start bg-[#d3dce8]"}`}>
-      <span className="h-[22px] w-[22px] rounded-full bg-white shadow-[0_1px_3px_rgba(34,48,74,0.18)]" />
+    <span className={`flex h-7 w-[46px] items-center rounded-full p-[3px] transition-colors ${on ? "justify-end bg-accent" : "justify-start bg-[#d5d8e3]"}`}>
+      <span className="h-[22px] w-[22px] rounded-full bg-white shadow-[0_1px_3px_rgba(31,35,64,0.18)]" />
     </span>
   );
 }
@@ -67,7 +67,7 @@ export function CheckGlyph({ size = 14 }: { size?: number }) {
 
 type IconName =
   | "back" | "close" | "lock" | "alert" | "mic" | "camera" | "link" | "share" | "gift" | "external" | "bell"
-  | "plus" | "check" | "calendar" | "people" | "card" | "globe" | "personAdd" | "chevron" | "trash" | "pick" | "map" | "eye" | "settings" | "star";
+  | "plus" | "check" | "calendar" | "people" | "card" | "globe" | "personAdd" | "chevron" | "trash" | "pick" | "map" | "eye" | "settings" | "star" | "pencil";
 
 const ICONS: Record<IconName, React.ReactNode> = {
   back: <path d="M15 18l-6-6 6-6" />,
@@ -142,6 +142,7 @@ const ICONS: Record<IconName, React.ReactNode> = {
     </>
   ),
   chevron: <path d="M9 18l6-6-6-6" />,
+  pencil: <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />,
   trash: <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />,
   pick: (
     <>
@@ -177,10 +178,3 @@ export function Icon({ name, size = 22, strokeWidth = 1.7, className = "" }: { n
   );
 }
 
-export function KakaoGlyph() {
-  return (
-    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24">
-      <path d="M12 3.5c-5 0-9 3.1-9 7 0 2.5 1.7 4.7 4.2 5.9l-.9 3.4c-.1.3.3.6.6.4l4-2.6c.4 0 .7.1 1.1.1 5 0 9-3.1 9-7s-4-7.2-9-7.2z" fill="currentColor" />
-    </svg>
-  );
-}

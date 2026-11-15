@@ -46,17 +46,6 @@ function token() {
   return { raw, hash: createHash("sha256").update(raw).digest("hex"), code };
 }
 
-async function invite(uid: string, kind: "share" | "request", sections: string[], extra: { relation?: string; recipient?: string } = {}) {
-  const t = token();
-  await rows(
-    uid,
-    `insert into invites (kind, inviter_id, token_hash, code, relation, sections, recipient_name, expires_at)
-     values ($1, $2, $3, $4, $5, $6, $7, now() + interval '7 days')`,
-    [kind, uid, t.hash, t.code, extra.relation ?? "partner", sections, extra.recipient ?? ""],
-  );
-  return t;
-}
-
 async function writeCard(uid: string, section: string, payload: unknown) {
   await rows(uid, "insert into card_sections (owner_id, section, payload) values ($1, $2, $3) on conflict (owner_id, section) do update set payload = excluded.payload", [
     uid,
@@ -67,6 +56,30 @@ async function writeCard(uid: string, section: string, payload: unknown) {
 
 async function rejects(p: Promise<unknown>, pattern: RegExp) {
   await assert.rejects(p, (e: Error) => pattern.test(e.message));
+}
+
+/** 내 주소록에 사람 하나 + 빈 기록(앱이 사람을 더할 때와 같다) */
+async function person(uid: string, nickname: string): Promise<string> {
+  const [c] = await rows(uid, "insert into contacts (user_id, nickname) values ($1, $2) returning id", [uid, nickname]);
+  await rows(uid, "insert into contact_cards (contact_id, author_id) values ($1, $2)", [c.id, uid]);
+  return c.id;
+}
+
+/** 물어보기 링크(앱 역할로, 내 주소록 사람에게) */
+async function ask(uid: string, contactId: string, sections: string[], recipient = "") {
+  const t = token();
+  await rows(
+    uid,
+    `insert into invites (inviter_id, contact_id, token_hash, code, sections, recipient_name, expires_at)
+     values ($1, $2, $3, $4, $5, $6, now() + interval '7 days')`,
+    [uid, contactId, t.hash, t.code, sections, recipient],
+  );
+  return t;
+}
+
+/** 시스템(소유자) 권한으로 답하기: 답하는 웹 화면과 같은 길 */
+async function answer(hash: string, sections: Record<string, unknown>, consent = true, answerer: string | null = null) {
+  return (await pool.query("select submit_request_answer($1, $2::jsonb, $3, $4) as id", [hash, JSON.stringify(sections), consent, answerer])).rows[0].id as string;
 }
 
 let alice: string, bob: string, carol: string;
@@ -102,11 +115,12 @@ describe("로그인 표", () => {
   });
 });
 
-describe("리드미 보기", () => {
-  test("모르는 사람은 남의 리드미도 프로필도 못 본다", async () => {
+describe("내 리드미", () => {
+  test("남의 리드미도 프로필도 못 본다", async () => {
     assert.equal((await rows(carol, "select * from card_sections where owner_id = $1", [alice])).length, 0);
     assert.equal((await rows(carol, "select * from profiles where id = $1", [alice])).length, 0);
     assert.equal((await rows(null, "select * from card_sections")).length, 0);
+    assert.equal((await rows(alice, "select * from card_sections where owner_id = $1", [alice])).length, 3);
   });
 
   test("남의 리드미를 쓰거나 고칠 수 없다", async () => {
@@ -115,131 +129,154 @@ describe("리드미 보기", () => {
     assert.equal(changed.length, 0);
   });
 
-  test("공유 링크를 받으면 허락한 항목만 보이고, 끊으면 안 보인다", async () => {
-    const t = await invite(alice, "share", ["taste", "sizes"]);
-    const [{ id: contact }] = await rows(bob, "select accept_share($1, null, false) as id", [t.hash]);
-    assert.ok(contact);
-    const seen = await rows(bob, "select section from card_sections where owner_id = $1 order by section", [alice]);
-    assert.deepEqual(
-      seen.map((r) => r.section),
-      ["sizes", "taste"],
-    );
-    assert.equal((await rows(bob, "select * from profiles where id = $1", [alice])).length, 1);
-    // 앨리스가 끊는다
-    await rows(alice, "update grants set revoked_at = now() where owner_id = $1 and viewer_id = $2", [alice, bob]);
-    assert.equal((await rows(bob, "select * from card_sections where owner_id = $1", [alice])).length, 0);
-    // 다시 이어 준다
-    await rows(alice, "update grants set revoked_at = null where owner_id = $1 and viewer_id = $2", [alice, bob]);
-  });
-
-  test("보는 사람은 허락을 넓히지 못하고, 허락의 주인·대상은 못 바꾼다", async () => {
-    const changed = await rows(bob, "update grants set sections = array['safety','taste','sizes','gifts','dates'] where owner_id = $1 returning 1", [alice]);
-    assert.equal(changed.length, 0);
-    await rejects(rows(alice, "update grants set viewer_id = $2 where owner_id = $1 and viewer_id = $3", [alice, carol, bob]), /cannot change/);
-    await rejects(rows(carol, "insert into grants (owner_id, viewer_id, sections) values ($1, $2, array['safety'])", [alice, carol]), /row-level security/);
+  test("공유 허락·손님 카드는 더 없다", async () => {
+    for (const table of ["grants", "guest_cards"]) await rejects(rows(alice, `select * from ${table}`), /does not exist/);
   });
 });
 
-describe("초대", () => {
-  test("남의 초대는 안 보이고, 쓰인 상태로 만들 수 없다", async () => {
-    assert.equal((await rows(carol, "select * from invites where inviter_id = $1", [alice])).length, 0);
+describe("사람 기록", () => {
+  test("내 주소록 칸에 내 이름으로만 기록을 만들고, 나만 보며, 칸을 지우면 같이 지워진다", async () => {
+    const mom = await person(alice, "엄마");
+    await rows(alice, "update contact_cards set sections = sections || jsonb_build_object('dates', '{\"v\":1,\"data\":{}}'::jsonb) where contact_id = $1", [mom]);
+    const [mine] = await rows(alice, "select sections, answered from contact_cards where contact_id = $1", [mom]);
+    assert.deepEqual(Object.keys(mine.sections), ["dates"]);
+    assert.deepEqual(mine.answered, {});
+
+    // 남은 못 보고, 못 고치고, 못 지운다
+    assert.equal((await rows(bob, "select * from contact_cards where contact_id = $1", [mom])).length, 0);
+    assert.equal((await rows(bob, "update contact_cards set sections = '{}' where contact_id = $1 returning 1", [mom])).length, 0);
+    assert.equal((await rows(bob, "delete from contact_cards where contact_id = $1 returning 1", [mom])).length, 0);
+
+    // 남의 주소록 칸에 붙이거나, 남의 이름으로 만들 수 없다
+    const [bobs] = await rows(bob, "insert into contacts (user_id, nickname) values ($1, '삼촌') returning id", [bob]);
+    await rejects(rows(alice, "insert into contact_cards (contact_id, author_id) values ($1, $2)", [bobs.id, alice]), /row-level security/);
+    await rejects(rows(bob, "insert into contact_cards (contact_id, author_id) values ($1, $2)", [bobs.id, alice]), /row-level security/);
+    await rejects(rows(alice, "insert into contact_cards (contact_id, author_id) values ($1, $2)", [mom, alice]), /duplicate key/);
+
+    await rows(alice, "delete from contacts where id = $1", [mom]);
+    assert.equal((await pool.query("select 1 from contact_cards where contact_id = $1", [mom])).rowCount, 0);
+  });
+
+  test("앱 역할로는 주소록 칸을 앱 사용자와 이을 수 없다(프로필 엿보기 방지)", async () => {
+    await rejects(rows(carol, "insert into contacts (user_id, person_id) values ($1, $2)", [carol, bob]), /not connected/);
+    const [c] = await rows(carol, "insert into contacts (user_id, nickname) values ($1, '밥') returning id", [carol]);
+    await rejects(rows(carol, "update contacts set person_id = $2 where id = $1", [c.id, bob]), /not connected/);
+    await rejects(rows(carol, "insert into contacts (user_id, nickname) values ($1, '엿보기')", [bob]), /row-level security/);
+  });
+});
+
+describe("물어보기", () => {
+  test("내 주소록 사람에게만, 안 쓴 상태로만 만들고, 남의 것은 안 보인다", async () => {
+    const mine = await person(carol, "친구");
+    const bobs = await person(bob, "동생");
     const t = token();
     await rejects(
-      rows(carol, `insert into invites (kind, inviter_id, token_hash, code, sections, expires_at, used_at) values ('share', $1, $2, $3, array['taste'], now() + interval '1 day', now())`, [
+      rows(carol, `insert into invites (inviter_id, contact_id, token_hash, code, sections, expires_at, used_at) values ($1, $2, $3, $4, array['taste'], now() + interval '1 day', now())`, [
         carol,
+        mine,
         t.hash,
         t.code,
       ]),
       /must start unused/,
     );
     await rejects(
-      rows(carol, `insert into invites (kind, inviter_id, token_hash, code, sections, expires_at) values ('share', $1, $2, $3, array['taste'], now() + interval '1 day')`, [alice, t.hash, t.code]),
+      rows(carol, `insert into invites (inviter_id, contact_id, token_hash, code, sections, expires_at) values ($1, $2, $3, $4, array['taste'], now() + interval '1 day')`, [carol, bobs, t.hash, t.code]),
       /row-level security/,
     );
+    await rejects(
+      rows(carol, `insert into invites (inviter_id, contact_id, token_hash, code, sections, expires_at) values ($1, $2, $3, $4, array['taste'], now() + interval '1 day')`, [bob, bobs, t.hash, t.code]),
+      /row-level security/,
+    );
+    await ask(carol, mine, ["taste"]);
+    assert.equal((await rows(bob, "select * from invites where inviter_id = $1", [carol])).length, 0);
+    assert.equal((await rows(carol, "select * from invites where inviter_id = $1", [carol])).length, 1);
   });
 
-  test("미리보기는 로그인 없이도 되지만, 시스템 전용 함수는 못 부른다", async () => {
-    const t = await invite(alice, "share", ["taste"]);
-    const [p] = await rows(null, "select * from invite_preview($1, null)", [t.hash]);
-    assert.equal(p.state, "active");
-    assert.equal(p.inviter_name, "앨리스");
-    const [byCode] = await rows(null, "select * from invite_preview(null, $1)", [t.code.toLowerCase()]);
-    assert.equal(byCode.state, "active");
+  test("시스템 전용 함수는 앱 역할로 못 부른다", async () => {
+    const c = await person(alice, "누군가");
+    const t = await ask(alice, c, ["taste"]);
     await rejects(rows(carol, "select * from find_invite($1, null)", [t.hash]), /permission denied/);
     await rejects(rows(carol, "select * from request_for_answer($1)", [t.hash]), /permission denied/);
-    await rejects(rows(carol, "select submit_request_answer($1, 'x', '{}'::jsonb, false)", [t.hash]), /permission denied/);
+    await rejects(rows(carol, "select submit_request_answer($1, '{}'::jsonb, false, null)", [t.hash]), /permission denied/);
   });
 
-  test("한 번 쓴 링크·내 링크·지난 링크·취소한 링크는 못 받는다", async () => {
-    const t = await invite(alice, "share", ["taste"]);
-    await rejects(rows(alice, "select accept_share($1, null, false)", [t.hash]), /self/);
-    await rows(carol, "select accept_share(null, $1, false)", [t.code]);
-    await rejects(rows(bob, "select accept_share($1, null, false)", [t.hash]), /used/);
+  test("답하면 물어본 항목만 물어본 사람의 기록에 들어가고, 답한 때와 알림이 남고, 남은 못 본다", async () => {
+    const mom = await person(alice, "엄마");
+    await rows(alice, "update contact_cards set sections = jsonb_build_object('taste', '{\"v\":1,\"data\":\"내가 적은 것\"}'::jsonb) where contact_id = $1", [mom]);
+    const t = await ask(alice, mom, ["safety", "dates"], "엄마");
+    const [r] = (await pool.query("select * from request_for_answer($1)", [t.hash])).rows;
+    assert.equal(r.state, "active");
+    assert.equal(r.inviter_id, alice);
+    assert.equal(r.contact_id, mom);
 
+    // 알레르기는 동의가 있어야 한다
+    await rejects(answer(t.hash, { safety: { sealed: "a" } }, false), /consent_required/);
+    // 물어보지 않은 항목(sizes)은 들어가지 않는다
+    const contact = await answer(t.hash, { safety: { sealed: "a" }, dates: { sealed: "b" }, sizes: { sealed: "c" } });
+    assert.equal(contact, mom);
+    await rejects(answer(t.hash, { dates: { sealed: "x" } }), /used/);
+
+    const [rec] = await rows(alice, "select sections, answered from contact_cards where contact_id = $1", [mom]);
+    assert.deepEqual(Object.keys(rec.sections).sort(), ["dates", "safety", "taste"]);
+    assert.deepEqual(rec.sections.safety, { sealed: "a" });
+    assert.deepEqual(Object.keys(rec.answered).sort(), ["dates", "safety"]);
+    const [n] = await rows(alice, "select kind, contact_id, label from notifications where user_id = $1 and kind = 'answered'", [alice]);
+    assert.equal(n.contact_id, mom);
+    assert.equal(n.label, "엄마");
+    assert.equal((await rows(bob, "select * from contact_cards where contact_id = $1", [mom])).length, 0);
+  });
+
+  test("로그인하고 답하면 그 사람과 이어져 얼굴·이름만 보이고, 내 링크에는 못 답한다", async () => {
+    const dan = await makeUser("댄");
+    const c = await person(alice, "댄 선배");
+    const t = await ask(alice, c, ["taste"]);
+    await rejects(answer(t.hash, { taste: { v: 1, data: {} } }, true, alice), /self/);
+    await answer(t.hash, { taste: { v: 1, data: {} } }, true, dan);
+    const [linked] = await rows(alice, "select person_id from contacts where id = $1", [c]);
+    assert.equal(linked.person_id, dan);
+    assert.equal((await rows(alice, "select display_name from profiles where id = $1", [dan]))[0].display_name, "댄");
+    assert.equal((await rows(alice, "select * from card_sections where owner_id = $1", [dan])).length, 0);
+    // 이미 다른 칸에 이어진 사람이면 새 칸은 잇지 않는다
+    const again = await person(alice, "댄 또");
+    const t2 = await ask(alice, again, ["taste"]);
+    await answer(t2.hash, { taste: { v: 1, data: {} } }, true, dan);
+    assert.equal((await rows(alice, "select person_id from contacts where id = $1", [again]))[0].person_id, null);
+  });
+
+  test("지난 링크·취소한 링크에는 못 답하고, 남의 링크는 취소 못 하며, 사람을 지우면 링크도 지워진다", async () => {
+    const c = await person(alice, "이모");
     const old = token();
     await pool.query(
-      `insert into invites (kind, inviter_id, token_hash, code, sections, created_at, expires_at) values ('share', $1, $2, $3, array['taste'], now() - interval '3 days', now() - interval '1 minute')`,
-      [alice, old.hash, old.code],
+      `insert into invites (inviter_id, contact_id, token_hash, code, sections, created_at, expires_at) values ($1, $2, $3, $4, array['taste'], now() - interval '3 days', now() - interval '1 minute')`,
+      [alice, c, old.hash, old.code],
     );
-    await rejects(rows(bob, "select accept_share($1, null, false)", [old.hash]), /expired/);
+    await rejects(answer(old.hash, { taste: {} }), /expired/);
 
-    const c = await invite(alice, "share", ["taste"]);
-    const [{ ok: notMine }] = await rows(bob, "select cancel_invite(id) as ok from (select $1::uuid as id) x", [
-      (await pool.query("select id from invites where token_hash = $1", [c.hash])).rows[0].id,
-    ]);
+    const t = await ask(alice, c, ["taste"]);
+    const id = (await pool.query("select id from invites where token_hash = $1", [t.hash])).rows[0].id;
+    const [{ ok: notMine }] = await rows(bob, "select cancel_invite($1) as ok", [id]);
     assert.equal(notMine, false);
-    const id = (await pool.query("select id from invites where token_hash = $1", [c.hash])).rows[0].id;
     const [{ ok }] = await rows(alice, "select cancel_invite($1) as ok", [id]);
     assert.equal(ok, true);
-    await rejects(rows(bob, "select accept_share($1, null, false)", [c.hash]), /canceled/);
-  });
+    await rejects(answer(t.hash, { taste: {} }), /canceled/);
 
-  test("받으면서 내 것도 보내면, 관계 기본 항목으로 서로 보인다", async () => {
-    const dan = await makeUser("댄");
-    const erin = await makeUser("에린");
-    await writeCard(erin, "gifts", { wish: ["책"] });
-    await writeCard(erin, "sizes", { sealed: "z" });
-    await writeCard(erin, "favorites", { idol: "아이유" });
-    const t = await invite(dan, "share", ["taste"], { relation: "friend" });
-    await rows(erin, "select accept_share($1, null, true)", [t.hash]);
-    const seen = await rows(dan, "select section from card_sections where owner_id = $1 order by section", [erin]);
-    assert.deepEqual(
-      seen.map((r) => r.section),
-      ["favorites", "gifts"],
-    ); // 친구 기본값에는 sizes가 없고, 좋아하는 것들은 있다
-    const [n] = await rows(dan, "select kind, actor_id from notifications where user_id = $1", [dan]);
-    assert.equal(n.kind, "accepted");
-    assert.equal(n.actor_id, erin);
+    const t3 = await ask(alice, c, ["dates"]);
+    await rows(alice, "delete from contacts where id = $1", [c]);
+    assert.equal((await pool.query("select 1 from invites where token_hash = $1", [t3.hash])).rowCount, 0);
   });
 });
 
-describe("주소록·메모·알림", () => {
-  test("모르는 사람을 주소록에 직접 넣어 엿볼 수 없다", async () => {
-    await rejects(rows(carol, "insert into contacts (user_id, person_id) values ($1, $2)", [carol, bob]), /not connected/);
-    await rejects(rows(carol, "insert into contacts (user_id, person_id) values ($1, $2)", [bob, alice]), /row-level security|not connected/);
-  });
-
+describe("메모·알림·그룹·푸시", () => {
   test("메모는 내 주소록 칸에만, 나만 본다", async () => {
-    const [{ id: bobsContact }] = await rows(bob, "select id from contacts where user_id = $1 and person_id = $2", [bob, alice]);
-    await rows(bob, "insert into notes (author_id, contact_id, label, payload) values ($1, $2, '선물', '{}')", [bob, bobsContact]);
-    assert.equal((await rows(bob, "select * from notes where contact_id = $1", [bobsContact])).length, 1);
-    assert.equal((await rows(alice, "select * from notes where contact_id = $1", [bobsContact])).length, 0);
-    await rejects(rows(carol, "insert into notes (author_id, contact_id, payload) values ($1, $2, '{}')", [carol, bobsContact]), /row-level security/);
+    const c = await person(bob, "앨리스");
+    await rows(bob, "insert into notes (author_id, contact_id, label, payload) values ($1, $2, '선물', '{}')", [bob, c]);
+    assert.equal((await rows(bob, "select * from notes where contact_id = $1", [c])).length, 1);
+    assert.equal((await rows(alice, "select * from notes where contact_id = $1", [c])).length, 0);
+    await rejects(rows(carol, "insert into notes (author_id, contact_id, payload) values ($1, $2, '{}')", [carol, c]), /row-level security/);
   });
 
-  test("알림은 직접 만들 수 없고, 열람 알림은 켜 둔 사람에게 하루 한 번만", async () => {
-    await rejects(rows(carol, "insert into notifications (user_id, kind) values ($1, 'viewed')", [alice]), /row-level security/);
-    await rows(bob, "select record_view($1)", [alice]);
-    assert.equal((await rows(alice, "select * from notifications where kind = 'viewed' and actor_id = $1", [bob])).length, 0);
-    await rows(alice, "update profiles set notify_views = true where id = $1", [alice]);
-    await rows(bob, "select record_view($1)", [alice]);
-    await rows(bob, "select record_view($1)", [alice]);
-    await rows(carol, "select record_view($1)", [alice]); // 캐럴은 taste만 받았지만 허락이 있으니 남는다
-    const viewed = await rows(alice, "select actor_id from notifications where kind = 'viewed' order by actor_id", []);
-    assert.deepEqual(viewed.map((r) => r.actor_id).sort(), [bob, carol].sort());
-    const stranger = await makeUser("모르는 사람");
-    await rows(stranger, "select record_view($1)", [alice]);
-    assert.equal((await rows(alice, "select * from notifications where kind = 'viewed' and actor_id = $1", [stranger])).length, 0);
+  test("알림은 직접 만들 수 없다", async () => {
+    await rejects(rows(carol, "insert into notifications (user_id, kind) values ($1, 'answered')", [alice]), /row-level security/);
   });
 
   test("그룹은 내 것만 보고, 남의 그룹을 내 사람에게 못 넣고, 기본 그룹은 못 지우며, 그룹을 지우면 그룹 없음이 된다", async () => {
@@ -270,70 +307,16 @@ describe("주소록·메모·알림", () => {
   });
 });
 
-describe("앱 없이 답하기(요청)", () => {
-  test("답하면 요청한 사람만 보고, 답한 사람이 가입해서 가져오면 자기 리드미가 된다", async () => {
-    const mom = await makeUser("엄마");
-    const t = await invite(alice, "request", ["safety", "dates"], { relation: "family", recipient: "엄마" });
-    const inviteId = (await pool.query("select id from invites where token_hash = $1", [t.hash])).rows[0].id;
-    await rows(alice, "insert into contacts (user_id, request_invite_id, nickname) values ($1, $2, '엄마')", [alice, inviteId]);
-
-    // 시스템(소유자) 권한으로 답한다. 알레르기를 넣으면 동의가 필요하다
-    await rejects(pool.query("select submit_request_answer($1, '엄마', $2::jsonb, false)", [t.hash, JSON.stringify({ safety: { sealed: "a" } })]), /consent_required/);
-    const card = (await pool.query("select submit_request_answer($1, '엄마', $2::jsonb, true) as id", [t.hash, JSON.stringify({ safety: { sealed: "a" }, dates: { sealed: "b" } })])).rows[0].id;
-    await rejects(pool.query("select submit_request_answer($1, '엄마', '{}'::jsonb, true)", [t.hash]), /used/);
-
-    assert.equal((await rows(alice, "select * from guest_cards where id = $1", [card])).length, 1);
-    assert.equal((await rows(bob, "select * from guest_cards where id = $1", [card])).length, 0);
-    const [contact] = await rows(alice, "select guest_card_id, person_id from contacts where user_id = $1 and request_invite_id = $2", [alice, inviteId]);
-    assert.equal(contact.guest_card_id, card);
-    assert.equal(contact.person_id, null);
-
-    await rejects(rows(alice, "select * from claim_guest_card($1)", [t.hash]), /self/);
-    const [claimed] = await rows(mom, "select * from claim_guest_card($1)", [t.hash]);
-    assert.equal(claimed.claimed_requester_id, alice);
-    assert.deepEqual([...claimed.claimed_sections].sort(), ["dates", "safety"]);
-    await rejects(rows(bob, "select * from claim_guest_card($1)", [t.hash]), /used/);
-
-    const [after] = await rows(alice, "select person_id from contacts where user_id = $1 and request_invite_id = $2", [alice, inviteId]);
-    assert.equal(after.person_id, mom);
-    const [g] = await rows(alice, "select sections from grants where owner_id = $1 and viewer_id = $2", [mom, alice]);
-    assert.deepEqual([...g.sections].sort(), ["dates", "safety"]);
-  });
-});
-
-describe("직접 적어 둔 사람", () => {
-  test("내 주소록 칸에 내 이름으로만 카드를 만들고, 나만 보며, 칸을 지우면 같이 지워진다", async () => {
-    const [mom] = await rows(alice, "insert into contacts (user_id, nickname) values ($1, '엄마') returning id", [alice]);
-    await rows(alice, "insert into contact_cards (contact_id, author_id) values ($1, $2)", [mom.id, alice]);
-    await rows(alice, "update contact_cards set sections = sections || jsonb_build_object('dates', '{\"v\":1,\"data\":{}}'::jsonb) where contact_id = $1", [mom.id]);
-    const [mine] = await rows(alice, "select sections from contact_cards where contact_id = $1", [mom.id]);
-    assert.deepEqual(Object.keys(mine.sections), ["dates"]);
-
-    // 남은 못 보고, 못 고치고, 못 지운다
-    assert.equal((await rows(bob, "select * from contact_cards where contact_id = $1", [mom.id])).length, 0);
-    assert.equal((await rows(bob, "update contact_cards set sections = '{}' where contact_id = $1 returning 1", [mom.id])).length, 0);
-    assert.equal((await rows(bob, "delete from contact_cards where contact_id = $1 returning 1", [mom.id])).length, 0);
-
-    // 남의 주소록 칸에 붙이거나, 남의 이름으로 만들 수 없다
-    const [bobs] = await rows(bob, "insert into contacts (user_id, nickname) values ($1, '삼촌') returning id", [bob]);
-    await rejects(rows(alice, "insert into contact_cards (contact_id, author_id) values ($1, $2)", [bobs.id, alice]), /row-level security/);
-    await rejects(rows(bob, "insert into contact_cards (contact_id, author_id) values ($1, $2)", [bobs.id, alice]), /row-level security/);
-    await rejects(rows(alice, "insert into contact_cards (contact_id, author_id) values ($1, $2)", [mom.id, alice]), /duplicate key/);
-
-    await rows(alice, "delete from contacts where id = $1", [mom.id]);
-    assert.equal((await pool.query("select 1 from contact_cards where contact_id = $1", [mom.id])).rowCount, 0);
-  });
-});
-
 describe("계정 삭제", () => {
-  test("지우면 리드미·허락·주소록이 함께 사라진다", async () => {
+  test("지우면 리드미·주소록·기록·물어보기가 함께 사라지고, 이어 둔 남의 주소록 칸은 이름만 남는다", async () => {
     const gone = await makeUser("지울 사람");
     await writeCard(gone, "taste", { likes: ["커피"] });
-    const [aunt] = await rows(gone, "insert into contacts (user_id, nickname) values ($1, '이모') returning id", [gone]);
-    await rows(gone, "insert into contact_cards (contact_id, author_id) values ($1, $2)", [aunt.id, gone]);
-    const t = await invite(gone, "share", ["taste"]);
-    await rows(carol, "select accept_share($1, null, false)", [t.hash]);
-    assert.equal((await rows(carol, "select * from card_sections where owner_id = $1", [gone])).length, 1);
+    const aunt = await person(gone, "이모");
+    await ask(gone, aunt, ["taste"]);
+    // 캐럴이 물어본 것에 로그인하고 답해서 캐럴 주소록에 이어져 있다
+    const c = await person(carol, "지울 사람");
+    const t = await ask(carol, c, ["taste"]);
+    await answer(t.hash, { taste: { v: 1, data: {} } }, true, gone);
 
     await rejects(rows(carol, `delete from "user" where id = $1`, [gone]), /permission denied/);
     await rows(null, "select delete_my_account()").then(
@@ -343,9 +326,11 @@ describe("계정 삭제", () => {
     await rows(gone, "select delete_my_account()");
     assert.equal((await pool.query(`select 1 from "user" where id = $1`, [gone])).rowCount, 0);
     assert.equal((await pool.query("select 1 from card_sections where owner_id = $1", [gone])).rowCount, 0);
-    assert.equal((await pool.query("select 1 from grants where owner_id = $1", [gone])).rowCount, 0);
     assert.equal((await pool.query("select 1 from contact_cards where author_id = $1", [gone])).rowCount, 0);
-    const [c] = await rows(carol, "select person_id from contacts where user_id = $1 order by created_at desc limit 1", [carol]);
-    assert.equal(c.person_id, null);
+    assert.equal((await pool.query("select 1 from invites where inviter_id = $1", [gone])).rowCount, 0);
+    const [kept] = await rows(carol, "select person_id, nickname from contacts where id = $1", [c]);
+    assert.equal(kept.person_id, null);
+    assert.equal(kept.nickname, "지울 사람");
+    assert.equal((await rows(carol, "select 1 from contact_cards where contact_id = $1", [c])).length, 1);
   });
 });

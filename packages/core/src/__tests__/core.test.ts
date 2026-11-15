@@ -14,9 +14,12 @@ import {
   dueReminders,
   eventTitle,
   en,
+  countWord,
   formatDaysLeft,
   formatSpec,
   hashToken,
+  NONE,
+  isAnswered,
   inviteStatus,
   isEmptySection,
   josa,
@@ -72,14 +75,15 @@ test("카드 정리: 모르는 코드·위험한 주소는 버린다", () => {
       { title: "", url: "https://x.y" },
     ],
     giftCard: "maybe",
-    colors: ["sage", "cream", "bogus"],
   });
   assert.deepEqual(gifts.wishlist, [
     { title: "캠핑 의자", url: "" },
     { title: "도자기 클래스", url: "https://example.com/class" },
   ]);
   assert.equal(gifts.giftCard, null);
-  assert.deepEqual(gifts.colors, ["sage", "cream"]);
+  // 좋아하는 색은 좋아하는 것들 칸에(모르는 색은 버리고 다섯 개까지)
+  assert.deepEqual(sanitizeSection("favorites", { colors: ["sage", "cream", "bogus", "orange"] }).colors, ["sage", "cream", "orange"]);
+  assert.equal((sanitizeSection("gifts", { colors: ["red"] }) as unknown as Record<string, unknown>).colors, undefined);
   assert.equal(safeUrl("data:text/html,hi"), "");
 });
 
@@ -93,13 +97,13 @@ test("카드 정리: 숫자 범위와 날짜", () => {
   assert.equal(dates.birthday, null, "leap이 불리언이 아니면 버린다");
   assert.equal(dates.anniversaries.length, 1);
   const taste = sanitizeSection("taste", { likes: "마라탕, 떡볶이,마라탕", spicy: 3 });
-  assert.deepEqual(taste, { likes: ["마라탕", "떡볶이"], spicy: 3, drinks: "", alcohol: { level: null, kinds: [] } });
+  assert.deepEqual(taste, { likes: ["마라탕", "떡볶이"], spicy: 3, dessert: "", drinks: "", alcohol: { level: null, kinds: [] } });
   assert.equal(isEmptySection("taste", taste), false);
   assert.equal(isEmptySection("sizes", sanitizeSection("sizes", {})), true);
 });
 
 test("관계별 기본 공개 항목", () => {
-  assert.deepEqual(RELATION_PRESETS.family, ["safety", "taste", "sizes", "favorites", "dates"]);
+  assert.deepEqual(RELATION_PRESETS.family, ["safety", "taste", "sizes", "favorites", "culture", "life", "dates"]);
   assert.deepEqual(sanitizeSections(["dates", "safety", "bogus", "dates"]), ["safety", "dates"]);
 });
 
@@ -141,6 +145,9 @@ test("날짜 표기", () => {
   assert.equal(formatSpec({ calendar: "lunar", month: 5, day: 1, leap: true }, "en"), "Lunar leap 5/1");
   assert.equal(formatSpec({ calendar: "solar", month: 12, day: 3 }, "en"), "Dec 3");
   assert.equal(formatDaysLeft(0, "ko"), "오늘");
+  assert.deepEqual([1, 2, 3, 4, 5, 10, 11, 20, 21, 34].map((n) => countWord(n, "ko")), ["한", "두", "세", "네", "다섯", "열", "열한", "스무", "스물한", "서른네"]);
+  assert.equal(countWord(100, "ko"), "100");
+  assert.equal(countWord(3, "en"), "3");
   assert.equal(formatDaysLeft(7, "en"), "In 7 days");
 });
 
@@ -148,12 +155,14 @@ test("오늘의 질문: 답한 건 건너뛰고, 답은 카드 칸에", () => {
   const q = questionFor(TODAY, {});
   assert.ok(q);
   const all = questionFor(TODAY, {
-    taste: { likes: [], spicy: 2, drinks: "라떼", alcohol: { level: null, kinds: [] } },
-    gifts: { colors: [], loves: [], scent: "우디", flowers: "튤립", giftCard: "yes", wishlist: [], skip: [], brands: [] },
-    favorites: sanitizeSection("favorites", { seasons: ["autumn"], musicGenres: ["indie"], movieGenres: ["comedy"], patterns: ["stripe"], metals: ["silver"], styles: ["minimal"] }),
+    taste: { likes: [], spicy: 2, dessert: "", drinks: "라떼", alcohol: { level: null, kinds: [] } },
+    gifts: { scent: "우디", flowers: "튤립", giftCard: "yes", wishlist: [], skip: [], brands: [] },
+    life: sanitizeSection("life", { seasons: ["autumn"] }),
+    favorites: sanitizeSection("favorites", { patterns: ["stripe"], metals: ["silver"], styles: ["minimal"] }),
+    culture: sanitizeSection("culture", { musicGenres: ["indie"], movieGenres: ["comedy"] }),
   });
   assert.equal(all, null);
-  assert.deepEqual(applyAnswer({}, "drinks", "아메리카노"), { taste: { likes: [], spicy: null, drinks: "아메리카노", alcohol: { level: null, kinds: [] } } });
+  assert.deepEqual(applyAnswer({}, "drinks", "아메리카노"), { taste: { likes: [], spicy: null, dessert: "", drinks: "아메리카노", alcohol: { level: null, kinds: [] } } });
   assert.equal(applyAnswer({}, "giftCard", "no").gifts?.giftCard, "no");
 });
 
@@ -183,7 +192,7 @@ test("아바타 값 정리", () => {
     glasses: "none",
     bg: "sky",
     cloth: "#FFFFFF",
-    hairColor: "#22304A",
+    hairColor: "#1F2340",
   });
   // 새 값은 그대로
   const v3 = { hair: "bangs", body: "knit", item: "pencil", glasses: "sun", bg: "lilac", cloth: "#FF9DB0", hairColor: "#D9A15B" };
@@ -195,9 +204,12 @@ test("아바타 값 정리", () => {
     item: "none",
     glasses: "round",
     bg: "sky",
-    cloth: "#8CC8FF",
-    hairColor: "#A9B2C2",
+    cloth: "#1F2340",
+    hairColor: "#A3A8BC",
   });
+  // 하늘색 시절 옷·머리색은 맹고색으로
+  assert.equal(sanitizeAvatar({ cloth: "#8CC8FF", hairColor: "#22304A" }).cloth, "#FFC23D");
+  assert.equal(sanitizeAvatar({ cloth: "#8CC8FF", hairColor: "#22304A" }).hairColor, "#1F2340");
 });
 
 test("말로 입력: 알레르기와 못 먹는 것을 나눠 찾는다", () => {
@@ -275,15 +287,51 @@ test("같이 고르기: 알레르기·식단은 빼고, 안 먹는 것·너무 �
   assert.deepEqual(judgeMenus([veg]).filter((x) => x.status === "ok").map((x) => x.item.code), ["salad"]);
 });
 
-test("좋아하는 것들: 고르는 칸은 정해진 코드만, 적는 칸은 글. 오늘의 질문 답은 그 칸에 더한다", () => {
-  const f = sanitizeSection("favorites", { patterns: ["stripe", "nope"], idol: " 아이유 ", seasons: ["autumn"], book: 3 });
+test("좋아하는 것들·생활과 여행: 고르는 칸은 정해진 코드만, 적는 칸은 글. 오늘의 질문 답은 그 칸에 더한다", () => {
+  const f = sanitizeSection("favorites", { patterns: ["stripe", "nope"], idol: " 아이유 ", seasons: ["autumn"] });
   assert.deepEqual(f.patterns, ["stripe"]);
   assert.equal(f.idol, "아이유");
-  assert.equal(f.book, "");
+  assert.equal((f as unknown as Record<string, unknown>).seasons, undefined, "계절은 생활과 여행 칸으로 옮겼다");
   assert.equal(isEmptySection("favorites", sanitizeSection("favorites", {})), true);
   assert.equal(isEmptySection("favorites", f), false);
-  const added = applyAnswer({ favorites: f }, "season", "winter").favorites!;
+  const l = sanitizeSection("life", { seasons: ["autumn", "nope"], travel: " 교토 ", book: 3, dessert: "케이크", animal: "고양이" });
+  assert.deepEqual(l, { hobbies: [], seasons: ["autumn"], travel: "교토" }, "디저트는 좋아하는 음식, 동물은 좋아하는 것들, 책은 문화생활로 옮겼다");
+  assert.equal(isEmptySection("life", sanitizeSection("life", {})), true);
+  // 취미는 선물에서 생활과 여행으로 옮겼다
+  assert.deepEqual(sanitizeSection("life", { hobbies: [" 등산 ", "캠핑"] }).hobbies, ["등산", "캠핑"]);
+  assert.equal(isEmptySection("life", sanitizeSection("life", { hobbies: ["등산"] })), false);
+  assert.equal((sanitizeSection("gifts", { loves: ["등산"] }) as unknown as Record<string, unknown>).loves, undefined);
+  const added = applyAnswer({ life: l }, "season", "winter").life!;
   assert.deepEqual(added.seasons, ["autumn", "winter"]);
-  assert.equal(added.idol, "아이유");
+  assert.equal(added.travel, "교토");
   assert.deepEqual(applyAnswer({}, "metal", "gold").favorites?.metals, ["gold"]);
+});
+
+test("문화생활: 영화·드라마·TV·음악·책. 디저트는 좋아하는 음식, 동물은 좋아하는 것들", () => {
+  const c = sanitizeSection("culture", { movieGenres: ["romance", "nope"], movie: " 어바웃 타임 ", musicGenres: ["indie"], book: "소년이 온다", idol: "아이유" });
+  assert.deepEqual(c, { movieGenres: ["romance"], movie: "어바웃 타임", drama: "", shows: "", musicGenres: ["indie"], song: "", book: "소년이 온다" });
+  assert.equal(isEmptySection("culture", sanitizeSection("culture", {})), true);
+  assert.equal((sanitizeSection("favorites", { movie: "x", musicGenres: ["indie"] }) as unknown as Record<string, unknown>).movie, undefined);
+  assert.equal(sanitizeSection("favorites", { animal: " 고양이 " }).animal, "고양이");
+  assert.equal(sanitizeSection("taste", { dessert: " 마카롱 " }).dessert, "마카롱");
+  assert.equal(isEmptySection("taste", sanitizeSection("taste", { dessert: "마카롱" })), false);
+  // 음악·영화 질문 답은 문화생활 칸에
+  assert.deepEqual(applyAnswer({}, "musicGenre", "kpop").culture?.musicGenres, ["kpop"]);
+  assert.equal(isAnswered({ culture: c }, "movieGenre"), true);
+});
+
+test("없음: 고르는 칸은 '없음'만 남기거나 다른 것만, 오늘의 질문 첫 칸도 없음", () => {
+  assert.deepEqual(sanitizeSection("safety", { allergens: [NONE] }).allergens, [NONE]);
+  assert.deepEqual(sanitizeSection("safety", { allergens: [NONE, "shrimp"] }).allergens, ["shrimp"], "다른 것과 섞이면 다른 것이 이긴다");
+  assert.equal(isEmptySection("safety", sanitizeSection("safety", { allergens: [NONE] })), false, "없음도 답한 것");
+  assert.deepEqual(sanitizeSection("life", { seasons: [NONE] }).seasons, [NONE]);
+  assert.deepEqual(sanitizeSection("culture", { musicGenres: [NONE, "bogus"] }).musicGenres, [NONE]);
+  const q = questionFor(TODAY, {});
+  assert.ok(q && (q.options[0]?.value === NONE || q.id === "giftCard" || q.id === "spicy"));
+  assert.deepEqual(applyAnswer({ culture: sanitizeSection("culture", { musicGenres: ["indie"] }) }, "musicGenre", NONE).culture?.musicGenres, [NONE]);
+  assert.deepEqual(applyAnswer({ life: sanitizeSection("life", { seasons: [NONE] }) }, "season", "autumn").life?.seasons, ["autumn"]);
+  assert.equal(applyAnswer({}, "drinks", NONE, "en").taste?.drinks, "None");
+  // 메뉴 고르기에는 '없음'을 모으지 않는다
+  const brief = mealBrief([{ key: "dad", name: "아빠", card: { safety: sanitizeSection("safety", { allergens: [NONE] }) }, sections: ["safety"] }]);
+  assert.deepEqual(brief.allergens, []);
 });

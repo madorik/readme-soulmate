@@ -25,7 +25,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
         </p>
       ) : null}
       <div className="mt-auto px-6 pt-8">
-        <AuthButtons locale={locale} next={next} google={PROVIDERS.google} apple={PROVIDERS.apple} showCode={false} />
+        <AuthButtons locale={locale} next={next} google={PROVIDERS.google} apple={PROVIDERS.apple} />
       </div>
     </main>
   );

@@ -2,7 +2,7 @@
 
 import { translate, type Locale } from "@readme/core";
 import { useState } from "react";
-import { Icon, KakaoGlyph } from "./marks";
+import { Icon } from "./marks";
 
 type CapShare = { share: (o: { title?: string; text?: string; url?: string; dialogTitle?: string }) => Promise<unknown> };
 
@@ -25,30 +25,24 @@ export async function nativeShare(text: string, url?: string): Promise<boolean> 
   return false;
 }
 
-type KakaoSdk = { isInitialized: () => boolean; init: (key: string) => void; Share: { sendDefault: (o: unknown) => void } };
-
-async function loadKakao(key: string): Promise<KakaoSdk | null> {
-  const w = window as unknown as { Kakao?: KakaoSdk };
-  if (!w.Kakao) {
-    await new Promise<void>((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js";
-      s.crossOrigin = "anonymous";
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error("kakao sdk"));
-      document.head.appendChild(s);
-    }).catch(() => null);
-  }
-  if (!w.Kakao) return null;
-  if (!w.Kakao.isInitialized()) w.Kakao.init(key);
-  return w.Kakao;
+/** 보낼 링크(읽기 전용). 눌러서 고를 수 있다 */
+export function LinkField({ url, label }: { url: string; label: string }) {
+  return (
+    <input
+      readOnly
+      value={url}
+      aria-label={label}
+      data-testid="invite-url"
+      onFocus={(e) => e.currentTarget.select()}
+      className="field !h-11 truncate !bg-fill text-[13px] text-muted !shadow-none"
+    />
+  );
 }
 
-/** 링크 하나를 보내는 버튼 묶음: 카카오톡 · 링크 복사 · 다른 앱 */
-export function ShareButtons({ locale, url, text, kakaoLabel }: { locale: Locale; url: string; text: string; kakaoLabel?: string }) {
+/** 링크 보내기: 휴대폰 공유창(카카오톡·문자·메일 등 어떤 앱이든) · 링크 복사. 공유창이 없으면 복사한다 */
+export function ShareButtons({ locale, url, text, sendLabel }: { locale: Locale; url: string; text: string; sendLabel?: string }) {
   const t = (k: Parameters<typeof translate>[1]) => translate(locale, k);
   const [copied, setCopied] = useState(false);
-  const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
 
   const copy = async () => {
     try {
@@ -64,47 +58,22 @@ export function ShareButtons({ locale, url, text, kakaoLabel }: { locale: Locale
     setCopied(true);
   };
 
-  const kakao = async () => {
-    if (kakaoKey) {
-      const sdk = await loadKakao(kakaoKey);
-      if (sdk) {
-        sdk.Share.sendDefault({ objectType: "text", text, link: { mobileWebUrl: url, webUrl: url }, buttonTitle: locale === "ko" ? "열기" : "Open" });
-        return;
-      }
-    }
-    if (!(await nativeShare(text, url))) await copy();
-  };
-
   return (
     <div className="flex flex-col gap-2">
-      <input
-        readOnly
-        value={url}
-        aria-label={t("common.copyLink")}
-        data-testid="invite-url"
-        onFocus={(e) => e.currentTarget.select()}
-        className="field mb-2 truncate text-[13px] text-muted"
-      />
-      <button type="button" onClick={kakao} className="btn-kakao">
-        <KakaoGlyph />
-        {kakaoLabel ?? t("common.kakao")}
+      <button
+        type="button"
+        onClick={async () => {
+          if (!(await nativeShare(text, url))) await copy();
+        }}
+        className="btn-primary w-full"
+      >
+        <Icon name="share" size={19} strokeWidth={2} />
+        {sendLabel ?? t("common.send")}
       </button>
-      <div className="grid grid-cols-2 gap-2">
-        <button type="button" onClick={copy} className="btn-soft gap-1.5">
-          <Icon name={copied ? "check" : "link"} size={17} />
-          {copied ? t("common.copied") : t("common.copyLink")}
-        </button>
-        <button
-          type="button"
-          onClick={async () => {
-            if (!(await nativeShare(text, url))) await copy();
-          }}
-          className="btn-soft gap-1.5"
-        >
-          <Icon name="share" size={17} />
-          {t("common.otherApps")}
-        </button>
-      </div>
+      <button type="button" onClick={copy} className="btn-soft !h-12 w-full gap-1.5">
+        <Icon name={copied ? "check" : "link"} size={17} />
+        {copied ? t("common.copied") : t("common.copyLink")}
+      </button>
     </div>
   );
 }

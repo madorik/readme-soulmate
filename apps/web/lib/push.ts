@@ -1,5 +1,7 @@
 import "server-only";
 import { createSign } from "node:crypto";
+import { isLocale, type Locale } from "@readme/core";
+import { asSystem } from "@/lib/db";
 
 // Firebase Cloud Messaging(HTTP v1). 서비스 계정 세 값이 있을 때만 보낸다. 없으면 앱의 기기 로컬 알림만 쓴다.
 //   FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY(줄바꿈은 \n)
@@ -46,3 +48,34 @@ export async function sendPush(token: string, title: string, body: string, path:
   if (res.ok) return true;
   return res.status === 404 || res.status === 400 ? "gone" : false;
 }
+
+/** 한 사람의 모든 기기에 보낸다. 알림을 끈 사람이면 보내지 않는다. 실패는 조용히 넘긴다(본 동작을 막지 않게) */
+export async function notifyUser(userId: string, title: string, body: string, path: string): Promise<boolean> {
+  if (!pushConfigured()) return false;
+  try {
+    const tokens = await asSystem((q) => q<{ token: string }>("select t.token from push_tokens t join profiles p on p.id = t.user_id where t.user_id = $1 and p.push_enabled", [userId]));
+    let sent = false;
+    for (const tk of tokens) {
+      const r = await sendPush(tk.token, title, body, path);
+      if (r === true) sent = true;
+      if (r === "gone") await asSystem((q) => q("delete from push_tokens where user_id = $1 and token = $2", [userId, tk.token]));
+    }
+    return sent;
+  } catch {
+    return false;
+  }
+}
+
+/** 받는 사람의 화면 언어로 제목·내용을 만들어 보낸다 */
+export async function notifyUserT(userId: string, make: (locale: Locale) => { title: string; body: string; path: string }): Promise<void> {
+  if (!pushConfigured()) return;
+  try {
+    const p = await asSystem((q) => q.one<{ locale: string | null; system_locale: string | null }>("select locale, system_locale from profiles where id = $1", [userId]));
+    const locale: Locale = isLocale(p?.locale) ? p!.locale : isLocale(p?.system_locale) ? p!.system_locale : "ko";
+    const m = make(locale);
+    await notifyUser(userId, m.title, m.body, m.path);
+  } catch {
+    /* 알림 실패는 본 동작에 영향을 주지 않는다 */
+  }
+}
+

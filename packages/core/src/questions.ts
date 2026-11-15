@@ -1,7 +1,7 @@
 import { diffDays, type YMD } from "./calendar";
-import { METALS, MOVIE_GENRES, MUSIC_GENRES, PATTERNS, SEASONS, STYLES, type CatalogItem } from "./catalog";
-import { emptySection, type CardData, type FavoritesData } from "./card";
-import type { Label } from "./locale";
+import { METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, NONE_LABEL, PATTERNS, SEASONS, STYLES, type CatalogItem } from "./catalog";
+import { emptySection, type CardData, type CultureData, type FavoritesData } from "./card";
+import type { Label, Locale } from "./locale";
 
 // 오늘의 질문: 하루 한 문항으로 리드미를 조금씩 채운다. 답은 카드의 한 칸에 바로 들어간다.
 
@@ -16,18 +16,22 @@ export interface DailyQuestion {
   options: QuestionOption[];
 }
 
-/** 좋아하는 것들 질문: 답은 그 칸(배열)에 코드로 더한다 */
+/** 좋아하는 것들 질문: 답은 그 칸(배열)에 코드로 더한다. 음악·영화는 문화생활, 계절은 생활과 여행 칸으로 */
 const FAVORITE_QUESTION_KEY = {
-  season: "seasons",
-  musicGenre: "musicGenres",
-  movieGenre: "movieGenres",
   pattern: "patterns",
   metal: "metals",
   style: "styles",
 } as const satisfies Partial<Record<DailyQuestion["id"], keyof FavoritesData>>;
+const CULTURE_QUESTION_KEY = {
+  musicGenre: "musicGenres",
+  movieGenre: "movieGenres",
+} as const satisfies Partial<Record<DailyQuestion["id"], keyof CultureData>>;
+
+/** 첫 칸 '없음'. 고르는 칸이면 코드(none), 글 칸이면 글자(없음)로 저장한다 */
+const NONE_OPTION: QuestionOption = { value: NONE, label: NONE_LABEL };
 
 function fromCatalog(list: CatalogItem[], codes: string[]): QuestionOption[] {
-  return codes.map((c) => list.find((i) => i.code === c)).filter((i): i is CatalogItem => !!i).map((i) => ({ value: i.code, label: i.label }));
+  return [NONE_OPTION, ...codes.map((c) => list.find((i) => i.code === c)).filter((i): i is CatalogItem => !!i).map((i) => ({ value: i.code, label: i.label }))];
 }
 
 export const QUESTIONS: DailyQuestion[] = [
@@ -35,6 +39,7 @@ export const QUESTIONS: DailyQuestion[] = [
     id: "drinks",
     prompt: { ko: "요즘 제일 자주 마시는 건?", en: "What do you drink most these days?" },
     options: [
+      NONE_OPTION,
       { value: "아메리카노", label: { ko: "아메리카노", en: "Americano" } },
       { value: "라떼", label: { ko: "라떼", en: "Latte" } },
       { value: "차", label: { ko: "차", en: "Tea" } },
@@ -45,16 +50,17 @@ export const QUESTIONS: DailyQuestion[] = [
     id: "flowers",
     prompt: { ko: "꽃을 받는다면?", en: "If someone gave you flowers?" },
     options: [
+      NONE_OPTION,
       { value: "튤립", label: { ko: "튤립", en: "Tulips" } },
       { value: "수국", label: { ko: "수국", en: "Hydrangeas" } },
       { value: "장미", label: { ko: "장미", en: "Roses" } },
-      { value: "꽃은 별로", label: { ko: "꽃은 별로", en: "Not a flower person" } },
     ],
   },
   {
     id: "scent",
     prompt: { ko: "좋아하는 향은?", en: "Which scent do you like?" },
     options: [
+      NONE_OPTION,
       { value: "우디", label: { ko: "우디", en: "Woody" } },
       { value: "플로럴", label: { ko: "플로럴", en: "Floral" } },
       { value: "시트러스", label: { ko: "시트러스", en: "Citrus" } },
@@ -100,6 +106,11 @@ export function isAnswered(card: Partial<CardData>, id: DailyQuestion["id"]): bo
       return card.gifts?.giftCard != null;
     case "spicy":
       return card.taste?.spicy != null;
+    case "season":
+      return !!card.life?.seasons.length;
+    case "musicGenre":
+    case "movieGenre":
+      return !!card.culture?.[CULTURE_QUESTION_KEY[id]]?.length;
     default:
       return !!card.favorites?.[FAVORITE_QUESTION_KEY[id]]?.length;
   }
@@ -114,11 +125,13 @@ export function questionFor(today: YMD, card: Partial<CardData>): DailyQuestion 
 }
 
 /** 답을 카드 칸에 넣은 결과(바뀐 항목만) */
-export function applyAnswer(card: Partial<CardData>, id: DailyQuestion["id"], value: string): Partial<CardData> {
+export function applyAnswer(card: Partial<CardData>, id: DailyQuestion["id"], value: string, locale: Locale = "ko"): Partial<CardData> {
   const v = value.trim().slice(0, 60);
+  const text = v === NONE ? NONE_LABEL[locale] : v;
+  const add = (list: string[]) => (v === NONE ? [NONE] : list.includes(v) ? list.filter((x) => x !== NONE) : [...list.filter((x) => x !== NONE), v]);
   switch (id) {
     case "drinks":
-      return { taste: { ...emptySection("taste"), ...card.taste, drinks: v } };
+      return { taste: { ...emptySection("taste"), ...card.taste, drinks: text } };
     case "spicy": {
       const n = Number(v);
       return { taste: { ...emptySection("taste"), ...card.taste, spicy: Number.isInteger(n) && n >= 0 && n <= 4 ? n : null } };
@@ -128,13 +141,22 @@ export function applyAnswer(card: Partial<CardData>, id: DailyQuestion["id"], va
     case "giftCard": {
       const base = { ...emptySection("gifts"), ...card.gifts };
       if (id === "giftCard") return { gifts: { ...base, giftCard: v === "yes" ? "yes" : v === "no" ? "no" : null } };
-      return { gifts: { ...base, [id]: v } };
+      return { gifts: { ...base, [id]: text } };
+    }
+    case "season": {
+      const base = { ...emptySection("life"), ...card.life };
+      return { life: { ...base, seasons: add(base.seasons) } };
+    }
+    case "musicGenre":
+    case "movieGenre": {
+      const key = CULTURE_QUESTION_KEY[id];
+      const base = { ...emptySection("culture"), ...card.culture };
+      return { culture: { ...base, [key]: add(base[key] ?? []) } };
     }
     default: {
       const key = FAVORITE_QUESTION_KEY[id];
       const base = { ...emptySection("favorites"), ...card.favorites };
-      const list = base[key] ?? [];
-      return { favorites: { ...base, [key]: list.includes(v) ? list : [...list, v] } };
+      return { favorites: { ...base, [key]: add(base[key] ?? []) } };
     }
   }
 }

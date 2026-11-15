@@ -15,7 +15,7 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
         <ol>
           <li>Open README and sign in.</li>
           <li>
-            Go to the <b>Sharing</b> tab and scroll to the bottom.
+            Go to the <b>My README</b> tab, tap <b>Edit profile</b>, and scroll to the bottom.
           </li>
           <li>
             Tap <b>Delete account</b>, then <b>Delete everything</b>.
@@ -36,10 +36,10 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
             <b>People</b>: open a person and tap × next to a private note to delete it.
           </li>
           <li>
-            On the same screen, open <b>What you call them</b> and tap <b>Delete</b> to remove that person and all your notes about them.
+            On the same screen, tap <b>Remove from people</b> to delete that person with your record, notes and question links about them.
           </li>
           <li>
-            <b>Sharing</b>: tap <b>Stop</b> next to someone and they can no longer see your README.
+            <b>Settings</b>: tap <b>Cancel</b> next to a question link nobody has answered yet.
           </li>
         </ul>
         <p>These take effect right away, and database backups roll off within 7 days. To delete something specific without the app, email {mail}.</p>
@@ -48,13 +48,13 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
         <ul>
           <li>Your account and sign-in information</li>
           <li>Your README (favorites, allergies, sizes, gifts, dates) and avatar</li>
-          <li>Everyone you shared with or received from, your private notes, links, notifications and settings</li>
+          <li>Your people and your records about them, private notes, question links, notifications and settings</li>
         </ul>
-        <p>Deletion is immediate and can&rsquo;t be undone. People you shared with can no longer see your README. Database backups roll off within 7 days.</p>
+        <p>Deletion is immediate and can&rsquo;t be undone. Database backups roll off within 7 days.</p>
 
         <h2>What stays</h2>
         <p>
-          Nothing about you stays with us. If you answered someone&rsquo;s request without the app, that answer stays with the person who asked; email us to have it removed.
+          Nothing about you stays with us. If you answered someone&rsquo;s questions, those answers stay in the asker&rsquo;s record; ask them or email us to have them removed.
         </p>
       </LegalPage>
     );
@@ -65,7 +65,7 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
       <ol>
         <li>리드미를 열고 로그인합니다.</li>
         <li>
-          아래 <b>공유 관리</b> 탭에서 맨 아래로 내립니다.
+          아래 <b>내 리드미</b> 탭에서 <b>프로필 고치기</b>를 누르고 맨 아래로 내립니다.
         </li>
         <li>
           <b>계정 삭제</b>를 누르고 <b>모두 지우기</b>를 누릅니다.
@@ -84,10 +84,10 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
           <b>사람들</b>: 사람을 열고 나만 보는 메모 옆 ×를 누르면 그 메모가 지워집니다.
         </li>
         <li>
-          같은 화면 아래 <b>부르는 말</b>을 펼쳐 <b>지우기</b>를 누르면 그 사람과 그 사람에 대한 메모가 모두 지워집니다.
+          같은 화면 아래 <b>사람들에서 지우기</b>를 누르면 그 사람과 그 사람에 대한 기록·메모·물어보기 링크가 모두 지워집니다.
         </li>
         <li>
-          <b>공유 관리</b>: 사람 옆 <b>끊기</b>를 누르면 그 사람은 더는 내 리드미를 볼 수 없습니다.
+          <b>설정</b>: 아직 아무도 답하지 않은 물어보기 링크 옆 <b>취소</b>를 누르면 링크가 더는 열리지 않습니다.
         </li>
       </ul>
       <p>바로 지워지며 데이터베이스 백업에서도 7일 안에 사라집니다. 앱 없이 특정 정보만 지우고 싶으면 {mail}로 알려 주세요.</p>
@@ -96,12 +96,12 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
       <ul>
         <li>계정과 로그인 정보</li>
         <li>내 리드미(취향, 알레르기, 사이즈, 선물, 기념일)와 아바타</li>
-        <li>주고받은 사람들, 나만 보는 메모, 링크, 알림, 설정</li>
+        <li>내 사람들과 그 사람들에 대한 기록, 나만 보는 메모, 물어보기 링크, 알림, 설정</li>
       </ul>
-      <p>바로 지워지며 되돌릴 수 없습니다. 내 리드미를 받은 사람들도 더는 볼 수 없습니다. 데이터베이스 백업에서도 7일 안에 사라집니다.</p>
+      <p>바로 지워지며 되돌릴 수 없습니다. 데이터베이스 백업에서도 7일 안에 사라집니다.</p>
 
       <h2>남는 것</h2>
-      <p>운영자에게 남는 내 정보는 없습니다. 앱 없이 다른 사람의 요청에 답했다면 그 답은 요청한 사람에게 남으니, 지우고 싶으면 메일로 알려 주세요.</p>
+      <p>운영자에게 남는 내 정보는 없습니다. 다른 사람이 물어본 것에 답했다면 그 답은 물어본 사람의 기록에 남으니, 지우고 싶으면 그 사람에게 말하거나 메일로 알려 주세요.</p>
     </LegalPage>
   );
 }

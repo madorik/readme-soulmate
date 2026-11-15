@@ -247,7 +247,23 @@ export function DatesEditor({ value, onChange, locale }: { value: DatesData; onC
         <DateSpecPicker value={value.birthday} onChange={(birthday) => onChange({ ...value, birthday })} locale={locale} year="birth" />
       </div>
       <div className="flex flex-col gap-2">
-        <SectionHeading>{t("dates.anniversaries")}</SectionHeading>
+        {/* 기념일 제목 줄 오른쪽에 추가 버튼 */}
+        <div className="flex min-h-11 items-center justify-between">
+          <SectionHeading>{t("dates.anniversaries")}</SectionHeading>
+          {value.anniversaries.length < 10 ? (
+            <button
+              type="button"
+              onClick={() => {
+                onChange({ ...value, anniversaries: [...value.anniversaries, { label: "", spec: { calendar: "solar", month: 1, day: 1 } }] });
+                setOpen(value.anniversaries.length);
+              }}
+              className="pill !h-9 !px-3.5 text-[13.5px]"
+            >
+              <Icon name="plus" size={16} />
+              {t("dates.addAnniversary")}
+            </button>
+          ) : null}
+        </div>
         {value.anniversaries.map((a, i) => (
           <div key={i} className="flex flex-col gap-3 border-t border-rule pt-3">
             <div className="flex items-center gap-2">
@@ -272,19 +288,6 @@ export function DatesEditor({ value, onChange, locale }: { value: DatesData; onC
             )}
           </div>
         ))}
-        {value.anniversaries.length < 10 ? (
-          <button
-            type="button"
-            onClick={() => {
-              onChange({ ...value, anniversaries: [...value.anniversaries, { label: "", spec: { calendar: "solar", month: 1, day: 1 } }] });
-              setOpen(value.anniversaries.length);
-            }}
-            className="pill self-start"
-          >
-            <Icon name="plus" size={17} />
-            {t("dates.addAnniversary")}
-          </button>
-        ) : null}
       </div>
     </div>
   );

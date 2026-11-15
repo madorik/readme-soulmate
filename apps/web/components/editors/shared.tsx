@@ -1,9 +1,16 @@
 "use client";
 
-import { translate, type Locale, type MessageKey, type Vars } from "@readme/core";
+import { NONE, translate, type Locale, type MessageKey, type Vars } from "@readme/core";
 import { CheckGlyph, DrawnCheck } from "../marks";
 
 export type TFn = (key: MessageKey, vars?: Vars) => string;
+
+/** '없음'이 있는 고르기: 없음을 누르면 나머지를 지우고, 다른 것을 누르면 없음을 뺀다 */
+export function toggleWithNone(list: readonly string[], code: string): string[] {
+  if (code === NONE) return list.includes(NONE) ? [] : [NONE];
+  const real = list.filter((c) => c !== NONE);
+  return real.includes(code) ? real.filter((c) => c !== code) : [...real, code];
+}
 
 export function useT(locale: Locale): TFn {
   return (key, vars) => translate(locale, key, vars);

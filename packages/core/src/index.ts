@@ -13,3 +13,4 @@ export * from "./questions";
 export * from "./invite";
 export * from "./i18n";
 export * from "./speech";
+export * from "./capture";

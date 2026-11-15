@@ -15,7 +15,6 @@ export default async function NewPerson({ searchParams }: { searchParams: Promis
       <TopBar close="/people" label={t("common.close")} />
       <div className="flex flex-col gap-1.5 px-6 pt-1">
         <h1 className="headline text-[28px]">{t("people.newTitle")}</h1>
-        <p className="text-[14px] leading-[1.55] text-muted">{t("people.newSub")}</p>
       </div>
       <label className="flex flex-col gap-2 px-6 pt-7">
         <span className="text-[15px] font-bold">{t("people.newName")}</span>
@@ -50,7 +49,7 @@ export default async function NewPerson({ searchParams }: { searchParams: Promis
           <Icon name="chevron" size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-muted" />
         </span>
       </label>
-      <div className="sticky bottom-0 mt-auto bg-bg px-6 pt-4" style={{ paddingBottom: "max(var(--sab), 16px)" }}>
+      <div className="bottom-bar mt-auto bg-bg px-6 pt-4">
         <button className="btn-primary w-full">{t("people.create")}</button>
       </div>
     </form>

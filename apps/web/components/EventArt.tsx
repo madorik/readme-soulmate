@@ -5,8 +5,8 @@ import { Avatar } from "@/components/Avatar";
 // 홈 '다가오는 날' 오른쪽 그림: 그 사람 얼굴 + 생일이면 케이크, 기념일이면 하트 스티커.
 // 남색 선 위에 하늘·분홍 색면을 살짝 어긋나게 찍는다.
 
-const INK = "#22304A";
-const QUIET = "#B9C3D2";
+const INK = "#1F2340";
+const QUIET = "#C3C7D4";
 /** 색면을 선에서 어긋나게 찍는 거리(뷰박스 48 기준) */
 const SHIFT = "translate(1.3 1.1)";
 
@@ -19,8 +19,8 @@ export function CakeMark({ size = 34, quiet = false }: { size?: number; quiet?: 
     <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true" className="block">
       {quiet ? null : (
         <g transform={SHIFT}>
-          <rect x="9" y="23" width="30" height="16" rx="2.5" fill="#DDEEFF" />
-          <rect x="22" y="13" width="4" height="10" rx="1" fill="#8DB6FF" />
+          <rect x="9" y="23" width="30" height="16" rx="2.5" fill="#FFF4D6" />
+          <rect x="22" y="13" width="4" height="10" rx="1" fill="#FFC23D" />
           <path d={FLAME} fill="#FF9DB0" />
         </g>
       )}
@@ -49,7 +49,7 @@ export function HeartMark({ size = 34 }: { size?: number }) {
 /** 얼굴 왼쪽 아래에 붙는 동그란 스티커 */
 function Sticker({ children }: { children: React.ReactNode }) {
   return (
-    <span className="absolute bottom-0 left-0 flex h-[46px] w-[46px] -rotate-6 items-center justify-center rounded-full bg-paper shadow-[0_0_0_1px_var(--color-rule),0_2px_6px_rgba(34,48,74,0.08)]">
+    <span className="absolute bottom-0 left-0 flex h-[46px] w-[46px] -rotate-6 items-center justify-center rounded-full bg-paper shadow-[0_0_0_1px_var(--color-rule),0_2px_6px_rgba(31,35,64,0.08)]">
       {children}
     </span>
   );
@@ -71,7 +71,7 @@ export function EventPortrait({ href, avatar, name, kind }: { href: string; avat
 export function EmptyPortrait() {
   return (
     <span aria-hidden="true" className="relative block h-[86px] w-[94px] shrink-0">
-      <span className="absolute right-0 top-0 h-[74px] w-[74px] rounded-full border-2 border-dashed border-[#bfd6ee]" />
+      <span className="absolute right-0 top-0 h-[74px] w-[74px] rounded-full border-2 border-dashed border-[#f0d27a]" />
       <Sticker>
         <CakeMark quiet />
       </Sticker>

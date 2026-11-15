@@ -1,25 +1,33 @@
 import { hashToken, sanitizeSections, translate } from "@readme/core";
-import Link from "next/link";
-import { claimAnswer } from "@/app/actions/request";
 import { Wordmark } from "@/components/chrome";
-import { getSession, openPrefill } from "@/lib/data";
+import { getSession, openPrefill, readCard } from "@/lib/data";
 import { makeT, requestLocale } from "@/lib/i18n";
 import { asSystem } from "@/lib/db";
+import { ogMetadata, previewLocale } from "@/lib/og";
 import { AnswerForm } from "./AnswerForm";
 
 type Row = {
-  invite_id: string | null;
   state: "active" | "expired" | "used" | "canceled" | "not_found";
   inviter_name: string | null;
-  recipient_name: string | null;
   sections: string[] | null;
   prefill: unknown;
   message: string | null;
-  guest_card_id: string | null;
 };
 
-export default async function AnswerPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ claim?: string }> }) {
-  const [{ token: raw }, sp] = await Promise.all([params, searchParams]);
+/** 링크 미리보기: "○○님이 물어봐요" */
+export async function generateMetadata({ params }: { params: Promise<{ token: string }> }) {
+  const token = decodeURIComponent((await params).token);
+  const locale = await requestLocale((await getSession())?.profile.locale);
+  const hash = await hashToken(token);
+  const row = await asSystem((q) => q.one<{ inviter_name: string | null }>("select inviter_name from request_for_answer($1)", [hash])).catch(() => null);
+  const from = row?.inviter_name?.trim();
+  const lang = previewLocale(locale, from);
+  return ogMetadata(lang, from ? translate(lang, "og.requestTitle", { name: from }) : translate(lang, "request.title"));
+}
+
+// 물어보기에 답하는 화면(로그인 없이 열린다). 답은 물어본 사람의 기록에 들어간다(그 뒤로는 그 사람이 고친다)
+export default async function AnswerPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token: raw } = await params;
   const token = decodeURIComponent(raw);
   const session = await getSession();
   const locale = await requestLocale(session?.profile.locale);
@@ -37,50 +45,21 @@ export default async function AnswerPage({ params, searchParams }: { params: Pro
   );
 
   if (row.state === "active") {
-    const { card, unsure } = openPrefill(hash, row.prefill);
+    const prefill = openPrefill(hash, row.prefill);
+    const mine = session ? (await session.tx((q) => readCard(q, session.user.id))).card : {};
     return (
-      <main className="screen">
+      <main className="screen !pb-0">
         {header}
         <AnswerForm
           locale={locale}
           token={token}
           from={from}
           message={row.message ?? ""}
-          sections={sanitizeSections(row.sections).sort((a, b) => Number(!card[a]) - Number(!card[b]))}
-          prefill={card}
-          unsure={unsure}
+          sections={sanitizeSections(row.sections).sort((a, b) => Number(!prefill[a]) - Number(!prefill[b]))}
+          prefill={prefill}
+          mine={mine}
           signedIn={!!session}
         />
-      </main>
-    );
-  }
-
-  // 이미 답한 링크: 답한 사람이 가입해서 자기 리드미로 가져갈 수 있다
-  if (row.state === "used" && row.guest_card_id) {
-    return (
-      <main className="screen">
-        {header}
-        <div className="flex flex-1 flex-col px-6 pt-10">
-          <h1 className="headline text-[30px]">{t("answer.sent.title")}</h1>
-          <p className="pt-3 text-[16px] leading-[1.6]">{t("answer.sent.body", { from })}</p>
-          {sp.claim === "failed" ? (
-            <p role="alert" className="pt-3 text-[14px] text-red">
-              {t("accept.used")}
-            </p>
-          ) : null}
-          <div className="mt-auto pt-10">
-            {session ? (
-              <form action={claimAnswer}>
-                <input type="hidden" name="token" value={token} />
-                <button className="btn-primary w-full">{t("answer.claim")}</button>
-              </form>
-            ) : (
-              <Link href={`/?next=${encodeURIComponent(`/r/${token}/claim`)}`} className="btn-primary">
-                {t("answer.claim")}
-              </Link>
-            )}
-          </div>
-        </div>
       </main>
     );
   }

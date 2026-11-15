@@ -33,35 +33,49 @@ export function Wordmark({ size = 22 }: { size?: number }) {
 }
 
 /** 아래쪽에 떠 있는 흰 탭 막대. fab: 막대 바로 위 오른쪽에 떠 있는 버튼(사람들 화면의 직접 적기 등) */
-export function TabBar({ active, t, fab }: { active: "home" | "people" | "me" | "privacy"; t: T; fab?: React.ReactNode }) {
+/** voice: 가운데 마이크(말로 적기). AI 키가 있을 때만 화면이 aiConfigured()로 켠다(이 파일은 클라이언트에서도 불려서 서버 전용 모듈을 못 들인다) */
+export function TabBar({ active, t, fab, voice = false }: { active: "home" | "people" | "me" | "privacy"; t: T; fab?: React.ReactNode; voice?: boolean }) {
   const tabs = [
     { key: "home", href: "/home", icon: "calendar", label: t("nav.home") },
     { key: "people", href: "/people", icon: "people", label: t("nav.people") },
     { key: "me", href: "/me", icon: "card", label: t("nav.me") },
     { key: "privacy", href: "/privacy", icon: "settings", label: t("nav.privacy") },
   ] as const;
+  const tab = (item: (typeof tabs)[number]) => {
+    const on = item.key === active;
+    return (
+      <Link
+        key={item.key}
+        href={item.href}
+        aria-current={on ? "page" : undefined}
+        className={`flex flex-col items-center justify-center gap-[3px] whitespace-nowrap text-[11.5px] ${on ? "font-bold text-accent" : "font-medium text-muted"}`}
+      >
+        <Icon name={item.icon} strokeWidth={on ? 2.1 : 1.7} />
+        {item.label}
+      </Link>
+    );
+  };
   return (
     <nav
       aria-label="menu"
       className="sticky bottom-0 z-30 mt-auto px-4 pt-3"
-      style={{ paddingBottom: "max(var(--sab), 14px)", background: "linear-gradient(to top, var(--color-bg) 60%, rgb(243 248 255 / 0))" }}
+      style={{ paddingBottom: "var(--pb-tab)", background: "linear-gradient(to top, var(--color-bg) 60%, rgb(246 247 251 / 0))" }}
     >
       {fab ? <div className="absolute bottom-full right-4">{fab}</div> : null}
-      <div className="grid h-[66px] grid-cols-4 rounded-[26px] bg-white px-1 shadow-[0_8px_24px_rgba(34,48,74,0.09),0_0_0_1px_rgba(34,48,74,0.04)]">
-        {tabs.map((tab) => {
-          const on = tab.key === active;
-          return (
+      <div className={`grid h-[66px] ${voice ? "grid-cols-5" : "grid-cols-4"} rounded-[26px] bg-white px-1 shadow-[0_8px_24px_rgba(31,35,64,0.09),0_0_0_1px_rgba(31,35,64,0.04)]`}>
+        {tabs.slice(0, 2).map(tab)}
+        {voice ? (
+          <div className="flex items-start justify-center">
             <Link
-              key={tab.key}
-              href={tab.href}
-              aria-current={on ? "page" : undefined}
-              className={`flex flex-col items-center justify-center gap-[3px] whitespace-nowrap text-[11.5px] ${on ? "font-bold text-accent" : "font-medium text-muted"}`}
+              href="/voice"
+              aria-label={t("voice.title")}
+              className="grad -mt-5 flex h-[62px] w-[62px] items-center justify-center rounded-full shadow-[var(--shadow-btn),0_0_0_5px_var(--color-bg)] transition-transform active:scale-95"
             >
-              <Icon name={tab.icon} strokeWidth={on ? 2.1 : 1.7} />
-              {tab.label}
+              <Icon name="mic" size={27} strokeWidth={2} />
             </Link>
-          );
-        })}
+          </div>
+        ) : null}
+        {tabs.slice(2).map(tab)}
       </div>
     </nav>
   );
