@@ -31,7 +31,8 @@
   --color-ok: #1e7d55;
 
   --font-sans: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-  --font-num: var(--font-manrope), system-ui, sans-serif;
+  /* 숫자·로고는 Manrope. Manrope에 없는 한글(로고 '기억해유', '오늘' 배지)은 한글 글꼴로(아이폰 웹뷰는 system-ui에서 한글로 못 넘어가 물음표 네모가 된다) */
+  --font-num: var(--font-manrope), "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
 }
 
 @layer base {

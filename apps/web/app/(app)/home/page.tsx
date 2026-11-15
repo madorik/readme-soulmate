@@ -1,4 +1,4 @@
-import { addDays, countWord, formatDayFull, formatSpec, questionFor, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
+import { addDays, countWord, formatDayFull, formatSpec, NONE, NONE_LABEL, questionFor, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
 import Link from "next/link";
 import { answerQuestion } from "@/app/actions/card";
 import { Avatar } from "@/components/Avatar";
@@ -181,25 +181,51 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
               <span className="text-[19px] font-bold leading-[1.35] tracking-[-0.02em]">{question.prompt[locale]}</span>
             </div>
           </div>
-          {/* 넷 이하면 두 줄 격자, 넘으면 옆으로 넘겨 본다(카드 밖까지 이어지게) */}
-          <form
-            action={answerQuestion}
-            className={question.options.length > 4 ? "-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-4 px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "grid grid-cols-2 gap-2"}
-          >
-            <input type="hidden" name="id" value={question.id} />
-            {question.options.map((o) => (
+          {/* '없음'이 있는 질문: 없음은 아이콘으로 맨 오른쪽에 늘 보이고, 나머지는 셋까지 한 줄·넘으면 옆으로 넘겨 본다(카드 왼쪽 밖까지 이어지게).
+              없음이 없는 질문: 넷 이하면 두 줄 격자, 넘으면 옆으로 */}
+          {(() => {
+            const hasNone = question.options.some((o) => o.value === NONE);
+            const opts = question.options.filter((o) => o.value !== NONE);
+            const scroll = hasNone ? opts.length > 3 : opts.length > 4;
+            const option = (o: (typeof opts)[number]) => (
               <button
                 key={o.value}
                 name="value"
                 value={o.value}
-                className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl bg-white px-3 py-2 text-[15px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-rule)] transition-[transform,background-color] hover:bg-sky-soft active:scale-95 ${question.options.length > 4 ? "min-w-[96px] shrink-0 snap-start whitespace-nowrap px-4" : ""}`}
+                className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl bg-white px-3 py-2 text-[15px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-rule)] transition-[transform,background-color] hover:bg-sky-soft active:scale-95 ${scroll ? "min-w-[96px] shrink-0 snap-start whitespace-nowrap px-4" : ""}`}
               >
                 {o.label[locale]}
                 {/* 매운맛 질문은 고추 개수로도(값이 단계 0–4) */}
                 {question.id === "spicy" ? <ChiliMeter level={Number(o.value)} size={16} /> : null}
               </button>
-            ))}
-          </form>
+            );
+            const list = scroll ? (
+              <div className={`flex min-w-0 flex-1 snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${hasNone ? "-ml-4 scroll-pl-4 pl-4 pr-3 [mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" : "-mx-4 scroll-px-4 px-4"}`}>
+                {opts.map(option)}
+              </div>
+            ) : (
+              <div className={`grid min-w-0 flex-1 gap-2 ${hasNone ? (opts.length === 3 ? "grid-cols-3" : opts.length === 2 ? "grid-cols-2" : "grid-cols-1") : "grid-cols-2"}`}>{opts.map(option)}</div>
+            );
+            return (
+              <form action={answerQuestion} className="flex items-start gap-2">
+                <input type="hidden" name="id" value={question.id} />
+                {list}
+                {hasNone ? (
+                  <button
+                    name="value"
+                    value={NONE}
+                    aria-label={NONE_LABEL[locale]}
+                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-muted shadow-[inset_0_0_0_1.5px_var(--color-rule)] transition-[transform,background-color] hover:bg-sky-soft active:scale-95"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <circle cx="12" cy="12" r="8.5" />
+                      <path d="M6 6l12 12" />
+                    </svg>
+                  </button>
+                ) : null}
+              </form>
+            );
+          })()}
         </section>
       ) : null}
       {answered ? (
