@@ -3,11 +3,10 @@ import { personRows } from "@/components/PeopleList";
 import { folderViews, listFolders, listPeople, requireSession, todayFor } from "@/lib/data";
 import { folderSheetLabels } from "@/lib/folders";
 import { makeT } from "@/lib/i18n";
-import { AddFab } from "./AddFab";
 import { PeopleBoard } from "./PeopleBoard";
 import { aiConfigured } from "@/lib/ai";
 
-// 내 사람들: 폴더 칸 + 폴더 없는 사람(끌어서 폴더에 넣는다). 위에 선택(사람을 골라 메뉴 고르기·선물 고르기), 오른쪽 아래에 사람 더하기
+// 내 사람들: 폴더 칸 + 폴더 없는 사람(끌어서 폴더에 넣는다). 오른쪽 위에 사람 더하기(직접 적기)와 선택(사람을 골라 메뉴 고르기·선물 고르기)
 export default async function People({ searchParams }: { searchParams: Promise<{ pick?: string; with?: string; me?: string }> }) {
   const sp = await searchParams;
   const s = await requireSession();
@@ -31,6 +30,7 @@ export default async function People({ searchParams }: { searchParams: Promise<{
           bannerTitle: t("people.bannerTitle"),
           bannerCta: t("home.ask"),
           pick: t("people.pick"),
+          add: t("people.add"),
           cancel: t("people.pickCancel"),
           withMe: t("plan.withMe"),
           meName: t("plan.me"),
@@ -51,7 +51,7 @@ export default async function People({ searchParams }: { searchParams: Promise<{
           pickFolder: t("people.pickGroup", { name: "{name}" }),
         }}
       />
-      <TabBar active="people" t={t} voice={aiConfigured()} fab={<AddFab label={t("people.add")} />} />
+      <TabBar active="people" t={t} voice={aiConfigured()} />
     </>
   );
 }

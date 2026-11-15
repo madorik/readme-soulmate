@@ -634,7 +634,7 @@ test("사람들 > 고르기: 사람을 고르면 알레르기를 빼고 메뉴�
   await page.getByRole("button", { name: "데모로 둘러보기" }).click();
   await expect(page).toHaveURL(/\/home/);
   await page.getByRole("link", { name: "사람들" }).click();
-  // 직접 적기는 오른쪽 아래 떠 있는 버튼. 선택 중에는 숨는다
+  // 직접 적기는 오른쪽 위 사람+ 아이콘. 선택 중에는 숨는다
   await expect(page.getByRole("link", { name: "직접 적기" })).toBeVisible();
   await shot(page, "17-people-fab");
   await page.getByRole("button", { name: "선택" }).click();

@@ -21,6 +21,8 @@ interface Labels {
   bannerTitle: string;
   bannerCta: string;
   pick: string;
+  /** 직접 적기(사람 더하기) 아이콘 버튼 */
+  add: string;
   cancel: string;
   withMe: string;
   meName: string;
@@ -95,11 +97,6 @@ export function PeopleBoard({
   useEffect(() => {
     if (window.location.pathname + window.location.search !== here) window.history.replaceState(window.history.state, "", here);
   }, [here]);
-  // 선택 중에는 오른쪽 아래 '직접 적기' 버튼(AddFab)을 숨긴다
-  useEffect(() => {
-    document.documentElement.toggleAttribute("data-people-picking", picking);
-    return () => document.documentElement.removeAttribute("data-people-picking");
-  }, [picking]);
   const [making, setMaking] = useState(false);
   // 찾기: 적는 동안은 폴더 칸 대신 찾은 사람(폴더와 상관없이 모두에서). 선택 중이면 고르는 목록을 줄인다
   const [find, setFind] = useState("");
@@ -155,18 +152,26 @@ export function PeopleBoard({
           <h1 className="headline text-[26px]">{labels.title}</h1>
           {rows.length ? <span className="text-[13px] font-medium text-muted">{labels.summary.replace("{n}", String(rows.length)).replace("{f}", String(favCount))}</span> : null}
         </div>
-        {canPick ? (
-          <button type="button" aria-pressed={picking} onClick={() => setPicking(!picking)} className={`pill !h-10 shrink-0 !gap-1.5 !px-3.5 ${picking ? "grad !shadow-none" : ""}`}>
-            {picking ? (
-              labels.cancel
-            ) : (
-              <>
-                <Icon name="check" size={17} strokeWidth={2} />
-                {labels.pick}
-              </>
-            )}
-          </button>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {/* 직접 적기: 사람 아이콘 + (선택 중에는 숨긴다) */}
+          {picking ? null : (
+            <Link href="/people/new" aria-label={labels.add} className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)] transition-transform active:scale-95">
+              <Icon name="personAdd" size={20} strokeWidth={2} />
+            </Link>
+          )}
+          {canPick ? (
+            <button type="button" aria-pressed={picking} onClick={() => setPicking(!picking)} className={`pill !h-10 shrink-0 !gap-1.5 !px-3.5 ${picking ? "grad !shadow-none" : ""}`}>
+              {picking ? (
+                labels.cancel
+              ) : (
+                <>
+                  <Icon name="check" size={17} strokeWidth={2} />
+                  {labels.pick}
+                </>
+              )}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {rows.length ? (
@@ -191,6 +196,23 @@ export function PeopleBoard({
           ) : null}
         </div>
       ) : null}
+
+      {/* 물어보기: 찾기 칸 밑 한 줄(카드 전체를 누른다). 찾는 중·선택 중에는 숨긴다 */}
+      {picking || searching ? null : (
+        <Link
+          href="/request"
+          className="mx-4 mt-3 flex min-h-[64px] items-center gap-3 rounded-[20px] bg-paper py-2 pl-2 pr-2.5 shadow-[inset_0_0_0_1.5px_var(--color-rule)] transition-transform active:scale-[0.99]"
+        >
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-soft">
+            <Mascot size={36} bubble="question" />
+          </span>
+          <span className="min-w-0 flex-1 text-[15px] font-bold tracking-[-0.02em]">{labels.bannerTitle}</span>
+          <span className="grad flex h-9 shrink-0 items-center gap-0.5 rounded-full pl-3.5 pr-2.5 text-[13.5px] font-bold">
+            {labels.bannerCta}
+            <Icon name="chevron" size={15} strokeWidth={2.2} />
+          </span>
+        </Link>
+      )}
 
       {picking ? (
         <div className="flex flex-col px-4 pt-3">
@@ -321,19 +343,6 @@ export function PeopleBoard({
             <p className="px-6 pt-6 text-[14px] leading-[1.6] text-muted">{labels.empty}</p>
           )}
 
-          <section className="grad-hero relative mx-4 mt-4 flex items-center gap-2 overflow-hidden rounded-3xl py-4 pl-5 pr-3">
-            <span aria-hidden="true" className="absolute -bottom-14 -right-8 h-36 w-36 rounded-full bg-white/25" />
-            <div className="relative flex min-w-0 flex-1 flex-col gap-1.5">
-              <span className="text-[16.5px] font-bold leading-[1.35] tracking-[-0.02em]">{labels.bannerTitle}</span>
-              <Link href="/request" className="mt-1.5 flex h-9 items-center gap-0.5 self-start rounded-full bg-white pl-3.5 pr-2.5 text-[13.5px] font-bold text-accent">
-                {labels.bannerCta}
-                <Icon name="chevron" size={15} strokeWidth={2.2} />
-              </Link>
-            </div>
-            <span className="relative">
-              <Mascot size={86} bubble="question" />
-            </span>
-          </section>
         </div>
       )}
 
@@ -348,8 +357,7 @@ export function PeopleBoard({
           </div>
         </div>
       ) : (
-        // 오른쪽 아래 떠 있는 버튼에 마지막 줄이 가리지 않게
-        <div className="h-24" />
+        <div className="h-5" />
       )}
       {making ? <FolderSheet labels={sheet} onClose={() => setMaking(false)} /> : null}
       {drag.ghost}
