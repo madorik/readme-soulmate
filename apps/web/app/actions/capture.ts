@@ -113,7 +113,9 @@ export async function captureNote(raw: string, aboutId?: string): Promise<Captur
         const card = cards.get(who)!;
         const op = item.op;
         const merged = mergeCapture(field, card[field.section], item, op);
-        const line = { who: names.get(who)!, isNew, op, field: field.label[locale], value: describeCapture(field, item, locale), href };
+        // 내 리드미의 선물 목록은 '받고 싶은 것', 다른 사람 기록에서는 '해주고 싶은 선물'
+        const label = who === "me" && field.key === "gifts.wishlist" ? translate(locale, "gift.wishTitle") : field.label[locale];
+        const line = { who: names.get(who)!, isNew, op, field: label, value: describeCapture(field, item, locale), href };
         if (!merged) {
           // 이미 그대로 적혀 있으면 '이미 알고 있어요', 지울 게 없으면 '이미 없어요'(값이 틀린 더하기·바꾸기는 버린다)
           if (op === "remove" || mergeCapture(field, null, item, op)) lines.push({ ...line, same: true });

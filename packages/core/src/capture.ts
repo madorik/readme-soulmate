@@ -1,6 +1,6 @@
 // 말로 적기: "와이프는 바닐라라떼를 좋아해" 같은 말을 AI가 (사람, 칸, 값)으로 나누면, 여기서 그 칸에 합친다.
 // 어느 칸에도 안 맞는 말은 그 사람의 메모로 간다(target "memo"). 순수 함수라 서버·테스트가 같이 쓴다.
-import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, PATTERNS, SEASONS, SPICY_LEVELS, STYLES, type CatalogItem } from "./catalog";
+import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, PATTERNS, SEASONS, SPICY_LEVELS, STYLES, VIBES, type CatalogItem } from "./catalog";
 import { emptySection, sanitizeSection, type CardData, type Section } from "./card";
 import type { DateSpec } from "./calendar";
 import type { Locale } from "./locale";
@@ -52,16 +52,18 @@ export const CAPTURE_FIELDS: CaptureField[] = [
   f("sizes.bottom", "text", "하의", "Bottom", { replace: true }),
   f("sizes.shoe", "number", "신발(mm)", "Shoe (mm)", { range: [180, 330] }),
   f("sizes.ring", "number", "반지(호)", "Ring size", { range: [1, 30] }),
-  f("gifts.wishlist", "list", "받고 싶은 것", "Wishlist"),
+  f("gifts.wishlist", "list", "해주고 싶은 선물", "Gift ideas"),
   f("gifts.skip", "list", "사양하는 것", "Please skip"),
   f("gifts.brands", "list", "좋아하는 브랜드", "Favorite brands"),
-  f("gifts.scent", "text", "향", "Scent"),
-  f("gifts.flowers", "text", "꽃", "Flowers"),
   f("gifts.giftCard", "code", "상품권", "Gift cards", { catalog: [{ code: "yes", label: { ko: "좋아요", en: "Yes" } }, { code: "no", label: { ko: "싫어요", en: "No" } }] }),
+  f("favorites.scent", "text", "향", "Scent"),
+  f("favorites.flowers", "text", "꽃", "Flowers"),
   f("favorites.colors", "codes", "좋아하는 색", "Colors", { catalog: COLORS }),
   f("favorites.patterns", "codes", "무늬", "Patterns", { catalog: PATTERNS }),
   f("favorites.styles", "codes", "옷 스타일", "Style", { catalog: STYLES }),
   f("favorites.metals", "codes", "액세서리 색", "Metals", { catalog: METALS }),
+  f("favorites.vibes", "codes", "좋아하는 분위기", "Vibe", { catalog: VIBES }),
+  f("favorites.places", "list", "좋아하는 장소", "Favorite places"),
   f("favorites.idol", "text", "최애 연예인·가수", "Favorite star"),
   f("favorites.character", "text", "좋아하는 캐릭터", "Favorite character"),
   f("favorites.team", "text", "응원하는 팀", "Team"),

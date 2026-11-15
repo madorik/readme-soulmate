@@ -13,6 +13,7 @@ import {
   SEASONS,
   SPICY_LEVELS,
   STYLES,
+  VIBES,
   describeRing,
   describeShoe,
   describeTop,
@@ -131,7 +132,7 @@ export function SectionBody({ section, card, today, locale, t }: { section: Sect
       return (
         <>
           {g.wishlist.length ? (
-            <Row label={t("gift.wishlist")}>
+            <Row label={t("gift.ideas")}>
               <span className="flex flex-col">
                 {g.wishlist.map((w, i) =>
                   w.url ? (
@@ -146,8 +147,6 @@ export function SectionBody({ section, card, today, locale, t }: { section: Sect
               </span>
             </Row>
           ) : null}
-          {g.flowers ? <Row label={t("gift.flowers")}>{g.flowers}</Row> : null}
-          {g.scent ? <Row label={t("gift.scent")}>{g.scent}</Row> : null}
           {g.brands?.length ? <Row label={t("gift.brands")}>{g.brands.join(and)}</Row> : null}
           {g.giftCard ? <Row label={t("gift.giftCard")}>{t(g.giftCard === "yes" ? "gift.giftCardYes" : "gift.giftCardNo")}</Row> : null}
           {g.skip.length ? (
@@ -163,6 +162,8 @@ export function SectionBody({ section, card, today, locale, t }: { section: Sect
       const f = card.favorites!;
       return (
         <>
+          {f.scent ? <Row label={t("gift.scent")}>{f.scent}</Row> : null}
+          {f.flowers ? <Row label={t("gift.flowers")}>{f.flowers}</Row> : null}
           {f.colors?.length ? (
             <Row label={t("gift.colors")} center>
               <span className="flex flex-wrap gap-x-3 gap-y-1.5">
@@ -185,6 +186,8 @@ export function SectionBody({ section, card, today, locale, t }: { section: Sect
           {f.patterns.length ? <Row label={t("fav.patterns")}>{codes(PATTERNS, f.patterns)}</Row> : null}
           {f.styles.length ? <Row label={t("fav.styles")}>{codes(STYLES, f.styles)}</Row> : null}
           {f.metals.length ? <Row label={t("fav.metals")}>{codes(METALS, f.metals)}</Row> : null}
+          {f.vibes?.length ? <Row label={t("fav.vibes")}>{codes(VIBES, f.vibes)}</Row> : null}
+          {f.places?.length ? <Row label={t("fav.places")}>{f.places.join(and)}</Row> : null}
         </>
       );
     }

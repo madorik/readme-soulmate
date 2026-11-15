@@ -50,7 +50,7 @@ export default async function Reminder({ params, searchParams }: { params: Promi
     ...realCodes(safety?.allergens).map((c) => `${labelOf(ALLERGENS, c, locale)} ${t("person.allergy")}`),
     ...realCodes(safety?.dislikes).map((c) => labelOf(DISLIKES, c, locale)),
   ];
-  const hasHints = !!(favHint || styleHint || taste?.dessert || life?.hobbies.length || gifts?.flowers || gifts?.scent || gifts?.wishlist.length || gifts?.skip.length || meal.length || taste?.spicy != null || notes.length || sizes?.shoe);
+  const hasHints = !!(favHint || styleHint || taste?.dessert || life?.hobbies.length || fav?.flowers || fav?.scent || fav?.places?.length || gifts?.wishlist.length || gifts?.skip.length || meal.length || taste?.spicy != null || notes.length || sizes?.shoe);
   const shareText = next ? `${event} ${formatDayFull(next.date, locale)}${spec?.calendar === "lunar" ? ` (${formatSpec(spec, locale)})` : ""}` : event;
 
   return (
@@ -80,9 +80,10 @@ export default async function Reminder({ params, searchParams }: { params: Promi
         {!hasHints ? <p className="row text-[14px] leading-[1.6] text-muted">{t("reminder.noHints", { name })}</p> : null}
         {life?.hobbies.length ? <Hint label={t("life.hobbies")}>{life.hobbies.join(t("common.and"))}</Hint> : null}
         {favHint ? <Hint label={t("fav.people")}>{favHint}</Hint> : null}
-        {gifts?.flowers ? <Hint label={t("reminder.flowers")}>{gifts.flowers}</Hint> : null}
-        {gifts?.scent ? <Hint label={t("reminder.scent")}>{gifts.scent}</Hint> : null}
         {gifts?.wishlist.length ? <Hint label={t("reminder.wish")}>{gifts.wishlist.map((w) => w.title).join(t("common.and"))}</Hint> : null}
+        {fav?.flowers ? <Hint label={t("reminder.flowers")}>{fav.flowers}</Hint> : null}
+        {fav?.scent ? <Hint label={t("reminder.scent")}>{fav.scent}</Hint> : null}
+        {fav?.places?.length ? <Hint label={t("fav.places")}>{fav.places.join(t("common.and"))}</Hint> : null}
         {sizes?.shoe ? <Hint label={t("size.shoe")}>{sizes.shoe}mm</Hint> : null}
         {styleHint ? <Hint label={t("fav.style")}>{styleHint}</Hint> : null}
         {taste?.dessert ? <Hint label={t("fav.dessert")}>{taste.dessert}</Hint> : null}

@@ -1,5 +1,5 @@
 import { isValidSpec, type DateSpec } from "./calendar";
-import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, NONE_LABEL, PATTERNS, SEASONS, STYLES, codesOf, type CatalogItem, type Relation } from "./catalog";
+import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, VIBES, MUSIC_GENRES, NONE, NONE_LABEL, PATTERNS, SEASONS, STYLES, codesOf, type CatalogItem, type Relation } from "./catalog";
 
 // 리드미(카드)는 항목(section) 여덟 개로 나눠 저장한다. 공유도 항목 단위로 허락한다.
 
@@ -58,22 +58,28 @@ export interface WishItem {
 }
 
 export interface GiftsData {
-  scent: string;
-  flowers: string;
   giftCard: "yes" | "no" | null;
+  /** 해주고 싶은 선물(내가 기록할 때: '나중에 사 줘야지'). 내 리드미·답하기에서는 받고 싶은 것 */
   wishlist: WishItem[];
   skip: string[];
   /** 좋아하는 브랜드 */
   brands: string[];
 }
 
-/** 좋아하는 것들: 고르는 칸은 코드, 적는 칸은 글 */
+/** 취향(예전 이름 '좋아하는 것들'): 고르는 칸은 코드, 적는 칸은 글 */
 export interface FavoritesData {
+  /** 좋아하는 향·꽃(예전엔 선물 칸에 있었다, 0015) */
+  scent: string;
+  flowers: string;
   /** 좋아하는 색(COLORS 코드, 다섯 개까지). 예전엔 선물 칸에 있었다 */
   colors: string[];
   patterns: string[];
   styles: string[];
   metals: string[];
+  /** 좋아하는 분위기(VIBES 코드) */
+  vibes: string[];
+  /** 좋아하는 장소(바다, 한옥 카페…) */
+  places: string[];
   /** 최애 연예인·가수 */
   idol: string;
   character: string;
@@ -134,12 +140,16 @@ export function emptySection<S extends Section>(section: S): CardData[S] {
     safety: { allergens: [], allergyNote: "", dislikes: [], diets: [] },
     taste: { likes: [], spicy: null, dessert: "", drinks: "", alcohol: { level: null, kinds: [] } },
     sizes: { top: "", bottom: "", shoe: null, ring: null },
-    gifts: { scent: "", flowers: "", giftCard: null, wishlist: [], skip: [], brands: [] },
+    gifts: { giftCard: null, wishlist: [], skip: [], brands: [] },
     favorites: {
+      scent: "",
+      flowers: "",
       colors: [],
       patterns: [],
       styles: [],
       metals: [],
+      vibes: [],
+      places: [],
       idol: "",
       character: "",
       team: "",
@@ -218,6 +228,16 @@ function noneableTags(v: unknown, list: CatalogItem[]): string[] {
   return real.length ? real : out.includes(NONE) ? [NONE] : [];
 }
 
+/** 예전 모양(선물 칸의 향·꽃)을 지금 모양(취향 칸)으로. 취향 칸에 이미 그 값이 있으면 그대로 둔다 */
+export function liftGiftTastes(raw: Record<string, unknown>): Record<string, unknown> {
+  const gifts = raw.gifts && typeof raw.gifts === "object" ? (raw.gifts as Record<string, unknown>) : null;
+  if (!gifts || !("scent" in gifts || "flowers" in gifts)) return raw;
+  const favorites = { ...(raw.favorites && typeof raw.favorites === "object" ? (raw.favorites as Record<string, unknown>) : {}) };
+  for (const k of ["scent", "flowers"]) if (!favorites[k] && typeof gifts[k] === "string" && gifts[k]) favorites[k] = gifts[k];
+  const { scent: _s, flowers: _f, ...rest } = gifts;
+  return { ...raw, gifts: rest, favorites };
+}
+
 function intIn(v: unknown, min: number, max: number): number | null {
   const n = typeof v === "string" && v.trim() !== "" ? Number(v) : v;
   if (typeof n !== "number" || !Number.isInteger(n) || n < min || n > max) return null;
@@ -251,9 +271,10 @@ const FAVORITE_CODES = {
   patterns: codesOf(PATTERNS),
   styles: codesOf(STYLES),
   metals: codesOf(METALS),
+  vibes: codesOf(VIBES),
 };
-export const FAVORITE_TEXT_KEYS = ["idol", "character", "team", "animal"] as const;
-export const FAVORITE_CODE_KEYS = ["patterns", "styles", "metals"] as const;
+export const FAVORITE_TEXT_KEYS = ["scent", "flowers", "idol", "character", "team", "animal"] as const;
+export const FAVORITE_CODE_KEYS = ["patterns", "styles", "metals", "vibes"] as const;
 const CULTURE_CODES = {
   movieGenres: codesOf(MOVIE_GENRES),
   musicGenres: codesOf(MUSIC_GENRES),
@@ -300,8 +321,6 @@ export function sanitizeSection<S extends Section>(section: S, input: unknown): 
         .filter((w) => w.title)
         .slice(0, 10);
       out = {
-        scent: text(o.scent),
-        flowers: text(o.flowers),
         giftCard: o.giftCard === "yes" || o.giftCard === "no" ? o.giftCard : null,
         wishlist,
         skip: textList(o.skip),
@@ -313,6 +332,7 @@ export function sanitizeSection<S extends Section>(section: S, input: unknown): 
       const f = { colors: codeList(o.colors, COLOR_CODES).slice(0, 5) } as Record<string, unknown>;
       for (const k of FAVORITE_CODE_KEYS) f[k] = noneableList(o[k], FAVORITE_CODES[k]);
       for (const k of FAVORITE_TEXT_KEYS) f[k] = text(o[k]);
+      f.places = textList(o.places);
       out = f as unknown as FavoritesData;
       break;
     }
@@ -361,7 +381,7 @@ export function isEmptySection(section: Section, data: CardData[Section] | null 
     }
     case "gifts": {
       const d = data as GiftsData;
-      return !d.scent && !d.flowers && d.giftCard == null && !d.wishlist.length && !d.skip.length && !d.brands?.length;
+      return d.giftCard == null && !d.wishlist.length && !d.skip.length && !d.brands?.length;
     }
     case "dates": {
       const d = data as DatesData;
@@ -369,7 +389,7 @@ export function isEmptySection(section: Section, data: CardData[Section] | null 
     }
     case "favorites": {
       const d = data as FavoritesData;
-      return !d.colors?.length && FAVORITE_CODE_KEYS.every((k) => !d[k]?.length) && FAVORITE_TEXT_KEYS.every((k) => !d[k]);
+      return !d.colors?.length && !d.places?.length && FAVORITE_CODE_KEYS.every((k) => !d[k]?.length) && FAVORITE_TEXT_KEYS.every((k) => !d[k]);
     }
     case "culture": {
       const d = data as CultureData;

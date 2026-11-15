@@ -29,7 +29,7 @@ export default async function PlanGift({ searchParams }: { searchParams: Promise
     const sizes = [top ? `${t("size.top")} ${top.value}${top.unit}` : "", z?.bottom ? `${t("size.bottom")} ${z.bottom}` : "", shoe ? `${t("size.shoe")} ${shoe.value}mm` : "", z?.ring ? `${t("size.ring")} ${z.ring}` : ""].filter(Boolean).join(and);
     return [
       l?.hobbies.length ? { label: t("life.hobbies"), value: l.hobbies.join(and) } : null,
-      g?.wishlist.length ? { label: t("gift.wishlist"), value: g.wishlist.map((w) => w.title).join(and) } : null,
+      g?.wishlist.length ? { label: t("gift.ideas"), value: g.wishlist.map((w) => w.title).join(and) } : null,
       g?.brands?.length ? { label: t("gift.brands"), value: g.brands.join(and) } : null,
       f?.idol ? { label: t("fav.idol"), value: f.idol } : null,
       f?.character ? { label: t("fav.character"), value: f.character } : null,
@@ -37,8 +37,9 @@ export default async function PlanGift({ searchParams }: { searchParams: Promise
       f?.animal ? { label: t("fav.animal"), value: f.animal } : null,
       style ? { label: t("fav.style"), value: style } : null,
       f?.colors?.length ? { label: t("gift.colors"), value: f.colors.map((x) => labelOf(COLORS, x, locale)).join(and) } : null,
-      g?.flowers ? { label: t("gift.flowers"), value: g.flowers } : null,
-      g?.scent ? { label: t("gift.scent"), value: g.scent } : null,
+      f?.flowers ? { label: t("gift.flowers"), value: f.flowers } : null,
+      f?.scent ? { label: t("gift.scent"), value: f.scent } : null,
+      f?.places?.length ? { label: t("fav.places"), value: f.places.join(and) } : null,
       tt?.dessert ? { label: t("fav.dessert"), value: tt.dessert } : null,
       c?.book ? { label: t("fav.book"), value: c.book } : null,
       g?.giftCard ? { label: t("gift.giftCard"), value: t(g.giftCard === "yes" ? "gift.giftCardYes" : "gift.giftCardNo") } : null,

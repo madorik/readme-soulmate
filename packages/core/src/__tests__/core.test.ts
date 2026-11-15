@@ -156,14 +156,17 @@ test("오늘의 질문: 답한 건 건너뛰고, 답은 카드 칸에", () => {
   assert.ok(q);
   const all = questionFor(TODAY, {
     taste: { likes: [], spicy: 2, dessert: "", drinks: "라떼", alcohol: { level: null, kinds: [] } },
-    gifts: { scent: "우디", flowers: "튤립", giftCard: "yes", wishlist: [], skip: [], brands: [] },
+    gifts: { giftCard: "yes", wishlist: [], skip: [], brands: [] },
     life: sanitizeSection("life", { seasons: ["autumn"] }),
-    favorites: sanitizeSection("favorites", { patterns: ["stripe"], metals: ["silver"], styles: ["minimal"] }),
+    favorites: sanitizeSection("favorites", { scent: "우디", flowers: "튤립", patterns: ["stripe"], metals: ["silver"], styles: ["minimal"] }),
     culture: sanitizeSection("culture", { musicGenres: ["indie"], movieGenres: ["comedy"] }),
   });
   assert.equal(all, null);
   assert.deepEqual(applyAnswer({}, "drinks", "아메리카노"), { taste: { likes: [], spicy: null, dessert: "", drinks: "아메리카노", alcohol: { level: null, kinds: [] } } });
   assert.equal(applyAnswer({}, "giftCard", "no").gifts?.giftCard, "no");
+  // 향·꽃은 취향 칸으로
+  assert.equal(applyAnswer({}, "flowers", "튤립").favorites?.flowers, "튤립");
+  assert.equal(applyAnswer({}, "scent", "우디").favorites?.scent, "우디");
 });
 
 test("초대 토큰과 코드", async () => {

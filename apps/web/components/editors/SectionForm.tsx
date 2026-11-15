@@ -100,7 +100,7 @@ export function SectionForm<S extends Section>({
       {section === "safety" ? <SafetyEditor value={value as CardData["safety"]} onChange={change} locale={locale} /> : null}
       {section === "taste" ? <TasteEditor value={value as CardData["taste"]} onChange={change} locale={locale} /> : null}
       {section === "sizes" ? <SizesEditor value={value as CardData["sizes"]} onChange={change} locale={locale} /> : null}
-      {section === "gifts" ? <GiftsEditor value={value as CardData["gifts"]} onChange={change} locale={locale} /> : null}
+      {section === "gifts" ? <GiftsEditor value={value as CardData["gifts"]} onChange={change} locale={locale} forOther={!!contactId} /> : null}
       {section === "dates" ? <DatesEditor value={value as CardData["dates"]} onChange={change} locale={locale} /> : null}
       {section === "favorites" ? <FavoritesEditor value={value as CardData["favorites"]} onChange={change} locale={locale} /> : null}
       {section === "culture" ? <CultureEditor value={value as CardData["culture"]} onChange={change} locale={locale} /> : null}

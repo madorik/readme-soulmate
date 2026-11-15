@@ -123,6 +123,18 @@ export const METALS: CatalogItem[] = [
   item("rosegold", "로즈골드", "Rose gold"),
 ];
 
+/** 취향: 좋아하는 분위기(약속·데이트 장소 고를 때) */
+export const VIBES: CatalogItem[] = [
+  item("quiet", "조용한", "Quiet"),
+  item("cozy", "아늑한", "Cozy"),
+  item("lively", "활기찬", "Lively"),
+  item("nature", "자연 속", "In nature"),
+  item("chic", "세련된", "Chic"),
+  item("retro", "레트로", "Retro"),
+  item("cute", "아기자기한", "Charming"),
+  item("fancy", "고급스러운", "Upscale"),
+];
+
 /** 좋아하는 것들: 영화 장르 */
 export const MOVIE_GENRES: CatalogItem[] = [
   item("romance", "로맨스", "Romance"),

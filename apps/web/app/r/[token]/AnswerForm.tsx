@@ -26,7 +26,6 @@ function GiftsLite({ value, onChange, locale }: { value: GiftsData; onChange: (v
   const [skip, setSkip] = useState(joinList(value.skip));
   return (
     <div className="flex flex-col gap-5">
-      <TextField label={t("gift.flowers")} value={value.flowers} onChange={(flowers) => onChange({ ...value, flowers })} placeholder={t("gift.flowersPlaceholder")} />
       <div className="flex flex-col gap-1">
         <span className="text-[14px] font-bold">{t("gift.giftCard")}</span>
         <div className="flex flex-wrap gap-2">

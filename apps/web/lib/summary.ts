@@ -43,13 +43,13 @@ export function summarize(section: Section, data: CardData[Section] | undefined,
     }
     case "gifts": {
       const d = data as CardData["gifts"];
-      return [d.flowers, d.brands?.slice(0, 2).join(and) ?? "", d.wishlist.length ? `${t("gift.wishlist")} ${d.wishlist.length}` : ""]
+      return [d.wishlist.slice(0, 2).map((w) => w.title).join(and), d.brands?.slice(0, 2).join(and) ?? "", d.giftCard ? `${t("gift.giftCard")} ${t(d.giftCard === "yes" ? "gift.giftCardYes" : "gift.giftCardNo")}` : ""]
         .filter(Boolean)
         .join(" / ");
     }
     case "favorites": {
       const d = data as CardData["favorites"];
-      return [(d.colors ?? []).map((c) => labelOf(COLORS, c, locale)).join(and), d.idol, d.character, d.patterns.slice(0, 2).map((c) => labelOf(PATTERNS, c, locale)).join(and), d.animal]
+      return [d.scent, d.flowers, (d.colors ?? []).map((c) => labelOf(COLORS, c, locale)).join(and), (d.places ?? []).slice(0, 2).join(and), d.idol, d.character, d.patterns.slice(0, 2).map((c) => labelOf(PATTERNS, c, locale)).join(and), d.animal]
         .filter(Boolean)
         .slice(0, 4)
         .join(" / ");

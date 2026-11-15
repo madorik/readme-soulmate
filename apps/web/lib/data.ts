@@ -4,6 +4,7 @@ import {
   inviteStatus,
   isLocale,
   isSection,
+  liftGiftTastes,
   sanitizeAvatar,
   sanitizeOffsets,
   sanitizeSection,
@@ -177,7 +178,8 @@ export function openPrefill(tokenHash: string, payload: unknown): PartialCard {
   const raw = open(payload, aad.prefill(tokenHash)) as { card?: unknown } | null;
   const card: PartialCard = {};
   if (raw?.card && typeof raw.card === "object") {
-    for (const [section, value] of Object.entries(raw.card as Record<string, unknown>)) {
+    // 0015 전에 보낸 물어보기: 선물 칸의 향·꽃을 취향 칸으로
+    for (const [section, value] of Object.entries(liftGiftTastes(raw.card as Record<string, unknown>))) {
       if (isSection(section)) (card as Record<string, unknown>)[section] = sanitizeSection(section, value);
     }
   }

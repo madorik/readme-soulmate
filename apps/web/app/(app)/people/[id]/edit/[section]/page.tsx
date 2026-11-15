@@ -19,7 +19,7 @@ export default async function EditPersonSection({ params }: { params: Promise<{ 
       <div className="flex flex-col gap-1.5 px-6 pt-2">
         <span className="text-[14px] font-bold text-muted">{displayName(p)}</span>
         <h1 className="headline text-[28px]">{t(`section.${section}` as "section.safety")}</h1>
-        <p className="text-[14px] leading-[1.5] text-muted">{t(`section.${section}.sub` as "section.safety.sub")}</p>
+        <p className="text-[14px] leading-[1.5] text-muted">{section === "gifts" ? t("section.gifts.subOther") : t(`section.${section}.sub` as "section.safety.sub")}</p>
       </div>
       <SectionForm section={section} initial={p.card[section] ?? null} locale={s.profile.locale} contactId={p.contactId} />
     </div>

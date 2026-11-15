@@ -5,7 +5,11 @@ import { useState } from "react";
 import { Icon } from "../marks";
 import { CircleOption, SectionHeading, TextField, joinList, splitList, useT } from "./shared";
 
-export function GiftsEditor({ value, onChange, locale }: { value: GiftsData; onChange: (v: GiftsData) => void; locale: Locale }) {
+/**
+ * 선물: 상품권 · 해주고 싶은 선물(다른 사람 기록, '나중에 사 줘야지') 또는 받고 싶은 것(내 리드미) · 사양하는 것 · 브랜드.
+ * 향·꽃은 취향 항목으로 옮겼다
+ */
+export function GiftsEditor({ value, onChange, locale, forOther = false }: { value: GiftsData; onChange: (v: GiftsData) => void; locale: Locale; forOther?: boolean }) {
   const t = useT(locale);
   const [skip, setSkip] = useState(joinList(value.skip));
   const [brands, setBrands] = useState(joinList(value.brands ?? []));
@@ -14,8 +18,6 @@ export function GiftsEditor({ value, onChange, locale }: { value: GiftsData; onC
 
   return (
     <div className="flex flex-col gap-6">
-      <TextField label={t("gift.scent")} value={value.scent} onChange={(scent) => onChange({ ...value, scent })} placeholder={t("gift.scentPlaceholder")} />
-      <TextField label={t("gift.flowers")} value={value.flowers} onChange={(flowers) => onChange({ ...value, flowers })} placeholder={t("gift.flowersPlaceholder")} />
       <div className="flex flex-col gap-1.5">
         <SectionHeading>{t("gift.giftCard")}</SectionHeading>
         <div className="flex flex-wrap gap-2 pt-1">
@@ -24,11 +26,11 @@ export function GiftsEditor({ value, onChange, locale }: { value: GiftsData; onC
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <SectionHeading>{t("gift.wishlist")}</SectionHeading>
+        <SectionHeading>{forOther ? t("gift.ideas") : t("gift.wishlist")}</SectionHeading>
         {value.wishlist.map((w, i) => (
           <div key={i} className="flex flex-col gap-2 border-t border-rule pt-3">
             <div className="flex items-center gap-2">
-              <input value={w.title} onChange={(e) => setWish(i, { title: e.target.value })} placeholder={t("gift.wishTitle")} aria-label={t("gift.wishTitle")} className="field" />
+              <input value={w.title} onChange={(e) => setWish(i, { title: e.target.value })} placeholder={forOther ? t("gift.ideaTitle") : t("gift.wishTitle")} aria-label={forOther ? t("gift.ideaTitle") : t("gift.wishTitle")} className="field" />
               <button type="button" aria-label={t("common.delete")} onClick={() => onChange({ ...value, wishlist: value.wishlist.filter((_, j) => j !== i) })} className="flex h-11 w-11 shrink-0 items-center justify-center text-muted">
                 <Icon name="close" size={20} />
               </button>
@@ -39,7 +41,7 @@ export function GiftsEditor({ value, onChange, locale }: { value: GiftsData; onC
         {value.wishlist.length < 10 ? (
           <button type="button" onClick={() => onChange({ ...value, wishlist: [...value.wishlist, { title: "", url: "" }] })} className="pill self-start">
             <Icon name="plus" size={17} />
-            {t("gift.addWish")}
+            {forOther ? t("gift.addIdea") : t("gift.addWish")}
           </button>
         ) : null}
       </div>

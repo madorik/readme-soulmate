@@ -99,9 +99,9 @@ export function isAnswered(card: Partial<CardData>, id: DailyQuestion["id"]): bo
     case "drinks":
       return !!card.taste?.drinks;
     case "flowers":
-      return !!card.gifts?.flowers;
+      return !!card.favorites?.flowers;
     case "scent":
-      return !!card.gifts?.scent;
+      return !!card.favorites?.scent;
     case "giftCard":
       return card.gifts?.giftCard != null;
     case "spicy":
@@ -138,10 +138,10 @@ export function applyAnswer(card: Partial<CardData>, id: DailyQuestion["id"], va
     }
     case "flowers":
     case "scent":
+      return { favorites: { ...emptySection("favorites"), ...card.favorites, [id]: text } };
     case "giftCard": {
       const base = { ...emptySection("gifts"), ...card.gifts };
-      if (id === "giftCard") return { gifts: { ...base, giftCard: v === "yes" ? "yes" : v === "no" ? "no" : null } };
-      return { gifts: { ...base, [id]: text } };
+      return { gifts: { ...base, giftCard: v === "yes" ? "yes" : v === "no" ? "no" : null } };
     }
     case "season": {
       const base = { ...emptySection("life"), ...card.life };
