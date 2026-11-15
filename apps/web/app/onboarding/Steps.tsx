@@ -9,7 +9,6 @@ import { DateSpecPicker, ReminderPicker } from "@/components/editors/DatesEditor
 import { SafetyEditor } from "@/components/editors/SafetyEditor";
 import { SpicyScale } from "@/components/editors/TasteEditor";
 import { useT } from "@/components/editors/shared";
-import { Icon } from "@/components/marks";
 
 export function Submit({ children, disabled, className = "w-full" }: { children: React.ReactNode; disabled?: boolean; className?: string }) {
   const { pending } = useFormStatus();
@@ -24,26 +23,22 @@ export function Submit({ children, disabled, className = "w-full" }: { children:
 const SHEET = "relative z-10 -mt-6 flex flex-1 flex-col rounded-t-[28px] bg-paper";
 
 /**
- * 프로필 고치기 머리 줄(위에 붙어 늘 보인다): 제목 · 이름 칸 · 저장. 내 프로필과 사람 프로필이 같이 쓴다
+ * 프로필 고치기: 머리 줄(제목 · 오른쪽 끝 저장, 위에 붙어 늘 보인다) 아래에 이름 칸. 내 프로필과 사람 프로필이 같이 쓴다
  */
 export function ProfileHeader({ title, name, nameLabel, save, required = true }: { title: string; name: string; nameLabel: string; save: string; required?: boolean }) {
   return (
-    <div className="sticky z-30 flex items-center gap-2 bg-bg px-4 pb-3 pt-1" style={{ top: "var(--sat)" }}>
-      <h1 className="headline max-w-[45%] shrink-0 truncate text-[24px]">{title}</h1>
-      <label className="flex h-11 min-w-0 flex-1 items-center gap-1.5 rounded-full bg-paper pl-3.5 pr-3 shadow-[inset_0_0_0_1.5px_var(--color-rule)]">
-        <input
-          name="name"
-          defaultValue={name}
-          required={required}
-          maxLength={40}
-          placeholder={nameLabel}
-          aria-label={nameLabel}
-          className="min-w-0 flex-1 bg-transparent text-[16px] font-bold tracking-[-0.02em] outline-none placeholder:font-medium placeholder:text-muted"
-        />
-        <Icon name="pencil" size={14} strokeWidth={2} className="shrink-0 text-muted" />
-      </label>
-      <Submit className="!h-11 shrink-0 !rounded-full px-[18px] !text-[15px]">{save}</Submit>
-    </div>
+    <>
+      <div className="sticky z-30 flex items-center gap-3 bg-bg px-4 pb-3 pt-1" style={{ top: "var(--sat)" }}>
+        <h1 className="headline min-w-0 flex-1 truncate pl-2 text-[28px]">{title}</h1>
+        <Submit className="!h-11 shrink-0 !rounded-full px-5 !text-[15px]">{save}</Submit>
+      </div>
+      <div className="px-4">
+        <label className="mb-3 flex min-h-14 items-center gap-3 rounded-[18px] bg-paper px-4 shadow-[inset_0_0_0_1.5px_var(--color-rule)]">
+          <span className="shrink-0 text-[13px] font-bold text-muted">{nameLabel}</span>
+          <input name="name" defaultValue={name} required={required} maxLength={40} className="min-w-0 flex-1 bg-transparent text-[18px] font-bold tracking-[-0.02em] outline-none" />
+        </label>
+      </div>
+    </>
   );
 }
 
