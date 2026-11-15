@@ -28,7 +28,7 @@ export const ko = {
   "common.and": ", ",
 
   "start.headline": "사랑하는 사람들의\n*컨닝페이퍼*",
-  "start.body": "언제 물어봐도 정답을 아는 사람,\n오늘부터 당신이에요.",
+  "start.body": "언제 물어봐도 정답을 아는 사람,\n오늘부터 당신이에유.",
   "start.kakao": "카카오로 시작하기",
   "start.apple": "Apple로 계속하기",
   "start.google": "Google로 계속하기",
