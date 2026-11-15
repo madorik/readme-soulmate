@@ -39,7 +39,7 @@ export default async function AnswerPage({ params }: { params: Promise<{ token: 
 
   const header = (
     <div className="flex items-center justify-between px-6">
-      <Wordmark size={26} />
+      <Wordmark size={26} locale={locale} />
       <span className="text-[13px] font-bold text-muted">{t("answer.noInstall")}</span>
     </div>
   );

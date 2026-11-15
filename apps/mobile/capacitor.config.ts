@@ -12,7 +12,7 @@ writeFileSync(resolve("www/index.html"), readFileSync(resolve("offline.html"), "
 
 const config: CapacitorConfig = {
   appId: "kr.readme.app",
-  appName: "리드미",
+  appName: "기억해유",
   webDir: "www",
   backgroundColor: "#F6F7FB",
   server: {

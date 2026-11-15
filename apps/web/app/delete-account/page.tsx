@@ -7,15 +7,15 @@ export const metadata: Metadata = { title: "계정 삭제 · Delete Account" };
 // Google Play '계정 삭제 URL'로 등록하는 페이지: 앱 안에서 지우는 법, 앱 없이 요청하는 법, 일부만 지우는 법(#partial, 데이터 삭제 URL), 지워지는 것과 남는 것
 export default async function DeleteAccount({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const locale = await legalLocale((await searchParams).lang);
-  const mail = <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(locale === "ko" ? "리드미 계정 삭제 요청" : "README account deletion")}`}>{SUPPORT_EMAIL}</a>;
+  const mail = <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(locale === "ko" ? "기억해유 계정 삭제 요청" : "Remember You account deletion")}`}>{SUPPORT_EMAIL}</a>;
   if (locale === "en") {
     return (
-      <LegalPage locale="en" path="/delete-account" title="Delete your README account">
+      <LegalPage locale="en" path="/delete-account" title="Delete your Remember You account">
         <h2>In the app</h2>
         <ol>
-          <li>Open README and sign in.</li>
+          <li>Open Remember You and sign in.</li>
           <li>
-            Go to the <b>My README</b> tab, tap <b>Edit profile</b>, and scroll to the bottom.
+            Go to the <b>Me</b> tab, tap <b>Edit profile</b>, and scroll to the bottom.
           </li>
           <li>
             Tap <b>Delete account</b>, then <b>Delete everything</b>.
@@ -24,13 +24,13 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
 
         <h2>Without the app</h2>
         <p>
-          Email {mail} from the email address of your Google or Apple account with the subject &ldquo;README account deletion&rdquo;. We delete the account within 7 days and reply when it&rsquo;s done.
+          Email {mail} from the email address of your Google or Apple account with the subject &ldquo;Remember You account deletion&rdquo;. We delete the account within 7 days and reply when it&rsquo;s done.
         </p>
 
         <h2 id="partial">Delete some data and keep your account</h2>
         <ul>
           <li>
-            <b>My README</b>: open an item to clear it, or remove wishlist items and dates one by one.
+            <b>About me</b>: open an item to clear it, or remove wishlist items and dates one by one.
           </li>
           <li>
             <b>People</b>: open a person and tap × next to a private note to delete it.
@@ -47,7 +47,7 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
         <h2>What gets deleted with your account</h2>
         <ul>
           <li>Your account and sign-in information</li>
-          <li>Your README (favorites, allergies, sizes, gifts, dates) and avatar</li>
+          <li>About me (favorites, allergies, sizes, gifts, dates) and avatar</li>
           <li>Your people and your records about them, private notes, question links, notifications and settings</li>
         </ul>
         <p>Deletion is immediate and can&rsquo;t be undone. Database backups roll off within 7 days.</p>
@@ -60,12 +60,12 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
     );
   }
   return (
-    <LegalPage locale="ko" path="/delete-account" title="리드미 계정 삭제">
+    <LegalPage locale="ko" path="/delete-account" title="기억해유 계정 삭제">
       <h2>앱에서 지우기</h2>
       <ol>
-        <li>리드미를 열고 로그인합니다.</li>
+        <li>기억해유를 열고 로그인합니다.</li>
         <li>
-          아래 <b>내 리드미</b> 탭에서 <b>프로필 고치기</b>를 누르고 맨 아래로 내립니다.
+          아래 <b>나</b> 탭에서 <b>프로필 고치기</b>를 누르고 맨 아래로 내립니다.
         </li>
         <li>
           <b>계정 삭제</b>를 누르고 <b>모두 지우기</b>를 누릅니다.
@@ -73,12 +73,12 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
       </ol>
 
       <h2>앱 없이 요청하기</h2>
-      <p>가입한 Google·Apple 계정의 이메일로 {mail}에 &lsquo;리드미 계정 삭제 요청&rsquo;이라고 보내 주세요. 7일 안에 지우고 끝나면 답장합니다.</p>
+      <p>가입한 Google·Apple 계정의 이메일로 {mail}에 &lsquo;기억해유 계정 삭제 요청&rsquo;이라고 보내 주세요. 7일 안에 지우고 끝나면 답장합니다.</p>
 
       <h2 id="partial">계정은 두고 일부만 지우기</h2>
       <ul>
         <li>
-          <b>내 리드미</b>: 항목을 열어 내용을 비우거나, 위시리스트와 기념일을 하나씩 지웁니다.
+          <b>나에 대한 기록</b>: 항목을 열어 내용을 비우거나, 위시리스트와 기념일을 하나씩 지웁니다.
         </li>
         <li>
           <b>사람들</b>: 사람을 열고 나만 보는 메모 옆 ×를 누르면 그 메모가 지워집니다.
@@ -95,7 +95,7 @@ export default async function DeleteAccount({ searchParams }: { searchParams: Pr
       <h2>계정을 지우면 지워지는 것</h2>
       <ul>
         <li>계정과 로그인 정보</li>
-        <li>내 리드미(취향, 알레르기, 사이즈, 선물, 기념일)와 아바타</li>
+        <li>나에 대한 기록(취향, 알레르기, 사이즈, 선물, 기념일)와 아바타</li>
         <li>내 사람들과 그 사람들에 대한 기록, 나만 보는 메모, 물어보기 링크, 알림, 설정</li>
       </ul>
       <p>바로 지워지며 되돌릴 수 없습니다. 데이터베이스 백업에서도 7일 안에 사라집니다.</p>

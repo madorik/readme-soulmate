@@ -40,5 +40,5 @@ export async function onboard(page: Page, opts: { name: string; allergy?: string
   await page.getByLabel("일").selectOption(String(date.day));
   if (opts.lunar) await expect(page.getByText(/올해는 양력/)).toBeVisible();
   if (process.env.SHOTS && opts.lunar) await page.screenshot({ path: `${process.env.SHOTS}/00-birthday.png`, fullPage: true });
-  await page.getByRole("button", { name: "내 리드미 완성" }).click();
+  await page.getByRole("button", { name: "이제 시작해요" }).click();
 }

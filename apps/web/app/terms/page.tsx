@@ -12,25 +12,25 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
     return (
       <LegalPage locale="en" path="/terms" title="Terms of Use">
         <p>
-          These terms apply to README – Soulmate Cheat Sheet (&ldquo;README&rdquo;), run by {OPERATOR.en} (owner: {CEO.en}). By signing up or using README, you agree to them.
+          These terms apply to Remember You – Soulmate Cheat Sheet (&ldquo;Remember You&rdquo;), run by {OPERATOR.en} (owner: {CEO.en}). By signing up or using Remember You, you agree to them.
         </p>
 
         <h2>1. The service</h2>
         <p>
-          README lets you write down your own favorites, foods you can&rsquo;t eat, sizes and dates, keep the same about the people close to you, ask them questions to fill it in, and get birthday and
-          anniversary reminders. README is free. We may add, change or stop features, and will announce major changes in advance.
+          Remember You lets you write down your own favorites, foods you can&rsquo;t eat, sizes and dates, keep the same about the people close to you, ask them questions to fill it in, and get birthday and
+          anniversary reminders. Remember You is free. We may add, change or stop features, and will announce major changes in advance.
         </p>
 
         <h2>2. Accounts</h2>
         <ul>
           <li>Sign in with Google or Apple. You are responsible for your account and device.</li>
           <li>Demo accounts are for trying the app and are deleted after 7 days.</li>
-          <li>You must be 14 or older to use README.</li>
+          <li>You must be 14 or older to use Remember You.</li>
         </ul>
 
         <h2>3. What you write and ask</h2>
         <ul>
-          <li>What you write belongs to you. We use it only to run README as described in the <Link href="/privacy-policy?lang=en">Privacy Policy</Link>.</li>
+          <li>What you write belongs to you. We use it only to run Remember You as described in the <Link href="/privacy-policy?lang=en">Privacy Policy</Link>.</li>
           <li>
             You can write down what you know about someone, for your own reference only. It is never shown to them or anyone else. Don&rsquo;t write things they wouldn&rsquo;t want recorded, and delete it
             if they ask.
@@ -40,14 +40,14 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
 
         <h2>4. Not medical advice</h2>
         <p>
-          Allergy and food information on README is what people wrote themselves. It may be incomplete or out of date and is not medical advice. Always check with the person (and staff at restaurants)
+          Allergy and food information on Remember You is what people wrote themselves. It may be incomplete or out of date and is not medical advice. Always check with the person (and staff at restaurants)
           before serving food, especially when an allergy is serious.
         </p>
 
         <h2>5. Not allowed</h2>
         <ul>
           <li>Using someone else&rsquo;s account, or trying to see someone else&rsquo;s information</li>
-          <li>Harassing others, or using README for spam, ads or illegal purposes</li>
+          <li>Harassing others, or using Remember You for spam, ads or illegal purposes</li>
           <li>Interfering with the service (automated mass access, attacks, reverse engineering for abuse)</li>
         </ul>
         <p>If you break these rules, we may limit or delete your account.</p>
@@ -59,7 +59,7 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
 
         <h2>7. Liability</h2>
         <p>
-          We work to keep README running and your data safe, but we&rsquo;re not liable for losses caused by outages beyond our control, by information users wrote, or by how you or the people you ask
+          We work to keep Remember You running and your data safe, but we&rsquo;re not liable for losses caused by outages beyond our control, by information users wrote, or by how you or the people you ask
           use it, except where the law says otherwise.
         </p>
 
@@ -71,13 +71,13 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
   return (
     <LegalPage locale="ko" path="/terms" title="이용약관">
       <p>
-        이 약관은 {OPERATOR.ko}(대표 {CEO.ko}, 이하 &lsquo;운영자&rsquo;)가 운영하는 리드미 - 소울메이트 컨닝페이퍼(이하 &lsquo;리드미&rsquo;)를 쓰는 조건을 정합니다. 가입하거나 리드미를 쓰면 이 약관에
+        이 약관은 {OPERATOR.ko}(대표 {CEO.ko}, 이하 &lsquo;운영자&rsquo;)가 운영하는 기억해유 - 소울메이트 컨닝페이퍼(이하 &lsquo;기억해유&rsquo;)를 쓰는 조건을 정합니다. 가입하거나 기억해유를 쓰면 이 약관에
         동의한 것으로 봅니다.
       </p>
 
       <h2>1. 서비스</h2>
       <p>
-        리드미는 내 취향·못 먹는 음식·사이즈·기념일을 적어 두고, 가까운 사람들의 것도 적어 두거나 물어봐서 채우고, 생일·기념일을 알려 주는 서비스입니다. 리드미는 무료입니다. 운영자는
+        기억해유는 내 취향·못 먹는 음식·사이즈·기념일을 적어 두고, 가까운 사람들의 것도 적어 두거나 물어봐서 채우고, 생일·기념일을 알려 주는 서비스입니다. 기억해유는 무료입니다. 운영자는
         기능을 더하거나 바꾸거나 멈출 수 있으며, 큰 변경은 미리 알립니다.
       </p>
 
@@ -91,7 +91,7 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
       <h2>3. 내가 적고 나누는 정보</h2>
       <ul>
         <li>
-          내가 적은 정보는 나의 것입니다. 운영자는 <Link href="/privacy-policy?lang=ko">개인정보 처리방침</Link>에 적은 대로 리드미를 운영하는 데만 씁니다.
+          내가 적은 정보는 나의 것입니다. 운영자는 <Link href="/privacy-policy?lang=ko">개인정보 처리방침</Link>에 적은 대로 기억해유를 운영하는 데만 씁니다.
         </li>
         <li>
           다른 사람에 대해 아는 것을 나만 보는 용도로 적어 둘 수 있습니다. 그 사람이나 다른 누구에게도 보이지 않습니다. 그 사람이 원하지 않을 내용은 적지 말고, 지워 달라고 하면 지워 주세요.
@@ -101,7 +101,7 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
 
       <h2>4. 의료 정보가 아닙니다</h2>
       <p>
-        리드미의 알레르기·음식 정보는 본인이 적은 내용이라 빠졌거나 오래됐을 수 있으며, 의료적 판단이 아닙니다. 음식을 준비하거나 식당을 고를 때는, 특히 알레르기가 심하면 꼭 본인(그리고 식당)에게 다시
+        기억해유의 알레르기·음식 정보는 본인이 적은 내용이라 빠졌거나 오래됐을 수 있으며, 의료적 판단이 아닙니다. 음식을 준비하거나 식당을 고를 때는, 특히 알레르기가 심하면 꼭 본인(그리고 식당)에게 다시
         확인하세요.
       </p>
 
@@ -115,12 +115,12 @@ export default async function Terms({ searchParams }: { searchParams: Promise<{ 
 
       <h2>6. 탈퇴</h2>
       <p>
-        앱에서 언제든 계정을 삭제할 수 있습니다(내 리드미 &gt; 프로필 고치기 &gt; 계정 삭제). 자세한 내용은 <Link href="/delete-account?lang=ko">계정 삭제 안내</Link>를 보세요.
+        앱에서 언제든 계정을 삭제할 수 있습니다(나 &gt; 프로필 고치기 &gt; 계정 삭제). 자세한 내용은 <Link href="/delete-account?lang=ko">계정 삭제 안내</Link>를 보세요.
       </p>
 
       <h2>7. 책임의 한계</h2>
       <p>
-        운영자는 리드미를 안정적으로 운영하고 정보를 안전하게 지키려고 노력합니다. 다만 법이 달리 정한 경우를 빼고, 운영자가 막을 수 없는 장애, 이용자가 적은 정보의 내용, 이용자와 물어본 사람이 그
+        운영자는 기억해유를 안정적으로 운영하고 정보를 안전하게 지키려고 노력합니다. 다만 법이 달리 정한 경우를 빼고, 운영자가 막을 수 없는 장애, 이용자가 적은 정보의 내용, 이용자와 물어본 사람이 그
         정보를 쓴 방식으로 생긴 손해에는 책임지지 않습니다.
       </p>
 

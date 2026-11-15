@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BRAND, type Locale } from "@readme/core";
 import type { T } from "@/lib/i18n";
 import { Icon } from "./marks";
 
@@ -20,13 +21,13 @@ export function TopBar({ back, close, label, center, right }: { back?: string; c
   );
 }
 
-/** 로고: READ + 하늘 그라데이션 알약 안의 ME */
-export function Wordmark({ size = 22 }: { size?: number }) {
+/** 로고: 기억해(Remember) + 망고 알약 안의 You. 기억해유 = 기억해 You */
+export function Wordmark({ size = 22, locale = "ko" }: { size?: number; locale?: Locale }) {
   return (
-    <span role="img" aria-label="README" className="wordmark inline-flex items-center gap-[0.12em] leading-[44px]" style={{ fontSize: size }}>
-      READ
+    <span role="img" aria-label={BRAND[locale].name} className="wordmark inline-flex items-center gap-[0.14em] leading-[44px]" style={{ fontSize: size }}>
+      {locale === "en" ? "Remember" : "기억해"}
       <span className="grad rounded-[0.36em] px-[0.26em] leading-[1.32]" style={{ fontSize: Math.round(size * 0.86) }}>
-        ME
+        You
       </span>
     </span>
   );

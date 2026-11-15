@@ -15,8 +15,8 @@ export function LegalPage({ locale, path, title, children }: { locale: Locale; p
   return (
     <main className="screen px-6">
       <div className="flex items-center justify-between">
-        <Link href="/" aria-label={locale === "ko" ? "리드미 처음으로" : "README home"}>
-          <Wordmark size={24} />
+        <Link href="/" aria-label={locale === "ko" ? "기억해유 처음으로" : "Remember You home"}>
+          <Wordmark size={24} locale={locale} />
         </Link>
         <Link href={`${path}?lang=${other}`} className="flex min-h-11 items-center px-2 text-[14px] font-semibold">
           {other === "en" ? "English" : "한국어"}

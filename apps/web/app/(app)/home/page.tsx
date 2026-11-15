@@ -46,7 +46,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
   return (
     <>
       <div className="flex items-center justify-between pl-5 pr-3">
-        <Wordmark />
+        <Wordmark locale={locale} />
         <ProfileMenu avatar={s.profile.avatar} labels={{ menu: t("home.profileMenu"), profile: t("profile.title"), signOut: t("privacy.signOut") }} />
       </div>
 

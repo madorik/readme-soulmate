@@ -103,7 +103,7 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await dad.getByRole("button", { name: "다음", exact: true }).click();
   await expect(dad.getByRole("heading", { name: "거의 다 됐어요" })).toBeVisible();
   // 답이 어디에 저장되는지 알려 주고, 건강 정보는 동의가 있어야 보낸다
-  await expect(dad.getByText("보낸 답은 지수님의 리드미에 저장되고, 그 뒤로는 지수님이 고칠 수 있어요.")).toBeVisible();
+  await expect(dad.getByText("보낸 답은 지수님이 기억해 두고, 그 뒤로는 지수님이 고칠 수 있어요.")).toBeVisible();
   await expect(dad.getByRole("button", { name: "보내기", exact: true })).toBeDisabled();
   await dad.getByRole("button", { name: /건강 정보를 지수님에게 보내 저장하는 데 동의해요/ }).click();
   await dad.getByRole("button", { name: "보내기", exact: true }).click();
@@ -220,11 +220,11 @@ test("로그인하고 답하기: 내 리드미 값이 미리 채워지고, 내 �
   await expect(doyun.getByLabel("월").first()).toHaveValue("2");
   await expect(doyun.getByLabel("일").first()).toHaveValue("14");
   await doyun.getByRole("button", { name: "다음", exact: true }).click();
-  await expect(doyun.getByRole("button", { name: "내 리드미에도 저장" })).toHaveAttribute("aria-pressed", "true");
+  await expect(doyun.getByRole("button", { name: "나에 대한 기록에도 저장" })).toHaveAttribute("aria-pressed", "true");
   await doyun.getByRole("button", { name: "보내기", exact: true }).click();
   await expect(doyun.getByRole("heading", { name: "마음이 전해졌어요" })).toBeVisible();
   await expect(doyun.getByRole("link", { name: "나도 물어보기" })).toHaveAttribute("href", /^\/request\?name=/);
-  await doyun.getByRole("link", { name: "내 리드미 보기" }).click();
+  await doyun.getByRole("link", { name: "기억해유 열기" }).click();
   await expect(doyun).toHaveURL(/\/me$/);
   const mine = await (await doyun.request.get("/api/export")).json();
   expect(mine.myReadme.sizes.shoe).toBe(235);

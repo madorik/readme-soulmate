@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>ko</string>
 	<key>CFBundleDisplayName</key>
-	<string>리드미</string>
+	<string>기억해유</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -43,11 +43,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
-	<string>리드미 앱 잠금을 풀 때 Face ID를 써요. / README uses Face ID to unlock the app.</string>
+	<string>기억해유 앱 잠금을 풀 때 Face ID를 써요. / Remember You uses Face ID to unlock the app.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>말로 적기에서 말을 들을 때 마이크를 써요. / README uses the microphone when you use Say it.</string>
+	<string>말로 적기에서 말을 들을 때 마이크를 써요. / Remember You uses the microphone when you use Say it.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>말한 내용을 글로 바꿔 내 사람들 기록에 적어요. / README turns what you say into text for your records.</string>
+	<string>말한 내용을 글로 바꿔 내 사람들 기록에 적어요. / Remember You turns what you say into text for your records.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

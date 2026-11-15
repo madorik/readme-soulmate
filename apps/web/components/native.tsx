@@ -158,7 +158,7 @@ export function NativeBridge({ locale, appLock, reminders, pushEnabled }: { loca
   if (!locked) return null;
   return (
     <div role="dialog" aria-modal="true" aria-label={t("lock.title")} className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-white px-6">
-      <Wordmark />
+      <Wordmark locale={locale} />
       <Icon name="lock" size={40} />
       <p className="text-[18px] font-bold">{t("lock.title")}</p>
       <button type="button" onClick={() => void unlock()} className="btn-primary w-full max-w-[320px]">

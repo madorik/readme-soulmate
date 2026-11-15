@@ -4,7 +4,7 @@ import type { Locale } from "./locale";
 // 이름 뒤 조사는 "님"으로 받아 받침 문제를 피한다.
 
 export const ko = {
-  "app.name": "리드미",
+  "app.name": "기억해유",
   "app.tagline": "소울메이트 컨닝페이퍼",
   "lang.other": "English",
 
@@ -48,7 +48,7 @@ export const ko = {
   "onb.avatar.cta": "이 얼굴로 할게요",
   "onb.food.title": "못 먹는 게 있나요?",
   "onb.birthday.title": "생일은 언제예요?",
-  "onb.finish": "내 리드미 완성",
+  "onb.finish": "이제 시작해요",
 
   "avatar.parts": "캐릭터 부분",
   "avatar.hair": "머리",
@@ -137,7 +137,7 @@ export const ko = {
 
   "nav.home": "챙길 날",
   "nav.people": "사람들",
-  "nav.me": "내 리드미",
+  "nav.me": "나",
   "nav.privacy": "설정",
   "plan.withMe": "나도 같이",
   "plan.me": "나",
@@ -184,7 +184,7 @@ export const ko = {
   "plan.memoNothing": "· 가릴 음식이 없어요",
   "plan.sent": "보냈어요",
 
-  "home.myCard": "내 리드미",
+  "home.myCard": "나에 대한 기록",
   "home.profileMenu": "내 프로필 메뉴",
   "home.event.birthday": "{name} 생일",
   "home.event.anniversary": "{name} {label}",
@@ -420,8 +420,8 @@ export const ko = {
   "answer.none": "없어요",
   "answer.empty": "아직 비어 있어요",
   "answer.consent": "알레르기 같은 건강 정보를 {from}님에게 보내 저장하는 데 동의해요 (필수)",
-  "answer.footer": "보낸 답은 {from}님의 리드미에 저장되고, 그 뒤로는 {from}님이 고칠 수 있어요.",
-  "answer.saveMine": "내 리드미에도 저장",
+  "answer.footer": "보낸 답은 {from}님이 기억해 두고, 그 뒤로는 {from}님이 고칠 수 있어요.",
+  "answer.saveMine": "나에 대한 기록에도 저장",
   "answer.self": "내가 보낸 물어보기예요. 물어볼 사람에게 링크를 보내 주세요.",
   "answer.send": "보내기",
   "answer.next": "다음",
@@ -433,11 +433,11 @@ export const ko = {
   "answer.signInFirst": "로그인하고 답하기",
   "answer.sentShort": "이제 {from}님이 더 잘 챙겨 줄 거예요",
   "answer.sentTopics": "{from}님에게 보낸 것",
-  "answer.perksTitle": "리드미를 쓰면",
+  "answer.perksTitle": "기억해유를 쓰면",
   "answer.perk.edit": "소중한 사람의 작은 것까지 기억해 둬요",
   "answer.perk.see": "궁금한 건 이렇게 물어봐요",
   "answer.perk.remind": "챙길 날을 잊지 않게 알려 줘요",
-  "answer.openApp": "내 리드미 보기",
+  "answer.openApp": "기억해유 열기",
   "answer.askBack": "나도 물어보기",
 
   "privacy.title": "설정",
@@ -456,11 +456,11 @@ export const ko = {
   "legal.privacy": "개인정보 처리방침",
   "legal.terms": "이용약관",
   "privacy.delete": "계정 삭제",
-  "privacy.deleteConfirm": "정말 지울까요? 내 리드미, 내 사람들 기록과 메모가 모두 지워지고 되돌릴 수 없어요.",
+  "privacy.deleteConfirm": "정말 지울까요? 나에 대한 기록, 내 사람들 기록과 메모가 모두 지워지고 되돌릴 수 없어요.",
   "privacy.deleteYes": "모두 지우기",
   "privacy.signOut": "로그아웃",
 
-  "me.title": "내 리드미",
+  "me.title": "나에 대한 기록",
   "me.face": "프로필 고치기",
   "profile.title": "내 프로필",
   "profile.nickname": "닉네임",
@@ -472,7 +472,7 @@ export const ko = {
   "me.saving": "저장하는 중…",
   "me.retry": "다시 저장",
 
-  "lock.title": "리드미가 잠겨 있어요",
+  "lock.title": "기억해유가 잠겨 있어요",
   "lock.unlock": "잠금 풀기",
 
   "notif.left": "{event}까지 {n}일 남았어요",
@@ -507,7 +507,7 @@ export type MessageKey = keyof typeof ko;
 export type Messages = Record<MessageKey, string>;
 
 export const en: Messages = {
-  "app.name": "README",
+  "app.name": "Remember You",
   "app.tagline": "Soulmate Cheat Sheet",
   "lang.other": "한국어",
 
@@ -551,7 +551,7 @@ export const en: Messages = {
   "onb.avatar.cta": "Use this face",
   "onb.food.title": "Anything you can't eat?",
   "onb.birthday.title": "When's your birthday?",
-  "onb.finish": "Finish my README",
+  "onb.finish": "Let's start",
 
   "avatar.parts": "Character parts",
   "avatar.hair": "Hair",
@@ -640,7 +640,7 @@ export const en: Messages = {
 
   "nav.home": "Dates",
   "nav.people": "People",
-  "nav.me": "My README",
+  "nav.me": "Me",
   "nav.privacy": "Settings",
   "plan.withMe": "Include me",
   "plan.me": "Me",
@@ -687,7 +687,7 @@ export const en: Messages = {
   "plan.memoNothing": "· Nothing to avoid",
   "plan.sent": "Sent",
 
-  "home.myCard": "My README",
+  "home.myCard": "About me",
   "home.profileMenu": "Profile menu",
   "home.event.birthday": "{name}'s birthday",
   "home.event.anniversary": "{name}: {label}",
@@ -923,8 +923,8 @@ export const en: Messages = {
   "answer.none": "None",
   "answer.empty": "Empty for now",
   "answer.consent": "I agree to send health info like allergies to {from} to be saved (required)",
-  "answer.footer": "Your answers are saved to {from}'s README, and {from} can edit them after that.",
-  "answer.saveMine": "Also save to my README",
+  "answer.footer": "{from} will remember your answers and can edit them later.",
+  "answer.saveMine": "Also save to About me",
   "answer.self": "This is your own question link. Send it to the person you're asking.",
   "answer.send": "Send",
   "answer.next": "Next",
@@ -936,11 +936,11 @@ export const en: Messages = {
   "answer.signInFirst": "Sign in to answer",
   "answer.sentShort": "Now {from} can take even better care of you",
   "answer.sentTopics": "What you sent {from}",
-  "answer.perksTitle": "With README",
+  "answer.perksTitle": "With Remember You",
   "answer.perk.edit": "Remember the little things about the people you love",
   "answer.perk.see": "Ask them like this when you're curious",
   "answer.perk.remind": "Never miss a special day",
-  "answer.openApp": "Open my README",
+  "answer.openApp": "Open Remember You",
   "answer.askBack": "Ask them back",
 
   "privacy.title": "Settings",
@@ -959,11 +959,11 @@ export const en: Messages = {
   "legal.privacy": "Privacy Policy",
   "legal.terms": "Terms of Use",
   "privacy.delete": "Delete account",
-  "privacy.deleteConfirm": "Delete everything? Your README, your people's records and notes will all be deleted. This can't be undone.",
+  "privacy.deleteConfirm": "Delete everything? About me, your people's records and notes will all be deleted. This can't be undone.",
   "privacy.deleteYes": "Delete everything",
   "privacy.signOut": "Sign out",
 
-  "me.title": "My README",
+  "me.title": "About me",
   "me.face": "Edit profile",
   "profile.title": "My profile",
   "profile.nickname": "Nickname",
@@ -975,7 +975,7 @@ export const en: Messages = {
   "me.saving": "Saving…",
   "me.retry": "Try again",
 
-  "lock.title": "README is locked",
+  "lock.title": "Remember You is locked",
   "lock.unlock": "Unlock",
 
   "notif.left": "{n} days until {event}",

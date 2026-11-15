@@ -24,7 +24,7 @@ export default async function Start({ searchParams }: { searchParams: Promise<{ 
   return (
     <main className="screen">
       <div className="flex items-center justify-between pl-6 pr-4">
-        <Wordmark />
+        <Wordmark locale={locale} />
         <form action={setLocale}>
           <input type="hidden" name="locale" value={locale === "ko" ? "en" : "ko"} />
           <input type="hidden" name="back" value={rawNext ? `/?next=${encodeURIComponent(next)}` : "/"} />
