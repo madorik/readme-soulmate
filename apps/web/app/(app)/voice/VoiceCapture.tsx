@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
 import { Icon } from "@/components/marks";
+import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/CaptureBadge";
 
 // 음성 인식: 브라우저는 Web Speech API, 앱(Capacitor)은 SpeechRecognition 플러그인이 있으면 그것.
 // 둘 다 없으면 글로 적는다(휴대폰 키보드의 받아쓰기 마이크로도 말할 수 있다).
@@ -189,9 +190,8 @@ function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: 
   );
 }
 
-type Labels = {
+type Labels = CaptureBadgeLabels & {
   speak: string;
-  same: string;
   clear: string;
   listening: string;
   placeholder: string;
@@ -339,11 +339,11 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
                   <span className="flex items-center gap-1.5 text-[13px] font-bold text-muted">
                     {l.who}
                     {l.isNew ? <span className="chip-on rounded-full px-2 py-[1px] text-[11.5px]">{labels.isNew}</span> : null}
-                    {l.same ? <span className="rounded-full bg-fill px-2 py-[1px] text-[11.5px]">{labels.same}</span> : null}
                     <span aria-hidden="true">·</span>
                     {l.field}
+                    <CaptureBadge line={l} labels={labels} />
                   </span>
-                  <span className="text-[16px] font-bold leading-[1.4]">{l.value}</span>
+                  {l.value ? <span className={`text-[16px] font-bold leading-[1.4] ${struck(l)}`}>{l.value}</span> : null}
                 </Link>
               </li>
             ))}

@@ -1,6 +1,6 @@
 "use server";
 
-import { captureField, describeCapture, isSection, mergeCapture, sanitizeSection, translate, type CardData, type PartialCard, type Section } from "@readme/core";
+import { captureField, describeCapture, isSection, mergeCapture, sanitizeSection, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { aiConfigured, classifyCapture } from "@/lib/ai";
 import { displayName, listNotes, listPeople, readCard, requireSession, sealNote, writeContactSection, writeSection } from "@/lib/data";
@@ -10,7 +10,9 @@ export interface CaptureLine {
   who: string;
   /** 이번에 새로 더한 사람 */
   isNew: boolean;
-  /** 이미 그렇게 적혀 있어서 바뀐 게 없는 칸 */
+  /** 더하기·바꾸기·지우기 */
+  op: CaptureOp;
+  /** 바뀐 게 없는 칸(더하기·바꾸기: 이미 그렇게 적혀 있다, 지우기: 이미 없다) */
   same?: boolean;
   /** 칸 이름(메모면 '메모') */
   field: string;
@@ -91,6 +93,7 @@ export async function captureNote(raw: string, aboutId?: string): Promise<Captur
         const href = who === "me" ? "/me" : `/people/${who}`;
 
         if (item.target === "memo") {
+          if (item.op !== "add") continue; // 메모를 고치거나 지우는 건 메모 칸에서
           const body = (item.text ?? "").trim().slice(0, 1000);
           if (!body || who === "me") continue; // 나에 대한 메모 칸은 없다
           // 같은 말을 또 하면 메모를 두 번 남기지 않는다
@@ -101,17 +104,19 @@ export async function captureNote(raw: string, aboutId?: string): Promise<Captur
             JSON.stringify(sealNote(s.user.id, who, body)),
           ]);
           undo.push({ type: "note", contactId: who, id: n!.id });
-          lines.push({ who: names.get(who)!, isNew, field: translate(locale, "voice.memo"), value: body, href });
+          lines.push({ who: names.get(who)!, isNew, op: "add", field: translate(locale, "voice.memo"), value: body, href });
           continue;
         }
 
         const field = captureField(item.target);
         if (!field) continue;
         const card = cards.get(who)!;
-        const merged = mergeCapture(field, card[field.section], item);
+        const op = item.op;
+        const merged = mergeCapture(field, card[field.section], item, op);
+        const line = { who: names.get(who)!, isNew, op, field: field.label[locale], value: describeCapture(field, item, locale), href };
         if (!merged) {
-          // 값은 맞는데 이미 그대로 적혀 있으면 '이미 알고 있어요'로 보여 준다(값이 틀리면 버린다)
-          if (mergeCapture(field, null, item)) lines.push({ who: names.get(who)!, isNew, same: true, field: field.label[locale], value: describeCapture(field, item, locale), href });
+          // 이미 그대로 적혀 있으면 '이미 알고 있어요', 지울 게 없으면 '이미 없어요'(값이 틀린 더하기·바꾸기는 버린다)
+          if (op === "remove" || mergeCapture(field, null, item, op)) lines.push({ ...line, same: true });
           continue;
         }
         const key = `${who}:${field.section}`;
@@ -122,7 +127,7 @@ export async function captureNote(raw: string, aboutId?: string): Promise<Captur
         if (who === "me") await writeSection(q, s.user.id, field.section, merged);
         else await writeContactSection(q, s.user.id, who, field.section, merged);
         (card as Record<string, unknown>)[field.section] = merged;
-        lines.push({ who: names.get(who)!, isNew, field: field.label[locale], value: describeCapture(field, item, locale), href });
+        lines.push(line);
       }
     });
   } catch {

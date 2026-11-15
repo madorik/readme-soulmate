@@ -20,6 +20,9 @@ export default async function Voice() {
         labels={{
           speak: t("voice.speak"),
           same: t("voice.same"),
+          gone: t("voice.gone"),
+          changed: t("voice.changed"),
+          removed: t("voice.removed"),
           clear: t("voice.clear"),
           listening: t("voice.listening"),
           placeholder: t("voice.placeholder"),

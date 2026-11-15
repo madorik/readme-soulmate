@@ -2,18 +2,19 @@
 
 import { useState, useTransition } from "react";
 import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
+import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/CaptureBadge";
 import { Icon } from "@/components/marks";
 
 /**
- * 그 사람 화면 맨 위 한 줄: "해바라기 좋아함"처럼 적으면 맞는 칸에 알아서 넣는다(말로 적기와 같은 AI, 이 사람 이야기로).
- * 맞는 칸이 없으면 메모로. 넣은 것은 바로 아래에 보이고 되돌릴 수 있다
+ * 그 사람 화면 맨 위 한 줄: 적으면 AI가 이 사람 이야기로 맞는 칸을 찾아 더하고("해바라기 좋아함"), 바꾸고("신발 245로 바뀌었어"),
+ * 지운다("땅콩 알레르기 아니래"). 맞는 칸이 없는 새 이야기는 메모로. 바뀐 것은 바로 아래에 보이고 되돌릴 수 있다
  */
 export function QuickNote({
   contactId,
   labels,
 }: {
   contactId: string;
-  labels: { placeholder: string; save: string; same: string; undo: string; undone: string; failed: string; nothing: string; aiOff: string };
+  labels: CaptureBadgeLabels & { placeholder: string; save: string; undo: string; undone: string; failed: string; nothing: string; aiOff: string };
 }) {
   const [text, setText] = useState("");
   const [result, setResult] = useState<CaptureState | null>(null);
@@ -80,24 +81,26 @@ export function QuickNote({
                   <li key={i} className="flex min-h-8 items-center gap-2 text-[14.5px]">
                     <Icon name="check" size={15} strokeWidth={2.6} className={`shrink-0 ${l.same ? "text-muted" : "text-ok"}`} />
                     <span className="shrink-0 text-muted">{l.href === self ? l.field : `${l.who} · ${l.field}`}</span>
-                    <span className="min-w-0 flex-1 truncate font-bold">{l.value}</span>
-                    {l.same ? <span className="shrink-0 rounded-full bg-fill px-2 py-[1px] text-[11.5px] text-muted">{labels.same}</span> : null}
+                    <span className={`min-w-0 flex-1 truncate font-bold ${struck(l)}`}>{l.value}</span>
+                    <CaptureBadge line={l} labels={labels} />
                   </li>
                 ))}
               </ul>
-              <button
-                type="button"
-                disabled={undone || pending || !result.undo.length}
-                onClick={() =>
-                  start(async () => {
-                    const r = await undoCapture(result.undo);
-                    if (r.ok) setUndone(true);
-                  })
-                }
-                className="flex min-h-11 shrink-0 items-center px-1.5 text-[13.5px] font-bold text-muted disabled:opacity-60"
-              >
-                {undone ? labels.undone : labels.undo}
-              </button>
+              {result.undo.length ? (
+                <button
+                  type="button"
+                  disabled={undone || pending}
+                  onClick={() =>
+                    start(async () => {
+                      const r = await undoCapture(result.undo);
+                      if (r.ok) setUndone(true);
+                    })
+                  }
+                  className="flex min-h-11 shrink-0 items-center px-1.5 text-[13.5px] font-bold text-muted disabled:opacity-60"
+                >
+                  {undone ? labels.undone : labels.undo}
+                </button>
+              ) : null}
             </div>
           )}
         </div>

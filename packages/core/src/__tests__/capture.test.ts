@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CAPTURE_FIELDS, CAPTURE_TARGETS, captureField, describeCapture, emptySection, mergeCapture, sanitizeSection, SECTIONS, type CaptureField, type CaptureValue } from "../index";
+import { CAPTURE_FIELDS, CAPTURE_TARGETS, captureField, describeCapture, emptySection, mergeCapture, sanitizeSection, SECTIONS, type CaptureField, type CaptureOp, type CaptureValue } from "../index";
 
 // 합친 결과는 칸마다 모양이 달라, 시험에서는 넓게 받아 값만 본다
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const merge = (f: CaptureField, current: unknown, value: CaptureValue): any => mergeCapture(f, current as never, value);
+const merge = (f: CaptureField, current: unknown, value: CaptureValue, op?: CaptureOp): any => mergeCapture(f, current as never, value, op);
 
 const field = (key: string) => {
   const f = captureField(key);
@@ -70,4 +70,39 @@ test("화면에 보일 값", () => {
   assert.equal(describeCapture(field("safety.allergens"), { codes: ["peanut", "shrimp"] }, "ko"), "땅콩, 새우");
   assert.equal(describeCapture(field("dates.birthday"), { date: { calendar: "lunar", month: 11, day: 3 } }, "ko"), "음력 11월 3일");
   assert.equal(describeCapture(field("dates.anniversary"), { label: "결혼기념일", date: { calendar: "solar", month: 5, day: 3 } }, "en"), "결혼기념일 5/3");
+});
+
+test("바꾸기: 그 칸을 새 값으로(글·목록·고르는 칸), 위시리스트는 같은 이름의 링크를 남긴다", () => {
+  const flowers = merge(field("gifts.flowers"), { ...emptySection("gifts"), flowers: "카네이션보다 수국" }, { text: "튤립" }, "replace");
+  assert.equal(flowers.flowers, "튤립");
+  const likes = merge(field("taste.likes"), { ...emptySection("taste"), likes: ["짜장면", "떡볶이"] }, { text: "짬뽕" }, "replace");
+  assert.deepEqual(likes.likes, ["짬뽕"]);
+  const colors = merge(field("favorites.colors"), { ...emptySection("favorites"), colors: ["red"] }, { codes: ["blue"] }, "replace");
+  assert.deepEqual(colors.colors, ["blue"]);
+  const wish = merge(field("gifts.wishlist"), { ...emptySection("gifts"), wishlist: [{ title: "에어팟", url: "https://example.com/a" }, { title: "향수", url: "" }] }, { text: "에어팟" }, "replace");
+  assert.deepEqual(wish.wishlist, [{ title: "에어팟", url: "https://example.com/a" }]);
+  // 이미 그 값이면 바뀐 게 없다
+  assert.equal(merge(field("gifts.flowers"), flowers, { text: "튤립" }, "replace"), null);
+});
+
+test("지우기: 맞는 것만 빼고, 값이 없으면 그 칸을 비우고, 없는 걸 지우라면 null", () => {
+  const safety = { ...emptySection("safety"), allergens: ["peanut", "shrimp"] };
+  assert.deepEqual(merge(field("safety.allergens"), safety, { codes: ["peanut"] }, "remove").allergens, ["shrimp"]);
+  assert.deepEqual(merge(field("safety.allergens"), safety, {}, "remove").allergens, []);
+  assert.equal(merge(field("safety.allergens"), safety, { codes: ["milk"] }, "remove"), null);
+  assert.equal(merge(field("safety.allergens"), safety, { text: "고양이" }, "remove"), null);
+
+  const gifts = { ...emptySection("gifts"), flowers: "카네이션보다 수국, 해바라기", wishlist: [{ title: "에어팟 프로", url: "" }, { title: "향수", url: "" }] };
+  assert.equal(merge(field("gifts.flowers"), gifts, { text: "수국" }, "remove").flowers, "해바라기");
+  assert.deepEqual(merge(field("gifts.wishlist"), gifts, { text: "에어팟" }, "remove").wishlist, [{ title: "향수", url: "" }]);
+  assert.equal(merge(field("gifts.flowers"), gifts, { text: "튤립" }, "remove"), null);
+
+  const taste = { ...emptySection("taste"), likes: ["짜장면", "떡볶이"], spicy: 3 };
+  assert.deepEqual(merge(field("taste.likes"), taste, { text: "짜장면" }, "remove").likes, ["떡볶이"]);
+  assert.equal(merge(field("taste.spicy"), taste, {}, "remove").spicy, null);
+  assert.equal(merge(field("taste.spicy"), emptySection("taste"), {}, "remove"), null);
+
+  const dates = { birthday: { calendar: "solar" as const, month: 3, day: 1 }, anniversaries: [{ label: "결혼기념일", spec: { calendar: "solar" as const, month: 5, day: 3 } }] };
+  assert.equal(merge(field("dates.birthday"), dates, {}, "remove").birthday, null);
+  assert.deepEqual(merge(field("dates.anniversary"), dates, { label: "결혼 기념일" }, "remove").anniversaries, []);
 });

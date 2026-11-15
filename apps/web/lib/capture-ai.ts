@@ -1,5 +1,5 @@
 // 말로 적기 AI 부분 중 서버 키와 상관없는 것(요청 몸·응답 풀기). 서버 전용 표시가 없어 시험 스크립트에서도 불러 쓴다
-import { CAPTURE_FIELDS, CAPTURE_TARGETS, type CaptureValue, type DateSpec, type Locale } from "@readme/core";
+import { CAPTURE_FIELDS, CAPTURE_TARGETS, SPICY_LEVELS, type CaptureOp, type CaptureValue, type DateSpec, type Locale } from "@readme/core";
 
 export interface CapturePerson {
   id: string;
@@ -10,6 +10,7 @@ export interface CapturePerson {
 export interface CaptureItem extends CaptureValue {
   who: { type: "me" | "existing" | "new"; contactId: string | null; name: string | null };
   target: (typeof CAPTURE_TARGETS)[number];
+  op: CaptureOp;
 }
 
 const nullable = (schema: object) => ({ anyOf: [schema, { type: "null" }] });
@@ -24,7 +25,7 @@ const SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["who", "target", "text", "codes", "number", "date", "label"],
+        required: ["who", "op", "target", "text", "codes", "number", "date", "label"],
         properties: {
           who: {
             type: "object",
@@ -36,6 +37,7 @@ const SCHEMA = {
               name: { type: ["string", "null"] },
             },
           },
+          op: { type: "string", enum: ["add", "replace", "remove"] },
           target: { type: "string", enum: [...CAPTURE_TARGETS] },
           text: { type: ["string", "null"] },
           codes: nullable({ type: "array", items: { type: "string" } }),
@@ -79,12 +81,18 @@ target: the most specific field from FIELDS. Rules:
 - codes kinds: use only listed codes. If the thing is not in the list, use a text/list field that fits, otherwise memo.
 - Foods they like → taste.likes. Coffee/tea/drinks they like lately → taste.drinks. Desserts/snacks → taste.dessert.
 - Food allergies in the list → safety.allergens; foods they won't eat in the list → safety.dislikes. Other allergies or avoidances (cats, pollen, a food not in the lists) → safety.allergyNote as short text.
-- NEGATIVE preferences (doesn't like, avoids, can't, 싫어해, 안 좋아해, 별로, 못 먹어, 안 마셔) must NEVER go to a "likes" field (taste.likes, taste.dessert, taste.drinks, favorites.*, culture.* text, life.*). Use safety.dislikes if the food is listed; for gifts they don't want use gifts.skip; otherwise safety.allergyNote (food or drink) or memo (anything else), written as the negative fact (e.g. "단 거 별로 안 좋아함").
+- NEGATIVE preferences (doesn't like, avoids, can't, 싫어해, 안 좋아해, 별로, 못 먹어, 안 마셔) must NEVER be added to a "likes" field (taste.likes, taste.dessert, taste.drinks, favorites.*, culture.* text, life.*). Use safety.dislikes if the food is listed; for gifts they don't want use gifts.skip; otherwise safety.allergyNote (food or drink) or memo (anything else), written as the negative fact (e.g. "단 거 별로 안 좋아함").
 - Things they want → gifts.wishlist; gifts to avoid → gifts.skip.
 - Birthday → dates.birthday with date (lunar if 음력/lunar). Other days → dates.anniversary with label.
 - Shoe size in mm (e.g. 270), ring size number (호).
+- How much spice they can take (매운 거 잘 먹어/못 먹어) → taste.spicy number: ${SPICY_LEVELS.map((l, i) => `${i}=${l.ko}`).join(", ")}.
 - Put a value only in a field whose meaning matches it: favorites.animal only for animals, gifts.flowers for flowers and plants, favorites.idol for singers and celebrities, culture.* for movies, dramas, shows, music and books, life.travel for places, life.hobbies for activities. Never use a field just because it is a "favorite" slot.
 - Anything that fits no field → memo with a short note in the speaker's language.
+op: what to do with the field (the speaker may add, correct or delete what was kept):
+- "add" (default): a new fact.
+- "replace": the value changed or the speaker corrects it (바뀌었어, 이제는 ~야, ~가 아니라 ~야, ~로 바꿔/고쳐 줘, changed to). The value replaces everything in that field. When only one item of a list changes ("짜장면 말고 짬뽕 좋아해"), emit "remove" for the old item and "add" for the new one instead.
+- "remove": a kept fact is wrong or no longer true, or the speaker asks to delete it (아니래, 아니야, 지워 줘, 빼 줘, 이제 안 해, 이제 안 좋아해, 질렸대, no longer). Put the thing to remove as the value (text or codes, short). Leave the value null to clear the whole field (e.g. "알레르기 다 지워 줘", "생일 지워 줘"). For something they no longer like, remove it from the matching likes field; do not also add a negative fact unless the speaker states one.
+- memo is only for "add".
 text: just the value, short (e.g. "바닐라라떼"), in the speaker's language. Do not copy the whole sentence. Do not guess values that were not said.
 Fill only the value properties the target needs; set the rest to null.
 
@@ -138,6 +146,7 @@ export function parseCapture(body: unknown): CaptureItem[] {
         name: typeof who.name === "string" ? who.name.slice(0, 40) : null,
       },
       target: (CAPTURE_TARGETS as readonly string[]).includes(String(r.target)) ? (r.target as CaptureItem["target"]) : "memo",
+      op: r.op === "replace" || r.op === "remove" ? r.op : "add",
       text: typeof r.text === "string" ? r.text.slice(0, 200) : null,
       codes: Array.isArray(r.codes) ? r.codes.filter((c): c is string => typeof c === "string") : null,
       number: typeof r.number === "number" ? r.number : null,

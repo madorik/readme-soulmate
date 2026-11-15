@@ -85,6 +85,14 @@ export function captureField(key: string): CaptureField | null {
   return CAPTURE_FIELDS.find((x) => x.key === key) ?? null;
 }
 
+/**
+ * 무엇을 할지
+ * - add: 새로 알게 된 것(기본). 글은 이어 붙이고 목록은 없는 것만 더한다
+ * - replace: 바뀐 것·고친 것. 그 칸을 새 값으로 바꾼다
+ * - remove: 아니라거나 지워 달라는 것. 맞는 것만 빼고, 값이 없으면 그 칸을 비운다
+ */
+export type CaptureOp = "add" | "replace" | "remove";
+
 /** AI가 돌려주는 값(쓰는 칸만 채운다) */
 export interface CaptureValue {
   text?: string | null;
@@ -95,6 +103,13 @@ export interface CaptureValue {
 }
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+const squash = (a: string) => a.toLowerCase().replace(/\s+/g, "");
+/** 지울 때: 같거나 한쪽이 다른 쪽을 품으면 같은 것으로 본다("수국" ↔ "카네이션보다 수국") */
+const matches = (a: string, b: string) => {
+  const x = squash(a);
+  const y = squash(b);
+  return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+};
 
 /** 칸의 실제 저장 위치(술 두 칸은 taste.alcohol 안에 있다) */
 function getRaw(data: Record<string, unknown>, key: string): unknown {
@@ -116,33 +131,41 @@ function setRaw(data: Record<string, unknown>, key: string, value: unknown): voi
 }
 
 /**
- * 한 칸에 값 합치기. 바뀐 항목 전체를 돌려주고, 합칠 게 없거나 값이 맞지 않으면 null.
+ * 한 칸에 값 합치기(더하기·바꾸기·지우기). 바뀐 항목 전체를 돌려주고, 바뀐 게 없거나 값이 맞지 않으면 null.
  * 결과는 sanitizeSection을 거쳐 저장 모양과 같다
  */
-export function mergeCapture<S extends Section>(field: CaptureField, current: CardData[S] | null | undefined, value: CaptureValue): CardData[S] | null {
+export function mergeCapture<S extends Section>(field: CaptureField, current: CardData[S] | null | undefined, value: CaptureValue, op: CaptureOp = "add"): CardData[S] | null {
   const section = field.section as S;
   const base = structuredClone(current ?? emptySection(section)) as unknown as Record<string, unknown>;
   const before = JSON.stringify(sanitizeSection(section, base));
   const text = (value.text ?? "").replace(/\s+/g, " ").trim();
   const codes = (value.codes ?? []).filter((c) => !!field.catalog?.some((x) => x.code === c));
+  if (op === "remove") {
+    if (!removeFrom(field, base, text, codes, value)) return null;
+    const out = sanitizeSection(section, base);
+    return JSON.stringify(out) === before ? null : out;
+  }
+  const replace = op === "replace";
 
   switch (field.kind) {
     case "text": {
       if (!text) return null;
       const old = String(getRaw(base, field.key) ?? "").trim();
       const parts = old ? old.split(/\s*,\s*/) : [];
-      setRaw(base, field.key, field.replace || !old ? text : parts.some((p) => same(p, text)) ? old : `${old}, ${text}`);
+      setRaw(base, field.key, replace || field.replace || !old ? text : parts.some((p) => same(p, text)) ? old : `${old}, ${text}`);
       break;
     }
     case "list": {
       if (!text) return null;
       const items = text.split(/\s*,\s*/).filter(Boolean);
       if (field.key === "gifts.wishlist") {
-        const list = ((base.wishlist as { title: string; url: string }[]) ?? []).slice();
-        for (const title of items) if (!list.some((w) => same(w.title, title))) list.push({ title, url: "" });
+        const old = (base.wishlist as { title: string; url: string }[]) ?? [];
+        // 바꿀 때도 같은 이름의 링크는 남긴다
+        const list = replace ? [] : old.slice();
+        for (const title of items) if (!list.some((w) => same(w.title, title))) list.push(old.find((w) => same(w.title, title)) ?? { title, url: "" });
         base.wishlist = list;
       } else {
-        const list = ((getRaw(base, field.key) as string[]) ?? []).slice();
+        const list = replace ? [] : ((getRaw(base, field.key) as string[]) ?? []).slice();
         for (const x of items) if (!list.some((y) => same(x, y))) list.push(x);
         setRaw(base, field.key, list);
       }
@@ -150,7 +173,7 @@ export function mergeCapture<S extends Section>(field: CaptureField, current: Ca
     }
     case "codes": {
       if (!codes.length) return null;
-      const list = ((getRaw(base, field.key) as string[]) ?? []).filter((c) => c !== NONE);
+      const list = replace ? [] : ((getRaw(base, field.key) as string[]) ?? []).filter((c) => c !== NONE);
       for (const c of codes) if (!list.includes(c)) list.push(c);
       setRaw(base, field.key, list);
       break;
@@ -186,6 +209,59 @@ export function mergeCapture<S extends Section>(field: CaptureField, current: Ca
   }
   const out = sanitizeSection(section, base);
   return JSON.stringify(out) === before ? null : out;
+}
+
+/** 지우기: 맞는 것만 빼고(값이 없으면 그 칸을 비운다), 뺄 게 있었는지 */
+function removeFrom(field: CaptureField, base: Record<string, unknown>, text: string, codes: string[], value: CaptureValue): boolean {
+  switch (field.kind) {
+    case "text": {
+      const old = String(getRaw(base, field.key) ?? "").trim();
+      if (!old) return false;
+      const parts = old.split(/\s*,\s*/);
+      const keep = text ? parts.filter((p) => !matches(p, text)) : [];
+      if (keep.length === parts.length) return false;
+      setRaw(base, field.key, keep.join(", "));
+      return true;
+    }
+    case "list": {
+      const items = text.split(/\s*,\s*/).filter(Boolean);
+      const hit = (x: string) => !items.length || items.some((y) => matches(x, y));
+      if (field.key === "gifts.wishlist") {
+        const list = (base.wishlist as { title: string; url: string }[]) ?? [];
+        base.wishlist = list.filter((w) => !hit(w.title));
+        return (base.wishlist as unknown[]).length !== list.length;
+      }
+      const list = (getRaw(base, field.key) as string[]) ?? [];
+      const keep = list.filter((x) => !hit(x));
+      setRaw(base, field.key, keep);
+      return keep.length !== list.length;
+    }
+    case "codes": {
+      // 목록에 없는 말로만 지워 달라면(예: 없는 알레르기) 지울 것이 없다
+      if (!codes.length && (value.codes?.length || text)) return false;
+      const list = (getRaw(base, field.key) as string[]) ?? [];
+      const keep = codes.length ? list.filter((c) => !codes.includes(c)) : [];
+      setRaw(base, field.key, keep);
+      return keep.length !== list.length;
+    }
+    case "code":
+    case "number":
+      if (getRaw(base, field.key) == null) return false;
+      setRaw(base, field.key, null);
+      return true;
+    case "date":
+      if (!base.birthday) return false;
+      base.birthday = null;
+      return true;
+    case "anniversary": {
+      const label = (value.label ?? text).trim();
+      const d = value.date;
+      if (!label && !d) return false;
+      const list = (base.anniversaries as { label: string; spec: DateSpec }[]) ?? [];
+      base.anniversaries = list.filter((a) => !(label ? matches(a.label, label) : a.spec.month === d!.month && a.spec.day === d!.day));
+      return (base.anniversaries as unknown[]).length !== list.length;
+    }
+  }
 }
 
 /** 화면에 보일 값 한 줄("바닐라라떼", "땅콩, 새우", "270") */
