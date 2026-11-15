@@ -527,7 +527,7 @@ test("챙길 날 오른쪽 위 내 얼굴: 내 프로필(닉네임·프로필 �
   await jisu.getByRole("menuitem", { name: "내 프로필" }).click();
   await expect(jisu).toHaveURL(/\/me\/avatar$/);
   await expect(jisu.getByRole("heading", { name: "내 프로필" })).toBeVisible();
-  await expect(jisu.getByText("닉네임", { exact: true })).toBeVisible();
+  await expect(jisu.getByLabel("닉네임", { exact: true })).toBeVisible();
   await expect(jisu.getByRole("heading", { name: "프로필 사진" })).toHaveCount(0);
   // 바깥을 누르면 메뉴가 닫힌다
   await jisu.goto("/home");

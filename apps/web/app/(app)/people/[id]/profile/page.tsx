@@ -16,9 +16,9 @@ export default async function PersonProfile({ params }: { params: Promise<{ id: 
   return (
     <div className="flex flex-1 flex-col">
       <TopBar back={`/people/${p.contactId}`} label={t("common.back")} />
-      <h1 className="headline px-6 pt-2 text-[28px]">{t("person.profileTitle", { name: p.name || p.nickname })}</h1>
       <PersonProfileForm
         contactId={p.contactId}
+        title={t("person.profileTitle", { name: p.name || p.nickname })}
         name={p.nickname}
         avatar={p.avatar ?? DEFAULT_AVATAR}
         locale={locale}

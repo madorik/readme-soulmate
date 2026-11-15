@@ -11,8 +11,7 @@ export default async function MeProfile() {
   return (
     <div className="flex flex-1 flex-col">
       <TopBar back="/me" label={t("common.back")} />
-      <h1 className="headline px-6 pt-2 text-[28px]">{t("profile.title")}</h1>
-      <AvatarStep locale={locale} name={s.profile.displayName} avatar={s.profile.avatar} next="/me" mode="edit" />
+      <AvatarStep locale={locale} name={s.profile.displayName} avatar={s.profile.avatar} next="/me" mode="edit" title={t("profile.title")} />
     </div>
   );
 }
