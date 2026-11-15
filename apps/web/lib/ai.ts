@@ -12,14 +12,14 @@ export function aiConfigured(): boolean {
 }
 
 /** 문장 하나를 나눈다. 실패하면 throw */
-export async function classifyCapture(text: string, people: CapturePerson[], locale: Locale): Promise<CaptureItem[]> {
+export async function classifyCapture(text: string, people: CapturePerson[], locale: Locale, about: CapturePerson | null = null): Promise<CaptureItem[]> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("ai_off");
   const base = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
   const res = await fetch(`${base}/responses`, {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify(captureRequest(text, people, locale, process.env.OPENAI_MODEL || "gpt-6-luna")),
+    body: JSON.stringify(captureRequest(text, people, locale, process.env.OPENAI_MODEL || "gpt-6-luna", "medium", about)),
     signal: AbortSignal.timeout(25_000),
   });
   if (!res.ok) throw new Error(`ai_http_${res.status}`);

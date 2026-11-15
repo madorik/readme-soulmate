@@ -39,6 +39,7 @@ export function SectionForm<S extends Section>({
   contactId,
   inline = false,
   autoSave = false,
+  stickTo = ABOVE_TAB_BAR,
 }: {
   section: S;
   initial: CardData[S] | null;
@@ -46,6 +47,8 @@ export function SectionForm<S extends Section>({
   contactId?: string;
   inline?: boolean;
   autoSave?: boolean;
+  /** inline일 때 저장 상태 줄이 붙을 아래 위치(기본: 탭 막대 바로 위) */
+  stickTo?: string;
 }) {
   const t = useT(locale);
   const save = contactId ? savePersonSection : saveSection;
@@ -110,7 +113,7 @@ export function SectionForm<S extends Section>({
       <div className="flex flex-col" onBlur={() => flush.current()}>
         {editors}
         {/* 저장 상태는 저장 중·저장됨·실패일 때만. 쓰는 법 설명은 두지 않는다 */}
-        <div className={`sticky z-10 min-h-11 items-center bg-white pb-3 pt-3 ${status === "idle" ? "hidden" : "flex"}`} style={{ bottom: ABOVE_TAB_BAR }}>
+        <div className={`sticky z-10 min-h-11 items-center bg-white pb-3 pt-3 ${status === "idle" ? "hidden" : "flex"}`} style={{ bottom: stickTo }}>
           <p role="status" aria-live="polite" className={`flex items-center gap-1.5 text-[13.5px] ${status === "error" ? "text-red" : status === "saved" ? "text-ok" : "text-muted"}`}>
             {status === "saving" ? t("me.saving") : null}
             {status === "saved" ? (
@@ -152,7 +155,7 @@ export function SectionForm<S extends Section>({
       {editors}
       <div
         className={inline ? "sticky z-10 flex flex-col gap-2 bg-white pb-3 pt-4" : "bottom-bar mt-auto flex flex-col gap-2 bg-bg px-5 pt-4"}
-        style={inline ? { bottom: ABOVE_TAB_BAR } : undefined}
+        style={inline ? { bottom: stickTo } : undefined}
       >
         {state.saved && !dirty ? (
           <p role="status" className="text-[13.5px] text-ok">

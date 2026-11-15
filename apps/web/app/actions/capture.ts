@@ -31,20 +31,25 @@ export interface CaptureState {
   error: "ai_off" | "failed" | "nothing" | null;
 }
 
-/** 말(글) 한 번을 나눠 사람 기록·내 리드미·메모에 넣는다. 없는 사람은 새로 더한다 */
-export async function captureNote(raw: string): Promise<CaptureState> {
+/**
+ * 말(글) 한 번을 나눠 사람 기록·내 리드미·메모에 넣는다. 없는 사람은 새로 더한다.
+ * aboutId: 그 사람 화면에서 적었을 때. 다른 사람 이름이 없는 말은 그 사람 이야기로 본다
+ */
+export async function captureNote(raw: string, aboutId?: string): Promise<CaptureState> {
   const s = await requireSession();
   const { locale } = s.profile;
   const text = String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, 500);
   if (!text) return { lines: [], undo: [], error: "nothing" };
   if (!aiConfigured()) return { lines: [], undo: [], error: "ai_off" };
   const people = await listPeople(s);
+  const about = aboutId ? people.find((p) => p.contactId === aboutId) : undefined;
   let items;
   try {
     items = await classifyCapture(
       text,
       people.map((p) => ({ id: p.contactId, name: p.name, nickname: p.nickname })),
       locale,
+      about ? { id: about.contactId, name: about.name, nickname: about.nickname } : null,
     );
   } catch {
     return { lines: [], undo: [], error: "failed" };

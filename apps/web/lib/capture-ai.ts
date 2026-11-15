@@ -73,6 +73,7 @@ who:
 - "me" if the speaker talks about themself (나는, 내가, I).
 - "existing" with contactId from PEOPLE when the person matches by name, nickname or an obvious synonym (와이프/아내/집사람/wife, 남편/신랑, 엄마/어머니, 아빠/아버지, 할머니, 장모님 …). Never invent an id.
 - "new" with name = how the speaker calls them (e.g. "처제", "김 과장님") when nobody matches.
+- ABOUT (when given): the note was written on that person's page. Facts that name no other person are about ABOUT ("existing" with ABOUT.id), even with no subject (e.g. "해바라기 좋아함"). 나/내가 still means "me".
 
 target: the most specific field from FIELDS. Rules:
 - codes kinds: use only listed codes. If the thing is not in the list, use a text/list field that fits, otherwise memo.
@@ -100,12 +101,19 @@ function outputText(body: unknown): string {
 }
 
 /** OpenAI Responses API 요청 몸 */
-export function captureRequest(text: string, people: CapturePerson[], locale: Locale, model = "gpt-6-luna", effort: "none" | "low" | "medium" | "high" = "medium") {
+export function captureRequest(
+  text: string,
+  people: CapturePerson[],
+  locale: Locale,
+  model = "gpt-6-luna",
+  effort: "none" | "low" | "medium" | "high" = "medium",
+  about: CapturePerson | null = null,
+) {
   return {
       model,
       reasoning: { effort },
       instructions: INSTRUCTIONS,
-      input: `LANGUAGE: ${locale}\nPEOPLE: ${JSON.stringify(people)}\nNOTE: ${text}`,
+      input: `LANGUAGE: ${locale}\nPEOPLE: ${JSON.stringify(people)}\n${about ? `ABOUT: ${JSON.stringify(about)}\n` : ""}NOTE: ${text}`,
       text: { format: { type: "json_schema", name: "capture", strict: true, schema: SCHEMA } },
       store: false,
     };

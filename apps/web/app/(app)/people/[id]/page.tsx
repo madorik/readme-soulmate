@@ -1,24 +1,26 @@
-import { formatMonthDay, parseYmd, SECTIONS } from "@readme/core";
+import { formatMonthDay, isSection, parseYmd, SECTIONS_BY_IMPORTANCE } from "@readme/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { addNote, deleteNote, removeContact } from "@/app/actions/people";
 import { cancelInvite } from "@/app/actions/request";
 import { Avatar } from "@/components/Avatar";
-import { CardView } from "@/components/CardView";
-import { DateTiles } from "@/components/DateTiles";
 import { TopBar } from "@/components/chrome";
 import { Icon } from "@/components/marks";
+import { SectionBody } from "@/components/SectionBody";
+import { aiConfigured } from "@/lib/ai";
 import { displayName, groupName, listGroups, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
-import { summarize } from "@/lib/summary";
 import { FavoriteHeart } from "./FavoriteHeart";
 import { PersonOrganize } from "./PersonOrganize";
+import { PersonRecord } from "./PersonRecord";
+import { QuickNote } from "./QuickNote";
 import { TagEditor } from "./TagEditor";
 
-export default async function PersonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
+export default async function PersonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string; open?: string }> }) {
   const { id } = await params;
   // 고르기 중에 들어왔으면 뒤로 갈 때 고르던 상태(/people?pick=1&with=…)로 돌아간다. 사람들 화면 주소만 받는다
-  const backParam = (await searchParams).back ?? "";
+  const sp = await searchParams;
+  const backParam = sp.back ?? "";
   const back = /^\/people(\?[\w=&,%.-]*)?$/.test(backParam) ? backParam : "/people";
   const s = await requireSession();
   const { locale } = s.profile;
@@ -29,7 +31,6 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   const name = displayName(p);
   const today = todayFor(s.profile);
   const [notes, groups] = await Promise.all([s.tx((q) => listNotes(q, s.user.id, p.contactId)), s.tx((q) => listGroups(q, s.user.id))]);
-  const empty = !SECTIONS.some((x) => p.card[x]);
   const waiting = p.asking?.state === "active" ? p.asking : null;
 
   return (
@@ -38,8 +39,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         back={back}
         label={t("common.back")}
         right={
-          // 오른쪽 위는 그룹과, 기록 목록으로 내려가는 '고치기'
-          <div className="flex items-center gap-1 pr-1">
+          <div className="flex items-center pr-1.5">
             <PersonOrganize
               contactId={p.contactId}
               groupId={p.groupId}
@@ -53,9 +53,6 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
                 error: t("common.error"),
               }}
             />
-            <a href="#record" className="flex min-h-11 items-center px-2.5 text-[14.5px] font-bold">
-              {t("me.edit")}
-            </a>
           </div>
         }
       />
@@ -100,70 +97,74 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         </div>
       ) : null}
 
-      {empty ? (
-        <p className="px-6 pt-8 text-[15px] leading-[1.6] text-muted">{t("person.mineEmpty")}</p>
-      ) : (
-        <>
-          {p.card.dates ? <DateTiles dates={p.card.dates} today={today} locale={locale} t={t} /> : null}
-          <CardView card={p.card} sections={[...SECTIONS]} name={name} locale={locale} t={t} />
-        </>
-      )}
+      {aiConfigured() ? (
+        <QuickNote
+          contactId={p.contactId}
+          labels={{
+            placeholder: t("person.quickPlaceholder", { name }),
+            save: t("voice.save"),
+            same: t("voice.same"),
+            undo: t("voice.undo"),
+            undone: t("voice.undone"),
+            failed: t("voice.failed"),
+            nothing: t("person.quickNothing"),
+            aiOff: t("voice.aiOff"),
+          }}
+        />
+      ) : null}
 
-      {/* 내 기록: 항목마다 고치기 */}
-      <section id="record" className="flex flex-col px-6 pt-8">
-        <h2 className="section-title mb-1">{t("person.mineList")}</h2>
-        <ul className="flex flex-col">
-          {SECTIONS.map((section) => {
-            const line = summarize(section, p.card[section], locale, t);
-            return (
-              <li key={section} className="border-t border-rule last:border-b">
-                <Link href={`/people/${p.contactId}/edit/${section}`} className="flex min-h-[60px] items-center gap-3 py-2">
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className={`text-[15px] font-bold ${section === "safety" ? "text-red" : ""}`}>{t(`section.${section}` as "section.safety")}</span>
-                    {line ? <span className="truncate text-[13px] text-muted">{line}</span> : null}
-                  </span>
-                  <span className="text-[13.5px] font-bold">{line ? t("me.edit") : t("person.write")}</span>
-                  <Icon name="chevron" size={18} className="text-muted" />
-                </Link>
+      {/* 기억해 둔 것: 항목마다 적어 둔 게 바로 보이고, 누르면 그 자리에서 고친다 */}
+      <PersonRecord
+        contactId={p.contactId}
+        card={p.card}
+        locale={locale}
+        rows={SECTIONS_BY_IMPORTANCE.map((section) => ({
+          section,
+          title: t(`section.${section}` as "section.safety"),
+          body: SectionBody({ section, card: p.card, today, locale, t }),
+        }))}
+        labels={{ edit: t("me.edit"), close: t("me.close"), write: t("person.write"), done: t("person.editDone") }}
+        initialOpen={isSection(sp.open) ? sp.open : null}
+      />
+
+      <section id="notes" className="card mx-4 mt-3 flex flex-col px-[18px] pb-3 pt-4">
+        <h2 className="flex items-center gap-[7px] text-[16px] font-bold tracking-[-0.02em]">
+          <Icon name="lock" size={15} strokeWidth={2.2} />
+          {t("person.notes")}
+        </h2>
+        {notes.length ? (
+          <ul className="mt-1.5 flex flex-col">
+            {notes.map((n) => (
+              <li key={n.id} className="flex items-start gap-2 border-b border-rule py-2.5 text-[15px] leading-[1.5]">
+                <span className="min-w-0 flex-1 whitespace-pre-line">{n.body}</span>
+                <span className="shrink-0 pt-[2px] text-[12.5px] text-muted">{n.label || formatMonthDay(parseYmd(n.createdAt.slice(0, 10)) ?? today, locale)}</span>
+                <form action={deleteNote} className="-my-1.5 -mr-2 shrink-0">
+                  <input type="hidden" name="contactId" value={p.contactId} />
+                  <input type="hidden" name="noteId" value={n.id} />
+                  <button aria-label={t("common.delete")} className="flex h-9 w-9 items-center justify-center text-muted">
+                    <Icon name="close" size={15} />
+                  </button>
+                </form>
               </li>
-            );
-          })}
-        </ul>
+            ))}
+          </ul>
+        ) : null}
+        <form action={addNote} className="mt-2.5 flex items-end gap-1.5">
+          <input type="hidden" name="contactId" value={p.contactId} />
+          <textarea
+            name="body"
+            required
+            maxLength={1000}
+            rows={1}
+            placeholder={t("person.noteBodyPlaceholder")}
+            aria-label={t("person.noteBody")}
+            className="field max-h-40 flex-1 resize-none [field-sizing:content]"
+          />
+          <button className="flex h-12 shrink-0 items-center px-2.5 text-[14.5px] font-bold">{t("person.addNote")}</button>
+        </form>
       </section>
 
-      <section id="notes" className="mx-4 mt-9 flex flex-col gap-2.5 rounded-2xl bg-fill px-5 pb-3 pt-[18px]">
-          <h2 className="flex items-center gap-[7px] text-[15px] font-bold">
-            <Icon name="lock" size={15} strokeWidth={2.2} />
-            {t("person.notes")}
-          </h2>
-          {notes.map((n) => (
-            <div key={n.id} className="flex items-start gap-3 text-[15px] leading-[1.5]">
-              <span className="w-[70px] shrink-0 text-muted">{n.label || formatMonthDay(parseYmd(n.createdAt.slice(0, 10)) ?? today, locale)}</span>
-              <span className="min-w-0 flex-1 whitespace-pre-line">{n.body}</span>
-              <form action={deleteNote}>
-                <input type="hidden" name="contactId" value={p.contactId} />
-                <input type="hidden" name="noteId" value={n.id} />
-                <button aria-label={t("common.delete")} className="flex h-7 w-7 items-center justify-center text-muted">
-                  <Icon name="close" size={15} />
-                </button>
-              </form>
-            </div>
-          ))}
-          <details className="group">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-[14px] font-bold">
-              <span className="text-[12.5px] font-normal text-muted">{t("person.notesHidden", { name })}</span>
-              <span>{t("person.addNote")}</span>
-            </summary>
-            <form action={addNote} className="flex flex-col gap-2 pb-2">
-              <input type="hidden" name="contactId" value={p.contactId} />
-              <input name="label" maxLength={40} placeholder={t("person.noteWhenPlaceholder")} aria-label={t("person.noteWhen")} className="field !bg-white/70" />
-              <textarea name="body" required maxLength={1000} rows={2} placeholder={t("person.noteBodyPlaceholder")} aria-label={t("person.noteBody")} className="field resize-none !bg-white/70" />
-              <button className="btn-primary !h-12">{t("common.save")}</button>
-            </form>
-          </details>
-        </section>
-
-      <details className="mx-6 mt-8">
+      <details className="mx-6 mt-6">
         <summary className="flex min-h-11 cursor-pointer list-none items-center text-[14px] font-bold text-muted">{t("person.remove")}</summary>
         <form action={removeContact}>
           <input type="hidden" name="contactId" value={p.contactId} />
@@ -171,7 +172,9 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         </form>
       </details>
 
-      <div className="bottom-bar mt-auto grid grid-cols-2 gap-2.5 bg-bg px-6 pt-4">
+      {/* 항목을 고치는 동안은 아래 버튼 줄을 숨기고, 그 자리를 화면 끝 여백으로 */}
+      <div className="page-end show-while-editing" />
+      <div className="bottom-bar hide-while-editing mt-auto grid grid-cols-2 gap-2.5 bg-bg px-6 pt-4">
         <Link href={`/request?to=${encodeURIComponent(p.contactId)}`} className="btn-outline">
           {t("person.askMore")}
         </Link>

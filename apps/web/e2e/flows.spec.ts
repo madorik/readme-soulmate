@@ -123,7 +123,7 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await expect(page.getByText(`${solar.m}.${solar.d}`).first()).toBeVisible();
   await page.getByRole("link", { name: /아빠/ }).click();
   // 굴은 '못 먹는 것'으로 답했다
-  await expect(page.getByRole("region", { name: "음식" }).getByText("굴", { exact: true })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ has: page.getByRole("button", { name: /알레르기와 못 먹는 음식/ }) }).getByText("굴", { exact: true })).toBeVisible();
   await shot(page, "07-person-answered");
   await page.goto("/home");
   await expect(page.getByRole("link", { name: /아빠/ })).toBeVisible();
@@ -136,13 +136,17 @@ test("받은 답도 내가 고친다", async ({ browser }) => {
   await page.getByRole("link", { name: /아빠/ }).click();
   await page.waitForURL(/\/people\/[0-9a-f-]{36}$/);
   const personUrl = new URL(page.url()).pathname;
-  await page.locator("#record").getByRole("link", { name: /알레르기와 못 먹는 음식/ }).click();
-  await expect(page).toHaveURL(/\/edit\/safety$/);
+  // 항목을 누르면 화면을 옮기지 않고 그 자리에서 고치고, 고르면 바로 저장된다
+  const safety = page.getByRole("button", { name: /알레르기와 못 먹는 음식/ });
+  await safety.click();
+  await expect(safety).toHaveAttribute("aria-expanded", "true");
+  await expect(page).toHaveURL(/\?open=safety$/);
+  await expect(page.getByRole("button", { name: "저장" })).toHaveCount(0);
   await page.getByRole("button", { name: "땅콩", exact: true }).first().click();
-  await page.getByRole("button", { name: "저장" }).click();
   await expect(page.getByText("저장했어요.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "다 했어요" }).click();
+  await expect(safety).toHaveAttribute("aria-expanded", "false");
   await page.goto(personUrl);
-  await expect(page.getByRole("heading", { name: "꼭 알아 두세요" })).toBeVisible();
   await expect(page.getByText("땅콩", { exact: true })).toBeVisible();
   await expect(page.getByText("굴", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "선물 고르기" }).click();
@@ -254,7 +258,7 @@ test("영어로 보면 사이즈가 미국 사이즈로도 보인다", async ({ 
   await jisu.getByRole("button", { name: "English" }).click();
   await jisu.goto("/people");
   await jisu.getByRole("link", { name: /도윤/ }).first().click();
-  await expect(jisu.getByRole("heading", { name: "Sizes" })).toBeVisible();
+  await expect(jisu.getByRole("button", { name: /^Sizes/ })).toBeVisible();
   await expect(jisu.getByText("About US women's 6.5")).toBeVisible();
   await expect(jisu.getByText("About US 6")).toBeVisible();
   await shot(jisu, "11-person-en");
@@ -267,10 +271,8 @@ test("나만 보는 메모: 사람 화면에 남는다", async ({ browser }) => 
   const jisu = await as(browser, "jisu");
   await jisu.goto("/people");
   await jisu.getByRole("link", { name: /도윤/ }).first().click();
-  await jisu.getByText("메모 추가").click();
-  await jisu.getByLabel("언제").fill("작년 생일");
   await jisu.getByLabel("메모", { exact: true }).fill("목도리 줬음. 잘 하고 다님");
-  await jisu.getByRole("button", { name: "저장" }).first().click();
+  await jisu.getByRole("button", { name: "메모 추가" }).click();
   await expect(jisu.getByText("목도리 줬음. 잘 하고 다님")).toBeVisible();
 });
 
@@ -284,26 +286,26 @@ test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 
   await jisu.getByLabel("이름이나 부르는 말").fill("할머니");
   await jisu.getByRole("button", { name: "만들기", exact: true }).click();
   await expect(jisu.getByRole("heading", { name: "할머니" })).toBeVisible();
-  await expect(jisu.getByText(/아직 기억해 둔 게 없어요/)).toBeVisible();
+  // 아무것도 없으면 항목마다 제목 한 줄과 '적기'만
+  await expect(jisu.getByRole("button", { name: /생일과 기념일\s*적기/ })).toBeVisible();
   const personUrl = new URL(jisu.url()).pathname;
 
   // 생일을 오늘부터 7일 뒤로(기본 알림 시점이 7일 전·당일)
   const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()).split("-").map(Number);
   const in7 = new Date(Date.UTC(y, m - 1, d + 7));
-  await jisu.getByRole("link", { name: /생일과 기념일/ }).click();
-  await expect(jisu).toHaveURL(/\/edit\/dates$/);
+  await jisu.getByRole("button", { name: /생일과 기념일/ }).click();
   await jisu.getByLabel("월").first().selectOption(String(in7.getUTCMonth() + 1));
   await jisu.getByLabel("일").first().selectOption(String(in7.getUTCDate()));
-  await jisu.getByRole("button", { name: "저장" }).click();
   await expect(jisu.getByText("저장했어요.", { exact: true })).toBeVisible();
+  await jisu.getByRole("button", { name: "다 했어요" }).click();
 
-  await jisu.goto(`${personUrl}/edit/safety`);
+  await jisu.getByRole("button", { name: /알레르기와 못 먹는 음식/ }).click();
   await jisu.getByRole("button", { name: "땅콩", exact: true }).first().click();
-  await jisu.getByRole("button", { name: "저장" }).click();
   await expect(jisu.getByText("저장했어요.", { exact: true })).toBeVisible();
 
   await jisu.goto(personUrl);
-  await expect(jisu.getByRole("heading", { name: "꼭 알아 두세요" })).toBeVisible();
+  await expect(jisu.getByRole("button", { name: /알레르기와 못 먹는 음식\s*고치기/ })).toBeVisible();
+  await expect(jisu.getByText("땅콩", { exact: true })).toBeVisible();
   await shot(jisu, "14-mine-person");
   await jisu.goto("/people");
   await expect(jisu.getByRole("link", { name: /할머니.*7일 남음/ })).toBeVisible();
@@ -552,7 +554,7 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   await expect(page.getByText("엄마 칠순")).toBeVisible();
   await shot(page, "12-demo-home");
   await page.getByRole("link", { name: /아내/ }).first().click();
-  await expect(page.getByRole("heading", { name: "꼭 알아 두세요" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /알레르기와 못 먹는 음식\s*고치기/ })).toBeVisible();
   await expect(page.getByText("새우", { exact: true })).toBeVisible();
   await page.goto("/privacy");
   await expect(page.getByText(/데모 계정이에요/)).toBeVisible();

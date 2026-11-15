@@ -253,6 +253,17 @@
   padding-bottom: 12px;
 }
 
+/* 사람 화면: 항목을 펼쳐 고치는 동안([data-editing])은 아래 버튼 줄 대신 화면 끝 여백 */
+.show-while-editing {
+  display: none;
+}
+body:has([data-editing]) .hide-while-editing {
+  display: none;
+}
+body:has([data-editing]) .show-while-editing {
+  display: block;
+}
+
 /* 아래에 붙지 않는 화면 끝: 아래 막대 가림 띠 위로 여유 */
 .page-end {
   padding-bottom: max(calc(var(--sab) + 24px), 32px);
