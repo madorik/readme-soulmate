@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { setLocale } from "@/app/actions/auth";
 import { AuthButtons } from "@/components/AuthButtons";
 import { LegalLinks, Wordmark } from "@/components/chrome";
-import { LoginHero } from "@/components/LoginHero";
+import { HeroHeadline, LoginHero } from "@/components/LoginHero";
 import { PROVIDERS } from "@/lib/auth";
 import { getSession } from "@/lib/data";
 import { makeT, requestLocale } from "@/lib/i18n";
@@ -28,16 +28,14 @@ export default async function Start({ searchParams }: { searchParams: Promise<{ 
         </form>
       </div>
 
-      {/* 리디와 기억해 둔 쪽지들(로그인 화면과 같은 그림). 키 작은 휴대폰에서는 조금 줄인다 */}
+      {/* 컨닝페이퍼와 흘끔 보는 눈(로그인 화면과 같은 그림). 키 작은 휴대폰에서는 조금 줄인다 */}
       <div className="flex flex-1 items-center px-6 py-4 [@media(max-height:860px)]:py-2 [@media(max-height:860px)]:[zoom:0.9] [@media(max-height:720px)]:[zoom:0.78]">
         <LoginHero t={t} />
       </div>
 
       <section className="flex flex-col gap-3 px-6">
-        <h1 className="hero-rise headline whitespace-pre-line text-[32px]" style={{ animationDelay: "0.2s" }}>
-          {t("start.headline")}
-        </h1>
-        <p className="hero-rise max-w-[310px] text-[15px] leading-[1.6] text-muted" style={{ animationDelay: "0.3s" }}>
+        <HeroHeadline text={t("start.headline")} />
+        <p className="hero-rise whitespace-pre-line text-[16px] leading-[1.6] text-ink-2" style={{ animationDelay: "0.3s" }}>
           {t("start.body")}
         </p>
       </section>

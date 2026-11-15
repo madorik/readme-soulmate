@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AuthButtons } from "@/components/AuthButtons";
 import { LegalLinks, TopBar, Wordmark } from "@/components/chrome";
-import { LoginHero } from "@/components/LoginHero";
+import { HeroHeadline, LoginHero } from "@/components/LoginHero";
 import { Icon } from "@/components/marks";
 import { PROVIDERS } from "@/lib/auth";
 import { getSession } from "@/lib/data";
@@ -20,14 +20,20 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   return (
     <main className="screen">
       <TopBar back={`/?next=${encodeURIComponent(next)}`} label={t("common.back")} center={<Wordmark size={17} locale={locale} />} />
-      <h1 className="headline px-6 pt-3 text-[28px]">{t("login.title")}</h1>
 
-      {/* 키 작은 휴대폰(SE 등)에서는 그림을 조금 줄여 버튼까지 한 화면에 */}
-      <div className="flex flex-1 items-center px-6 py-6 [@media(max-height:720px)]:py-2 [@media(max-height:720px)]:[zoom:0.86]">
+      {/* 시작 화면과 같은 그림·제목. 키 작은 휴대폰(SE 등)에서는 그림을 조금 줄여 버튼까지 한 화면에 */}
+      <div className="flex flex-1 items-center px-6 py-4 [@media(max-height:860px)]:py-2 [@media(max-height:860px)]:[zoom:0.9] [@media(max-height:720px)]:[zoom:0.78]">
         <LoginHero t={t} />
       </div>
 
-      <div className="px-6">
+      <section className="flex flex-col gap-3 px-6">
+        <HeroHeadline text={t("start.headline")} />
+        <p className="hero-rise whitespace-pre-line text-[16px] leading-[1.6] text-ink-2" style={{ animationDelay: "0.3s" }}>
+          {t("start.body")}
+        </p>
+      </section>
+
+      <div className="px-6 pt-7">
         {sp.failed ? (
           <p role="alert" className="mb-3 flex items-center gap-2 rounded-2xl bg-red-soft px-4 py-3 text-[14px] font-medium leading-[1.45] text-red">
             <Icon name="alert" size={18} strokeWidth={2} className="shrink-0" />

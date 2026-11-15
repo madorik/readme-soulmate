@@ -1,4 +1,4 @@
-// 앱 아이콘·스플래시·스토어 그래픽을 만든다(기억해유 아이콘: 망고 그라데이션 위에 하트를 그린 메모와 연필 — 누군가를 챙기려고 메모에 적는 앱. 스플래시·그래픽 글자는 남색 기억해유).
+// 앱 아이콘·스플래시·스토어 그래픽을 만든다(기억해유 아이콘: 망고 바탕에서 눈 둘이 옆의 컨닝페이퍼를 흘끔 본다 — 소중한 사람의 컨닝페이퍼. 스플래시·그래픽 글자는 남색 기억해유).
 //   node apps/mobile/scripts/make-assets.mjs        (apps/web의 Playwright 크로미엄으로 그린다. 글꼴은 구글 폰트에서 받는다)
 // 결과: Android mipmap·splash, iOS AppIcon·Splash, apps/mobile/store/(Play 아이콘 512, 그래픽 이미지 1024×500)
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -15,30 +15,68 @@ const CIRCLE = "M14 58 C6 30 30 8 56 8 C82 8 96 30 93 54 C90 80 66 94 44 92 C20 
 const FONTS =
   '<link rel="preconnect" href="https://fonts.gstatic.com"><link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Gothic+A1:wght@500;800;900&family=Noto+Sans+KR:wght@800;900&display=block" rel="stylesheet">';
 
-/** 1024 기준 아이콘 그림: 하트를 그린 메모(접힌 모서리) + 비스듬한 연필. 선은 앱 캐릭터처럼 굵은 남색 */
-const LINE = `stroke="#1F2340" stroke-linejoin="round" stroke-linecap="round"`;
-const ICON_ART = `
-  <g transform="rotate(-6 480 520)">
-    <path d="M220 210 H640 L770 340 V800 Q770 850 720 850 H270 Q220 850 220 800 Z" fill="#fff" ${LINE} stroke-width="42"/>
-    <path d="M640 210 V300 Q640 340 680 340 H770" fill="#FFC23D" ${LINE} stroke-width="42"/>
-    <path d="M495 470 C445 400 340 430 360 520 C375 590 450 630 495 680 C540 630 615 590 630 520 C650 430 545 400 495 470 Z" fill="#FF7A8A" ${LINE} stroke-width="38"/>
+/**
+ * 아이콘 그림(100×100 기준, 1024에서는 10.24배): 반쯤 내린 눈꺼풀의 눈 둘이 오른쪽 컨닝페이퍼를 흘끔 본다.
+ * 쪽지는 흰 종이 + 망고로 접힌 귀퉁이 + 글씨 줄 + 분홍 하트, 선은 앱 캐릭터처럼 굵은 남색. 로그인 그림(components/LoginHero.tsx)과 같은 눈
+ */
+const ell = (cx, cy, rx, ry) => `M${cx - rx} ${cy} A${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A${rx} ${ry} 0 1 0 ${cx - rx} ${cy} Z`;
+const ART = {
+  paper: "M62 27 H77 L86 36 V71 Q86 75 82 75 H62 Q58 75 58 71 V31 Q58 27 62 27 Z",
+  fold: "M77 27 V32.6 Q77 36 80.4 36 H86 Z",
+  lines: "M63.5 46 H80 M63.5 53 H80 M63.5 60 H74",
+  heart: "M12 20.5 C6 16.3 3 12.8 3.6 9.3 C4.2 6 8.4 4.9 12 8.3 C15.6 4.9 19.8 6 20.4 9.3 C21 12.8 18 16.3 12 20.5 Z",
+  eyes: `${ell(23, 51, 9.5, 11.5)} ${ell(43, 51, 9.5, 11.5)}`,
+  pupils: `${ell(26.6, 53.6, 5.4, 5.4)} ${ell(46.6, 53.6, 5.4, 5.4)}`,
+  shine: `${ell(28.3, 51.3, 1.8, 1.8)} ${ell(48.3, 51.3, 1.8, 1.8)}`,
+  lids: "M13.6 48 A9.5 11.5 0 0 1 32.4 48 Q23 50.5 13.6 48 Z M33.6 48 A9.5 11.5 0 0 1 52.4 48 Q43 50.5 33.6 48 Z",
+  blush: `${ell(19, 66, 4.6, 2.6)} ${ell(47, 66, 4.6, 2.6)}`,
+};
+/** 색: 기본(망고 바탕)·다크(남색 바탕)·틴트(iOS가 색을 입히는 회색조) */
+const PAL = {
+  light: { bg: ["#FFF1C2", "#FFD66B", "#FFC23D"], ink: "#1F2340", eye: "#FFFFFF", paper: "#FFFFFF", fold: "#FFC23D", lines: "#C3C8D6", heart: "#FF7A8A", lid: "#FFE08A", blush: "#FF9DB0" },
+  dark: { bg: ["#2E3360", "#20244A", "#14172E"], ink: "#1F2340", eye: "#FFFFFF", paper: "#FFFFFF", fold: "#FFC23D", lines: "#C3C8D6", heart: "#FF7A8A", lid: "#FFE08A", blush: "#FF9DB0" },
+  tinted: { bg: ["#1C1C1C", "#101010", "#000000"], ink: "#111111", eye: "#EDEDED", paper: "#EDEDED", fold: "#9A9A9A", lines: "#8A8A8A", heart: "#8A8A8A", lid: "#BDBDBD", blush: null },
+};
+function iconArt(p) {
+  const line = `stroke="${p.ink}" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"`;
+  return `<g transform="rotate(-6 72 51)">
+    <path d="${ART.paper}" fill="${p.paper}" ${line}/>
+    <path d="${ART.fold}" fill="${p.fold}" ${line}/>
+    <path d="${ART.lines}" fill="none" stroke="${p.lines}" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="${ART.heart}" fill="${p.heart}" transform="translate(62 31) scale(0.34)"/>
   </g>
-  <g transform="rotate(38 760 640)">
-    <rect x="700" y="380" width="120" height="430" rx="18" fill="#FFC23D" ${LINE} stroke-width="38"/>
-    <path d="M700 810 L760 920 L820 810 Z" fill="#FFE7C2" ${LINE} stroke-width="38"/>
-    <path d="M742 885 L760 920 L778 885 Z" fill="#1F2340"/>
-    <rect x="700" y="340" width="120" height="70" rx="16" fill="#FF7A8A" ${LINE} stroke-width="38"/>
-  </g>`;
-const GRAD = `<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF1C2"/><stop offset="0.55" stop-color="#FFD66B"/><stop offset="1" stop-color="#FFC23D"/></linearGradient></defs>`;
+  <path d="${ART.eyes}" fill="${p.eye}" ${line}/>
+  <path d="${ART.pupils}" fill="${p.ink}"/>
+  <path d="${ART.shine}" fill="${p.eye}"/>
+  ${p.blush ? `<path d="${ART.blush}" fill="${p.blush}" fill-opacity="0.85"/>` : ""}
+  <path d="${ART.lids}" fill="${p.lid}" ${line}/>`;
+}
+/** 안드로이드 테마 아이콘(단색): 불투명한 곳만 시스템 색으로 칠해진다. 흰자·글씨 줄·하트·반짝임은 뚫고, 접힌 귀퉁이는 반투명 */
+const MONO_ART = `<defs><mask id="mono" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+    <rect width="100" height="100" fill="black"/>
+    <g transform="rotate(-6 72 51)">
+      <path d="${ART.paper}" fill="white"/>
+      <path d="${ART.fold}" fill="#808080"/>
+      <path d="${ART.lines}" fill="none" stroke="black" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="${ART.heart}" fill="black" transform="translate(62 31) scale(0.34)"/>
+    </g>
+    <path d="${ART.eyes}" fill="none" stroke="white" stroke-width="3.4"/>
+    <path d="${ART.pupils}" fill="white"/>
+    <path d="${ART.shine}" fill="black"/>
+    <path d="${ART.lids}" fill="white" stroke="white" stroke-width="3.4" stroke-linejoin="round"/>
+  </mask></defs>
+  <rect width="100" height="100" fill="#000000" mask="url(#mono)"/>`;
 
-/** scale: 그림 크기(1 = 원래), shape: square(꽉 찬 사각)·rounded·circle·none(투명, 안드로이드 적응형 전경) */
-function iconSvg({ scale, shape }) {
+/** scale: 그림 크기(1 = 원래), shape: square(꽉 찬 사각)·rounded·circle·none(투명, 안드로이드 적응형 전경), pal: 색, mono: 단색 레이어 */
+function iconSvg({ scale, shape, pal = "light", mono = false }) {
+  const p = PAL[pal];
+  const grad = `<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${p.bg[0]}"/><stop offset="0.55" stop-color="${p.bg[1]}"/><stop offset="1" stop-color="${p.bg[2]}"/></linearGradient></defs>`;
   const bg =
     shape === "none" ? "" : shape === "circle" ? '<circle cx="512" cy="512" r="512" fill="url(#bg)"/>' : shape === "rounded" ? '<rect width="1024" height="1024" rx="180" fill="url(#bg)"/>' : '<rect width="1024" height="1024" fill="url(#bg)"/>';
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%">
-  ${GRAD}
+  ${grad}
   ${bg}
-  <g transform="translate(512 512) scale(${scale}) translate(-512 -530)">${ICON_ART}</g>
+  <g transform="translate(512 512) scale(${scale}) translate(-512 -512)"><g transform="scale(10.24)">${mono ? MONO_ART : iconArt(p)}</g></g>
 </svg>`;
 }
 
@@ -70,6 +108,8 @@ for (const [d, k] of Object.entries(DENS)) {
   await icon(48 * k, { scale: 0.86, shape: "circle" }, `${res}/mipmap-${d}/ic_launcher_round.png`);
   // 적응형 아이콘 전경: 108dp 가운데 66dp 안쪽만 항상 보인다(배경은 drawable/ic_launcher_bg.xml 그라데이션)
   await icon(108 * k, { scale: 0.6, shape: "none" }, `${res}/mipmap-${d}/ic_launcher_foreground.png`);
+  // 테마 아이콘(안드로이드 13+): 같은 자리의 단색 레이어
+  await icon(108 * k, { scale: 0.6, shape: "none", mono: true }, `${res}/mipmap-${d}/ic_launcher_monochrome.png`);
 }
 
 // 스플래시: 흰 바탕 가운데 기억해유
@@ -100,6 +140,9 @@ for (const [dir, [w, h]] of Object.entries(SPLASH)) await render(splash(w, h), w
 // ── iOS ── (앱 아이콘은 투명 없이 꽉 찬 사각, 모서리는 iOS가 깎는다)
 const xc = resolve(mobile, "ios/App/App/Assets.xcassets");
 await icon(1024, { scale: 1, shape: "square" }, `${xc}/AppIcon.appiconset/AppIcon-512@2x.png`);
+// iOS 다크·틴트 모양(Contents.json의 appearances)
+await icon(1024, { scale: 1, shape: "square", pal: "dark" }, `${xc}/AppIcon.appiconset/AppIcon-dark.png`);
+await icon(1024, { scale: 1, shape: "square", pal: "tinted" }, `${xc}/AppIcon.appiconset/AppIcon-tinted.png`);
 for (const name of ["splash-2732x2732.png", "splash-2732x2732-1.png", "splash-2732x2732-2.png"]) {
   await render(splash(2732, 2732).replace(`font-size:${Math.round(2732 * 0.16)}px`, "font-size:260px"), 2732, 2732, `${xc}/Splash.imageset/${name}`, { transparent: false });
 }

@@ -44,7 +44,7 @@ async function makeLink(page: import("@playwright/test").Page) {
 
 test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음력 생일)", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /말 안 해도/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /사랑하는 사람들의/ })).toBeVisible();
   await shot(page, "01-start");
   await signIn(page);
   await onboard(page, { name: "지수", allergy: "새우", dislike: "오이", lunar: { month: 10, day: 12 } });
@@ -399,7 +399,7 @@ test("계정 삭제: 내 리드미는 지워지고, 나에게 물어본 사람�
   await doyun.goto("/privacy");
   await doyun.getByRole("button", { name: "계정 삭제" }).click();
   await doyun.getByRole("button", { name: "모두 지우기" }).click();
-  await expect(doyun.getByRole("heading", { name: /말 안 해도/ })).toBeVisible();
+  await expect(doyun.getByRole("heading", { name: /사랑하는 사람들의/ })).toBeVisible();
 
   const jisu = await as(browser, "jisu");
   await jisu.goto("/people");
@@ -608,9 +608,9 @@ test("챙길 날 오른쪽 위 내 얼굴: 내 프로필(닉네임·프로필 �
 test("영어로 바꾸면 영어 화면", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "English" }).click();
-  await expect(page.getByRole("heading", { name: /Know each other/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /cheat sheet/ })).toBeVisible();
   await page.getByRole("button", { name: "한국어" }).click();
-  await expect(page.getByRole("heading", { name: /말 안 해도/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /사랑하는 사람들의/ })).toBeVisible();
 });
 
 test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정이라고 알려 준다", async ({ page }) => {
@@ -673,10 +673,10 @@ test("기기 언어가 영어면 처음부터 영어로, 직접 고른 언어가
   const ctx = await browser.newContext({ locale: "en-US" });
   const page = await ctx.newPage();
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Know each other/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /cheat sheet/ })).toBeVisible();
   await page.getByRole("button", { name: "한국어" }).click();
-  await expect(page.getByRole("heading", { name: /말 안 해도/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /사랑하는 사람들의/ })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("heading", { name: /말 안 해도/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /사랑하는 사람들의/ })).toBeVisible();
   await ctx.close();
 });

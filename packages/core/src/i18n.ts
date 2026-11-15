@@ -27,8 +27,8 @@ export const ko = {
   "common.optional": "(선택)",
   "common.and": ", ",
 
-  "start.headline": "말 안 해도\n아는 사이처럼",
-  "start.body": "좋아하는 것, 못 먹는 것, 생일까지. 소중한 사람의 작은 것들을 기억해 두고, 꼭 맞게 챙겨요.",
+  "start.headline": "사랑하는 사람들의\n*컨닝페이퍼*",
+  "start.body": "언제 물어봐도 정답을 아는 사람,\n오늘부터 당신이에요.",
   "start.kakao": "카카오로 시작하기",
   "start.apple": "Apple로 계속하기",
   "start.google": "Google로 계속하기",
@@ -44,6 +44,9 @@ export const ko = {
   "login.noteFlower": "카네이션보다 수국",
   "login.noteFriend": "단짝",
   "login.noteAllergy": "땅콩 알레르기",
+  "login.noteWife": "아내",
+  "login.noteCake": "바스크 치즈케이크",
+  "login.paperTitle": "꼭 기억할 것",
 
   "onb.step": "{n} / 3",
   "onb.avatar.title": "나를 닮게 그려 볼까요",
@@ -600,8 +603,8 @@ export const en: Messages = {
   "common.optional": "(optional)",
   "common.and": ", ",
 
-  "start.headline": "Know each other\nwithout a word",
-  "start.body": "Favorites, foods to avoid, birthdays. Keep the little things about the people you love, and care for them just right.",
+  "start.headline": "A *cheat sheet*\nfor the people you love",
+  "start.body": "Always know the right answer.\nStarting today, that's you.",
   "start.kakao": "Continue with Kakao",
   "start.apple": "Continue with Apple",
   "start.google": "Continue with Google",
@@ -617,6 +620,9 @@ export const en: Messages = {
   "login.noteFlower": "Hydrangeas over roses",
   "login.noteFriend": "Bestie",
   "login.noteAllergy": "Peanut allergy",
+  "login.noteWife": "Wife",
+  "login.noteCake": "Basque cheesecake",
+  "login.paperTitle": "Don't forget",
 
   "onb.step": "{n} / 3",
   "onb.avatar.title": "Draw yourself",
