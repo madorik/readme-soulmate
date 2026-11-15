@@ -10,6 +10,7 @@ import { FolderSheet } from "@/components/FolderSheet";
 import { DrawnCheck } from "@/components/marks";
 import { Sheet } from "@/components/Sheet";
 import type { FolderSheetLabels, FolderView } from "@/lib/folders";
+import { matchesPerson } from "@/lib/search";
 
 interface PeopleLabels {
   title: string;
@@ -37,7 +38,7 @@ export function FolderSheets({
   open: "add" | "edit" | null;
   /** 닫을 때 갈 주소(이 폴더, 정렬 유지) */
   back: string;
-  people: { contactId: string; name: string; avatar: AvatarConfig | null }[];
+  people: { contactId: string; name: string; tag: string; avatar: AvatarConfig | null }[];
   labels: PeopleLabels;
   sheet: FolderSheetLabels;
 }) {
@@ -55,7 +56,7 @@ function AddPeople({
   onClose,
 }: {
   folder: FolderView;
-  people: { contactId: string; name: string; avatar: AvatarConfig | null }[];
+  people: { contactId: string; name: string; tag: string; avatar: AvatarConfig | null }[];
   labels: PeopleLabels;
   onClose: () => void;
 }) {
@@ -63,8 +64,7 @@ function AddPeople({
   const [query, setQuery] = useState("");
   const [busy, start] = useTransition();
   const [failed, setFailed] = useState(false);
-  const q = query.trim().toLowerCase();
-  const shown = q ? people.filter((p) => p.name.toLowerCase().includes(q)) : people;
+  const shown = people.filter((p) => matchesPerson(query, p.name, p.tag));
   const toggle = (id: string) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]);
   // 빈 폴더에 넣을 때는 "n명 넣기", 이미 사람이 있으면 고친 대로 "완료"
   const cta = !folder.memberIds.length && picked.length ? labels.addN.replace("{n}", String(picked.length)) : labels.done;

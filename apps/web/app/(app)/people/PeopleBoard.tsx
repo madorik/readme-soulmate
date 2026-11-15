@@ -11,6 +11,7 @@ import { Mascot } from "@/components/Mascot";
 import { DrawnCheck, Icon } from "@/components/marks";
 import { RowBody, type PersonRow } from "@/components/PersonRow";
 import type { FolderSheetLabels, FolderView } from "@/lib/folders";
+import { matchesPerson } from "@/lib/search";
 import { useDragToFolder } from "./useDragToFolder";
 
 interface Labels {
@@ -33,6 +34,10 @@ interface Labels {
   folders: string;
   /** 아래 목록 제목: 폴더 없음 */
   unfiled: string;
+  /** 찾기 칸: "이름이나 태그로 찾기" */
+  search: string;
+  searchEmpty: string;
+  clear: string;
   newFolder: string;
   /** "{n}명" */
   count: string;
@@ -96,6 +101,10 @@ export function PeopleBoard({
     return () => document.documentElement.removeAttribute("data-people-picking");
   }, [picking]);
   const [making, setMaking] = useState(false);
+  // 찾기: 적는 동안은 폴더 칸 대신 찾은 사람(폴더와 상관없이 모두에서). 선택 중이면 고르는 목록을 줄인다
+  const [find, setFind] = useState("");
+  const searching = !!find.trim();
+  const found = searching ? rows.filter((r) => matchesPerson(find, r.name, r.tag)) : rows;
 
   // 끌어 놓기: 놓는 즉시 화면에서 넣고(서버가 다시 그리면 그 값으로), 실패하면 되돌린다
   // 화면에서 먼저 넣은 것은 서버가 새 목록(rows)을 주면 버린다
@@ -103,7 +112,7 @@ export function PeopleBoard({
   const added = local.rows === rows ? local.added : {};
   const [, startDrop] = useTransition();
   const drag = useDragToFolder({
-    enabled: !picking,
+    enabled: !picking && !searching,
     onDrop: (contactId, folderId) => {
       setLocal((l) => {
         const cur = l.rows === rows ? l.added : {};
@@ -160,6 +169,29 @@ export function PeopleBoard({
         ) : null}
       </div>
 
+      {rows.length ? (
+        <div className="relative px-4 pt-3.5">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="pointer-events-none absolute left-[31px] top-[29px] text-muted">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-4-4" />
+          </svg>
+          <input
+            type="search"
+            value={find}
+            onChange={(e) => setFind(e.target.value)}
+            placeholder={labels.search}
+            aria-label={labels.search}
+            enterKeyHint="search"
+            className="h-12 w-full rounded-2xl bg-paper pl-[44px] pr-12 text-[16px] shadow-[inset_0_0_0_1.5px_var(--color-rule)] outline-none placeholder:text-muted focus:shadow-[inset_0_0_0_2px_var(--color-sky)] [&::-webkit-search-cancel-button]:appearance-none"
+          />
+          {find ? (
+            <button type="button" aria-label={labels.clear} onClick={() => setFind("")} className="absolute right-5 top-[17px] flex h-11 w-11 items-center justify-center text-muted">
+              <Icon name="close" size={18} strokeWidth={2} />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       {picking ? (
         <div className="flex flex-col px-4 pt-3">
           <div className="card px-3.5">
@@ -191,8 +223,9 @@ export function PeopleBoard({
               })}
             </div>
           ) : null}
-          <ul className="card mt-3 flex flex-col px-3.5">
-            {rows.map((r) => {
+          {searching && !found.length ? <p className="px-2 pt-5 text-[14px] text-muted">{labels.searchEmpty}</p> : null}
+          <ul className={`card mt-3 flex flex-col px-3.5 ${found.length ? "" : "hidden"}`}>
+            {found.map((r) => {
               const on = picked.includes(r.contactId);
               return (
                 <li key={r.contactId} className="flex items-center border-t border-rule first:border-t-0">
@@ -213,6 +246,20 @@ export function PeopleBoard({
             })}
           </ul>
         </div>
+      ) : searching ? (
+        found.length ? (
+          <ul className="card mx-4 mt-3.5 flex flex-col px-3.5">
+            {found.map((r) => (
+              <li key={r.contactId} className="border-t border-rule first:border-t-0">
+                <Link href={`/people/${r.contactId}`} className="flex min-h-[70px] items-center gap-3">
+                  <RowBody row={r} avatarLabel={labels.avatarOf.replace("{name}", r.name)} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="px-6 pt-6 text-[14px] text-muted">{labels.searchEmpty}</p>
+        )
       ) : (
         <div onClickCapture={drag.onClickCapture}>
           <h2 className="flex items-baseline gap-1.5 px-6 pb-3 pt-5">

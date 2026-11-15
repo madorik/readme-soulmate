@@ -125,11 +125,14 @@ export default async function FolderPage({
         folder={folder}
         open={open}
         back={here}
-        people={people.map((p) => ({ contactId: p.contactId, name: p.name || displayName(p), avatar: p.avatar }))}
+        people={people.map((p) => {
+          const name = p.name || displayName(p);
+          return { contactId: p.contactId, name, tag: p.nickname && p.nickname !== name ? p.nickname : "", avatar: p.avatar };
+        })}
         sheet={folderSheetLabels(t)}
         labels={{
           title: t("folder.addPeople"),
-          search: t("folder.search"),
+          search: t("people.search"),
           addN: t("folder.addN", { n: "{n}" }),
           done: t("folder.done"),
           close: t("common.close"),

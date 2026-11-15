@@ -478,7 +478,7 @@ test("내 리드미: 고치기를 누르면 화면을 옮기지 않고 그 항�
   await expect(jisu.getByRole("button", { name: "가을", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
-test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴더), 폴더 없는 사람만 목록에, 끌어서 폴더에 넣기, 즐겨찾기", async ({ browser }) => {
+test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴더), 폴더 없는 사람만 목록에, 끌어서 폴더에 넣기, 찾기, 즐겨찾기", async ({ browser }) => {
   const jisu = await as(browser, "jisu");
   // 기본 폴더 네 개가 사람들 위에 보인다
   await jisu.goto("/people");
@@ -517,7 +517,9 @@ test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴
   await expect(unfiled.filter({ hasText: "아빠" })).toHaveCount(0);
   await expect(unfiled.filter({ hasText: "단짝" })).toHaveCount(0);
 
-  // 끌어서 폴더에: 폴더 없는 첫 사람을 회사 칸에 놓으면 회사에 들어가고 목록에서 빠진다(새로 고쳐도 그대로)
+  // 끌어서 폴더에: 폴더 없는 첫 사람을 회사 칸에 놓으면 회사에 들어가고 목록에서 빠진다(새로 고쳐도 그대로).
+  // 놓기만 보려고 화면을 길게(사람과 폴더가 한 화면에)
+  await jisu.setViewportSize({ width: 390, height: 1100 });
   const first = unfiled.first();
   const href = await first.getAttribute("href");
   const work = jisu.getByRole("link", { name: /^회사 / });
@@ -535,6 +537,19 @@ test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴
   await expect(jisu.locator(`li a[href="${href}"]`)).toHaveCount(0);
   await expect(jisu.getByRole("link", { name: /^회사 / })).toContainText("1명");
   await shot(jisu, "18-people-folders");
+  await jisu.setViewportSize({ width: 390, height: 664 });
+
+  // 찾기: 폴더에 든 사람도 찾고(폴더 칸은 숨는다), 초성으로도 찾으며, 없으면 없다고
+  const search = jisu.getByRole("searchbox", { name: "이름이나 태그로 찾기" });
+  await search.fill("아빠");
+  await expect(jisu.getByRole("link", { name: /^가족 / })).toHaveCount(0);
+  await expect(jisu.getByRole("link", { name: /아빠/ })).toContainText("가족 · 본가");
+  await search.fill("ㄷㅉ");
+  await expect(jisu.getByRole("link", { name: /단짝/ })).toBeVisible();
+  await search.fill("없는사람");
+  await expect(jisu.getByText("찾는 사람이 없어요")).toBeVisible();
+  await search.fill("");
+  await expect(jisu.getByRole("link", { name: /^가족 / })).toBeVisible();
 
   // 폴더 안: 가족에 단짝도 넣는다
   await jisu.getByRole("link", { name: /^가족 / }).click();
