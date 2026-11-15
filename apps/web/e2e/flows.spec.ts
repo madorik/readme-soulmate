@@ -88,7 +88,7 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   const dad = await newPage(browser);
   await dad.goto(askDadUrl);
   await expect(dad.getByText("설치 없이 답하는 중")).toBeVisible();
-  await expect(dad.getByRole("heading", { name: "지수님이 3가지를 물어봐요" })).toBeVisible();
+  await expect(dad.getByRole("heading", { name: "지수님이 3가지가 궁금하대요" })).toBeVisible();
   await shot(dad, "05-answer");
   // 한 화면에 한 항목씩: 음식과 알레르기 → 선물(건너뛰기) → 생일
   await expect(dad.getByText("1/4")).toBeVisible();
@@ -107,7 +107,7 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await expect(dad.getByRole("button", { name: "보내기", exact: true })).toBeDisabled();
   await dad.getByRole("button", { name: /건강 정보를 지수님에게 보내 저장하는 데 동의해요/ }).click();
   await dad.getByRole("button", { name: "보내기", exact: true }).click();
-  await expect(dad.getByRole("heading", { name: "리드미가 통했어요" })).toBeVisible();
+  await expect(dad.getByRole("heading", { name: "마음이 전해졌어요" })).toBeVisible();
   await expect(dad.getByRole("link", { name: "나도 물어보기" })).toHaveAttribute("href", /next=%2Frequest%3Fname%3D/);
   await shot(dad, "06-answer-done");
 
@@ -124,7 +124,7 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await page.getByRole("link", { name: /아빠/ }).click();
   // 굴은 '못 먹는 것'으로 답했다
   await expect(page.getByRole("region", { name: "음식" }).getByText("굴", { exact: true })).toBeVisible();
-  await expect(page.locator("#record").getByText(/에 받은 답$/)).toHaveCount(2);
+  await expect(page.locator("#record").getByText(/에 직접 알려 줬어요$/)).toHaveCount(2);
   await shot(page, "07-person-answered");
   await page.goto("/home");
   await expect(page.getByRole("link", { name: /아빠/ })).toBeVisible();
@@ -146,7 +146,7 @@ test("받은 답도 내가 고친다: 고친 항목은 받은 날 표시가 빠�
   await expect(page.getByRole("heading", { name: "꼭 알아 두세요" })).toBeVisible();
   await expect(page.getByText("땅콩", { exact: true })).toBeVisible();
   await expect(page.getByText("굴", { exact: true })).toBeVisible();
-  await expect(page.locator("#record").getByText(/에 받은 답$/)).toHaveCount(1);
+  await expect(page.locator("#record").getByText(/에 직접 알려 줬어요$/)).toHaveCount(1);
   await page.getByRole("link", { name: "선물 고르기" }).click();
   await shot(page, "09-reminder");
 });
@@ -167,9 +167,9 @@ test("아는 사람에게 다시 물어보기: 내 기록 값이 미리 채워�
   const url = await makeLink(page);
 
   await page.goto(personUrl);
-  await expect(page.getByText("물어본 것에 답을 기다리는 중")).toBeVisible();
+  await expect(page.getByText("답장을 기다리고 있어요")).toBeVisible();
   await page.goto("/people");
-  await expect(page.getByRole("link", { name: /아빠.*물어본 것에 답을 기다리는 중/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /아빠.*답장을 기다리고 있어요/ })).toBeVisible();
   await page.goto("/privacy");
   await expect(page.getByText("아빠님에게 물어본 것")).toBeVisible();
 
@@ -180,9 +180,9 @@ test("아는 사람에게 다시 물어보기: 내 기록 값이 미리 채워�
   await dad.getByRole("button", { name: "맞아요" }).click();
   await expect(dad.getByRole("heading", { name: "거의 다 됐어요" })).toBeVisible();
   await dad.getByRole("button", { name: "보내기", exact: true }).click();
-  await expect(dad.getByRole("heading", { name: "리드미가 통했어요" })).toBeVisible();
+  await expect(dad.getByRole("heading", { name: "마음이 전해졌어요" })).toBeVisible();
   await page.goto(personUrl);
-  await expect(page.getByText("물어본 것에 답을 기다리는 중")).toHaveCount(0);
+  await expect(page.getByText("답장을 기다리고 있어요")).toHaveCount(0);
 
   // 또 물어보고 사람 화면에서 취소하면, 링크가 더는 열리지 않는다
   await page.getByRole("link", { name: "물어보기", exact: true }).click();
@@ -191,7 +191,7 @@ test("아는 사람에게 다시 물어보기: 내 기록 값이 미리 채워�
   await page.goto(personUrl);
   await page.getByRole("button", { name: "취소", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`${personUrl}$`));
-  await expect(page.getByText("물어본 것에 답을 기다리는 중")).toHaveCount(0);
+  await expect(page.getByText("답장을 기다리고 있어요")).toHaveCount(0);
   await dad.goto(canceled);
   await expect(dad.getByText("보낸 사람이 취소한 링크예요.")).toBeVisible();
 });
@@ -222,7 +222,7 @@ test("로그인하고 답하기: 내 리드미 값이 미리 채워지고, 내 �
   await doyun.getByRole("button", { name: "다음", exact: true }).click();
   await expect(doyun.getByRole("button", { name: "내 리드미에도 저장" })).toHaveAttribute("aria-pressed", "true");
   await doyun.getByRole("button", { name: "보내기", exact: true }).click();
-  await expect(doyun.getByRole("heading", { name: "리드미가 통했어요" })).toBeVisible();
+  await expect(doyun.getByRole("heading", { name: "마음이 전해졌어요" })).toBeVisible();
   await expect(doyun.getByRole("link", { name: "나도 물어보기" })).toHaveAttribute("href", /^\/request\?name=/);
   await doyun.getByRole("link", { name: "내 리드미 보기" }).click();
   await expect(doyun).toHaveURL(/\/me$/);
@@ -286,7 +286,7 @@ test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 
   await jisu.getByLabel("이름이나 부르는 말").fill("할머니");
   await jisu.getByRole("button", { name: "만들기", exact: true }).click();
   await expect(jisu.getByRole("heading", { name: "할머니" })).toBeVisible();
-  await expect(jisu.getByText(/아직 적은 게 없어요/)).toBeVisible();
+  await expect(jisu.getByText(/아직 기억해 둔 게 없어요/)).toBeVisible();
   const personUrl = new URL(jisu.url()).pathname;
 
   // 생일을 오늘부터 7일 뒤로(기본 알림 시점이 7일 전·당일)
@@ -306,7 +306,7 @@ test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 
 
   await jisu.goto(personUrl);
   await expect(jisu.getByRole("heading", { name: "꼭 알아 두세요" })).toBeVisible();
-  await expect(jisu.locator("#record").getByText(/에 받은 답$/)).toHaveCount(0);
+  await expect(jisu.locator("#record").getByText(/에 직접 알려 줬어요$/)).toHaveCount(0);
   await shot(jisu, "14-mine-person");
   await jisu.goto("/people");
   await expect(jisu.getByRole("link", { name: /할머니.*7일 남음/ })).toBeVisible();
