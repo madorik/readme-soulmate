@@ -14,7 +14,7 @@ export default async function Voice() {
   return (
     <div className="flex flex-1 flex-col">
       <TopBar close="/home" label={t("common.close")} />
-      <h1 className="headline px-6 pt-1 text-[28px]">{t("voice.title")}</h1>
+      <h1 className="headline whitespace-pre-line px-6 pt-1 text-[28px] leading-[1.3]">{t("voice.headline")}</h1>
       <VoiceCapture
         locale={locale}
         labels={{
