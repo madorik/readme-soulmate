@@ -266,7 +266,7 @@ describe("물어보기", () => {
   });
 });
 
-describe("메모·알림·그룹·푸시", () => {
+describe("메모·알림·폴더·푸시", () => {
   test("메모는 내 주소록 칸에만, 나만 본다", async () => {
     const c = await person(bob, "앨리스");
     await rows(bob, "insert into notes (author_id, contact_id, label, payload) values ($1, $2, '선물', '{}')", [bob, c]);
@@ -279,24 +279,32 @@ describe("메모·알림·그룹·푸시", () => {
     await rejects(rows(carol, "insert into notifications (user_id, kind) values ($1, 'answered')", [alice]), /row-level security/);
   });
 
-  test("그룹은 내 것만 보고, 남의 그룹을 내 사람에게 못 넣고, 기본 그룹은 못 지우며, 그룹을 지우면 그룹 없음이 된다", async () => {
+  test("폴더는 내 것만 보고, 남의 폴더·남의 사람은 못 넣고, 기본 폴더는 이름을 못 바꾸고 못 지우며, 한 사람이 여러 폴더에 들고, 폴더를 지워도 사람은 남는다", async () => {
     await rows(alice, "insert into contact_groups (user_id, builtin) values ($1, 'family') on conflict do nothing", [alice]);
-    const [mine] = await rows(alice, "insert into contact_groups (user_id, name) values ($1, '동창') returning id", [alice]);
+    const [mine] = await rows(alice, "insert into contact_groups (user_id, name, icon, color) values ($1, '동창', 'plane', 'sky') returning id", [alice]);
     assert.equal((await rows(bob, "select id from contact_groups where id = $1", [mine.id])).length, 0);
     await rejects(rows(bob, "insert into contact_groups (user_id, name) values ($1, '엿보기')", [alice]), /row-level security/);
+    await rejects(rows(alice, "update contact_groups set icon = 'rocket' where id = $1", [mine.id]), /check constraint/);
 
     const [bc] = await rows(bob, "insert into contacts (user_id, nickname) values ($1, '누군가') returning id", [bob]);
-    await rejects(rows(bob, "update contacts set group_id = $2 where id = $1", [bc.id, mine.id]), /not your group/);
-    await rejects(rows(bob, "insert into contacts (user_id, nickname, group_id) values ($1, '또', $2)", [bob, mine.id]), /not your group/);
+    const member = "insert into contact_group_members (group_id, contact_id, user_id) values ($1, $2, $3)";
+    await rejects(rows(bob, member, [mine.id, bc.id, bob]), /not your folder/);
+    await rejects(rows(alice, member, [mine.id, bc.id, alice]), /not your folder/);
+    await rejects(rows(bob, member, [mine.id, bc.id, alice]), /not your folder|row-level security/);
 
     const [fam] = await rows(alice, "select id from contact_groups where user_id = $1 and builtin = 'family'", [alice]);
     await rejects(rows(alice, "delete from contact_groups where id = $1", [fam.id]), /builtin group/);
     await rejects(rows(alice, "update contact_groups set name = '우리집' where id = $1", [fam.id]), /builtin group/);
+    await rows(alice, "update contact_groups set color = 'peach', icon = 'cake' where id = $1", [fam.id]);
 
-    const [ac] = await rows(alice, "insert into contacts (user_id, nickname, group_id, favorite) values ($1, '친구', $2, true) returning id", [alice, mine.id]);
+    const [ac] = await rows(alice, "insert into contacts (user_id, nickname, favorite) values ($1, '친구', true) returning id", [alice]);
+    await rows(alice, member, [mine.id, ac.id, alice]);
+    await rows(alice, member, [fam.id, ac.id, alice]);
+    assert.equal((await rows(alice, "select 1 from contact_group_members where contact_id = $1", [ac.id])).length, 2);
+    assert.equal((await rows(bob, "select 1 from contact_group_members where contact_id = $1", [ac.id])).length, 0);
     await rows(alice, "delete from contact_groups where id = $1", [mine.id]);
-    const [after] = await rows(alice, "select group_id, favorite from contacts where id = $1", [ac.id]);
-    assert.equal(after.group_id, null);
+    assert.equal((await rows(alice, "select 1 from contact_group_members where contact_id = $1", [ac.id])).length, 1);
+    const [after] = await rows(alice, "select favorite from contacts where id = $1", [ac.id]);
     assert.equal(after.favorite, true);
   });
 

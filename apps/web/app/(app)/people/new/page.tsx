@@ -1,7 +1,7 @@
 import { createPerson } from "@/app/actions/people";
 import { TopBar } from "@/components/chrome";
 import { Icon } from "@/components/marks";
-import { groupName, listGroups, requireSession } from "@/lib/data";
+import { folderName, listFolders, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 
 // 직접 적어 두기: 이름(부르는 말)만 받고 빈 카드를 만든다. 내용은 그 사람 화면에서 항목별로 적는다
@@ -9,7 +9,7 @@ export default async function NewPerson({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const s = await requireSession();
   const t = makeT(s.profile.locale);
-  const groups = await s.tx((q) => listGroups(q, s.user.id));
+  const folders = await s.tx((q) => listFolders(q, s.user.id));
   return (
     <form action={createPerson} className="flex flex-1 flex-col">
       <TopBar close="/people" label={t("common.close")} />
@@ -34,15 +34,15 @@ export default async function NewPerson({ searchParams }: { searchParams: Promis
           </span>
         ) : null}
       </label>
-      {/* 그룹(드롭다운). 새 그룹은 사람 화면이나 사람들 목록 아래에서 만든다 */}
+      {/* 처음 넣을 폴더(드롭다운). 다른 폴더는 그 사람 화면에서 더 넣는다 */}
       <label className="flex flex-col gap-2 px-6 pt-6">
-        <span className="text-[15px] font-bold">{t("group.label")}</span>
+        <span className="text-[15px] font-bold">{t("folder.label")}</span>
         <span className="relative flex">
-          <select name="groupId" defaultValue="" className="field appearance-none pr-10 font-bold">
-            <option value="">{t("group.none")}</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {groupName(g, t)}
+          <select name="folderId" defaultValue="" className="field appearance-none pr-10 font-bold">
+            <option value="">{t("folder.none")}</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {folderName(f, t)}
               </option>
             ))}
           </select>

@@ -26,6 +26,7 @@ import { getAuth } from "./auth";
 import { aad, open, seal, sealSection } from "./crypto";
 import { asUser, type Q, type Row } from "./db";
 import { detectLocale, type T } from "./i18n";
+import { isFolderColor, isFolderIcon, type FolderColor, type FolderIcon, type FolderView } from "./folders";
 
 export interface Profile {
   id: string;
@@ -212,21 +213,21 @@ export interface Person {
   updatedAt: string | null;
   /** 가장 최근 물어보기 */
   asking: Asking | null;
-  /** 내가 넣은 그룹(contact_groups.id) */
-  groupId: string | null;
+  /** 들어 있는 폴더(contact_groups.id, 여러 개) */
+  folderIds: string[];
   /** 즐겨찾기(사람들 맨 위에 고정) */
   favorite: boolean;
 }
 
 async function loadPeople(q: Q, me: string): Promise<Person[]> {
-  const contacts = await q<{ id: string; person_id: string | null; nickname: string; group_id: string | null; favorite: boolean; avatar: unknown }>(
-    "select id, person_id, nickname, group_id, favorite, avatar from contacts where user_id = $1 order by created_at",
+  const contacts = await q<{ id: string; person_id: string | null; nickname: string; favorite: boolean; avatar: unknown }>(
+    "select id, person_id, nickname, favorite, avatar from contacts where user_id = $1 order by created_at",
     [me],
   );
   if (!contacts.length) return [];
   const ids = contacts.map((c) => c.id);
   const personIds = contacts.map((c) => c.person_id).filter((v): v is string => !!v);
-  const [profiles, records, asks] = await Promise.all([
+  const [profiles, records, asks, members] = await Promise.all([
     personIds.length ? q("select id, display_name, avatar from profiles where id = any($1)", [personIds]) : Promise.resolve([]),
     q("select contact_id, sections, answered, updated_at from contact_cards where contact_id = any($1)", [ids]),
     q(
@@ -234,7 +235,10 @@ async function loadPeople(q: Q, me: string): Promise<Person[]> {
          from invites where contact_id = any($1) order by contact_id, created_at desc`,
       [ids],
     ),
+    q("select group_id, contact_id from contact_group_members where user_id = $1 order by created_at", [me]),
   ]);
+  const foldersByContact = new Map<string, string[]>();
+  for (const m of members) foldersByContact.set(String(m.contact_id), [...(foldersByContact.get(String(m.contact_id)) ?? []), String(m.group_id)]);
   const profileById = new Map(profiles.map((p) => [String(p.id), p]));
   const recordByContact = new Map(records.map((r) => [String(r.contact_id), r]));
   const askByContact = new Map(asks.map((a) => [String(a.contact_id), a]));
@@ -266,7 +270,7 @@ async function loadPeople(q: Q, me: string): Promise<Person[]> {
             sections: sanitizeSections(a.sections),
           }
         : null,
-      groupId: c.group_id ? String(c.group_id) : null,
+      folderIds: foldersByContact.get(c.id) ?? [],
       favorite: c.favorite === true,
     };
   });
@@ -304,37 +308,64 @@ export function sealNote(me: string, contactId: string, body: string): unknown {
   return seal({ body }, aad.note(me, contactId));
 }
 
-// ── 그룹 ─────────────────────────────────────────
+// ── 폴더 ─────────────────────────────────────────
 
-/** 기본 그룹(사람마다 처음부터 있고, 이름은 화면 언어로). 이 순서로 보인다 */
+/** 기본 폴더(사람마다 처음부터 있고, 이름은 화면 언어로). 이 순서로 보인다 */
 export const BUILTIN_GROUPS = ["family", "work", "partner", "friends"] as const;
 export type BuiltinGroup = (typeof BUILTIN_GROUPS)[number];
 
-export interface Group {
+export interface Folder {
   id: string;
   builtin: BuiltinGroup | null;
-  /** 직접 만든 그룹의 이름(기본 그룹은 빈칸) */
+  /** 직접 만든 폴더의 이름(기본 폴더는 빈칸) */
   name: string;
+  icon: FolderIcon;
+  color: FolderColor;
 }
 
-/** 내 그룹. 기본 그룹은 처음 부를 때 만든다. 순서: 기본 그룹 → 만든 순서 */
-export async function listGroups(q: Q, me: string): Promise<Group[]> {
+/** 기본 폴더 네 개가 없으면 만든다(가족 집·망고, 회사 가방·하늘, 연인 하트·분홍, 친구들 별·민트) */
+export async function ensureBuiltinFolders(q: Q, me: string): Promise<void> {
+  await q(
+    `insert into contact_groups (user_id, builtin, icon, color)
+     select $1, b, case b when 'family' then 'home' when 'work' then 'work' when 'partner' then 'heart' else 'star' end,
+            case b when 'family' then 'mango' when 'work' then 'sky' when 'partner' then 'pink' else 'mint' end
+     from unnest($2::text[]) b on conflict (user_id, builtin) do nothing`,
+    [me, [...BUILTIN_GROUPS]],
+  );
+}
+
+/** 내 폴더. 기본 폴더는 처음 부를 때 만든다. 순서: 기본 폴더 → 만든 순서 */
+export async function listFolders(q: Q, me: string): Promise<Folder[]> {
   const builtins = [...BUILTIN_GROUPS];
-  await q("insert into contact_groups (user_id, builtin) select $1, b from unnest($2::text[]) b on conflict (user_id, builtin) do nothing", [me, builtins]);
-  const rows = await q<{ id: string; builtin: string | null; name: string }>(
-    "select id, builtin, name from contact_groups where user_id = $1 order by array_position($2::text[], builtin) nulls last, created_at",
+  await ensureBuiltinFolders(q, me);
+  const rows = await q<{ id: string; builtin: string | null; name: string; icon: string; color: string }>(
+    "select id, builtin, name, icon, color from contact_groups where user_id = $1 order by array_position($2::text[], builtin) nulls last, created_at",
     [me, builtins],
   );
   return rows.map((r) => ({
     id: String(r.id),
     builtin: (BUILTIN_GROUPS as readonly string[]).includes(r.builtin ?? "") ? (r.builtin as BuiltinGroup) : null,
     name: String(r.name ?? ""),
+    icon: isFolderIcon(r.icon) ? r.icon : "star",
+    color: isFolderColor(r.color) ? r.color : "lavender",
   }));
 }
 
-/** 화면에 보일 그룹 이름 */
-export function groupName(g: Pick<Group, "builtin" | "name">, t: T): string {
+/** 화면에 보일 폴더 이름 */
+export function folderName(g: Pick<Folder, "builtin" | "name">, t: T): string {
   return g.builtin ? t(`group.${g.builtin}` as "group.family") : g.name;
+}
+
+/** 화면에 넘길 폴더들(이름은 화면 언어로, 들어 있는 사람은 사람들 목록 순서로) */
+export function folderViews(folders: Folder[], people: Person[], t: T): FolderView[] {
+  return folders.map((f) => ({
+    id: f.id,
+    name: folderName(f, t),
+    icon: f.icon,
+    color: f.color,
+    builtin: !!f.builtin,
+    memberIds: people.filter((p) => p.folderIds.includes(f.id)).map((p) => p.contactId),
+  }));
 }
 
 /** 아직 아무도 안 연 물어보기 링크(퍼지면 아무나 답할 수 있으니 취소할 곳) */

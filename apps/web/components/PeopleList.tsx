@@ -4,17 +4,18 @@ import type { T } from "@/lib/i18n";
 import { displayName, type Person } from "@/lib/data";
 import { RowBody, type PersonRow } from "./PersonRow";
 
-export function personRows(people: Person[], today: YMD, locale: Locale, t: T): PersonRow[] {
-  // 즐겨찾기 → 그룹 있는 사람 → 나머지(같은 칸 안에서는 추가한 순서)
-  const rank = (p: Person) => (p.favorite ? 0 : p.groupId ? 1 : 2);
+/** folders를 주면 이름 밑에 든 폴더 이름을 적는다(물어보고 기다리는 중이면 그게 먼저) */
+export function personRows(people: Person[], today: YMD, locale: Locale, t: T, folders?: { id: string; name: string }[]): PersonRow[] {
+  // 즐겨찾기 → 나머지(같은 칸 안에서는 추가한 순서)
+  const rank = (p: Person) => (p.favorite ? 0 : 1);
   return [...people].sort((a, b) => rank(a) - rank(b)).map((p) => {
     // 목록에는 그 사람 이름을 쓰고, 내가 붙인 부르는 말은 옆에 태그로
     const name = p.name || displayName(p);
     const tag = p.nickname && p.nickname !== name ? p.nickname : "";
     const birthday = p.card.dates?.birthday ?? null;
     const next = birthday ? nextOccurrence(birthday, today) : null;
-    // 물어보고 답을 기다리는 중일 때만 한 줄
-    const sub = p.asking?.state === "active" ? t("home.waiting") : "";
+    const inFolders = folders ? folders.filter((f) => p.folderIds.includes(f.id)).map((f) => f.name).join(" · ") : "";
+    const sub = p.asking?.state === "active" ? t("home.waiting") : inFolders;
     return {
       contactId: p.contactId,
       name,
@@ -31,7 +32,7 @@ export function personRows(people: Person[], today: YMD, locale: Locale, t: T): 
               : formatSpec(birthday, locale)
           : "",
       soon: !!next && next.daysUntil <= 7,
-      groupId: p.groupId,
+      folderIds: p.folderIds,
       favorite: p.favorite,
     };
   });

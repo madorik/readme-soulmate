@@ -18,8 +18,8 @@ export interface PersonRow {
   dateSub: string;
   /** 7일 안이면 붉게 */
   soon: boolean;
-  /** 내가 넣은 그룹(없으면 null) */
-  groupId: string | null;
+  /** 들어 있는 폴더(여러 개) */
+  folderIds: string[];
   /** 즐겨찾기(맨 위에 고정) */
   favorite: boolean;
 }
@@ -40,6 +40,11 @@ export function RowBody({ row, avatarLabel }: { row: PersonRow; avatarLabel: str
       <Avatar config={row.avatar} size={46} label={avatarLabel} />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-1.5">
+          {row.favorite ? (
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="var(--color-marker)" className="shrink-0">
+              <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
+            </svg>
+          ) : null}
           <span className="truncate text-[16px] font-bold tracking-[-0.01em]">{row.name}</span>
           {row.tag ? <TagChip>{row.tag}</TagChip> : null}
         </span>

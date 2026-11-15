@@ -8,20 +8,20 @@ import { Icon } from "@/components/marks";
 import { SectionBody } from "@/components/SectionBody";
 import { SectionIcon } from "@/components/SectionIcon";
 import { aiConfigured } from "@/lib/ai";
-import { displayName, groupName, listGroups, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
+import { displayName, folderViews, listFolders, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { FavoriteStar } from "./FavoriteStar";
 import { NotesButton } from "./NotesButton";
-import { PersonOrganize } from "./PersonOrganize";
+import { PersonFolders } from "./PersonFolders";
 import { QuickNote } from "./QuickNote";
 import { TagEditor } from "./TagEditor";
 
 export default async function PersonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
   const { id } = await params;
-  // 고르기 중에 들어왔으면 뒤로 갈 때 고르던 상태(/people?pick=1&with=…)로 돌아간다. 사람들 화면 주소만 받는다
+  // 고르기 중이나 폴더에서 들어왔으면 뒤로 갈 때 거기로(/people?pick=1&with=…, /people/folder/…). 사람들 화면 주소만 받는다
   const sp = await searchParams;
   const backParam = sp.back ?? "";
-  const back = /^\/people(\?[\w=&,%.-]*)?$/.test(backParam) ? backParam : "/people";
+  const back = /^\/people(\/folder\/[0-9a-f-]{36})?(\?[\w=&,%.-]*)?$/.test(backParam) ? backParam : "/people";
   const s = await requireSession();
   const { locale } = s.profile;
   const t = makeT(locale);
@@ -30,7 +30,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   if (!p) notFound();
   const name = displayName(p);
   const today = todayFor(s.profile);
-  const [notes, groups] = await Promise.all([s.tx((q) => listNotes(q, s.user.id, p.contactId)), s.tx((q) => listGroups(q, s.user.id))]);
+  const [notes, folders] = await Promise.all([s.tx((q) => listNotes(q, s.user.id, p.contactId)), s.tx((q) => listFolders(q, s.user.id))]);
   const waiting = p.asking?.state === "active" ? p.asking : null;
   // 적어 둔 항목만(중요한 순서)
   const filled = SECTIONS_BY_IMPORTANCE.map((section) => ({ section, body: SectionBody({ section, card: p.card, today, locale, t }) })).filter((x) => x.body != null);
@@ -56,30 +56,17 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
                 close: t("common.close"),
               }}
             />
-            <PersonOrganize
-              contactId={p.contactId}
-              groupId={p.groupId}
-              groups={groups.map((g) => ({ id: g.id, name: groupName(g, t) }))}
-              labels={{
-                group: t("group.label"),
-                none: t("group.none"),
-                newOption: t("group.newOption"),
-                namePlaceholder: t("group.namePlaceholder"),
-                create: t("group.create"),
-                error: t("common.error"),
-              }}
-            />
             <FavoriteStar contactId={p.contactId} initial={p.favorite} label={t("person.favorite")} />
           </div>
         }
       />
 
-      <div className="flex items-center gap-[18px] px-6 pt-3">
+      <div className="flex items-start gap-[18px] px-6 pt-3">
         {/* 얼굴을 누르면 내 프로필처럼 그 사람의 얼굴·부르는 말을 꾸민다 */}
         <Link href={`/people/${p.contactId}/profile`} className="shrink-0 rounded-full">
           <Avatar config={p.avatar} size={84} label={t("avatar.of", { name: p.name || name })} />
         </Link>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-1 pt-1">
           <div className="flex items-center gap-0.5">
             <h1 className="min-w-0 truncate text-[32px] font-bold leading-[1.15] tracking-[-0.03em]">{p.name || name}</h1>
             <Link href={`/people/${p.contactId}/profile`} aria-label={t("me.face")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-fill">
@@ -104,6 +91,26 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
               }}
             />
           ) : null}
+          {/* 든 폴더(여러 개) + 폴더 고르기 */}
+          <div className="pt-1">
+            <PersonFolders
+              contactId={p.contactId}
+              name={name}
+              folders={folderViews(folders, people, t)}
+              mine={p.folderIds}
+              labels={{
+                put: t("folder.put"),
+                title: t("folder.of", { name: "{name}" }),
+                done: t("folder.done"),
+                newFolder: t("folder.new"),
+                namePlaceholder: t("folder.namePlaceholder"),
+                create: t("folder.create"),
+                count: t("folder.count", { n: "{n}" }),
+                close: t("common.close"),
+                error: t("common.error"),
+              }}
+            />
+          </div>
         </div>
       </div>
 

@@ -478,71 +478,82 @@ test("내 리드미: 고치기를 누르면 화면을 옮기지 않고 그 항�
   await expect(jisu.getByRole("button", { name: "가을", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
-test("사람들: 그룹(기본 4개 + 직접 만들기)과 즐겨찾기. 목록은 즐겨찾기 → 그룹별로 묶이고 접힌다", async ({ browser }) => {
+test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴더)와 즐겨찾기", async ({ browser }) => {
   const jisu = await as(browser, "jisu");
-  // 단짝(탈퇴한 도윤, 태그가 이름이 됨): 친구들 그룹 + 즐겨찾기
+  // 기본 폴더 네 개가 사람들 위에 보인다
   await jisu.goto("/people");
+  for (const builtin of ["가족", "회사", "연인", "친구들"]) await expect(jisu.getByRole("link", { name: new RegExp(`^${builtin} `) })).toHaveCount(1);
+
+  // 단짝(탈퇴한 도윤, 태그가 이름이 됨): 사람 화면 폴더 시트에서 친구들에 넣고 즐겨찾기
   await jisu.getByRole("link", { name: /단짝/ }).first().click();
-  const group = jisu.getByRole("combobox", { name: "그룹" });
-  for (const builtin of ["가족", "회사", "연인", "친구들"]) await expect(group.locator("option", { hasText: builtin })).toHaveCount(1);
-  await group.selectOption({ label: "친구들" });
-  await expect(group).toHaveValue(/[0-9a-f-]{36}/);
+  await jisu.getByRole("button", { name: "폴더에 넣기" }).click();
+  const sheet = jisu.getByRole("dialog");
+  await sheet.getByRole("button", { name: /친구들/ }).click();
+  await sheet.getByRole("button", { name: "완료" }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(jisu.getByRole("link", { name: "친구들", exact: true })).toBeVisible();
   const star = jisu.getByRole("button", { name: "즐겨찾기" });
   await star.click();
   await expect(star).toHaveAttribute("aria-pressed", "true");
 
-  // 아빠: 드롭다운에서 새 그룹 '본가'를 만들어 바로 넣는다
+  // 아빠: 시트에서 새 폴더 '본가'를 만들어 바로 넣고, 가족에도 넣는다(여러 폴더)
   await jisu.goto("/people");
   await jisu.getByRole("link", { name: /아빠/ }).first().click();
-  await jisu.getByRole("combobox", { name: "그룹" }).selectOption({ label: "+ 새 그룹 만들기" });
-  await jisu.getByRole("textbox", { name: "그룹 이름" }).fill("본가");
-  await jisu.getByRole("button", { name: "만들기", exact: true }).click();
-  await expect(jisu.getByRole("combobox", { name: "그룹" }).locator("option:checked")).toHaveText("본가");
+  await jisu.getByRole("button", { name: "폴더에 넣기" }).click();
+  await sheet.getByRole("button", { name: "새 폴더" }).click();
+  await sheet.getByRole("textbox", { name: "폴더 이름" }).fill("본가");
+  await sheet.getByRole("button", { name: "만들기", exact: true }).click();
+  await expect(sheet.getByRole("button", { name: /본가/ })).toHaveAttribute("aria-pressed", "true");
+  await sheet.getByRole("button", { name: /가족/ }).click();
+  await sheet.getByRole("button", { name: "완료" }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(jisu.getByRole("link", { name: "가족", exact: true })).toBeVisible();
+  await expect(jisu.getByRole("link", { name: "본가", exact: true })).toBeVisible();
 
-  // 목록: 즐겨찾기(단짝) → 본가(아빠). 본가를 접으면 아빠가 안 보이고, 다시 펴면 보인다
+  // 목록: 즐겨찾기(단짝)가 맨 위, 이름 밑에 든 폴더
   await jisu.goto("/people");
-  await expect(jisu.getByRole("region", { name: "즐겨찾기" }).getByRole("link", { name: /단짝/ })).toBeVisible();
-  const home = jisu.getByRole("region", { name: "본가" });
-  await expect(home.getByRole("link", { name: /아빠/ })).toBeVisible();
-  await shot(jisu, "18-people-groups");
-  // 즐겨찾기가 맨 위, 그다음 사람이 있는 그룹, 빈 그룹은 뒤로
-  const order = await jisu.locator("section[aria-label]").evaluateAll((els) => els.map((el) => el.getAttribute("aria-label")));
-  expect(order.slice(0, 2)).toEqual(["즐겨찾기", "본가"]);
-  expect(order.indexOf("가족")).toBeGreaterThan(1);
-  await home.getByRole("button", { name: /^본가/ }).click();
-  await expect(home.getByRole("link", { name: /아빠/ })).toHaveCount(0);
-  await home.getByRole("button", { name: /^본가/ }).click();
-  await expect(home.getByRole("link", { name: /아빠/ })).toBeVisible();
-  // 기본 그룹은 비어 있어도 목록에 보인다
-  await expect(jisu.getByRole("region", { name: "가족" })).toBeVisible();
+  await expect(jisu.getByRole("link", { name: /^본가 / })).toContainText("1명");
+  await expect(jisu.getByRole("link", { name: /아빠/ }).first()).toContainText("가족 · 본가");
+  const everyone = await jisu.locator('a[href^="/people/"]:not([href*="folder"])').evaluateAll((els) => els.map((el) => el.textContent ?? ""));
+  expect(everyone[0]).toContain("단짝");
+  await shot(jisu, "18-people-folders");
 
-  // 선택 중에는 그룹 머리 체크로 그 그룹 사람을 한 번에 고른다
+  // 폴더 안: 가족에 단짝도 넣는다
+  await jisu.getByRole("link", { name: /^가족 / }).click();
+  await expect(jisu.getByRole("heading", { name: "가족" })).toBeVisible();
+  await expect(jisu.getByRole("link", { name: /아빠/ })).toBeVisible();
+  await jisu.getByRole("link", { name: "사람 넣기" }).click();
+  await jisu.getByRole("dialog").getByRole("button", { name: /단짝/ }).click();
+  await jisu.getByRole("dialog").getByRole("button", { name: "완료" }).click();
+  await expect(jisu.getByRole("dialog")).toHaveCount(0);
+  await expect(jisu.getByRole("link", { name: /단짝/ })).toBeVisible();
+  // 기본 폴더는 이름을 못 바꾸고 못 지운다
+  await jisu.getByRole("link", { name: "폴더 고치기" }).click();
+  await expect(jisu.getByRole("dialog").getByLabel("이름")).toBeDisabled();
+  await expect(jisu.getByRole("dialog").getByRole("button", { name: "폴더 지우기" })).toHaveCount(0);
+  await jisu.getByRole("dialog").getByRole("button", { name: "닫기" }).click();
+
+  // 선택 중에는 폴더 칩으로 그 폴더 사람을 한 번에 고른다
+  await jisu.goto("/people");
   await jisu.getByRole("button", { name: "선택" }).click();
   await jisu.getByRole("button", { name: "본가 모두 선택" }).click();
   await expect(jisu.getByRole("button", { name: /아빠 선택/ })).toHaveAttribute("aria-pressed", "true");
   await jisu.getByRole("button", { name: "취소" }).click();
 
-  // 위쪽 '새 그룹'으로 그룹을 만들고(비어 있어도 보인다) 지운다
-  await jisu.getByRole("button", { name: "새 그룹" }).first().click();
-  await jisu.getByRole("textbox", { name: "그룹 이름" }).fill("동창");
-  await jisu.getByRole("button", { name: "만들기", exact: true }).click();
-  await expect(jisu.getByRole("region", { name: "동창" })).toBeVisible();
+  // 위쪽 '새 폴더'로 만들면 그 폴더에서 사람 넣기가 바로 열리고, 고치기에서 지운다(사람은 남는다)
+  await jisu.getByRole("button", { name: "새 폴더" }).click();
+  await jisu.getByRole("dialog").getByLabel("이름").fill("동창");
+  await jisu.getByRole("dialog").getByRole("button", { name: "비행기" }).click();
+  await jisu.getByRole("dialog").getByRole("button", { name: "만들기", exact: true }).click();
+  await expect(jisu).toHaveURL(/\/people\/folder\/[0-9a-f-]{36}\?add=1$/);
+  await expect(jisu.getByRole("dialog")).toContainText("동창");
+  await jisu.getByRole("dialog").getByRole("button", { name: "닫기" }).click();
+  await jisu.getByRole("link", { name: "폴더 고치기" }).click();
   jisu.once("dialog", (d) => d.accept());
-  await jisu.getByRole("button", { name: "그룹 지우기 동창" }).click();
-  await expect(jisu.getByRole("region", { name: "동창" })).toHaveCount(0);
-
-  // 끌어서 옮기기: 본가의 아빠를 가족 칸에 놓으면 가족으로 간다(화면은 그대로)
-  const from = await jisu.getByRole("region", { name: "본가" }).getByRole("link", { name: /아빠/ }).boundingBox();
-  const to = await jisu.getByRole("region", { name: "가족" }).getByRole("button", { name: /^가족/ }).boundingBox();
-  await jisu.mouse.move(from!.x + 60, from!.y + from!.height / 2);
-  await jisu.mouse.down();
-  await jisu.mouse.move(from!.x + 70, from!.y + from!.height / 2 + 10, { steps: 3 });
-  await jisu.mouse.move(to!.x + 60, to!.y + to!.height / 2, { steps: 12 });
-  await jisu.mouse.up();
+  await jisu.getByRole("dialog").getByRole("button", { name: "폴더 지우기" }).click();
   await expect(jisu).toHaveURL(/\/people$/);
-  await expect(jisu.getByRole("region", { name: "가족" }).getByRole("link", { name: /아빠/ })).toBeVisible();
-  await jisu.reload();
-  await expect(jisu.getByRole("region", { name: "가족" }).getByRole("link", { name: /아빠/ })).toBeVisible();
+  await expect(jisu.getByRole("link", { name: /^동창 / })).toHaveCount(0);
+  await expect(jisu.getByRole("link", { name: /아빠/ }).first()).toBeVisible();
 });
 
 test("챙길 날 오른쪽 위 내 얼굴: 내 프로필(닉네임·프로필 사진)과 로그아웃", async ({ browser }) => {

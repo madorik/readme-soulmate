@@ -4,6 +4,7 @@ import { isSection, sanitizeAvatar, type AvatarConfig, type Section } from "@rea
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession, sealNote, writeContactSection } from "@/lib/data";
+import { isFolderColor, isFolderIcon } from "@/lib/folders";
 import type { SaveState } from "./card";
 
 function json(v: FormDataEntryValue | null): unknown {
@@ -95,11 +96,11 @@ export async function createPerson(form: FormData): Promise<void> {
   const name = String(form.get("name") ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
   if (!name) redirect("/people/new?error=name");
   const contactId = await s.tx(async (q) => {
-    // 그룹은 내 것만(DB가 확인). uuid 모양이 아니면 그룹 없음
-    const group = String(form.get("groupId") ?? "");
-    const groupId = /^[0-9a-f-]{36}$/i.test(group) ? group : null;
-    const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname, group_id) values ($1, $2, $3) returning id", [s.user.id, name, groupId]);
+    const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname) values ($1, $2) returning id", [s.user.id, name]);
     await q("insert into contact_cards (contact_id, author_id) values ($1, $2)", [c!.id, s.user.id]);
+    // 고른 폴더에 바로 넣는다(내 폴더만, DB가 확인). uuid 모양이 아니면 넣지 않는다
+    const folder = String(form.get("folderId") ?? "");
+    if (UUID.test(folder)) await q("insert into contact_group_members (group_id, contact_id, user_id) values ($1, $2, $3)", [folder, c!.id, s.user.id]);
     return c!.id;
   });
   revalidatePath("/people");
@@ -124,25 +125,22 @@ export async function savePersonSection(_: SaveState, form: FormData): Promise<S
   return { saved: true, error: false };
 }
 
-// ── 그룹·즐겨찾기 ─────────────────────────────────
+// ── 폴더·즐겨찾기 ─────────────────────────────────
+
+const UUID = /^[0-9a-f-]{36}$/i;
+
+function cleanIds(v: unknown): string[] {
+  return Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && UUID.test(x)))].slice(0, 500) : [];
+}
+
+function cleanName(v: unknown): string {
+  return String(v ?? "").replace(/\s+/g, " ").trim().slice(0, 30);
+}
 
 function revalidatePeople(contactId?: string) {
   revalidatePath("/people", "layout");
   revalidatePath("/home");
   if (contactId) revalidatePath(`/people/${contactId}`);
-}
-
-/** 사람을 그룹에 넣기(null이면 그룹 없음). 남의 그룹은 DB가 막는다(contacts_guard) */
-export async function setContactGroup(contactId: string, groupId: string | null): Promise<{ ok: boolean }> {
-  const s = await requireSession();
-  if (typeof contactId !== "string" || (groupId !== null && typeof groupId !== "string")) return { ok: false };
-  try {
-    const row = await s.tx((q) => q.one<{ id: string }>("update contacts set group_id = $2::uuid where id::text = $1 returning id", [contactId, groupId]));
-    revalidatePeople(contactId);
-    return { ok: !!row };
-  } catch {
-    return { ok: false };
-  }
 }
 
 /** 즐겨찾기 켜고 끄기(사람들 맨 위에 고정) */
@@ -154,25 +152,33 @@ export async function setFavorite(contactId: string, on: boolean): Promise<{ ok:
   return { ok: !!row };
 }
 
-/** 그룹 만들기. 같은 이름이 있으면 그 그룹을 돌려준다 */
-export async function createGroup(rawName: string): Promise<{ id: string; name: string } | null> {
+/** 폴더 만들기(이름·모양·색). 같은 이름의 폴더가 있으면 그 폴더를 돌려준다 */
+export async function createFolder(input: { name: string; icon: string; color: string }): Promise<{ id: string } | null> {
   const s = await requireSession();
-  const name = String(rawName ?? "").replace(/\s+/g, " ").trim().slice(0, 30);
+  const name = cleanName(input?.name);
   if (!name) return null;
+  const icon = isFolderIcon(input?.icon) ? input.icon : "star";
+  const color = isFolderColor(input?.color) ? input.color : "lavender";
   const row = await s.tx(async (q) => {
-    const same = await q.one<{ id: string; name: string }>("select id, name from contact_groups where user_id = $1 and builtin is null and name = $2", [s.user.id, name]);
-    return same ?? (await q.one<{ id: string; name: string }>("insert into contact_groups (user_id, name) values ($1, $2) returning id, name", [s.user.id, name]));
+    const same = await q.one<{ id: string }>("select id from contact_groups where user_id = $1 and builtin is null and name = $2", [s.user.id, name]);
+    return same ?? (await q.one<{ id: string }>("insert into contact_groups (user_id, name, icon, color) values ($1, $2, $3, $4) returning id", [s.user.id, name, icon, color]));
   });
   revalidatePeople();
-  return row ? { id: String(row.id), name: String(row.name) } : null;
+  return row ? { id: String(row.id) } : null;
 }
 
-/** 직접 만든 그룹 지우기. 그 그룹 사람들은 그룹 없음으로(기본 그룹은 DB가 막는다) */
-export async function deleteGroup(groupId: string): Promise<{ ok: boolean }> {
+/** 폴더 고치기: 모양·색, 직접 만든 폴더는 이름도(기본 폴더 이름은 화면 언어로 붙으니 그대로) */
+export async function updateFolder(id: string, input: { name?: string; icon: string; color: string }): Promise<{ ok: boolean }> {
   const s = await requireSession();
-  if (typeof groupId !== "string") return { ok: false };
+  if (typeof id !== "string" || !UUID.test(id) || !isFolderIcon(input?.icon) || !isFolderColor(input?.color)) return { ok: false };
+  const name = cleanName(input?.name);
   try {
-    const row = await s.tx((q) => q.one<{ id: string }>("delete from contact_groups where id::text = $1 and builtin is null returning id", [groupId]));
+    const row = await s.tx((q) =>
+      q.one<{ id: string }>(
+        "update contact_groups set icon = $2, color = $3, name = case when builtin is null and $4 <> '' then $4 else name end where id::text = $1 returning id",
+        [id, input.icon, input.color, name],
+      ),
+    );
     revalidatePeople();
     return { ok: !!row };
   } catch {
@@ -180,17 +186,60 @@ export async function deleteGroup(groupId: string): Promise<{ ok: boolean }> {
   }
 }
 
-/** 사람들 목록에서 끌어 놓기: 그룹과 즐겨찾기를 한 번에 바꾼다(즐겨찾기 칸에 놓으면 즐겨찾기, 그룹 칸에 놓으면 그 그룹·즐겨찾기 해제) */
-export async function moveContact(contactId: string, target: { groupId: string | null; favorite: boolean }): Promise<{ ok: boolean }> {
+/** 직접 만든 폴더 지우기. 사람들은 그대로 남는다(기본 폴더는 DB가 막는다) */
+export async function deleteFolder(id: string): Promise<{ ok: boolean }> {
   const s = await requireSession();
-  const groupId = target?.groupId ?? null;
-  if (typeof contactId !== "string" || (groupId !== null && !/^[0-9a-f-]{36}$/i.test(groupId))) return { ok: false };
+  if (typeof id !== "string" || !UUID.test(id)) return { ok: false };
   try {
-    const row = await s.tx((q) =>
-      q.one<{ id: string }>("update contacts set group_id = $2::uuid, favorite = $3 where id::text = $1 returning id", [contactId, groupId, target.favorite === true]),
-    );
-    revalidatePeople(contactId);
+    const row = await s.tx((q) => q.one<{ id: string }>("delete from contact_groups where id::text = $1 and builtin is null returning id", [id]));
+    revalidatePeople();
     return { ok: !!row };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** 폴더에 든 사람을 이 목록으로 맞춘다(체크한 사람은 넣고, 뺀 사람은 뺀다). 내 사람만 들어간다(RLS) */
+export async function setFolderMembers(folderId: string, contactIds: string[]): Promise<{ ok: boolean }> {
+  const s = await requireSession();
+  if (typeof folderId !== "string" || !UUID.test(folderId)) return { ok: false };
+  const ids = cleanIds(contactIds);
+  try {
+    const ok = await s.tx(async (q) => {
+      const f = await q.one<{ id: string }>("select id from contact_groups where id::text = $1", [folderId]);
+      if (!f) return false;
+      await q("delete from contact_group_members where group_id = $1 and not (contact_id::text = any($2::text[]))", [f.id, ids]);
+      await q(
+        "insert into contact_group_members (group_id, contact_id, user_id) select $1, c.id, $3 from contacts c where c.id::text = any($2::text[]) on conflict do nothing",
+        [f.id, ids, s.user.id],
+      );
+      return true;
+    });
+    revalidatePeople();
+    return { ok };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** 한 사람이 든 폴더를 이 목록으로 맞춘다(사람 화면의 폴더 고르기). 내 폴더만 들어간다(RLS) */
+export async function setPersonFolders(contactId: string, folderIds: string[]): Promise<{ ok: boolean }> {
+  const s = await requireSession();
+  if (typeof contactId !== "string" || !UUID.test(contactId)) return { ok: false };
+  const ids = cleanIds(folderIds);
+  try {
+    const ok = await s.tx(async (q) => {
+      const c = await q.one<{ id: string }>("select id from contacts where id::text = $1", [contactId]);
+      if (!c) return false;
+      await q("delete from contact_group_members where contact_id = $1 and not (group_id::text = any($2::text[]))", [c.id, ids]);
+      await q(
+        "insert into contact_group_members (group_id, contact_id, user_id) select g.id, $1, $3 from contact_groups g where g.id::text = any($2::text[]) on conflict do nothing",
+        [c.id, ids, s.user.id],
+      );
+      return true;
+    });
+    revalidatePeople(contactId);
+    return { ok };
   } catch {
     return { ok: false };
   }
