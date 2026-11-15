@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 적응형 아이콘 배경: 망고 그라데이션(왼쪽 위 크림 → 오른쪽 아래 망고) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="315" android:startColor="#FFF1C2" android:centerColor="#FFD66B" android:endColor="#FFC23D" android:type="linear" />
+</shape>

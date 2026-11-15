@@ -17,7 +17,10 @@ export default async function EditPerson({ params, searchParams }: { params: Pro
   return (
     <div className="page-end flex flex-1 flex-col">
       <TopBar back={`/people/${p.contactId}`} label={t("common.back")} />
-      <h1 className="headline px-6 pb-2 pt-1 text-[28px]">{t("person.editTitle", { name: displayName(p) })}</h1>
+      <div className="flex flex-col gap-1 px-6 pb-2 pt-1">
+        <span className="text-[14px] font-bold text-muted">{displayName(p)}</span>
+        <h1 className="headline text-[28px]">{t("person.mineList")}</h1>
+      </div>
       <MyReadmeList
         rows={SECTIONS_BY_IMPORTANCE.map((section) => ({
           section,
@@ -26,7 +29,6 @@ export default async function EditPerson({ params, searchParams }: { params: Pro
         }))}
         card={p.card}
         locale={locale}
-        labels={{ edit: t("me.edit"), close: t("me.close") }}
         initialOpen={isSection(open) ? open : null}
         contactId={p.contactId}
         stickyTop="var(--sat)"

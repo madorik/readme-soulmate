@@ -2,6 +2,7 @@ import { SECTIONS_BY_IMPORTANCE, isSection } from "@readme/core";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { TabBar } from "@/components/chrome";
+import { Icon } from "@/components/marks";
 import { readCard, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { MyReadmeList } from "./MyReadmeList";
@@ -21,10 +22,10 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ ope
         <Link href="/me/avatar" className="shrink-0 rounded-full">
           <Avatar config={s.profile.avatar} size={82} label={t("avatar.of", { name })} />
         </Link>
-        <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex min-w-0 items-center gap-0.5">
           <h1 className="truncate text-[30px] font-bold leading-[1.15] tracking-[-0.03em]">{name}</h1>
-          <Link href="/me/avatar" className="self-start text-[14px] font-bold text-muted underline decoration-[1.5px] underline-offset-[5px]">
-            {t("me.face")}
+          <Link href="/me/avatar" aria-label={t("me.face")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-fill">
+            <Icon name="pencil" size={18} strokeWidth={2} />
           </Link>
         </div>
       </div>
@@ -38,7 +39,6 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ ope
         }))}
         card={card}
         locale={locale}
-        labels={{ edit: t("me.edit"), close: t("me.close") }}
         initialOpen={isSection(open) ? open : null}
       />
 

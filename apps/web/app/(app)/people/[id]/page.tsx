@@ -66,12 +66,12 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
           <Avatar config={p.avatar} size={84} label={t("avatar.of", { name: p.name || name })} />
         </Link>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5">
             <h1 className="min-w-0 truncate text-[32px] font-bold leading-[1.15] tracking-[-0.03em]">{p.name || name}</h1>
+            <Link href={`/people/${p.contactId}/profile`} aria-label={t("me.face")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-fill">
+              <Icon name="pencil" size={18} strokeWidth={2} />
+            </Link>
           </div>
-          <Link href={`/people/${p.contactId}/profile`} className="self-start text-[14px] font-bold text-muted underline decoration-[1.5px] underline-offset-[5px]">
-            {t("me.face")}
-          </Link>
           {/* 앱 사용자와 이어진 사람은 내가 단 태그도 이름 밑에서 바로 고친다 */}
           {p.personId ? (
             <TagEditor

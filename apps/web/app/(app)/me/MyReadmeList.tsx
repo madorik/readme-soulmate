@@ -25,7 +25,6 @@ export function MyReadmeList({
   rows,
   card,
   locale,
-  labels,
   initialOpen = null,
   contactId,
   stickyTop = BELOW_HEAD,
@@ -33,7 +32,6 @@ export function MyReadmeList({
   rows: MyRow[];
   card: PartialCard;
   locale: Locale;
-  labels: { edit: string; close: string };
   initialOpen?: Section | null;
   /** 있으면 그 사람 기록에 저장(사람 정보 수정 화면) */
   contactId?: string;
@@ -81,8 +79,14 @@ export function MyReadmeList({
                 <span className="text-[16.5px] font-bold tracking-[-0.02em]">{title}</span>
                 <span className="text-[13.5px] leading-[1.45] text-muted">{sub}</span>
               </span>
-              <span className="shrink-0 text-[14px] font-bold">{isOpen ? labels.close : labels.edit}</span>
-              <Icon name="chevron" size={18} className={`text-muted transition-transform duration-200 ${isOpen ? "-rotate-90" : "rotate-90"}`} />
+              {/* 글자 없이 아이콘만: 접혀 있으면 연필, 펼치면 접기 화살표 */}
+              {isOpen ? (
+                <Icon name="chevron" size={18} className="shrink-0 -rotate-90 text-muted" />
+              ) : (
+                <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center text-muted">
+                  <Icon name="pencil" size={17} strokeWidth={2} />
+                </span>
+              )}
             </button>
             {isOpen ? (
               <div id={`edit-${section}`} className="pt-3">

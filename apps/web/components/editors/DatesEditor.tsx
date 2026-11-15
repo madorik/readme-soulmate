@@ -281,9 +281,10 @@ export function DatesEditor({ value, onChange, locale }: { value: DatesData; onC
             {open === i ? (
               <DateSpecPicker value={a.spec} onChange={(spec) => onChange({ ...value, anniversaries: value.anniversaries.map((x, j) => (j === i ? { ...x, spec } : x)) })} locale={locale} preview={false} year="since" />
             ) : (
-              <button type="button" onClick={() => setOpen(i)} className="self-start text-[14px] font-bold text-muted underline underline-offset-4">
+              <button type="button" onClick={() => setOpen(i)} aria-label={`${a.spec.calendar === "lunar" ? `${t("dates.lunar")} ` : ""}${a.spec.month}.${a.spec.day} ${t("common.edit")}`} className="flex min-h-9 items-center gap-1.5 self-start text-[14px] font-bold text-muted">
                 {a.spec.calendar === "lunar" ? `${t("dates.lunar")} ` : ""}
-                {a.spec.month}.{a.spec.day} {t("common.edit")}
+                {a.spec.month}.{a.spec.day}
+                <Icon name="pencil" size={14} strokeWidth={2} />
               </button>
             )}
           </div>

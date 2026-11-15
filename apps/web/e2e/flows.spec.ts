@@ -103,7 +103,7 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await dad.getByRole("button", { name: "다음", exact: true }).click();
   await expect(dad.getByRole("heading", { name: "거의 다 됐어요" })).toBeVisible();
   // 답이 어디에 저장되는지 알려 주고, 건강 정보는 동의가 있어야 보낸다
-  await expect(dad.getByText("보낸 답은 지수님이 기억해 두고, 그 뒤로는 지수님이 수정할 수 있어요.")).toBeVisible();
+  await expect(dad.getByText("보낸 답은 지수님이 기억해 두고, 그 뒤로는 지수님이 언제든 바꿀 수 있어요.")).toBeVisible();
   await expect(dad.getByRole("button", { name: "보내기", exact: true })).toBeDisabled();
   await dad.getByRole("button", { name: /건강 정보를 지수님에게 보내 저장하는 데 동의해요/ }).click();
   await dad.getByRole("button", { name: "보내기", exact: true }).click();
