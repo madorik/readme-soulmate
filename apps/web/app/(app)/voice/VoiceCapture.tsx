@@ -2,7 +2,7 @@
 
 import type { Locale } from "@readme/core";
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
 import { Icon } from "@/components/marks";
 
@@ -39,46 +39,99 @@ function nativeSpeech(): NativeSpeech | null {
   return cap?.isNativePlatform?.() && cap.Plugins?.SpeechRecognition ? cap.Plugins.SpeechRecognition : null;
 }
 
-const BARS = 10;
+/** 뭉게구름 하나(가로 w): 납작한 바닥 위에 몽글몽글한 봉우리 넷. 구름 전체에 한 그늘(위는 희고 바닥은 옅은 하늘색)을 씌운다 */
+type Puff = { cx: number; cy: number; w: number };
+
+function Cloud({ cx, cy, w, fill }: Puff & { fill: string }) {
+  const k = (n: number) => w * n;
+  return (
+    <g fill={fill}>
+      <ellipse cx={cx} cy={cy} rx={k(0.5)} ry={k(0.15)} />
+      <circle cx={cx - k(0.27)} cy={cy - k(0.05)} r={k(0.17)} />
+      <circle cx={cx - k(0.06)} cy={cy - k(0.15)} r={k(0.23)} />
+      <circle cx={cx + k(0.17)} cy={cy - k(0.09)} r={k(0.19)} />
+      <circle cx={cx + k(0.34)} cy={cy - k(0.01)} r={k(0.13)} />
+    </g>
+  );
+}
 
 /**
- * 마이크 양옆 음파. 브라우저는 마이크 소리 크기(AnalyserNode)만큼, 소리를 잴 수 없으면(앱의 기기 인식 등) 부드럽게 흔들리는 모양.
- * 막대 높이는 그릴 때마다 DOM에 바로 넣는다(화면을 다시 그리지 않게)
+ * 구름 두 겹(멀리 작은 구름 · 가까이 큰 구름). 좌표는 구슬 지름 208 기준 한 장(타일)이고, 세 장을 이어 그려 끝없이 흘러간다.
+ * 가까운 구름이 더 빨리 흐르고, 목소리가 클수록 더 빨라진다
  */
-function Waveform({ active, measure, children }: { active: boolean; measure: boolean; children: React.ReactNode }) {
-  const left = useRef<HTMLDivElement>(null);
-  const right = useRef<HTMLDivElement>(null);
+const LAYERS: { puffs: Puff[]; speed: number; boost: number; opacity: number; blur: number }[] = [
+  {
+    puffs: [
+      { cx: 34, cy: 66, w: 56 },
+      { cx: 118, cy: 50, w: 70 },
+      { cx: 182, cy: 82, w: 46 },
+    ],
+    speed: 4,
+    boost: 60,
+    opacity: 0.8,
+    blur: 1.4,
+  },
+  {
+    puffs: [
+      { cx: 62, cy: 146, w: 118 },
+      { cx: 168, cy: 126, w: 92 },
+    ],
+    speed: 8,
+    boost: 130,
+    opacity: 1,
+    blur: 0.6,
+  },
+];
+
+const TILE = 208;
+
+/**
+ * 가운데 하늘 구슬. 평소엔 뭉게구름이 은은하게 흐르고, 목소리가 들리면 그 크기만큼 구름이 빨리 흘러가고 구슬이 살짝 숨 쉰다.
+ * 브라우저는 마이크 소리 크기(AnalyserNode)를, 잴 수 없는 곳(앱의 기기 인식)은 듣는 동안 부드럽게 오르내리는 값을 쓴다.
+ * 움직임 줄이기를 켠 사람에게는 구름을 멈춘다. 값은 그릴 때마다 DOM에 바로 넣는다(화면을 다시 그리지 않게)
+ */
+function SkyOrb({ active, measure, size = 208 }: { active: boolean; measure: boolean; size?: number }) {
+  const id = useId().replace(/:/g, "");
+  const wrap = useRef<HTMLDivElement>(null);
+  const layers = useRef<(SVGSVGElement | null)[]>([]);
   useEffect(() => {
-    const bars = (i: number) => [left.current?.children[BARS - 1 - i], right.current?.children[i]].filter(Boolean) as HTMLElement[];
-    const set = (levels: number[]) => levels.forEach((v, i) => bars(i).forEach((b) => (b.style.transform = `scaleY(${Math.max(0.12, Math.min(1, v))})`)));
-    if (!active) {
-      set(Array(BARS).fill(0.12));
-      return;
-    }
+    const still = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
     let stopped = false;
     let stream: MediaStream | null = null;
     let ctx: AudioContext | null = null;
     let analyser: AnalyserNode | null = null;
     let data = new Uint8Array(0);
-    // 소리 크기(RMS)를 부드럽게 따라가고, 막대는 그 크기만큼 물결친다. 조용해도 듣는 중에는 조금씩 움직인다
     let level = 0;
+    let last = 0;
+    const offsets = LAYERS.map((_, i) => i * TILE * 0.41);
     const draw = (t: number) => {
-      let target: number;
-      if (analyser) {
+      const dt = last ? Math.min(0.05, (t - last) / 1000) : 0;
+      last = t;
+      let target = 0;
+      if (active && analyser) {
         analyser.getByteTimeDomainData(data);
         let sum = 0;
         for (const v of data) sum += ((v - 128) / 128) ** 2;
         target = Math.min(1, Math.sqrt(sum / data.length) * 7);
-      } else {
-        target = 0.45 + 0.25 * Math.sin(t / 320);
+      } else if (active) {
+        target = 0.35 + 0.25 * Math.sin(t / 380);
       }
-      level += (target - level) * 0.25;
-      set(Array.from({ length: BARS }, (_, i) => (0.3 + 0.7 * level) * (0.45 + 0.55 * Math.abs(Math.sin(t / 140 + i * 0.9))) * (1 - i / (BARS * 1.8))));
+      level += (target - level) * 0.12;
+      LAYERS.forEach((l, i) => {
+        const el = layers.current[i];
+        if (!el) return;
+        if (!still) offsets[i] = (offsets[i]! + dt * (l.speed + l.boost * level)) % TILE;
+        el.style.transform = `translate3d(${(-offsets[i]! * size) / TILE}px, 0, 0)`;
+      });
+      if (wrap.current) {
+        wrap.current.style.transform = `scale(${1 + (still ? 0 : 0.06 * level)})`;
+        wrap.current.style.boxShadow = `0 26px 60px -22px rgba(47,111,224,${0.4 + 0.35 * level}), 0 0 0 ${Math.round(10 * level)}px rgba(150,200,255,${0.25 * level})`;
+      }
       raf = requestAnimationFrame(draw);
     };
     void (async () => {
-      if (measure && navigator.mediaDevices?.getUserMedia) {
+      if (active && measure && navigator.mediaDevices?.getUserMedia) {
         try {
           stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
           if (stopped) return stream.getTracks().forEach((tr) => tr.stop());
@@ -98,21 +151,58 @@ function Waveform({ active, measure, children }: { active: boolean; measure: boo
       cancelAnimationFrame(raf);
       stream?.getTracks().forEach((tr) => tr.stop());
       void ctx?.close().catch(() => {});
-      set(Array(BARS).fill(0.12));
     };
-  }, [active, measure]);
-  const side = (ref: React.RefObject<HTMLDivElement | null>) => (
-    <div ref={ref} aria-hidden="true" className={`flex items-center gap-[4px] transition-opacity ${active ? "opacity-100" : "opacity-20"}`}>
-      {Array.from({ length: BARS }, (_, i) => (
-        <span key={i} className="block h-12 w-[4px] origin-center rounded-full bg-ink transition-transform duration-75" style={{ transform: "scaleY(0.12)" }} />
-      ))}
-    </div>
-  );
+  }, [active, measure, size]);
   return (
-    <div className="flex items-center justify-center gap-3.5">
-      {side(left)}
-      {children}
-      {side(right)}
+    <div
+      ref={wrap}
+      aria-hidden="true"
+      className="relative overflow-hidden rounded-full"
+      style={{
+        width: size,
+        height: size,
+        background: "linear-gradient(180deg, #5fa9f7 0%, #8ccaff 45%, #a9d9ff 62%, #5b9cf2 100%)",
+        boxShadow: "0 26px 60px -22px rgba(47,111,224,0.4)",
+      }}
+    >
+      {LAYERS.map((l, i) => (
+        <svg
+          key={i}
+          ref={(el) => {
+            layers.current[i] = el;
+          }}
+          width={size * 2}
+          height={size}
+          viewBox={`0 0 ${TILE * 2} ${TILE}`}
+          className="absolute left-0 top-0 will-change-transform"
+          style={{ opacity: l.opacity }}
+        >
+          <defs>
+            {l.puffs.map((p, j) => (
+              <linearGradient key={j} id={`${id}-g${i}-${j}`} gradientUnits="userSpaceOnUse" x1="0" x2="0" y1={p.cy - p.w * 0.38} y2={p.cy + p.w * 0.15}>
+                <stop offset="0" stopColor="#ffffff" />
+                <stop offset="0.55" stopColor="#fbfdff" />
+                <stop offset="1" stopColor="#d9e8fa" />
+              </linearGradient>
+            ))}
+            <filter id={`${id}-soft-${i}`} x="-10%" y="-10%" width="120%" height="120%">
+              <feGaussianBlur stdDeviation={l.blur} />
+            </filter>
+          </defs>
+          <g filter={`url(#${id}-soft-${i})`}>
+            {[-TILE, 0, TILE].map((dx) => (
+              <g key={dx} transform={`translate(${dx} 0)`}>
+                {l.puffs.map((p, j) => (
+                  <Cloud key={j} {...p} fill={`url(#${id}-g${i}-${j})`} />
+                ))}
+              </g>
+            ))}
+          </g>
+        </svg>
+      ))}
+      {/* 왼쪽 위 빛과 가장자리 깊이(구슬처럼) */}
+      <div className="pointer-events-none absolute inset-0 rounded-full" style={{ background: "radial-gradient(circle at 30% 18%, rgba(255,255,255,0.35), rgba(255,255,255,0) 38%)" }} />
+      <div className="pointer-events-none absolute inset-0 rounded-full" style={{ boxShadow: "inset 0 -16px 32px rgba(29,78,216,0.3), inset 0 10px 24px rgba(255,255,255,0.3)" }} />
     </div>
   );
 }
@@ -293,7 +383,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
     );
   }
 
-  // 가운데: 음파 사이 마이크, 바로 밑에 받아 적는 글(작게 시작해 글만큼 늘어난다). 아래: [지우기] [적기]
+  // 가운데: 하늘 구슬(누르면 듣기), 바로 밑에 받아 적는 글(작게 시작해 글만큼 늘어난다). 아래: [지우기] [적기]
   return (
     <form
       className="flex flex-1 flex-col"
@@ -305,19 +395,17 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
       <div className="flex flex-1 flex-col items-center justify-center px-5 pb-6">
         {canListen ? (
           <>
-            <Waveform active={listening} measure={!nativeSpeech()}>
-              <button
-                type="button"
-                onClick={() => void listen()}
-                aria-pressed={listening}
-                aria-label={listening ? labels.listening : labels.speak}
-                disabled={pending}
-                className="grad flex h-[104px] w-[104px] shrink-0 items-center justify-center rounded-full shadow-[var(--shadow-btn)] transition-transform active:scale-95"
-              >
-                <Icon name="mic" size={42} strokeWidth={2} />
-              </button>
-            </Waveform>
-            <span className="pt-3 text-[13.5px] font-bold text-muted">{listening ? labels.listening : labels.speak}</span>
+            <button
+              type="button"
+              onClick={() => void listen()}
+              aria-pressed={listening}
+              aria-label={listening ? labels.listening : labels.speak}
+              disabled={pending}
+              className="shrink-0 rounded-full transition-transform active:scale-95"
+            >
+              <SkyOrb active={listening} measure={!nativeSpeech()} />
+            </button>
+            <span className="pt-5 text-[13.5px] font-bold text-muted">{listening ? labels.listening : labels.speak}</span>
           </>
         ) : null}
         <textarea
