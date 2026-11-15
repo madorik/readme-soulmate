@@ -41,6 +41,7 @@ function nativeSpeech(): NativeSpeech | null {
 
 type Labels = {
   speak: string;
+  clear: string;
   listening: string;
   placeholder: string;
   save: string;
@@ -206,6 +207,7 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
     );
   }
 
+  // 위: 말한(적은) 문장을 크게. 아래: 탭 막대 가운데 마이크와 같은 자리에 [지우기] (마이크) [적기]
   return (
     <form
       className="flex flex-1 flex-col"
@@ -214,43 +216,56 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
         submit(text);
       }}
     >
-      {canListen ? (
-        <div className="flex flex-col items-center gap-3 pt-8">
-          <button
-            type="button"
-            onClick={() => void listen()}
-            aria-pressed={listening}
-            aria-label={listening ? labels.listening : labels.speak}
-            disabled={pending}
-            className={`relative flex h-[120px] w-[120px] items-center justify-center rounded-full grad shadow-[var(--shadow-btn)] transition-transform active:scale-95 ${listening ? "animate-pulse" : ""}`}
-          >
-            <Icon name="mic" size={46} strokeWidth={1.9} />
-          </button>
-          <span className="text-[14px] font-bold text-muted">{listening ? labels.listening : labels.speak}</span>
-        </div>
-      ) : null}
-
-      <div className="mx-4 mt-6">
+      <div className="mx-4 mt-4 flex flex-1 flex-col rounded-3xl bg-white px-5 py-5 shadow-[0_0_0_1px_var(--color-rule)]">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          rows={3}
           maxLength={500}
           placeholder={labels.placeholder}
           aria-label={labels.placeholder}
-          className="field resize-none !text-[17px] leading-[1.55]"
+          className="min-h-[160px] w-full flex-1 resize-none bg-transparent text-[22px] font-bold leading-[1.5] tracking-[-0.02em] outline-none placeholder:font-semibold placeholder:text-muted/60"
         />
       </div>
       {error ? (
-        <p role="alert" className="px-6 pt-2 text-[14px] text-red">
+        <p role="alert" className="px-6 pt-3 text-[14px] text-red">
           {error}
         </p>
       ) : null}
 
-      <div className="bottom-bar mt-auto bg-bg px-4 pt-4">
-        <button disabled={pending || listening || !text.trim()} className="btn-primary w-full">
-          {pending ? "…" : labels.save}
-        </button>
+      <div className="bottom-bar mt-auto bg-bg px-4 pt-5">
+        {canListen ? (
+          <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
+            <div className="flex justify-start pt-[22px]">
+              {text && !listening && !pending ? (
+                <button type="button" onClick={() => setText("")} className="pill !h-11 !px-4 text-[14px]">
+                  {labels.clear}
+                </button>
+              ) : null}
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void listen()}
+                aria-pressed={listening}
+                aria-label={listening ? labels.listening : labels.speak}
+                disabled={pending}
+                className={`grad flex h-[88px] w-[88px] items-center justify-center rounded-full shadow-[var(--shadow-btn)] transition-transform active:scale-95 ${listening ? "animate-pulse" : ""}`}
+              >
+                <Icon name="mic" size={36} strokeWidth={2} />
+              </button>
+              <span className="text-[13px] font-bold text-muted">{listening ? labels.listening : labels.speak}</span>
+            </div>
+            <div className="flex justify-end pt-[22px]">
+              <button disabled={pending || listening || !text.trim()} className="grad flex h-11 items-center rounded-full px-5 text-[15px] font-bold shadow-[var(--shadow-btn)] transition-opacity disabled:opacity-40 disabled:shadow-none">
+                {pending ? "…" : labels.save}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button disabled={pending || !text.trim()} className="btn-primary w-full">
+            {pending ? "…" : labels.save}
+          </button>
+        )}
       </div>
     </form>
   );
