@@ -276,7 +276,17 @@ export function VoiceCapture({ locale, labels }: { locale: Locale; labels: Label
           heard.current = d.matches?.[0] ?? heard.current;
           setText(heard.current);
         });
-        native.current = { plugin, remove: sub.remove };
+        // 말이 끝나 기기가 스스로 멈춰도(조용해지면) 받아 적은 말로 바로 나눠 적는다
+        const state = await plugin.addListener("listeningState", (d) => {
+          if (d.status === "stopped" && native.current) void stopListening();
+        });
+        native.current = {
+          plugin,
+          remove: async () => {
+            await sub.remove();
+            await state.remove();
+          },
+        };
         setListening(true);
         await plugin.start({ language: lang, partialResults: true, popup: false, maxResults: 1 });
       } catch {
