@@ -320,8 +320,10 @@ test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 
   await doyun.goto(personUrl);
   await expect(doyun.getByText("할머니")).toHaveCount(0);
 
-  // 지우면 목록에서 사라진다
+  // 지우기는 사람 화면이 아니라 프로필 고치기 맨 아래. 지우면 목록에서 사라진다
   await jisu.goto(personUrl);
+  await expect(jisu.getByText("사람들에서 지우기", { exact: true })).toHaveCount(0);
+  await jisu.getByRole("link", { name: "프로필 고치기" }).click();
   await jisu.getByText("사람들에서 지우기", { exact: true }).click();
   await jisu.getByRole("button", { name: "지우기", exact: true }).last().click();
   await expect(jisu).toHaveURL(/\/people$/);

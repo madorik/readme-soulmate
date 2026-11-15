@@ -33,6 +33,8 @@ export default async function PersonProfile({ params }: { params: Promise<{ id: 
           <button className="flex min-h-11 items-center text-[14px] font-bold text-red">{t("common.delete")}</button>
         </form>
       </details>
+      {/* 지우기가 화면 맨 아래 끝에 붙지 않게(떠 있는 버튼·아래 막대에 가리지 않게) */}
+      <div className="h-16" />
     </div>
   );
 }
