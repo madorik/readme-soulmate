@@ -1,6 +1,7 @@
 import { addDays, daysInMonth, diffDays, formatDayFull, formatSpec, monthName, sameYmd, solarToLunar, weekday, weekdayNames, type UpcomingEvent, type YMD } from "@readme/core";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
+import { FaceStack } from "@/components/FaceStack";
 import { TabBar } from "@/components/chrome";
 import { Icon } from "@/components/marks";
 import { listPeople, requireSession, todayFor, type Person } from "@/lib/data";
@@ -110,15 +111,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                   {day.d}
                 </span>
                 <span className={`num text-[9.5px] !font-semibold text-muted ${inMonth ? "" : "opacity-35"}`}>{lunar ? `${lunar.leap ? "윤" : ""}${lunar.m}.${lunar.d}` : ""}</span>
-                {dayEvents.length ? (
-                  <span className="flex -space-x-1.5">
-                    {dayEvents.slice(0, 2).map((e) => (
-                      <span key={`${e.contactId}-${e.kind}-${e.label ?? ""}`} className="rounded-full shadow-[0_0_0_1.5px_#fff]">
-                        <Avatar config={who(e)?.avatar ?? null} size={20} label={eventName(e, t, locale)} />
-                      </span>
-                    ))}
-                  </span>
-                ) : null}
+                <FaceStack faces={dayEvents.map((e) => ({ key: `${e.contactId}-${e.kind}-${e.label ?? ""}`, avatar: who(e)?.avatar ?? null, label: eventName(e, t, locale) }))} size={20} />
               </li>
             );
           })}

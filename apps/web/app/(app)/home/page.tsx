@@ -4,7 +4,8 @@ import { answerQuestion } from "@/app/actions/card";
 import { Avatar } from "@/components/Avatar";
 import { ChiliMeter } from "@/components/Chili";
 import { TabBar, Wordmark } from "@/components/chrome";
-import { EmptyPortrait, EventPortrait } from "@/components/EventArt";
+import { EmptyPortrait, EventPortrait, EventPortraits } from "@/components/EventArt";
+import { FaceStack } from "@/components/FaceStack";
 import { Mascot } from "@/components/Mascot";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { Icon } from "@/components/marks";
@@ -23,15 +24,20 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
   const [people, mine] = await Promise.all([listPeople(s), s.tx((q) => readCard(q, s.user.id))]);
   const events = eventsFor(people, today);
   const next = events.find((e) => e.daysUntil <= 60) ?? null;
-  const nextPerson = next ? (people.find((p) => p.contactId === next.contactId) ?? null) : null;
+  const personOf = (contactId: string) => people.find((p) => p.contactId === contactId) ?? null;
+  const nextPerson = next ? personOf(next.contactId) : null;
+  // 같은 날 챙길 날이 여럿이면 모두 보인다. 얼굴·선물 힌트는 사람마다 하나
+  const nextGroup = next ? events.filter((e) => e.daysUntil === next.daysUntil) : [];
+  const nextFaces = [...new Map(nextGroup.map((e) => [e.contactId, e])).values()];
   // 두 달 안에는 없지만 그 뒤에 있는 날(빈 화면에서 '다음은 …'으로 알려 준다)
   const later = next ? null : (events[0] ?? null);
   const question = questionFor(today, mine.card);
   const names = weekdayNames(locale);
   const days = Array.from({ length: 8 }, (_, i) => addDays(today, i));
-  const weekEvents = days.filter((d) => events.some((e) => sameYmd(e.date, d))).length;
+  // 이번 주에 챙길 날 수(같은 날 두 사람이면 둘)
+  const weekEvents = events.filter((e) => e.daysUntil < days.length).length;
   const lunarToday = solarToLunar(today);
-  const hintHref = next ? `/people/${next.contactId}/reminder?kind=${next.kind}${next.label ? `&label=${encodeURIComponent(next.label)}` : ""}` : "";
+  const hintHref = (e: (typeof events)[number]) => `/people/${e.contactId}/reminder?kind=${e.kind}${e.label ? `&label=${encodeURIComponent(e.label)}` : ""}`;
   // 내 사람들 줄: 즐겨찾기 먼저, 한 달 안에 챙길 날이 있으면 D-day 배지
   const strip = [...people]
     .sort((a, b) => Number(b.favorite) - Number(a.favorite))
@@ -70,20 +76,44 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
               )}
               <div className="flex min-w-0 flex-1 flex-col gap-1 pb-0.5">
                 {next.daysUntil > 0 ? <span className="text-[12px] font-bold tracking-[0.04em] text-accent">{next.daysUntil === 1 ? t("home.dayToGo") : t("home.daysToGo")}</span> : null}
-                <span className="text-[21px] font-bold leading-[1.25] tracking-[-0.02em]">{eventName(next, t, locale)}</span>
+                {/* 같은 날 둘까지는 한 줄씩, 셋 이상이면 첫 사람 + '외 n명' */}
+                <span className="flex flex-col text-[21px] font-bold leading-[1.25] tracking-[-0.02em]">
+                  {(nextGroup.length > 2 ? nextGroup.slice(0, 1) : nextGroup).map((e) => (
+                    <span key={`${e.contactId}-${e.kind}-${e.label ?? ""}`}>{eventName(e, t, locale)}</span>
+                  ))}
+                  {nextGroup.length > 2 ? <span className="text-[15px] text-ink-2">{t("home.others", { n: nextGroup.length - 1 })}</span> : null}
+                </span>
               </div>
-              <EventPortrait href={`/people/${next.contactId}`} avatar={nextPerson?.avatar ?? null} name={nextPerson ? displayName(nextPerson) : next.name} kind={next.kind} />
+              {nextFaces.length > 1 ? (
+                <EventPortraits faces={nextFaces.map((e) => ({ avatar: personOf(e.contactId)?.avatar ?? null, name: e.name }))} kind={next.kind} />
+              ) : (
+                <EventPortrait href={`/people/${next.contactId}`} avatar={nextPerson?.avatar ?? null} name={nextPerson ? displayName(nextPerson) : next.name} kind={next.kind} />
+              )}
             </div>
             {/* 챙길 날: 양력 날짜를 먼저 굵게, 음력이면 옆에 */}
             <span className="flex items-center gap-1.5 pt-3.5 text-[14px] font-bold">
               <Icon name="calendar" size={16} strokeWidth={2} className="shrink-0 text-accent" />
               {formatDayFull(next.date, locale)}
-              {next.spec.calendar === "lunar" ? <span className="font-medium text-muted">· {formatSpec(next.spec, locale)}</span> : null}
+              {nextGroup.length === 1 && next.spec.calendar === "lunar" ? <span className="font-medium text-muted">· {formatSpec(next.spec, locale)}</span> : null}
             </span>
-            <Link href={hintHref} className="mt-[18px] flex min-h-[52px] items-center justify-between border-t border-rule text-[14.5px] font-medium">
-              {t("home.hints")}
-              <Icon name="chevron" size={18} strokeWidth={1.6} className="text-muted" />
-            </Link>
+            {nextFaces.length > 1 ? (
+              <div className="mt-[18px] flex flex-col">
+                {nextFaces.map((e) => (
+                  <Link key={e.contactId} href={hintHref(e)} className="flex min-h-[52px] items-center gap-2.5 border-t border-rule text-[14.5px] font-medium">
+                    <span aria-hidden="true">
+                      <Avatar config={personOf(e.contactId)?.avatar ?? null} size={26} label={e.name} />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{t("home.hintsFor", { name: e.name })}</span>
+                    <Icon name="chevron" size={18} strokeWidth={1.6} className="text-muted" />
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <Link href={hintHref(next)} className="mt-[18px] flex min-h-[52px] items-center justify-between border-t border-rule text-[14.5px] font-medium">
+                {t("home.hints")}
+                <Icon name="chevron" size={18} strokeWidth={1.6} className="text-muted" />
+              </Link>
+            )}
           </>
         ) : (
           <>
@@ -119,8 +149,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
         <ol className="grid grid-cols-8">
           {days.map((day, i) => {
             const wd = weekday(day);
-            const event = events.find((e) => sameYmd(e.date, day));
-            const who = event ? (people.find((p) => p.contactId === event.contactId) ?? null) : null;
+            const dayEvents = events.filter((e) => sameYmd(e.date, day));
             const lunar = solarToLunar(day);
             const isToday = i === 0;
             return (
@@ -128,14 +157,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
                 <span className={`text-[11px] ${isToday ? "font-bold text-accent" : wd === 0 ? "text-red" : wd === 6 ? "text-sat" : "text-muted"}`}>{isToday ? t("start.today") : names[wd]}</span>
                 <span
                   className={`num flex h-9 w-9 items-center justify-center rounded-full text-[16px] ${
-                    isToday ? "grad !font-bold" : event ? "chip-on !font-bold" : wd === 0 ? "font-semibold text-red" : "font-semibold"
+                    isToday ? "grad !font-bold" : dayEvents.length ? "chip-on !font-bold" : wd === 0 ? "font-semibold text-red" : "font-semibold"
                   }`}
                 >
                   {day.d}
                 </span>
                 <span className="num text-[10px] !font-semibold text-muted">{lunar ? `${lunar.m}.${lunar.d}` : ""}</span>
                 <span className="flex h-6 items-center justify-center">
-                  {event ? <Avatar config={who?.avatar ?? null} size={24} label={eventName(event, t, locale)} /> : null}
+                  <FaceStack faces={dayEvents.map((e) => ({ key: `${e.contactId}-${e.kind}-${e.label ?? ""}`, avatar: personOf(e.contactId)?.avatar ?? null, label: eventName(e, t, locale) }))} size={24} />
                 </span>
               </li>
             );

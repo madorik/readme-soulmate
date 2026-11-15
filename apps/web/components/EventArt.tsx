@@ -47,9 +47,9 @@ export function HeartMark({ size = 34 }: { size?: number }) {
 }
 
 /** 얼굴 왼쪽 아래에 붙는 동그란 스티커 */
-function Sticker({ children }: { children: React.ReactNode }) {
+function Sticker({ children, className = "bottom-0 left-0 h-[46px] w-[46px]" }: { children: React.ReactNode; className?: string }) {
   return (
-    <span className="absolute bottom-0 left-0 flex h-[46px] w-[46px] -rotate-6 items-center justify-center rounded-full bg-paper shadow-[0_0_0_1px_var(--color-rule),0_2px_6px_rgba(31,35,64,0.08)]">
+    <span className={`absolute flex -rotate-6 items-center justify-center rounded-full bg-paper shadow-[0_0_0_1px_var(--color-rule),0_2px_6px_rgba(31,35,64,0.08)] ${className}`}>
       {children}
     </span>
   );
@@ -64,6 +64,25 @@ export function EventPortrait({ href, avatar, name, kind }: { href: string; avat
       </span>
       <Sticker>{kind === "birthday" ? <CakeMark /> : <HeartMark />}</Sticker>
     </Link>
+  );
+}
+
+/** 같은 날 챙길 사람이 여럿: 큰 얼굴(오른쪽 위)과 작은 얼굴(왼쪽 아래)을 겹치고, 셋 이상이면 '+n', 스티커는 오른쪽 아래 */
+export function EventPortraits({ faces, kind }: { faces: { avatar: AvatarConfig | null; name: string }[]; kind: "birthday" | "anniversary" }) {
+  const [a, b] = faces;
+  if (!a || !b) return null;
+  const rest = faces.length - 2;
+  return (
+    <span aria-hidden="true" className="relative block h-[86px] w-[94px] shrink-0">
+      <span className="absolute right-0 top-0">
+        <Avatar config={a.avatar} size={60} label={a.name} />
+      </span>
+      <span className="absolute left-0 top-[28px] rounded-full shadow-[0_0_0_3px_#fff]">
+        <Avatar config={b.avatar} size={52} label={b.name} />
+      </span>
+      {rest > 0 ? <span className="grad num absolute -left-1 bottom-0 rounded-full px-1.5 py-[2px] text-[11px] !font-bold shadow-[0_0_0_2px_#fff]">+{rest}</span> : null}
+      <Sticker className="-bottom-1 -right-1 h-[38px] w-[38px]">{kind === "birthday" ? <CakeMark size={28} /> : <HeartMark size={28} />}</Sticker>
+    </span>
   );
 }
 
