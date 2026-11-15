@@ -58,29 +58,37 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
       />
 
       <div className="flex items-center gap-[18px] px-6 pt-3">
-        <Avatar config={p.avatar} size={84} label={t("avatar.of", { name: p.name || name })} />
+        {/* 얼굴을 누르면 내 프로필처럼 그 사람의 얼굴·부르는 말을 꾸민다 */}
+        <Link href={`/people/${p.contactId}/profile`} className="shrink-0 rounded-full">
+          <Avatar config={p.avatar} size={84} label={t("avatar.of", { name: p.name || name })} />
+        </Link>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           {/* 이름 줄 오른쪽 끝 하트 = 즐겨찾기 */}
           <div className="flex items-center gap-2">
             <h1 className="min-w-0 truncate text-[32px] font-bold leading-[1.15] tracking-[-0.03em]">{p.name || name}</h1>
             <FavoriteHeart contactId={p.contactId} initial={p.favorite} label={t("person.favorite")} />
           </div>
-          {/* 태그: 이름 밑에서 바로 달고 고친다(앱 사용자와 이어지지 않은 사람은 태그가 이름) */}
-          <TagEditor
-            contactId={p.contactId}
-            initial={p.nickname}
-            nameIsTag={!p.personId}
-            labels={{
-              tag: t("person.relation"),
-              add: t("person.addTag"),
-              edit: t("common.edit"),
-              rename: t("person.rename"),
-              placeholder: t("person.relationPlaceholder"),
-              save: t("common.save"),
-              cancel: t("common.cancel"),
-              error: t("common.error"),
-            }}
-          />
+          <Link href={`/people/${p.contactId}/profile`} className="self-start text-[14px] font-bold text-muted underline decoration-[1.5px] underline-offset-[5px]">
+            {t("me.face")}
+          </Link>
+          {/* 앱 사용자와 이어진 사람은 내가 단 태그도 이름 밑에서 바로 고친다 */}
+          {p.personId ? (
+            <TagEditor
+              contactId={p.contactId}
+              initial={p.nickname}
+              nameIsTag={false}
+              labels={{
+                tag: t("person.relation"),
+                add: t("person.addTag"),
+                edit: t("common.edit"),
+                rename: t("person.rename"),
+                placeholder: t("person.relationPlaceholder"),
+                save: t("common.save"),
+                cancel: t("common.cancel"),
+                error: t("common.error"),
+              }}
+            />
+          ) : null}
         </div>
       </div>
 

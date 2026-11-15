@@ -5,10 +5,12 @@ import {
   AVATAR_BGS,
   AVATAR_BODIES,
   AVATAR_CLOTHS,
+  AVATAR_FACES,
   AVATAR_GLASSES,
   AVATAR_HAIR_COLORS,
   AVATAR_HAIRS,
   AVATAR_ITEMS,
+  AVATAR_SKINS,
   type AvatarConfig,
   type Locale,
 } from "@readme/core";
@@ -16,12 +18,19 @@ import { useState } from "react";
 import { AvatarArt, avatarBackground } from "../Avatar";
 import { useT } from "./shared";
 
-type Tab = "hair" | "body" | "item" | "glasses" | "color";
-const TABS: Tab[] = ["hair", "body", "item", "glasses", "color"];
-const TAB_KEY = { hair: "avatar.hair", body: "avatar.body", item: "avatar.item", glasses: "avatar.glasses", color: "avatar.colors" } as const;
+type Tab = "hair" | "face" | "body" | "item" | "glasses" | "color";
+const TABS: Tab[] = ["hair", "face", "body", "item", "glasses", "color"];
+const TAB_KEY = { hair: "avatar.hair", face: "avatar.face", body: "avatar.body", item: "avatar.item", glasses: "avatar.glasses", color: "avatar.colors" } as const;
 
-const CLOTH_LABELS = { ko: ["흰색", "남색", "망고", "잎", "분홍"], en: ["White", "Navy", "Mango", "Leaf", "Pink"] };
-const HAIR_COLOR_LABELS = { ko: ["검정", "갈색", "회색", "밝은 갈색"], en: ["Black", "Brown", "Gray", "Light brown"] };
+const CLOTH_LABELS = {
+  ko: ["흰색", "남색", "망고", "잎", "분홍", "하늘", "보라", "주황", "빨강", "회색", "베이지", "갈색"],
+  en: ["White", "Navy", "Mango", "Leaf", "Pink", "Sky", "Violet", "Orange", "Red", "Gray", "Beige", "Brown"],
+};
+const HAIR_COLOR_LABELS = {
+  ko: ["검정", "갈색", "회색", "밝은 갈색", "흰머리", "금발", "적갈색", "분홍", "파랑"],
+  en: ["Black", "Brown", "Gray", "Light brown", "White", "Blonde", "Auburn", "Pink", "Blue"],
+};
+const SKIN_LABELS = { ko: ["하양", "아주 밝게", "밝게", "중간", "진하게", "아주 진하게"], en: ["White", "Very light", "Light", "Medium", "Tan", "Deep"] };
 
 const any = <T,>(list: readonly T[]): T => list[Math.floor(Math.random() * list.length)]!;
 
@@ -44,16 +53,28 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
   const shuffle = () =>
     onChange({
       hair: any(AVATAR_HAIRS),
+      face: any(AVATAR_FACES),
       body: any(AVATAR_BODIES),
       item: any(AVATAR_ITEMS),
       glasses: any(AVATAR_GLASSES),
       bg: any(AVATAR_BGS),
       cloth: any(AVATAR_CLOTHS),
       hairColor: any(AVATAR_HAIR_COLORS),
+      skin: any(AVATAR_SKINS),
     });
 
   const options: { key: Exclude<Tab, "color">; list: readonly string[] } | null =
-    tab === "hair" ? { key: "hair", list: AVATAR_HAIRS } : tab === "body" ? { key: "body", list: AVATAR_BODIES } : tab === "item" ? { key: "item", list: AVATAR_ITEMS } : tab === "glasses" ? { key: "glasses", list: AVATAR_GLASSES } : null;
+    tab === "hair"
+      ? { key: "hair", list: AVATAR_HAIRS }
+      : tab === "face"
+        ? { key: "face", list: AVATAR_FACES }
+        : tab === "body"
+          ? { key: "body", list: AVATAR_BODIES }
+          : tab === "item"
+            ? { key: "item", list: AVATAR_ITEMS }
+            : tab === "glasses"
+              ? { key: "glasses", list: AVATAR_GLASSES }
+              : null;
 
   return (
     <div className="flex flex-col">
@@ -93,7 +114,7 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
 
       {between}
 
-      <div role="tablist" aria-label={t("avatar.parts")} className="mt-3 grid grid-cols-5 border-b border-rule">
+      <div role="tablist" aria-label={t("avatar.parts")} className="mt-3 grid grid-cols-6 border-b border-rule">
         {TABS.map((k) => {
           const on = tab === k;
           return (
@@ -103,7 +124,7 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
               role="tab"
               aria-selected={on}
               onClick={() => setTab(k)}
-              className={`relative h-12 whitespace-nowrap text-[15px] ${on ? "font-bold text-ink" : "font-medium text-muted"}`}
+              className={`relative h-12 whitespace-nowrap text-[14.5px] tracking-[-0.02em] ${on ? "font-bold text-ink" : "font-medium text-muted"}`}
             >
               {t(TAB_KEY[k])}
               <span aria-hidden="true" className={`absolute inset-x-[22%] -bottom-px h-[3px] rounded-full ${on ? "bg-accent" : "bg-transparent"}`} />
@@ -157,6 +178,14 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
               <div className="flex flex-wrap gap-1">
                 {AVATAR_HAIR_COLORS.map((c, i) => (
                   <Swatch key={c} fill={c} on={value.hairColor === c} label={HAIR_COLOR_LABELS[locale][i]!} onPick={() => set({ hairColor: c })} />
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-bold">{t("avatar.skin")}</span>
+              <div className="flex flex-wrap gap-1">
+                {AVATAR_SKINS.map((c, i) => (
+                  <Swatch key={c} fill={c} on={value.skin === c} label={SKIN_LABELS[locale][i]!} onPick={() => set({ skin: c })} />
                 ))}
               </div>
             </div>

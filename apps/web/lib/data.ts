@@ -217,8 +217,8 @@ export interface Person {
 }
 
 async function loadPeople(q: Q, me: string): Promise<Person[]> {
-  const contacts = await q<{ id: string; person_id: string | null; nickname: string; group_id: string | null; favorite: boolean }>(
-    "select id, person_id, nickname, group_id, favorite from contacts where user_id = $1 order by created_at",
+  const contacts = await q<{ id: string; person_id: string | null; nickname: string; group_id: string | null; favorite: boolean; avatar: unknown }>(
+    "select id, person_id, nickname, group_id, favorite, avatar from contacts where user_id = $1 order by created_at",
     [me],
   );
   if (!contacts.length) return [];
@@ -251,7 +251,8 @@ async function loadPeople(q: Q, me: string): Promise<Person[]> {
       personId: c.person_id,
       name: String(p?.display_name || nickname),
       nickname,
-      avatar: p ? sanitizeAvatar(p.avatar) : null,
+      // 내가 꾸민 얼굴이 먼저, 없으면 이어진 사람이 정한 얼굴
+      avatar: c.avatar ? sanitizeAvatar(c.avatar) : p ? sanitizeAvatar(p.avatar) : null,
       card: r ? openContactSections(me, c.id, r.sections) : {},
       answered,
       updatedAt: iso(r?.updated_at),

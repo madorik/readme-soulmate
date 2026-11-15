@@ -1,4 +1,4 @@
-import { AVATAR_BG_FILLS, AVATAR_INK, BODY_OUTLINE, BODY_PATHS, GLASSES_PATHS, HAIR_PATHS, ITEM_PATHS, type AvatarConfig } from "@readme/core";
+import { AVATAR_BG_FILLS, AVATAR_INK, BODY_OUTLINE, BODY_PATHS, FACE_SHAPES, GLASSES_PATHS, HAIR_PATHS, ITEM_PATHS, type AvatarConfig } from "@readme/core";
 
 const INK = AVATAR_INK;
 const PINK = "#FF9DB0";
@@ -9,20 +9,24 @@ export function AvatarArt({ config, size, label }: { config: AvatarConfig; size:
   const body = BODY_PATHS[config.body];
   const [glassFill, glassLine] = GLASSES_PATHS[config.glasses];
   const item = ITEM_PATHS[config.item];
+  const face = FACE_SHAPES[config.face];
+  const skin = config.skin;
   // 짙은 옷 위의 옷 선은 흰색으로
   const detail = config.cloth.toUpperCase() === INK ? "#FFFFFF" : INK;
   const stroke = { stroke: INK, strokeWidth: 3.2, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
   return (
     <svg viewBox="0 0 200 200" width={size} height={size} role={label ? "img" : undefined} aria-label={label} aria-hidden={label ? undefined : true} className="block">
       {back ? <path d={back} fill={config.hairColor} {...stroke} /> : null}
-      <path d="M91 116 V158 H109 V116" fill="#FFFFFF" {...stroke} />
+      <path d="M91 116 V158 H109 V116" fill={skin} {...stroke} />
       <path d={BODY_OUTLINE} fill={config.cloth} {...stroke} />
+      {body.band ? <path d={body.band} fill={detail} /> : null}
       {body.fill ? <path d={body.fill} fill={config.cloth} {...stroke} /> : null}
       {body.white ? <path d={body.white} fill="#FFFFFF" {...stroke} /> : null}
+      {body.tie ? <path d={body.tie} fill={config.cloth.toUpperCase() === INK ? "#FFC23D" : INK} {...stroke} strokeWidth={2.4} /> : null}
       <path d={body.line} fill="none" {...stroke} stroke={detail} />
-      <path d="M70 88 C58 84 56 108 70 109 Z" fill="#FFFFFF" {...stroke} />
-      <path d="M130 88 C142 84 144 108 130 109 Z" fill="#FFFFFF" {...stroke} />
-      <ellipse cx="100" cy="96" rx="32" ry="36" fill="#FFFFFF" {...stroke} />
+      <path d="M70 88 C58 84 56 108 70 109 Z" fill={skin} {...stroke} transform={face.ear ? `translate(${face.ear} 0)` : undefined} />
+      <path d="M130 88 C142 84 144 108 130 109 Z" fill={skin} {...stroke} transform={face.ear ? `translate(${-face.ear} 0)` : undefined} />
+      <path d={face.d} fill={skin} {...stroke} />
       <path d={front} fill={config.hairColor} {...stroke} />
       <circle cx="88" cy="101" r="3.9" fill={INK} />
       <circle cx="112" cy="101" r="3.9" fill={INK} />

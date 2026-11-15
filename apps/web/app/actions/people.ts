@@ -1,6 +1,6 @@
 "use server";
 
-import { isSection, type Section } from "@readme/core";
+import { isSection, sanitizeAvatar, type AvatarConfig, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession, sealNote, writeContactSection } from "@/lib/data";
@@ -58,6 +58,28 @@ export async function setNickname(contactId: string, raw: string): Promise<{ ok:
     ));
   revalidatePeople(contactId);
   return { ok: !!row, nickname };
+}
+
+/** 사람 프로필(내가 꾸미는 얼굴과 부르는 말) 저장 → 사람 화면으로 */
+export async function savePersonProfile(form: FormData): Promise<void> {
+  const contactId = String(form.get("contactId") ?? "");
+  const { s } = await ownContact(contactId);
+  const nickname = String(form.get("name") ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 40);
+  let avatar: AvatarConfig;
+  try {
+    avatar = sanitizeAvatar(JSON.parse(String(form.get("avatar") ?? "{}")));
+  } catch {
+    avatar = sanitizeAvatar({});
+  }
+  await s.tx((q) =>
+    // 이어지지 않은 사람은 부르는 말이 곧 이름이라 비우면 예전 이름 그대로
+    q("update contacts set avatar = $2, nickname = case when $3 = '' and person_id is null then nickname else $3 end where id::text = $1", [contactId, JSON.stringify(avatar), nickname]),
+  );
+  revalidatePeople(contactId);
+  redirect(`/people/${contactId}`);
 }
 
 /** 주소록에서 빼기. 기록·메모·보낸 물어보기 링크도 같이 지워진다 */

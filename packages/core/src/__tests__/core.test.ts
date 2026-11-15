@@ -185,27 +185,43 @@ test("초대 토큰과 코드", async () => {
 
 test("아바타 값 정리", () => {
   // 모르는 값은 기본값으로
-  assert.deepEqual(sanitizeAvatar({ hair: "mohawk", body: "suit", item: "sword", glasses: "yes", bg: "red", cloth: "#000", hairColor: "#000" }), {
+  assert.deepEqual(sanitizeAvatar({ hair: "mohawk", face: "star", body: "robe", item: "sword", glasses: "yes", bg: "red", cloth: "#000", hairColor: "#000", skin: "#00FF00" }), {
     hair: "short",
+    face: "oval",
     body: "shirt",
     item: "none",
     glasses: "none",
     bg: "sky",
     cloth: "#FFFFFF",
     hairColor: "#1F2340",
+    skin: "#FFFFFF",
   });
   // 새 값은 그대로
-  const v3 = { hair: "bangs", body: "knit", item: "pencil", glasses: "sun", bg: "lilac", cloth: "#FF9DB0", hairColor: "#D9A15B" };
+  const v3 = { hair: "perm", face: "round", body: "cardigan", item: "earrings", glasses: "sun", bg: "rose", cloth: "#E7D3B0", hairColor: "#FFFFFF", skin: "#E8B88F" };
   assert.deepEqual(sanitizeAvatar(v3), v3);
+  // 얼굴형·피부가 없던 예전 값은 달걀형·흰 얼굴로
+  assert.deepEqual(sanitizeAvatar({ hair: "bangs", body: "knit", item: "pencil", glasses: "sun", bg: "lilac", cloth: "#FF9DB0", hairColor: "#D9A15B" }), {
+    hair: "bangs",
+    face: "oval",
+    body: "knit",
+    item: "pencil",
+    glasses: "sun",
+    bg: "lilac",
+    cloth: "#FF9DB0",
+    hairColor: "#D9A15B",
+    skin: "#FFFFFF",
+  });
   // 예전(v2) 값은 읽을 때 새 값으로: 옷 톤 → 배경·옷 색, 안경 켬 → 동그란 안경, 아주 짧게 → 짧은 머리
   assert.deepEqual(sanitizeAvatar({ tone: "blue", skin: "#F2CDB0", hair: "crop", hairColor: "#9A98A3", glasses: true }), {
     hair: "short",
+    face: "oval",
     body: "shirt",
     item: "none",
     glasses: "round",
     bg: "sky",
     cloth: "#1F2340",
     hairColor: "#A3A8BC",
+    skin: "#FFFFFF",
   });
   // 하늘색 시절 옷·머리색은 맹고색으로
   assert.equal(sanitizeAvatar({ cloth: "#8CC8FF", hairColor: "#22304A" }).cloth, "#FFC23D");
