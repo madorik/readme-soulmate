@@ -1,4 +1,5 @@
 import { NativeBridge } from "@/components/native";
+import { SwipeTabs } from "@/components/SwipeTabs";
 import { listPeople, requireSession, todayFor } from "@/lib/data";
 import { eventsFor } from "@/lib/events";
 import { pushConfigured } from "@/lib/push";
@@ -13,6 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <main className="screen !pb-0">
       {children}
+      <SwipeTabs />
       <NativeBridge locale={s.profile.locale} appLock={s.profile.appLock} reminders={reminders} pushEnabled={pushConfigured() && s.profile.pushEnabled} />
     </main>
   );
