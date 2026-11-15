@@ -1,7 +1,6 @@
 import { formatMonthDay, isSection, parseYmd, SECTIONS_BY_IMPORTANCE } from "@readme/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { addNote, deleteNote, removeContact } from "@/app/actions/people";
 import { cancelInvite } from "@/app/actions/request";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
@@ -11,6 +10,7 @@ import { aiConfigured } from "@/lib/ai";
 import { displayName, groupName, listGroups, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { FavoriteStar } from "./FavoriteStar";
+import { NotesButton } from "./NotesButton";
 import { PersonOrganize } from "./PersonOrganize";
 import { PersonRecord } from "./PersonRecord";
 import { QuickNote } from "./QuickNote";
@@ -89,6 +89,22 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
             />
           ) : null}
         </div>
+        {/* 나만 보는 메모: 누르면 아래에서 올라오는 시트에서 보고 적는다 */}
+        <div className="self-start pt-2">
+          <NotesButton
+            contactId={p.contactId}
+            notes={notes.map((n) => ({ id: n.id, body: n.body, when: n.label || formatMonthDay(parseYmd(n.createdAt.slice(0, 10)) ?? today, locale) }))}
+            labels={{
+              button: t("person.memo"),
+              title: t("person.notes"),
+              add: t("person.addNote"),
+              placeholder: t("person.noteBodyPlaceholder"),
+              body: t("person.noteBody"),
+              del: t("common.delete"),
+              close: t("common.close"),
+            }}
+          />
+        </div>
       </div>
 
       {/* 물어보고 답을 기다리는 중: 아직 아무도 안 연 링크는 여기서 취소한다 */}
@@ -136,51 +152,6 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
         labels={{ edit: t("me.edit"), close: t("me.close"), write: t("person.write"), done: t("person.editDone") }}
         initialOpen={isSection(sp.open) ? sp.open : null}
       />
-
-      <section id="notes" className="card mx-4 mt-3 flex flex-col px-[18px] pb-3 pt-4">
-        <h2 className="flex items-center gap-[7px] text-[16px] font-bold tracking-[-0.02em]">
-          <Icon name="lock" size={15} strokeWidth={2.2} />
-          {t("person.notes")}
-        </h2>
-        {notes.length ? (
-          <ul className="mt-1.5 flex flex-col">
-            {notes.map((n) => (
-              <li key={n.id} className="flex items-start gap-2 border-b border-rule py-2.5 text-[15px] leading-[1.5]">
-                <span className="min-w-0 flex-1 whitespace-pre-line">{n.body}</span>
-                <span className="shrink-0 pt-[2px] text-[12.5px] text-muted">{n.label || formatMonthDay(parseYmd(n.createdAt.slice(0, 10)) ?? today, locale)}</span>
-                <form action={deleteNote} className="-my-1.5 -mr-2 shrink-0">
-                  <input type="hidden" name="contactId" value={p.contactId} />
-                  <input type="hidden" name="noteId" value={n.id} />
-                  <button aria-label={t("common.delete")} className="flex h-9 w-9 items-center justify-center text-muted">
-                    <Icon name="close" size={15} />
-                  </button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        <form action={addNote} className="mt-2.5 flex items-end gap-1.5">
-          <input type="hidden" name="contactId" value={p.contactId} />
-          <textarea
-            name="body"
-            required
-            maxLength={1000}
-            rows={1}
-            placeholder={t("person.noteBodyPlaceholder")}
-            aria-label={t("person.noteBody")}
-            className="field max-h-40 flex-1 resize-none [field-sizing:content]"
-          />
-          <button className="flex h-12 shrink-0 items-center px-2.5 text-[14.5px] font-bold">{t("person.addNote")}</button>
-        </form>
-      </section>
-
-      <details className="mx-6 mt-6">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center text-[14px] font-bold text-muted">{t("person.remove")}</summary>
-        <form action={removeContact}>
-          <input type="hidden" name="contactId" value={p.contactId} />
-          <button className="flex min-h-11 items-center text-[14px] font-bold text-red">{t("common.delete")}</button>
-        </form>
-      </details>
 
       {/* 항목을 고치는 동안은 아래 버튼 줄을 숨기고, 그 자리를 화면 끝 여백으로 */}
       <div className="page-end show-while-editing" />

@@ -35,7 +35,6 @@ export async function addNote(form: FormData): Promise<void> {
     );
   }
   revalidatePath(`/people/${contactId}`);
-  redirect(`/people/${contactId}#notes`);
 }
 
 export async function deleteNote(form: FormData): Promise<void> {
@@ -43,7 +42,6 @@ export async function deleteNote(form: FormData): Promise<void> {
   const { s } = await ownContact(contactId);
   await s.tx((q) => q("delete from notes where id::text = $1 and contact_id = $2", [String(form.get("noteId")), contactId]));
   revalidatePath(`/people/${contactId}`);
-  redirect(`/people/${contactId}#notes`);
 }
 
 /** 태그(내가 부르는 이름) 달기·고치기. 사람 화면 이름 밑에서 바로 저장한다(앱 사용자와 이어지지 않은 사람은 이게 이름) */

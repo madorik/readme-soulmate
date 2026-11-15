@@ -271,9 +271,13 @@ test("나만 보는 메모: 사람 화면에 남는다", async ({ browser }) => 
   const jisu = await as(browser, "jisu");
   await jisu.goto("/people");
   await jisu.getByRole("link", { name: /도윤/ }).first().click();
-  await jisu.getByLabel("메모", { exact: true }).fill("목도리 줬음. 잘 하고 다님");
-  await jisu.getByRole("button", { name: "메모 추가" }).click();
-  await expect(jisu.getByText("목도리 줬음. 잘 하고 다님")).toBeVisible();
+  // 이름 오른쪽 '메모'를 누르면 시트에서 보고 적는다(적어도 시트는 열린 채로, 버튼에 개수)
+  await jisu.getByRole("button", { name: /^메모/ }).click();
+  const sheet = jisu.getByRole("dialog", { name: "나만 보는 메모" });
+  await sheet.getByLabel("메모", { exact: true }).fill("목도리 줬음. 잘 하고 다님");
+  await sheet.getByRole("button", { name: "메모 추가" }).click();
+  await expect(sheet.getByText("목도리 줬음. 잘 하고 다님")).toBeVisible();
+  await expect(jisu.getByRole("button", { name: /^메모\s*1$/ })).toBeVisible();
 });
 
 test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 생일 알림도 온다", async ({ browser, request }) => {

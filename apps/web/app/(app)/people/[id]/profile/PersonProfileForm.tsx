@@ -24,7 +24,7 @@ export function PersonProfileForm({
 }) {
   const [value, setValue] = useState(avatar);
   return (
-    <form action={savePersonProfile} className="page-end flex flex-col">
+    <form action={savePersonProfile} className="flex flex-col">
       <input type="hidden" name="contactId" value={contactId} />
       <input type="hidden" name="avatar" value={JSON.stringify(value)} />
       <ProfileHeader title={title} name={name} nameLabel={labels.name} save={labels.save} required={false} />
