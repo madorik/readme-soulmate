@@ -1,10 +1,68 @@
 "use client";
 
-import { ALLERGENS, ALLERGEN_ORDER, DIETS, DISLIKES, DISLIKE_ORDER, NONE, NONE_LABEL, ordered, type Locale, type SafetyData } from "@readme/core";
+import { ALLERGENS, ALLERGEN_ORDER, DIETS, DISLIKES, DISLIKE_ORDER, NONE, NONE_LABEL, customTags, ordered, type Locale, type SafetyData } from "@readme/core";
 import { useState } from "react";
 import { CircleOption, SectionHeading, TextField, toggleWithNone, useT } from "./shared";
 
-/** 알레르기(빨간 동그라미)와 안 먹는 것(남색 동그라미). 온보딩·내 리드미·요청 답하기에서 같이 쓴다 */
+/** 목록에 없는 음식 직접 더하기: 누르면 그 자리에 칸이 열린다. 엔터로 더하면 칸이 열린 채로 남아 이어서 더한다 */
+function AddTag({ label, placeholder, onAdd, large }: { label: string; placeholder: string; onAdd: (name: string) => void; large: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const take = () => {
+    const v = text.replace(/\s+/g, " ").trim().slice(0, 30);
+    if (v) onAdd(v);
+    setText("");
+  };
+  if (!open)
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={`chip gap-1 !bg-transparent font-bold text-muted !shadow-[inset_0_0_0_1.5px_var(--color-edge)] ${large ? "!min-h-12 text-[16.5px]" : ""}`}
+      >
+        <span aria-hidden="true" className="text-[17px] leading-none">
+          +
+        </span>
+        {label}
+      </button>
+    );
+  return (
+    <span className="flex w-full items-center gap-1.5">
+      <input
+        autoFocus
+        value={text}
+        maxLength={30}
+        enterKeyHint="done"
+        placeholder={placeholder}
+        aria-label={placeholder}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            take();
+          } else if (e.key === "Escape") setOpen(false);
+        }}
+        onBlur={() => {
+          if (!text.trim()) setOpen(false);
+        }}
+        className="field !min-h-11 flex-1"
+      />
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => {
+          take();
+          setOpen(false);
+        }}
+        className="flex min-h-11 shrink-0 items-center px-3 text-[14.5px] font-bold"
+      >
+        {label}
+      </button>
+    </span>
+  );
+}
+
+/** 알레르기(빨간 동그라미)와 안 먹는 것(남색 동그라미). 목록에 없는 음식은 직접 더한다. 온보딩·내 리드미·요청 답하기에서 같이 쓴다 */
 export function SafetyEditor({
   value,
   onChange,
@@ -27,6 +85,16 @@ export function SafetyEditor({
   const toggle = (key: "allergens" | "dislikes" | "diets", code: string) => {
     onChange({ ...value, [key]: toggleWithNone(value[key], code) });
   };
+  // 직접 더한 이름: 켠 칩으로 보이고, 누르면 빠진다
+  const add = (key: "allergens" | "dislikes", name: string) => {
+    const real = value[key].filter((c) => c !== NONE);
+    if (!real.some((c) => c.toLowerCase() === name.toLowerCase())) onChange({ ...value, [key]: [...real, name] });
+  };
+  const custom = (key: "allergens" | "dislikes") =>
+    customTags(key === "allergens" ? ALLERGENS : DISLIKES, value[key]).map((name) => (
+      <CircleOption key={`custom-${name}`} label={name} color={key === "allergens" ? "warn" : "ink"} on onToggle={() => toggle(key, name)} large={large} />
+    ));
+  const addTag = (key: "allergens" | "dislikes") => <AddTag label={t("safety.add")} placeholder={t("safety.addPlaceholder")} onAdd={(name) => add(key, name)} large={large} />;
   // 첫 칸 '없음'(알레르기 없음 · 안 먹는 것 없음 · 식단 없음)
   const none = (key: "allergens" | "dislikes" | "diets") => (
     <CircleOption label={NONE_LABEL[locale]} color="ink" on={value[key].includes(NONE)} onToggle={() => toggle(key, NONE)} large={large} />
@@ -43,9 +111,11 @@ export function SafetyEditor({
           {[...allergens.first, ...(more ? allergens.rest : [])].map((i) => (
             <CircleOption key={i.code} label={i.label[locale]} color="warn" on={value.allergens.includes(i.code)} onToggle={() => toggle("allergens", i.code)} large={large} />
           ))}
+          {custom("allergens")}
           <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className={`chip !bg-transparent font-bold text-muted !shadow-[inset_0_0_0_1.5px_var(--color-edge)] ${large ? "!min-h-12 text-[16.5px]" : ""}`}>
             {more ? t("safety.less") : t("safety.more")}
           </button>
+          {addTag("allergens")}
         </div>
       </div>
 
@@ -56,6 +126,8 @@ export function SafetyEditor({
           {[...dislikes.first, ...(more ? dislikes.rest : [])].map((i) => (
             <CircleOption key={i.code} label={i.label[locale]} color="ink" on={value.dislikes.includes(i.code)} onToggle={() => toggle("dislikes", i.code)} large={large} />
           ))}
+          {custom("dislikes")}
+          {addTag("dislikes")}
         </div>
       </div>
 

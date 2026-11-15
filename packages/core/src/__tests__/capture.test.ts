@@ -106,3 +106,20 @@ test("지우기: 맞는 것만 빼고, 값이 없으면 그 칸을 비우고, �
   assert.equal(merge(field("dates.birthday"), dates, {}, "remove").birthday, null);
   assert.deepEqual(merge(field("dates.anniversary"), dates, { label: "결혼 기념일" }, "remove").anniversaries, []);
 });
+
+test("알레르기·안 먹는 것: 목록에 없는 음식은 이름 그대로 새 항목으로, 목록에 있는 이름은 코드로", () => {
+  const safety = sanitizeSection("safety", { allergens: ["peanut", "키위"], dislikes: ["오이", "국밥", "cucumber", " 국밥 ", "없음"] }) as { allergens: string[]; dislikes: string[] };
+  assert.deepEqual(safety.allergens, ["peanut", "키위"]);
+  assert.deepEqual(safety.dislikes, ["cucumber", "국밥"]);
+  assert.deepEqual((sanitizeSection("safety", { dislikes: ["없음"] }) as { dislikes: string[] }).dislikes, ["none"]);
+
+  const f = field("safety.dislikes");
+  const out = merge(f, { ...emptySection("safety"), dislikes: ["none"] }, { codes: ["cucumber"], text: "순대, 국밥" });
+  assert.deepEqual(out.dislikes, ["cucumber", "순대", "국밥"]);
+  // 같은 이름은 두 번 넣지 않고, 목록 이름("오이")은 코드와 같은 것으로 본다
+  assert.equal(merge(f, out, { text: "오이" }), null);
+  // 지우기는 코드·이름 어느 쪽으로도
+  assert.deepEqual(merge(f, out, { text: "국밥" }, "remove").dislikes, ["cucumber", "순대"]);
+  assert.deepEqual(merge(f, out, { text: "오이" }, "remove").dislikes, ["순대", "국밥"]);
+  assert.equal(describeCapture(f, { codes: ["cucumber"], text: "순대" }, "ko"), "오이, 순대");
+});

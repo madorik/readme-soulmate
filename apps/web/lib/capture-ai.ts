@@ -62,7 +62,7 @@ const SCHEMA = {
 
 function fieldGuide(): string {
   return CAPTURE_FIELDS.map((f) => {
-    const codes = f.catalog ? ` codes: ${f.catalog.map((c) => `${c.code}=${c.label.ko}`).join(", ")}` : "";
+    const codes = f.catalog ? ` codes: ${f.catalog.map((c) => `${c.code}=${c.label.ko}`).join(", ")}${f.kind === "tags" ? " (or text for a food not listed)" : ""}` : "";
     const range = f.range ? ` range ${f.range[0]}-${f.range[1]}` : "";
     return `- ${f.key} (${f.kind}) ${f.label.ko}${range}${codes}`;
   }).join("\n");
@@ -79,9 +79,10 @@ who:
 
 target: the most specific field from FIELDS. Rules:
 - codes kinds: use only listed codes. If the thing is not in the list, use a text/list field that fits, otherwise memo.
+- tags kinds (safety.allergens, safety.dislikes): use the listed code when the food is in the list; when it is not, put the food name in text (short, e.g. "국밥", "고등어") and it is added as a new item. Never use memo or safety.allergyNote for a food that fits here.
 - Foods they like → taste.likes. Coffee/tea/drinks they like lately → taste.drinks. Desserts/snacks → taste.dessert.
-- Food allergies in the list → safety.allergens; foods they won't eat in the list → safety.dislikes. Other allergies or avoidances (cats, pollen, a food not in the lists) → safety.allergyNote as short text.
-- NEGATIVE preferences (doesn't like, avoids, can't, 싫어해, 안 좋아해, 별로, 못 먹어, 안 마셔) must NEVER be added to a "likes" field (taste.likes, taste.dessert, taste.drinks, favorites.*, culture.* text, life.*). Use safety.dislikes if the food is listed; for gifts they don't want use gifts.skip; otherwise safety.allergyNote (food or drink) or memo (anything else), written as the negative fact (e.g. "단 거 별로 안 좋아함").
+- Food allergies → safety.allergens. Foods or drinks they won't, can't or don't eat (안 먹어, 못 먹어, 안 드셔, 싫어해, 별로) → safety.dislikes. A food not in the list is still one of these, added by name in text. Only non-food allergies (cats, pollen, medicine) or extra context that is not a single food (e.g. "국물에 들어간 것도 안 돼요") → safety.allergyNote as short text.
+- NEGATIVE preferences (doesn't like, avoids, can't, 싫어해, 안 좋아해, 별로, 못 먹어, 안 마셔) must NEVER be added to a "likes" field (taste.likes, taste.dessert, taste.drinks, favorites.*, culture.* text, life.*). Foods and drinks go to safety.dislikes (listed code, or the food name as text, e.g. "단 것"); gifts they don't want go to gifts.skip; anything else goes to memo, written as the negative fact.
 - Things they want → gifts.wishlist; gifts to avoid → gifts.skip.
 - Birthday → dates.birthday with date (lunar if 음력/lunar). Other days → dates.anniversary with label.
 - Shoe size in mm (e.g. 270), ring size number (호).
@@ -91,7 +92,7 @@ target: the most specific field from FIELDS. Rules:
 op: what to do with the field (the speaker may add, correct or delete what was kept):
 - "add" (default): a new fact.
 - "replace": the value changed or the speaker corrects it (바뀌었어, 이제는 ~야, ~가 아니라 ~야, ~로 바꿔/고쳐 줘, changed to). The value replaces everything in that field. When only one item of a list changes ("짜장면 말고 짬뽕 좋아해"), emit "remove" for the old item and "add" for the new one instead.
-- "remove": a kept fact is wrong or no longer true, or the speaker asks to delete it (아니래, 아니야, 지워 줘, 빼 줘, 이제 안 해, 이제 안 좋아해, 질렸대, no longer). Put the thing to remove as the value (text or codes, short). Leave the value null to clear the whole field (e.g. "알레르기 다 지워 줘", "생일 지워 줘"). For something they no longer like, remove it from the matching likes field; do not also add a negative fact unless the speaker states one.
+- "remove": a kept fact is wrong or no longer true, or the speaker asks to delete it (아니래, 아니야, 지워 줘, 빼 줘, 이제 안 해, 이제 안 좋아해, 질렸대, no longer). Put the thing to remove as the value (text or codes, short). Leave the value null to clear the whole field (e.g. "알레르기 다 지워 줘", "생일 지워 줘"). For something they no longer like, remove it from the matching likes field; do not also add a negative fact unless the speaker states one. When they now eat or can have something they used to avoid (이제 ~ 드신대, 이제 먹어, 이제 괜찮대, 알레르기 나았대), remove it from safety.dislikes or safety.allergens; add it to a likes field only if the speaker says they like it.
 - memo is only for "add".
 text: just the value, short (e.g. "바닐라라떼"), in the speaker's language. Do not copy the whole sentence. Do not guess values that were not said.
 Fill only the value properties the target needs; set the rest to null.

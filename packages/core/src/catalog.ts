@@ -213,6 +213,11 @@ export function labelOf(list: CatalogItem[], code: string, locale: Locale): stri
   return list.find((i) => i.code === code)?.label[locale] ?? code;
 }
 
+/** 목록에 없는, 직접 더한 이름(알레르기·안 먹는 것) */
+export function customTags(list: CatalogItem[], values: readonly string[]): string[] {
+  return values.filter((v) => v !== NONE && !list.some((i) => i.code === v));
+}
+
 export function codesOf(list: CatalogItem[]): Set<string> {
   return new Set(list.map((i) => i.code));
 }

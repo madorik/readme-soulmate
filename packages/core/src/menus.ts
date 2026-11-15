@@ -142,14 +142,24 @@ function dietBlocks(diet: string, item: MenuItem): boolean {
   }
 }
 
+/** 직접 더한 음식 이름(목록에 없는 알레르기·안 먹는 것)이 이 메뉴인지: 메뉴 이름이나 낱말에 그 이름이 들어 있으면 */
+const isCustom = (list: { code: string }[], code: string) => !list.some((i) => i.code === code);
+
+function namedIn(item: MenuItem, name: string): boolean {
+  const n = name.toLowerCase().replace(/\s+/g, "");
+  if (n.length < 1) return false;
+  const label = (x: string) => x.toLowerCase().replace(/\s+/g, "");
+  return label(item.label.ko).includes(n) || label(item.label.en).includes(n) || item.keywords.some((k) => label(k).includes(n));
+}
+
 /** 메뉴마다: 피해야 할 이유, 아쉬운 이유, 좋아하는 사람. 다 같이 먹을 수 있고 좋아하는 사람이 많은 순서로 */
 export function judgeMenus(diners: Diner[], menus: MenuItem[] = MENUS): MenuVerdict[] {
   const brief = mealBrief(diners);
   const verdicts = menus.map((item, order) => {
     const reasons: MenuReason[] = [];
-    for (const a of brief.allergens) if (item.contains.includes(a.code)) reasons.push({ kind: "allergy", code: a.code, who: a.who });
+    for (const a of brief.allergens) if (item.contains.includes(a.code) || (isCustom(ALLERGENS, a.code) && namedIn(item, a.code))) reasons.push({ kind: "allergy", code: a.code, who: a.who });
     for (const d of brief.diets) if (dietBlocks(d.code, item)) reasons.push({ kind: "diet", code: d.code, who: d.who });
-    for (const d of brief.dislikes) if (item.traits.includes(d.code)) reasons.push({ kind: "dislike", code: d.code, who: d.who });
+    for (const d of brief.dislikes) if (item.traits.includes(d.code) || (isCustom(DISLIKES, d.code) && namedIn(item, d.code))) reasons.push({ kind: "dislike", code: d.code, who: d.who });
     let milder = false;
     if (brief.spicy && item.spicy > brief.spicy.level) {
       if (item.spicy - brief.spicy.level >= 3) reasons.push({ kind: "spicy", code: String(brief.spicy.level), who: brief.spicy.who });

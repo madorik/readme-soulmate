@@ -9,13 +9,14 @@ import type { Locale } from "./locale";
  * 칸의 종류
  * - text: 글 한 줄. 이미 있으면 ", "로 이어 붙인다(사이즈 상의·하의는 바꾼다)
  * - list: 글 목록(좋아하는 음식·취미·받고 싶은 것…). 없는 것만 더한다
- * - codes: 고르는 칸(알레르기·무늬…). 목록에 있는 코드만, 없는 것만 더한다
+ * - codes: 고르는 칸(무늬·장르…). 목록에 있는 코드만, 없는 것만 더한다
+ * - tags: 알레르기·안 먹는 것. 목록의 코드 + 목록에 없는 음식 이름(text)을 새 항목으로 더한다
  * - code: 하나만 고르는 칸(술을 얼마나·상품권). 바꾼다
  * - number: 수(매운맛 0–4, 신발 mm, 반지 호수). 바꾼다
  * - date: 생일. 바꾼다
  * - anniversary: 기념일(이름 + 날짜). 같은 이름이면 바꾸고 아니면 더한다
  */
-export type CaptureKind = "text" | "list" | "codes" | "code" | "number" | "date" | "anniversary";
+export type CaptureKind = "text" | "list" | "codes" | "tags" | "code" | "number" | "date" | "anniversary";
 
 export interface CaptureField {
   key: string;
@@ -37,8 +38,8 @@ const f = (key: string, kind: CaptureKind, ko: string, en: string, extra: Partia
 });
 
 export const CAPTURE_FIELDS: CaptureField[] = [
-  f("safety.allergens", "codes", "알레르기", "Allergies", { catalog: ALLERGENS }),
-  f("safety.dislikes", "codes", "못 먹는 것", "Won't eat", { catalog: DISLIKES }),
+  f("safety.allergens", "tags", "알레르기", "Allergies", { catalog: ALLERGENS }),
+  f("safety.dislikes", "tags", "안 먹어요", "Won't eat", { catalog: DISLIKES }),
   f("safety.diets", "codes", "식단", "Diet", { catalog: DIETS }),
   f("safety.allergyNote", "text", "꼭 알려 둘 말", "Good to know"),
   f("taste.likes", "list", "좋아하는 음식", "Favorite foods"),
@@ -178,6 +179,14 @@ export function mergeCapture<S extends Section>(field: CaptureField, current: Ca
       setRaw(base, field.key, list);
       break;
     }
+    case "tags": {
+      const add = [...codes, ...text.split(/\s*,\s*/).filter(Boolean)];
+      if (!add.length) return null;
+      const list = replace ? [] : ((getRaw(base, field.key) as string[]) ?? []).filter((c) => c !== NONE);
+      for (const x of add) if (!list.some((y) => same(x, y))) list.push(x);
+      setRaw(base, field.key, list); // 목록에 있는 이름은 sanitizeSection이 코드로 바꾸고 겹친 것을 지운다
+      break;
+    }
     case "code": {
       const code = codes[0] ?? (field.catalog?.some((x) => x.code === text) ? text : "");
       if (!code) return null;
@@ -244,6 +253,16 @@ function removeFrom(field: CaptureField, base: Record<string, unknown>, text: st
       setRaw(base, field.key, keep);
       return keep.length !== list.length;
     }
+    case "tags": {
+      const items = [...codes, ...text.split(/\s*,\s*/).filter(Boolean)];
+      if (!items.length && value.codes?.length) return false; // 목록에 없는 코드로만 지워 달라면 지울 것이 없다
+      const list = (getRaw(base, field.key) as string[]) ?? [];
+      const name = (x: string) => field.catalog?.find((i) => i.code === x)?.label ?? null;
+      const hit = (x: string) => !items.length || items.some((y) => x === y || matches(x, y) || (!!name(x) && (matches(name(x)!.ko, y) || matches(name(x)!.en, y))));
+      const keep = list.filter((x) => !hit(x));
+      setRaw(base, field.key, keep);
+      return keep.length !== list.length;
+    }
     case "code":
     case "number":
       if (getRaw(base, field.key) == null) return false;
@@ -270,6 +289,8 @@ export function describeCapture(field: CaptureField, value: CaptureValue, locale
   switch (field.kind) {
     case "codes":
       return (value.codes ?? []).map(codeLabel).join(", ");
+    case "tags":
+      return [...(value.codes ?? []).filter((c) => field.catalog?.some((x) => x.code === c)).map(codeLabel), ...(value.text ?? "").split(/\s*,\s*/).filter(Boolean)].join(", ");
     case "code":
       return codeLabel(value.codes?.[0] ?? value.text ?? "");
     case "number":

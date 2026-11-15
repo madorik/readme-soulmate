@@ -1,5 +1,5 @@
 import { isValidSpec, type DateSpec } from "./calendar";
-import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, PATTERNS, SEASONS, STYLES, codesOf, type Relation } from "./catalog";
+import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, NONE_LABEL, PATTERNS, SEASONS, STYLES, codesOf, type CatalogItem, type Relation } from "./catalog";
 
 // 리드미(카드)는 항목(section) 여덟 개로 나눠 저장한다. 공유도 항목 단위로 허락한다.
 
@@ -197,6 +197,27 @@ function noneableList(v: unknown, allowed: Set<string>): string[] {
   return real.length ? real : all.includes(NONE) ? [NONE] : [];
 }
 
+/**
+ * 알레르기·안 먹는 것: 목록의 코드 + 목록에 없는 음식 이름(사람마다 다르다, "국밥").
+ * 목록에 있는 이름("오이", "Cucumber")은 코드로 바꾸고, 같은 것은 한 번만. '없음'은 noneableList와 같다
+ */
+function noneableTags(v: unknown, list: CatalogItem[]): string[] {
+  if (!Array.isArray(v)) return [];
+  const out: string[] = [];
+  for (const raw of v) {
+    if (typeof raw !== "string") continue;
+    let s = raw.replace(/\s+/g, " ").trim().slice(0, 30);
+    if (!s) continue;
+    const low = s.toLowerCase();
+    if (low === NONE || s === NONE_LABEL.ko || low === NONE_LABEL.en.toLowerCase()) s = NONE;
+    else s = list.find((i) => i.code === s || i.label.ko === s || i.label.en.toLowerCase() === low)?.code ?? s;
+    if (!out.some((x) => x.toLowerCase() === s.toLowerCase())) out.push(s);
+    if (out.length >= LIST_MAX) break;
+  }
+  const real = out.filter((c) => c !== NONE);
+  return real.length ? real : out.includes(NONE) ? [NONE] : [];
+}
+
 function intIn(v: unknown, min: number, max: number): number | null {
   const n = typeof v === "string" && v.trim() !== "" ? Number(v) : v;
   if (typeof n !== "number" || !Number.isInteger(n) || n < min || n > max) return null;
@@ -222,8 +243,6 @@ function spec(v: unknown): DateSpec | null {
   return s.calendar === "lunar" ? { calendar: "lunar", month: s.month, day: s.day, leap: !!s.leap, ...year } : { calendar: "solar", month: s.month, day: s.day, ...year };
 }
 
-const ALLERGEN_CODES = codesOf(ALLERGENS);
-const DISLIKE_CODES = codesOf(DISLIKES);
 const DIET_CODES = codesOf(DIETS);
 const COLOR_CODES = codesOf(COLORS);
 const ALCOHOL_LEVEL_CODES = codesOf(ALCOHOL_LEVELS);
@@ -251,9 +270,9 @@ export function sanitizeSection<S extends Section>(section: S, input: unknown): 
   switch (section) {
     case "safety":
       out = {
-        allergens: noneableList(o.allergens, ALLERGEN_CODES),
+        allergens: noneableTags(o.allergens, ALLERGENS),
         allergyNote: text(o.allergyNote, NOTE_MAX),
-        dislikes: noneableList(o.dislikes, DISLIKE_CODES),
+        dislikes: noneableTags(o.dislikes, DISLIKES),
         diets: noneableList(o.diets, DIET_CODES),
       } satisfies SafetyData;
       break;

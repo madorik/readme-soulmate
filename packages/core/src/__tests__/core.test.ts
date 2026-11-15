@@ -65,9 +65,9 @@ test("조사: 받침에 맞춰", () => {
   assert.equal(translate("en", "home.today", { event: "Mom's birthday" }), "Mom's birthday is today");
 });
 
-test("카드 정리: 모르는 코드·위험한 주소는 버린다", () => {
-  const safety = sanitizeSection("safety", { allergens: ["shrimp", "crab", "nope", "shrimp"], dislikes: ["cucumber"], diets: ["vegan", 3], extra: 1 });
-  assert.deepEqual(safety, { allergens: ["shrimp", "crab"], allergyNote: "", dislikes: ["cucumber"], diets: ["vegan"] });
+test("카드 정리: 모르는 코드·위험한 주소는 버린다(알레르기·안 먹는 것의 목록에 없는 이름은 새 항목)", () => {
+  const safety = sanitizeSection("safety", { allergens: ["shrimp", "crab", "키위", "shrimp", 7, ""], dislikes: ["cucumber"], diets: ["vegan", "keto", 3], extra: 1 });
+  assert.deepEqual(safety, { allergens: ["shrimp", "crab", "키위"], allergyNote: "", dislikes: ["cucumber"], diets: ["vegan"] });
   const gifts = sanitizeSection("gifts", {
     wishlist: [
       { title: "캠핑 의자", url: "javascript:alert(1)" },
@@ -350,4 +350,14 @@ test("없음: 고르는 칸은 '없음'만 남기거나 다른 것만, 오늘의
   // 메뉴 고르기에는 '없음'을 모으지 않는다
   const brief = mealBrief([{ key: "dad", name: "아빠", card: { safety: sanitizeSection("safety", { allergens: [NONE] }) }, sections: ["safety"] }]);
   assert.deepEqual(brief.allergens, []);
+});
+
+test("같이 고르기: 목록에 없는 안 먹는 것·알레르기도 메뉴 이름으로 거른다", () => {
+  const dad = { key: "dad", name: "아빠", card: { safety: sanitizeSection("safety", { dislikes: ["삼겹살"], allergens: ["돈가스"] }) }, sections: ["safety"] as const };
+  const v = judgeMenus([dad]);
+  const pork = v.find((x) => x.item.code === "pork_bbq")!;
+  assert.equal(pork.status, "soft");
+  assert.deepEqual(pork.reasons.map((r) => r.code), ["삼겹살"]);
+  assert.equal(v.find((x) => x.item.code === "tonkatsu")!.status, "avoid");
+  assert.equal(v.find((x) => x.item.code === "sushi")!.status, "ok");
 });
