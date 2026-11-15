@@ -64,16 +64,30 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
       <div className={`grid h-[66px] ${voice ? "grid-cols-5" : "grid-cols-4"} rounded-[26px] bg-white px-1 shadow-[0_8px_24px_rgba(31,35,64,0.09),0_0_0_1px_rgba(31,35,64,0.04)]`}>
         {tabs.slice(0, 2).map(tab)}
         {voice ? (
-          <div className="flex items-start justify-center">
-            {/* 가운데 물방울: 누르면 말로 또는 글로 기억해 두기 */}
-            <Link href="/voice" aria-label={t("voice.title")} className="-mt-5 flex h-[66px] w-[66px] items-center justify-center rounded-full bg-bg transition-transform active:scale-95">
-              <DropOrb size={58} />
+          <div className="flex items-center justify-center">
+            {/* 가운데 물방울(막대 한가운데): 누르면 말로 또는 글로 기억해 두기 */}
+            <Link href="/voice" aria-label={t("voice.title")} className="flex h-[56px] w-[56px] items-center justify-center rounded-full transition-transform active:scale-95">
+              <DropOrb size={52} />
             </Link>
           </div>
         ) : null}
         {tabs.slice(2).map(tab)}
       </div>
     </nav>
+  );
+}
+
+/** 시작·로그인 화면 아래 약관 · 개인정보 처리방침 */
+export function LegalLinks({ locale, t }: { locale: Locale; t: T }) {
+  return (
+    <p className="flex justify-center gap-x-4 pt-1 text-[12px] text-muted">
+      <a href={`/terms?lang=${locale}`} className="flex min-h-10 items-center underline underline-offset-2">
+        {t("legal.terms")}
+      </a>
+      <a href={`/privacy-policy?lang=${locale}`} className="flex min-h-10 items-center underline underline-offset-2">
+        {t("legal.privacy")}
+      </a>
+    </p>
   );
 }
 

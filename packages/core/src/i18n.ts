@@ -40,6 +40,10 @@ export const ko = {
   "login.title": "시작하기",
   "login.failed": "로그인을 마치지 못했어요. 다시 해 주세요.",
   "login.providerOff": "아직 연결하지 않은 로그인이에요. 데모로 둘러보세요.",
+  "login.noteMom": "엄마",
+  "login.noteFlower": "카네이션보다 수국",
+  "login.noteFriend": "단짝",
+  "login.noteAllergy": "땅콩 알레르기",
 
   "onb.step": "{n} / 3",
   "onb.avatar.title": "나를 닮게 그려 볼까요",
@@ -580,6 +584,10 @@ export const en: Messages = {
   "login.title": "Get started",
   "login.failed": "Sign-in didn't finish. Please try again.",
   "login.providerOff": "This sign-in isn't set up yet. Try the demo instead.",
+  "login.noteMom": "Mom",
+  "login.noteFlower": "Hydrangeas over roses",
+  "login.noteFriend": "Bestie",
+  "login.noteAllergy": "Peanut allergy",
 
   "onb.step": "{n} / 3",
   "onb.avatar.title": "Draw yourself",

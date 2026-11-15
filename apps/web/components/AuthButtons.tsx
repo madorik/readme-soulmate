@@ -27,8 +27,8 @@ function AppleGlyph() {
   );
 }
 
-/** 구글 · Apple · 데모. 앱에서는 구글·Apple을 시스템 브라우저로 */
-export function AuthButtons({ locale, next, google, apple }: { locale: Locale; next: string; google: boolean; apple: boolean }) {
+/** 구글 · Apple · 데모. 앱에서는 구글·Apple을 시스템 브라우저로. 이미 데모 계정이면 demo={false}(익명 로그인을 다시 하면 실패한다) */
+export function AuthButtons({ locale, next, google, apple, demo: showDemo = true }: { locale: Locale; next: string; google: boolean; apple: boolean; demo?: boolean }) {
   const t = useT(locale);
   const native = useIsNative();
   const [busy, setBusy] = useState<null | "google" | "apple" | "demo">(null);
@@ -81,10 +81,14 @@ export function AuthButtons({ locale, next, google, apple }: { locale: Locale; n
           {t("start.apple")}
         </button>
       ) : null}
-      <button type="button" disabled={!!busy} onClick={() => void demo()} className={google || apple ? "btn-soft !h-14 !text-[16px]" : "btn-primary"}>
-        {t("start.demo")}
-      </button>
-      <span className="text-center text-[12.5px] text-muted">{t("start.demoNote")}</span>
+      {showDemo ? (
+        <>
+          <button type="button" disabled={!!busy} onClick={() => void demo()} className={google || apple ? "btn-soft !h-14 !text-[16px]" : "btn-primary"}>
+            {t("start.demo")}
+          </button>
+          <span className="text-center text-[12.5px] text-muted">{t("start.demoNote")}</span>
+        </>
+      ) : null}
       {failed ? (
         <p role="alert" className="text-center text-[13.5px] text-red">
           {t("login.failed")}

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { setLocale } from "@/app/actions/auth";
 import { AuthButtons } from "@/components/AuthButtons";
 import { CalendarWeeks, sundayOf } from "@/components/CalendarWeeks";
-import { Wordmark } from "@/components/chrome";
+import { LegalLinks, Wordmark } from "@/components/chrome";
 import { PROVIDERS } from "@/lib/auth";
 import { getSession } from "@/lib/data";
 import { makeT, requestLocale } from "@/lib/i18n";
@@ -47,14 +47,7 @@ export default async function Start({ searchParams }: { searchParams: Promise<{ 
 
       <div className="mt-auto px-6 pt-8">
         <AuthButtons locale={locale} next={next} google={PROVIDERS.google} apple={PROVIDERS.apple} />
-        <p className="flex justify-center gap-x-4 pt-1 text-[12px] text-muted">
-          <a href={`/terms?lang=${locale}`} className="flex min-h-10 items-center underline underline-offset-2">
-            {t("legal.terms")}
-          </a>
-          <a href={`/privacy-policy?lang=${locale}`} className="flex min-h-10 items-center underline underline-offset-2">
-            {t("legal.privacy")}
-          </a>
-        </p>
+        <LegalLinks locale={locale} t={t} />
       </div>
     </main>
   );
