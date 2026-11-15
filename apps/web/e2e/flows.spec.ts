@@ -608,17 +608,23 @@ test("챙길 날 오른쪽 위 내 얼굴: 내 프로필(닉네임·프로필 �
 test("아래 탭 화면은 좌우로 밀어 옮긴다: 챙길 날 ↔ 사람들 ↔ 나 ↔ 설정, 끝에서는 그대로", async ({ browser }) => {
   const ctx = await browser.newContext({ storageState: sessions.jisu, hasTouch: true, viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
-  // 화면 가운데 제목에서 손가락으로 빠르게 밀기
+  // 화면 가운데 제목에서 손가락으로 밀기(누르고, 조금씩 옆으로 움직이고, 떼기)
   const swipe = (dir: "left" | "right") =>
-    page.evaluate((d) => {
+    page.evaluate(async (d) => {
       const h = document.querySelector("h1") ?? document.body;
       const r = h.getBoundingClientRect();
       const y = r.top + r.height / 2;
-      const [x0, x1] = d === "left" ? [280, 110] : [110, 280];
+      const [x0, x1] = d === "left" ? [300, 90] : [90, 300];
       const target = document.elementFromPoint(x0, y) ?? document.body;
       const touch = (x: number) => new Touch({ identifier: 1, target, clientX: x, clientY: y });
-      target.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, touches: [touch(x0)], changedTouches: [touch(x0)] }));
-      target.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [], changedTouches: [touch(x1)] }));
+      const fire = (type: string, x: number, end = false) =>
+        target.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: end ? [] : [touch(x)], changedTouches: [touch(x)] }));
+      fire("touchstart", x0);
+      for (let i = 1; i <= 8; i++) {
+        await new Promise((ok) => setTimeout(ok, 16));
+        fire("touchmove", x0 + ((x1 - x0) * i) / 8);
+      }
+      fire("touchend", x1, true);
     }, dir);
   await page.goto("/home");
   await swipe("right");

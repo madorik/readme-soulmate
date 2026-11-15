@@ -57,6 +57,7 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
   return (
     <nav
       aria-label="menu"
+      data-tabbar=""
       className="sticky bottom-0 z-30 mt-auto px-4 pt-3"
       style={{ paddingBottom: "var(--pb-tab)", background: "linear-gradient(to top, var(--color-bg) 60%, rgb(246 247 251 / 0))" }}
     >
