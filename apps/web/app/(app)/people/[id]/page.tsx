@@ -105,25 +105,22 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
       ) : (
         <>
           {p.card.dates ? <DateTiles dates={p.card.dates} today={today} locale={locale} t={t} /> : null}
-          <CardView card={p.card} sections={[...SECTIONS]} name={name} locale={locale} t={t} mine={!p.answered.safety} />
+          <CardView card={p.card} sections={[...SECTIONS]} name={name} locale={locale} t={t} />
         </>
       )}
 
-      {/* 내 기록: 항목마다 고치기. 상대가 답한 항목은 받은 날을 같이 */}
+      {/* 내 기록: 항목마다 고치기 */}
       <section id="record" className="flex flex-col px-6 pt-8">
         <h2 className="section-title mb-1">{t("person.mineList")}</h2>
         <ul className="flex flex-col">
           {SECTIONS.map((section) => {
             const line = summarize(section, p.card[section], locale, t);
-            const at = p.answered[section];
-            const day = at ? parseYmd(at.slice(0, 10)) : null;
             return (
               <li key={section} className="border-t border-rule last:border-b">
                 <Link href={`/people/${p.contactId}/edit/${section}`} className="flex min-h-[60px] items-center gap-3 py-2">
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className={`text-[15px] font-bold ${section === "safety" ? "text-red" : ""}`}>{t(`section.${section}` as "section.safety")}</span>
                     {line ? <span className="truncate text-[13px] text-muted">{line}</span> : null}
-                    {day ? <span className="text-[12px] font-bold text-accent">{t("person.answeredAt", { date: formatMonthDay(day, locale) })}</span> : null}
                   </span>
                   <span className="text-[13.5px] font-bold">{line ? t("me.edit") : t("person.write")}</span>
                   <Icon name="chevron" size={18} className="text-muted" />

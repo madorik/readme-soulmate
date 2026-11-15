@@ -224,7 +224,6 @@ export const ko = {
   "person.askMore": "물어보기",
   "person.mustKnow": "꼭 알아 두세요",
   "person.allergy": "알레르기",
-  "person.theirWords": "직접 쓴 말",
   "person.food": "음식",
   "person.likes": "좋아해요",
   "person.wontEat": "안 먹어요",
@@ -282,7 +281,6 @@ export const ko = {
   "people.newNameError": "이름을 적어 주세요",
   "people.create": "만들기",
   "person.mineList": "기억해 둔 것",
-  "person.answeredAt": "{date}에 직접 알려 줬어요",
   "person.mineEmpty": "아직 기억해 둔 게 없어요.",
   "person.write": "적기",
 
@@ -727,7 +725,6 @@ export const en: Messages = {
   "person.askMore": "Ask",
   "person.mustKnow": "Must know",
   "person.allergy": "allergy",
-  "person.theirWords": "In their words",
   "person.food": "Food",
   "person.likes": "Loves",
   "person.wontEat": "Won't eat",
@@ -785,7 +782,6 @@ export const en: Messages = {
   "people.newNameError": "Please enter a name",
   "people.create": "Create",
   "person.mineList": "What you remember",
-  "person.answeredAt": "They told you on {date}",
   "person.mineEmpty": "Nothing remembered yet.",
   "person.write": "Add",
 

@@ -61,7 +61,6 @@ export function CardView({
   locale,
   t,
   updatedToday = [],
-  mine = false,
 }: {
   card: PartialCard;
   sections: Section[];
@@ -69,8 +68,6 @@ export function CardView({
   locale: Locale;
   t: T;
   updatedToday?: string[];
-  /** 내가 직접 적어 둔 카드면 "직접 쓴 말" 같은 표시를 뺀다 */
-  mine?: boolean;
 }) {
   const safety = card.safety;
   const taste = card.taste;
@@ -110,7 +107,6 @@ export function CardView({
           {safety.allergyNote ? (
             <div className="mt-1.5 flex flex-col gap-0.5">
               <p className="text-[15px] leading-[1.6]">“{safety.allergyNote}”</p>
-              {mine ? null : <span className="text-[12.5px] text-muted">{t("person.theirWords")}</span>}
             </div>
           ) : null}
         </section>

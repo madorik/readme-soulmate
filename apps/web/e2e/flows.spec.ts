@@ -77,7 +77,7 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   await remember("jisu", page.context());
 });
 
-test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내 기록에 들어가고 받은 날이 보인다", async ({ browser }) => {
+test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내 기록에 들어간다", async ({ browser }) => {
   const page = await as(browser, "jisu");
   await page.goto("/request");
   await expect(page.getByRole("heading", { name: "물어보기" })).toBeVisible();
@@ -124,14 +124,13 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await page.getByRole("link", { name: /아빠/ }).click();
   // 굴은 '못 먹는 것'으로 답했다
   await expect(page.getByRole("region", { name: "음식" }).getByText("굴", { exact: true })).toBeVisible();
-  await expect(page.locator("#record").getByText(/에 직접 알려 줬어요$/)).toHaveCount(2);
   await shot(page, "07-person-answered");
   await page.goto("/home");
   await expect(page.getByRole("link", { name: /아빠/ })).toBeVisible();
   await shot(page, "08-home");
 });
 
-test("받은 답도 내가 고친다: 고친 항목은 받은 날 표시가 빠진다", async ({ browser }) => {
+test("받은 답도 내가 고친다", async ({ browser }) => {
   const page = await as(browser, "jisu");
   await page.goto("/people");
   await page.getByRole("link", { name: /아빠/ }).click();
@@ -146,7 +145,6 @@ test("받은 답도 내가 고친다: 고친 항목은 받은 날 표시가 빠�
   await expect(page.getByRole("heading", { name: "꼭 알아 두세요" })).toBeVisible();
   await expect(page.getByText("땅콩", { exact: true })).toBeVisible();
   await expect(page.getByText("굴", { exact: true })).toBeVisible();
-  await expect(page.locator("#record").getByText(/에 직접 알려 줬어요$/)).toHaveCount(1);
   await page.getByRole("link", { name: "선물 고르기" }).click();
   await shot(page, "09-reminder");
 });
@@ -306,7 +304,6 @@ test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 
 
   await jisu.goto(personUrl);
   await expect(jisu.getByRole("heading", { name: "꼭 알아 두세요" })).toBeVisible();
-  await expect(jisu.locator("#record").getByText(/에 직접 알려 줬어요$/)).toHaveCount(0);
   await shot(jisu, "14-mine-person");
   await jisu.goto("/people");
   await expect(jisu.getByRole("link", { name: /할머니.*7일 남음/ })).toBeVisible();
