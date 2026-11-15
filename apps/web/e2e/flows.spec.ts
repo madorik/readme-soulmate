@@ -197,7 +197,8 @@ test("아는 사람에게 다시 물어보기: 내 기록 값이 미리 채워�
   await expect(dad.getByText("지수님이 이렇게 알고 있어요")).toBeVisible();
   await expect(dad.getByText("음력 11월 3일")).toBeVisible();
   await dad.getByRole("button", { name: "맞아요" }).click();
-  await expect(dad.getByRole("heading", { name: "거의 다 됐어요" })).toBeVisible();
+  // 하나만 물었으니 마지막 화면 없이 같은 화면에서 바로 보낸다
+  await expect(dad.getByRole("heading", { name: "거의 다 됐어요" })).toHaveCount(0);
   await dad.getByRole("button", { name: "보내기", exact: true }).click();
   await expect(dad.getByRole("heading", { name: "마음이 전해졌어요" })).toBeVisible();
   await page.goto(personUrl);

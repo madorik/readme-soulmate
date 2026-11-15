@@ -66,9 +66,10 @@ export function PersonOrganize({
       setGroups((list) => (list.some((x) => x.id === g.id) ? list : [...list, g]));
       setCreating(false);
       setName("");
-      setGroup(g.id);
+      // 이 사람을 새 그룹에 넣은 게 저장된 뒤에 고른 것으로 보인다(그 전에 화면을 떠나도 어긋나지 않게)
       const r = await setContactGroup(contactId, g.id);
-      if (!r.ok) setError(true);
+      if (r.ok) setGroup(g.id);
+      else setError(true);
     });
   }
 
