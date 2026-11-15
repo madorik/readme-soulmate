@@ -366,12 +366,11 @@ test("계정 삭제: 내 리드미는 지워지고, 나에게 물어본 사람�
   expect(res.status()).toBe(200);
   const data = await res.json();
   expect(data.myReadme.dates.birthday).toMatchObject({ calendar: "solar", month: 2, day: 14 });
-  // 설정에는 없고, 내 리드미 > 프로필 고치기 아래 '계정'에 있다
-  await doyun.goto("/privacy");
-  await expect(doyun.getByRole("button", { name: "계정 삭제" })).toHaveCount(0);
+  // 프로필 고치기에는 얼굴·이름만(로그아웃·계정 삭제 없음), 계정 삭제는 설정 맨 아래
   await doyun.goto("/me/avatar");
-  await expect(doyun.getByRole("link", { name: "내 정보 내려받기" })).toHaveCount(0);
-  await expect(doyun.getByRole("button", { name: "로그아웃" })).toBeVisible();
+  await expect(doyun.getByRole("button", { name: "로그아웃" })).toHaveCount(0);
+  await expect(doyun.getByRole("button", { name: "계정 삭제" })).toHaveCount(0);
+  await doyun.goto("/privacy");
   await doyun.getByRole("button", { name: "계정 삭제" }).click();
   await doyun.getByRole("button", { name: "모두 지우기" }).click();
   await expect(doyun.getByRole("heading", { name: /말 안 해도/ })).toBeVisible();

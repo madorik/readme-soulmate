@@ -1,5 +1,6 @@
 import { cancelInvite } from "@/app/actions/request";
 import { TabBar } from "@/components/chrome";
+import { DeleteAccount } from "@/components/DeleteAccount";
 import { LanguageSetting } from "@/components/LanguageSetting";
 import { listOpenInvites, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
@@ -55,6 +56,12 @@ export default async function Privacy() {
             <ReminderSetting locale={locale} offsets={s.profile.reminderOffsets} />
           </div>
         ) : null}
+      </div>
+
+      {/* 계정 삭제는 설정 맨 아래(로그아웃은 홈 오른쪽 위 내 얼굴 메뉴) */}
+      <h2 className="section-title px-6 pt-8">{t("profile.account")}</h2>
+      <div className="mx-6 mt-2 border-y border-rule py-1.5">
+        <DeleteAccount locale={locale} />
       </div>
 
       <div className="h-8" />
