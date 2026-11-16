@@ -5,8 +5,15 @@ import type { PartialCard } from "@readme/core";
 import { GIFT_CATALOG, PRICE_BANDS } from "../gift-catalog";
 import { PICKS_PER_BAND } from "../gift-core";
 import {
+  ageWord,
   bandPicks,
+  basisCorpus,
+  basisSummary,
+  catalogBasis,
   catalogRequest,
+  fallbackBasis,
+  groundBasis,
+  leftOut,
   defaultBand,
   eligibleCatalog,
   freshCatalog,
@@ -123,13 +130,13 @@ test("AI 답 풀기: 겹치거나 빈 것, 피할 것이 든 것은 빼고 네 �
 test("기록만으로 고르기: 해주고 싶은 선물이 먼저, 취미·향·꽃 순, 없으면 챙길 날 선물", () => {
   const ideas = ruleIdeas(card, ctx, "ko");
   assert.deepEqual(ideas.slice(0, 4), [
-    { keyword: "블루투스 스피커", reason: "아빠에게 해 주고 싶다고 적어 둔 바로 그 선물이에요" },
-    { keyword: "캠핑 용품", reason: "캠핑을 좋아하는 아빠에게 잘 어울리는 선물이에요" },
-    { keyword: "등산 용품", reason: "등산을 좋아하는 아빠에게 잘 어울리는 선물이에요" },
-    { keyword: "우디 향수", reason: "우디 향을 좋아하는 아빠에게 잘 어울리는 선물이에요" },
+    { keyword: "블루투스 스피커", reason: "아빠에게 해 주고 싶다고 적어 둔 바로 그 선물이에요", basis: ["적어 둔 선물"] },
+    { keyword: "캠핑 용품", reason: "캠핑을 좋아하는 아빠에게 잘 어울리는 선물이에요", basis: ["캠핑"] },
+    { keyword: "등산 용품", reason: "등산을 좋아하는 아빠에게 잘 어울리는 선물이에요", basis: ["등산"] },
+    { keyword: "우디 향수", reason: "우디 향을 좋아하는 아빠에게 잘 어울리는 선물이에요", basis: ["우디 향"] },
   ]);
-  assert.deepEqual(ruleIdeas({}, ctx, "ko"), [{ keyword: "아빠 생일 선물", reason: "아빠의 생일, 마음을 전하기 좋은 선물이에요" }]);
-  assert.deepEqual(ruleIdeas({}, { ...ctx, call: "아내", occasion: { kind: "anniversary", label: "결혼기념일" } }, "en"), [{ keyword: "아내 결혼기념일 선물", reason: "A warm way to mark your anniversary" }]);
+  assert.deepEqual(ruleIdeas({}, ctx, "ko"), [{ keyword: "아빠 생일 선물", reason: "아빠의 생일, 마음을 전하기 좋은 선물이에요", basis: ["60대 아빠"] }]);
+  assert.deepEqual(ruleIdeas({}, { ...ctx, call: "아내", age: null, occasion: { kind: "anniversary", label: "결혼기념일" } }, "en"), [{ keyword: "아내 결혼기념일 선물", reason: "A warm way to mark your anniversary", basis: ["아내"] }]);
   assert.ok(!ruleIdeas({ gifts: { giftCard: null, wishlist: [{ title: "보온 텀블러", url: "" }], skip: ["텀블러"], brands: [] } }, ctx, "ko").some((i) => i.keyword.includes("텀블러")));
 });
 
@@ -210,4 +217,50 @@ test("공유 카드 토큰: 서명이 맞아야 열리고, 고친 토큰·다른
   assert.equal(openCard(key, `${body}x.${sig}`), null);
   assert.equal(openCard(key, body!), null);
   assert.equal(openCard(key, "garbage"), null);
+});
+
+test("고른 근거: 기록에 있는 말만 남기고(지어낸 골프는 버린다), 없으면 나이대와 부르는 말", () => {
+  const notes = ["요즘 허리가 아프대", "작년 생일에 지갑 선물함"];
+  const profile = giftProfile(card, notes);
+  const corpus = basisCorpus(profile, ctx);
+  assert.equal(ageWord(ctx), "60대");
+  assert.equal(ageWord({ ...ctx, age: null }), "");
+  // 기록·메모·나이대·부르는 말에 있으면 남고(조사 한 글자는 떼고 견준다), 없는 것·너무 긴 것은 버린다. 두 개까지
+  const w = profile.wishes;
+  assert.deepEqual(groundBasis(["허리가", "골프"], corpus, w), ["허리가"]);
+  assert.deepEqual(groundBasis(["60대 아빠", "등산", "캠핑"], corpus, w), ["60대 아빠", "등산"]);
+  assert.deepEqual(groundBasis(["골프", "파크골프", "아주 길고 길게 늘어놓은 근거입니다"], corpus, w), []);
+  assert.deepEqual(groundBasis(["적어 둔 선물"], corpus, w), ["적어 둔 선물"]);
+  assert.deepEqual(groundBasis(["적어 둔 선물"], corpus, []), []);
+  assert.deepEqual(groundBasis("등산", corpus, w), []);
+  // 해주고 싶은 선물 이름 그대로(상품 이름과 겹치는 꼬리표)는 '적어 둔 선물'로, 겹치면 하나만
+  assert.deepEqual(groundBasis(["블루투스 스피커", "적어 둔 선물", "캠핑"], corpus, w), ["적어 둔 선물", "캠핑"]);
+  assert.deepEqual(groundBasis(["블루투스 스피커"], corpus, w, "en"), ["On your list"]);
+  // 기록만으로: 해주고 싶은 선물 → 맞는 취향 → 나이대와 부르는 말
+  const wishes = profile.wishes.map((w) => w.replace(/\s+/g, ""));
+  const byId = new Map(GIFT_CATALOG.map((x) => [x.id, x]));
+  const hiking = GIFT_CATALOG.find((x) => x.tags.includes("등산"))!;
+  assert.ok(catalogBasis(hiking, corpus, wishes, ctx, "ko").includes("등산"));
+  const plain = GIFT_CATALOG.find((x) => !x.tags.some((tag) => corpus.includes(tag)) && !wishes.some((w) => w.includes(headWord(x.q))))!;
+  assert.deepEqual(catalogBasis(plain, corpus, wishes, ctx, "ko"), ["60대 아빠"]);
+  assert.deepEqual(fallbackBasis({ ...ctx, age: null, call: "" }, "ko"), ["생일"]);
+  // 선물마다 근거가 있고(AI가 지어낸 근거만 댄 것은 기록으로 채운다), 위에는 취향 근거가 먼저
+  const eligible = eligibleCatalog(GIFT_CATALOG, card, ctx, notes);
+  const rules = ruleCatalogPicks(card, ctx, "ko", eligible, notes);
+  assert.ok(rules.every((p) => p.basis.length >= 1));
+  const aiPick = eligible.find((x) => x.band === "1")!;
+  const ai = sanitizeCatalogPicks([{ id: aiPick.id, reason: "좋아요", basis: ["골프"] }], eligible, (raw) => groundBasis(raw, corpus, w));
+  assert.deepEqual(ai[0]!.basis, []);
+  const bands = bandPicks(ai, rules, eligible, (x) => catalogBasis(x, corpus, wishes, ctx, "ko"));
+  assert.ok(bands.every((b) => b.items.every((i) => i.basis.length >= 1)));
+  assert.deepEqual(bands[0]!.items[0]!.basis, catalogBasis(byId.get(aiPick.id)!, corpus, wishes, ctx, "ko"));
+  const seen = basisSummary([{ items: [{ basis: ["60대 아빠"] }, { basis: ["60대 아빠", "생일"] }, { basis: ["생일", "등산"] }] }], ctx, "ko");
+  assert.deepEqual(seen, ["등산", "60대 아빠", "생일"]);
+  assert.deepEqual(basisSummary([{ items: [{ basis: ["62세 아빠"] }, { basis: ["62세 아빠", "트로트"] }] }], ctx, "ko"), ["트로트", "62세 아빠"]);
+  // 빼고 고른 것: 이미 준 지갑, 사양하는 텀블러, 안 마시는 술, 땅콩 알레르기
+  assert.deepEqual(leftOut(GIFT_CATALOG, card, notes, "ko"), ["지갑", "텀블러", "술", "땅콩"]);
+  // AI에 근거를 달라고 한다
+  const req = catalogRequest(profile, ctx, "ko", "m", eligible.slice(0, 2));
+  assert.deepEqual(req.text.format.schema.properties.picks.items.required, ["id", "reason", "basis"]);
+  assert.match(req.instructions, /basis: 1 or 2 very short labels/);
 });

@@ -11,6 +11,8 @@ export interface GiftIdea {
   keyword: string;
   /** 주고 싶어지게 포장한 한 문장. 예: 주말마다 산에 오르시는 아빠, 무릎 부담을 덜어 드려요 */
   reason: string;
+  /** 이 사람 기록의 어느 부분을 보고 골랐는지 짧은 말 한두 개(등산, 허리 통증, 60대 아빠). 기록에 있는 것만 */
+  basis?: string[];
 }
 
 export interface GiftContext {
@@ -103,7 +105,75 @@ export function giftProfile(card: PartialCard, notes: string[] = []): GiftProfil
 /** 같은 기록·같은 날이면 같은 값: 지난번에 고른 걸 다시 쓴다(기록이 그대로 남지 않게 해시로) */
 export function giftBasis(profile: GiftProfile, ctx: GiftContext, locale: Locale): string {
   // v: 고르는 지침이 바뀌면 올려서 지난번 것을 다시 고르게
-  return createHash("sha256").update(JSON.stringify({ v: 8, profile, ctx, locale })).digest("hex");
+  return createHash("sha256").update(JSON.stringify({ v: 9, profile, ctx, locale })).digest("hex");
+}
+
+// ── 고른 근거: 이 사람 기록의 어느 부분을 보고 골랐는지(선물마다 한두 개, 위에 모아서도) ──
+
+/** 나이대 말(62 → 60대, 60s) */
+export function ageWord(ctx: GiftContext, locale: Locale = "ko"): string {
+  if (ctx.age == null || ctx.age < 10) return "";
+  const d = Math.floor(ctx.age / 10) * 10;
+  return locale === "ko" ? `${d}대` : `${d}s`;
+}
+
+const WISH_BASIS = /적어\s?둔|on your list/i;
+const BASIS_STOP = new Set(["선물", "좋아함", "좋아하는", "좋아해요", "취향", "관심", "스타일", "사랑", "gift", "likes", "love"]);
+
+/** 근거가 기록에 있는지 견줄 글(띄어쓰기 없이, 소문자): 기록 값·해주고 싶은 선물·메모·부르는 말·폴더·챙길 날·나이대 */
+export function basisCorpus(profile: GiftProfile, ctx: GiftContext): string {
+  const values = profile.hints.map((h) => h.slice(h.indexOf(": ") + 2));
+  return [...values, ...profile.wishes, ...profile.notes, ctx.call, ...ctx.folders, ctx.occasion ? occasionText(ctx) : "", ageWord(ctx, "ko"), ageWord(ctx, "en")]
+    .join(" ")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+}
+
+/**
+ * AI가 댄 근거 중 기록에 실제로 나오는 것만(낱말 하나라도, 조사 한 글자는 떼고 견준다), 두 개까지. 지어낸 근거(기록에 없는 골프 등)는 버린다.
+ * 해주고 싶은 선물 이름 그대로면(상품 이름과 겹친다) '적어 둔 선물'로
+ */
+export function groundBasis(raw: unknown, corpus: string, wishes: string[], locale: Locale = "ko"): string[] {
+  const wishKeys = wishes.map((w) => w.toLowerCase().replace(/\s+/g, "")).filter((w) => w.length >= 2);
+  const out: string[] = [];
+  const add = (w: string) => {
+    if (!out.includes(w)) out.push(w);
+  };
+  for (const r of Array.isArray(raw) ? raw : []) {
+    const label = clean(r, 40);
+    if (!label || label.length > 14) continue;
+    const key = label.toLowerCase().replace(/\s+/g, "");
+    if (wishKeys.length && (WISH_BASIS.test(label) || (key.length >= 2 && wishKeys.some((w) => w.includes(key) || key.includes(w))))) add(wishBasis(locale));
+    else {
+      const words = label.toLowerCase().split(" ").filter((w) => w.length >= 2 && !BASIS_STOP.has(w));
+      if (words.some((w) => corpus.includes(w) || (w.length >= 3 && corpus.includes(w.slice(0, -1))))) add(label);
+    }
+    if (out.length >= 2) break;
+  }
+  return out;
+}
+
+/** 맞는 취향이 없을 때의 근거: 나이대와 부르는 말(60대 아빠), 그것도 없으면 챙길 날 */
+export function fallbackBasis(ctx: GiftContext, locale: Locale): string[] {
+  const who = [ageWord(ctx, locale), clean(ctx.call, 8)].filter(Boolean).join(" ");
+  if (who) return [who];
+  if (!ctx.occasion) return [];
+  return [locale === "ko" ? occasionText(ctx) : ctx.occasion.kind === "birthday" ? "Birthday" : "Anniversary"];
+}
+
+const wishBasis = (locale: Locale) => (locale === "ko" ? "적어 둔 선물" : "On your list");
+
+/** 위에 모아 보일 근거: 많이 나온 것부터, 나이대·부르는 말·챙길 날(맞는 취향이 없어 댄 것)은 뒤로 */
+export function basisSummary(bands: { items: { basis: string[] }[] }[], ctx: GiftContext, locale: Locale, max = 6): string[] {
+  const count = new Map<string, number>();
+  for (const b of bands) for (const i of b.items) for (const w of i.basis) count.set(w, (count.get(w) ?? 0) + 1);
+  // 낱말이 모두 나이(70세, 60대)·부르는 말·챙길 날이면 일반 근거
+  const plain = new Set([clean(ctx.call, 40), ...(ctx.occasion ? [occasionText(ctx), "birthday", "anniversary"] : [])].filter(Boolean).map((w) => w.toLowerCase()));
+  const generic = (w: string) => w.toLowerCase().split(" ").every((x) => plain.has(x) || /^\d+(세|살|대|s)$/.test(x));
+  return [...count.entries()]
+    .sort((a, b) => Number(generic(a[0])) - Number(generic(b[0])) || b[1] - a[1])
+    .slice(0, max)
+    .map(([w]) => w);
 }
 
 const PITCH = `reason: a short, warm pitch in LANGUAGE that makes the user want to give this gift, written like a thoughtful friend's tip. Tie what you know about this person to what kind of this gift suits them and why:
@@ -115,6 +185,8 @@ One sentence; Korean 25 to 45 characters with a polite ending (…예요, …해
 Good: "키 큰 아빠도 등까지 편히 기대는 넉넉한 캠핑 의자로 골라 보세요", "주말마다 산에 오르시는 아빠, 가벼운 스틱이면 무릎 부담을 덜어 드려요", "우디 향을 좋아하는 아내에게, 은은하게 오래가는 향이 잘 어울려요", "요즘 허리가 아프다던 엄마, 등을 감싸는 안마 쿠션이면 소파에서도 편히 쉬세요", "트로트를 즐겨 들으시니, 버튼 하나로 켜지는 큰 글씨 라디오가 딱이에요".
 Bad (just repeats a hint): "캠핑 좋아해서", "우디 향 좋아해서", "취미라서", "생일 선물로".
 Every reason is different. Never mention allergies or things to avoid.`;
+
+const BASIS = `basis: 1 or 2 very short labels (2 to 8 characters) naming exactly which facts about this person this gift comes from, so the user sees at a glance why it was picked. Copy the words from WISHES, HINTS, NOTES, AGE, CALL or OCCASION (e.g. 등산, 허리 통증, 우디 향, 트로트, 60대 아빠, 생일, 적어 둔 선물). Only facts written in the input, never a guess (no 골프 unless golf is in the input). For a safe pick with no matching taste, use AGE and CALL (e.g. 60대 아빠) or OCCASION. Labels are Korean when the input words are Korean. Never allergies or things to avoid.`;
 
 const INSTRUCTIONS = `You suggest gift ideas for one person. The user will shop on Coupang (a Korean online store), so each idea is a search query.
 Input:
@@ -130,6 +202,7 @@ Input:
 Return exactly ${IDEA_COUNT} ideas, each a different kind of gift, best first.
 keyword: a Korean Coupang search query for one concrete product sold online, 2 to 4 words (e.g. "캠핑 머그컵", "조말론 디퓨저", "튤립 꽃다발", "등산 양말"). Build it from the recorded brands, tastes and wishes. Use at most one wish: the first wish that is a thing sold online goes first; skip experiences like classes, trips or meals. No people words, names, sizes, prices, or words like 고급, 추천, 인기. Sizes are only for judging style or gender, never put them in the query. Never a vague query like "선물세트" alone.
 ${PITCH}
+${BASIS}
 Never suggest anything in AVOID or containing it, food with their allergens, alcohol if AVOID has 술, or gift cards unless GIFT_CARD is yes. Keep it modest for coworkers (회사). If HINTS are few, use CALL, AGE and OCCASION for safe, thoughtful picks.`;
 
 const SCHEMA = {
@@ -142,8 +215,8 @@ const SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["keyword", "reason"],
-        properties: { keyword: { type: "string" }, reason: { type: "string" } },
+        required: ["keyword", "reason", "basis"],
+        properties: { keyword: { type: "string" }, reason: { type: "string" }, basis: { type: "array", items: { type: "string" } } },
       },
     },
   },
@@ -191,8 +264,13 @@ export function normalizeKeyword(k: unknown): string {
   return clean(k, 40);
 }
 
-/** 겹치거나 빈 것, 사양하는 것이 든 것을 빼고 몇 개까지 */
-export function sanitizeIdeas(raw: unknown, avoid: string[] = [], max = IDEA_COUNT): GiftIdea[] {
+/** 근거 말 다듬기만(기록과 견주지 않을 때): 두 개까지, 14자 넘는 것은 버린다 */
+export function basisList(raw: unknown): string[] {
+  return [...new Set((Array.isArray(raw) ? raw : []).map((r) => clean(r, 40)).filter((w) => w && w.length <= 14))].slice(0, 2);
+}
+
+/** 겹치거나 빈 것, 사양하는 것이 든 것을 빼고 몇 개까지. ground: 근거 중 기록에 있는 것만 남기기 */
+export function sanitizeIdeas(raw: unknown, avoid: string[] = [], max = IDEA_COUNT, ground: (raw: unknown) => string[] = basisList): GiftIdea[] {
   const list = Array.isArray(raw) ? raw : [];
   const seen = new Set<string>();
   const banned = avoid.map((a) => a.replace(/\(.*\)$/, "").replace(/\s+/g, "")).filter((a) => a.length >= 2);
@@ -203,15 +281,16 @@ export function sanitizeIdeas(raw: unknown, avoid: string[] = [], max = IDEA_COU
     const key = keyword.replace(/\s+/g, "");
     if (!keyword || !reason || seen.has(key) || banned.some((b) => key.includes(b))) continue;
     seen.add(key);
-    out.push({ keyword, reason });
+    const basis = ground((r as GiftIdea)?.basis);
+    out.push(basis.length ? { keyword, reason, basis } : { keyword, reason });
     if (out.length >= max) break;
   }
   return out;
 }
 
-export function parseIdeas(body: unknown, avoid: string[] = []): GiftIdea[] {
+export function parseIdeas(body: unknown, avoid: string[] = [], ground?: (raw: unknown) => string[]): GiftIdea[] {
   try {
-    return sanitizeIdeas((JSON.parse(outputText(body) || "{}") as { ideas?: unknown }).ideas, avoid);
+    return sanitizeIdeas((JSON.parse(outputText(body) || "{}") as { ideas?: unknown }).ideas, avoid, IDEA_COUNT, ground);
   } catch {
     return [];
   }
@@ -236,26 +315,26 @@ export function pitch(kind: "wish" | "likes" | "occasion", ctx: GiftContext, loc
 export function ruleIdeas(card: PartialCard, ctx: GiftContext, locale: Locale): GiftIdea[] {
   const { gifts: g, favorites: f, taste: t, life: l, culture: c } = card;
   const first = (s: string | undefined) => clean((s ?? "").split(/[,，·/]/)[0], 20);
-  const likes = (v: string) => pitch("likes", ctx, locale, v);
   const out: GiftIdea[] = [];
-  const add = (keyword: string, reason: string) => {
-    if (keyword.trim()) out.push({ keyword, reason });
+  const add = (keyword: string, reason: string, basis: string[]) => {
+    if (keyword.trim()) out.push({ keyword, reason, basis });
   };
+  const likes = (keyword: string, v: string, shown = v) => add(keyword, pitch("likes", ctx, locale, shown), [v]);
   const wish = g?.wishlist?.[0]?.title;
-  if (wish) add(wish, pitch("wish", ctx, locale));
-  for (const h of l?.hobbies ?? []) add(`${first(h)} 용품`, likes(first(h)));
+  if (wish) add(wish, pitch("wish", ctx, locale), [wishBasis(locale)]);
+  for (const h of l?.hobbies ?? []) likes(`${first(h)} 용품`, first(h));
   const scent = first(f?.scent).replace(/\s*향$/, "");
-  if (scent) add(`${scent} 향수`, likes(locale === "ko" ? `${scent} 향` : `${scent} scents`));
+  if (scent) likes(`${scent} 향수`, `${scent} 향`, locale === "ko" ? `${scent} 향` : `${scent} scents`);
   const flower = first(f?.flowers);
-  if (flower) add(`${flower} 꽃다발`, likes(flower));
-  for (const b of g?.brands ?? []) add(first(b), likes(first(b)));
-  for (const v of [f?.character, f?.idol, f?.team]) if (first(v ?? "")) add(`${first(v ?? "")} 굿즈`, likes(first(v ?? "")));
+  if (flower) likes(`${flower} 꽃다발`, flower);
+  for (const b of g?.brands ?? []) likes(first(b), first(b));
+  for (const v of [f?.character, f?.idol, f?.team]) if (first(v ?? "")) likes(`${first(v ?? "")} 굿즈`, first(v ?? ""));
   const dessert = first(t?.dessert);
-  if (dessert) add(dessert, likes(dessert));
+  if (dessert) likes(dessert, dessert);
   const book = first(c?.book);
-  if (book) add(book, likes(book));
+  if (book) likes(book, book);
   const occasion = ctx.occasion?.kind === "anniversary" ? ctx.occasion.label || "기념일" : "생일";
-  add([clean(ctx.call, 12), `${occasion} 선물`].filter(Boolean).join(" "), pitch("occasion", ctx, locale));
+  add([clean(ctx.call, 12), `${occasion} 선물`].filter(Boolean).join(" "), pitch("occasion", ctx, locale), fallbackBasis(ctx, locale));
   return sanitizeIdeas(out, giftProfile(card).avoid);
 }
 
@@ -266,11 +345,13 @@ export const PICKS_PER_BAND = 5;
 export interface CatalogPick {
   id: string;
   reason: string;
+  /** 고른 근거(기록에 있는 말, 두 개까지) */
+  basis: string[];
 }
 
 export interface BandPicks {
   band: PriceBand;
-  items: (CatalogGift & { reason: string })[];
+  items: (CatalogGift & { reason: string; basis: string[] })[];
 }
 
 const GENERIC_WORDS = new Set(["선물세트", "세트", "선물", "키트"]);
@@ -339,7 +420,8 @@ Input:
 - CATALOG: one item per line: id | search | band | ages | tags
 Pick exactly ${PICKS_PER_BAND} items from each band (${PRICE_BANDS.length * PICKS_PER_BAND} in total), best first within a band. Prefer items that match their wishes, hobbies, tastes and notes; fill the rest with safe picks that suit their age, the relationship (CALL, GROUPS) and the occasion. Never pick anything in AVOID or something the notes say was already given.
 For parents and elders (엄마, 아빠, 부모님, 어머니, 아버님, 할머니, 할아버지 …): Korean parents most want cash (용돈 박스), clothes, travel and health foods, so favor health foods and supplements, comfort and massage items (효도), outdoor clothing, and gear for their hobbies (등산, 골프, 파크골프, 여행) unless their records point elsewhere.
-${PITCH}`;
+${PITCH}
+${BASIS}`;
 
 /** 목록에서 고르기 AI 요청 몸(고를 수 있는 것만 보여 주고, id는 그 안에서만) */
 export function catalogRequest(profile: GiftProfile, ctx: GiftContext, locale: Locale, model: string, eligible: CatalogGift[]) {
@@ -364,8 +446,8 @@ export function catalogRequest(profile: GiftProfile, ctx: GiftContext, locale: L
               items: {
                 type: "object",
                 additionalProperties: false,
-                required: ["id", "reason"],
-                properties: { id: { type: "string", enum: eligible.map((x) => x.id) }, reason: { type: "string" } },
+                required: ["id", "reason", "basis"],
+                properties: { id: { type: "string", enum: eligible.map((x) => x.id) }, reason: { type: "string" }, basis: { type: "array", items: { type: "string" } } },
               },
             },
           },
@@ -375,8 +457,8 @@ export function catalogRequest(profile: GiftProfile, ctx: GiftContext, locale: L
   };
 }
 
-/** 고를 수 있는 것 안에서, 겹치지 않게, 가격대마다 PICKS_PER_BAND개까지 */
-export function sanitizeCatalogPicks(raw: unknown, eligible: CatalogGift[]): CatalogPick[] {
+/** 고를 수 있는 것 안에서, 겹치지 않게, 가격대마다 PICKS_PER_BAND개까지. ground: 근거 중 기록에 있는 것만 남기기 */
+export function sanitizeCatalogPicks(raw: unknown, eligible: CatalogGift[], ground: (raw: unknown) => string[] = basisList): CatalogPick[] {
   const byId = new Map(eligible.map((x) => [x.id, x]));
   const count = new Map<PriceBand, number>();
   const out: CatalogPick[] = [];
@@ -388,14 +470,14 @@ export function sanitizeCatalogPicks(raw: unknown, eligible: CatalogGift[]): Cat
     const n = count.get(item.band) ?? 0;
     if (n >= PICKS_PER_BAND) continue;
     count.set(item.band, n + 1);
-    out.push({ id, reason });
+    out.push({ id, reason, basis: ground((r as CatalogPick)?.basis) });
   }
   return out;
 }
 
-export function parseCatalogPicks(body: unknown, eligible: CatalogGift[]): CatalogPick[] {
+export function parseCatalogPicks(body: unknown, eligible: CatalogGift[], ground?: (raw: unknown) => string[]): CatalogPick[] {
   try {
-    return sanitizeCatalogPicks((JSON.parse(outputText(body) || "{}") as { picks?: unknown }).picks, eligible);
+    return sanitizeCatalogPicks((JSON.parse(outputText(body) || "{}") as { picks?: unknown }).picks, eligible, ground);
   } catch {
     return [];
   }
@@ -404,10 +486,32 @@ export function parseCatalogPicks(body: unknown, eligible: CatalogGift[]): Catal
 /** 이유로 쓰지 않는 맞춤 말(취향이 아니라 상황) */
 const CONTEXT_TAGS = new Set(["부모님", "회사", "출근", "실용", "장마", "손주", "정장", "집", "겨울", "건강", "휴식", "취미"]);
 
+/** 기록만으로 댄 근거: 해주고 싶은 선물 → 기록·메모·폴더에 나온 맞춤 말(취향 먼저) → 나이대와 부르는 말 → 챙길 날 */
+export function catalogBasis(x: CatalogGift, corpus: string, wishes: string[], ctx: GiftContext, locale: Locale): string[] {
+  if (wishes.some((w) => w.includes(headWord(x.q)))) return [wishBasis(locale)];
+  const hits = x.tags.filter((tag) => corpus.includes(tag.toLowerCase()));
+  const ordered = [...hits.filter((tag) => !CONTEXT_TAGS.has(tag)), ...hits.filter((tag) => CONTEXT_TAGS.has(tag))];
+  return ordered.length ? ordered.slice(0, 2) : fallbackBasis(ctx, locale);
+}
+
+/** 빼고 고른 것: 메모에 이미 준 선물(목록의 중심 낱말), 사양하는 것, 안 마시면 술, 알레르기 */
+export function leftOut(catalog: CatalogGift[], card: PartialCard, notes: string[], locale: Locale, max = 5): string[] {
+  const given = notes.filter((n) => GAVE.test(n)).map((n) => n.replace(/\s+/g, ""));
+  const gave = [...new Set(catalog.map((x) => headWord(x.q)))].filter((h) => h.length >= 2 && given.some((n) => n.includes(h)));
+  const out = [
+    ...gave,
+    ...(card.gifts?.skip ?? []).map((x) => clean(x, 14)),
+    ...(card.taste?.alcohol?.level === "none" ? [locale === "ko" ? "술" : "Alcohol"] : []),
+    ...realCodes(card.safety?.allergens).map((c) => labelOf(ALLERGENS, c, locale)),
+  ];
+  return [...new Set(out.filter(Boolean))].slice(0, max);
+}
+
 /** AI 없이: 기록·해주고 싶은 선물·메모에 든 말과 맞는 것부터, 가격대마다 PICKS_PER_BAND개 */
 export function ruleCatalogPicks(card: PartialCard, ctx: GiftContext, locale: Locale, eligible: CatalogGift[], notes: string[] = []): CatalogPick[] {
   const profile = giftProfile(card, notes);
   const corpus = [...profile.hints, ...profile.wishes, ...profile.notes].join(" ").replace(/\s+/g, "");
+  const shown = basisCorpus(profile, ctx);
   const wishes = profile.wishes.map((w) => w.replace(/\s+/g, ""));
   const scored = eligible.map((x, i) => {
     const wish = wishes.some((w) => w.includes(headWord(x.q)));
@@ -416,7 +520,7 @@ export function ruleCatalogPicks(card: PartialCard, ctx: GiftContext, locale: Lo
     const inAge = ctx.age != null && ctx.age >= x.ages[0] && ctx.age <= x.ages[1];
     const score = (wish ? 10 : 0) + hits.length * 3 + (inAge ? 1 : 0);
     const reason = wish ? pitch("wish", ctx, locale) : taste ? pitch("likes", ctx, locale, taste) : pitch("occasion", ctx, locale);
-    return { x, i, score, reason };
+    return { x, i, score, reason, basis: catalogBasis(x, shown, wishes, ctx, locale) };
   });
   const out: CatalogPick[] = [];
   for (const band of PRICE_BANDS) {
@@ -424,20 +528,20 @@ export function ruleCatalogPicks(card: PartialCard, ctx: GiftContext, locale: Lo
       .filter((s) => s.x.band === band)
       .sort((a, b) => b.score - a.score || a.i - b.i)
       .slice(0, PICKS_PER_BAND)
-      .forEach((s) => out.push({ id: s.x.id, reason: s.reason }));
+      .forEach((s) => out.push({ id: s.x.id, reason: s.reason, basis: s.basis }));
   }
   return out;
 }
 
-/** AI가 고른 것에 모자란 가격대를 기록만으로 고른 것으로 채워 가격대별로 묶는다 */
-export function bandPicks(ai: CatalogPick[], rules: CatalogPick[], eligible: CatalogGift[]): BandPicks[] {
+/** AI가 고른 것에 모자란 가격대를 기록만으로 고른 것으로 채워 가격대별로 묶는다. 근거가 빈 것(기록에 없는 근거만 댄 것)은 fill로 */
+export function bandPicks(ai: CatalogPick[], rules: CatalogPick[], eligible: CatalogGift[], fill: (x: CatalogGift) => string[] = () => []): BandPicks[] {
   const byId = new Map(eligible.map((x) => [x.id, x]));
   return PRICE_BANDS.map((band) => {
     const items: BandPicks["items"] = [];
     for (const p of [...ai, ...rules]) {
       const x = byId.get(p.id);
       if (!x || x.band !== band || items.some((i) => i.id === x.id) || items.length >= PICKS_PER_BAND) continue;
-      items.push({ ...x, reason: p.reason });
+      items.push({ ...x, reason: p.reason, basis: p.basis.length ? p.basis : fill(x) });
     }
     return { band, items };
   }).filter((b) => b.items.length);

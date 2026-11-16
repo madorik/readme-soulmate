@@ -11,7 +11,8 @@ import { Icon } from "@/components/marks";
 export interface LinkBand {
   band: string;
   label: string;
-  items: { id: string; title: string; reason: string; url: string; image: string; name?: string }[];
+  /** basis: 이 사람의 어떤 점을 보고 골랐는지(등산, 60대 아빠). 가족 카드에는 없다 */
+  items: { id: string; title: string; reason: string; url: string; image: string; name?: string; basis?: string[] }[];
 }
 
 const SWIPE = 56;
@@ -119,6 +120,7 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share, sourc
                     <span className="truncate text-[15.5px] font-bold tracking-[-0.01em]">{it.title}</span>
                     <Icon name="external" size={15} className="shrink-0 text-muted" />
                   </span>
+                  {it.basis?.length ? <BasisTags words={it.basis} /> : null}
                   {it.reason ? (
                     <span className="line-clamp-3 text-[13.5px] leading-[1.5] text-ink-2">{it.reason}</span>
                   ) : it.name ? (
@@ -131,6 +133,19 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share, sourc
         </ul>
       </div>
     </div>
+  );
+}
+
+/** 고른 근거 꼬리표(이 사람 기록의 어느 부분 때문인지) */
+export function BasisTags({ words }: { words: string[] }) {
+  return (
+    <span className="flex flex-wrap gap-1">
+      {words.map((w) => (
+        <span key={w} className="flex h-[22px] items-center rounded-full bg-sky-soft px-2 text-[11.5px] font-bold text-accent">
+          {w}
+        </span>
+      ))}
+    </span>
   );
 }
 

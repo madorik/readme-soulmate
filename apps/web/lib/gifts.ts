@@ -13,7 +13,12 @@ import {
   COUPANG_SEARCH_PATH,
   IDEA_COUNT,
   bandPicks,
+  basisCorpus,
+  basisSummary,
+  catalogBasis,
   catalogRequest,
+  groundBasis,
+  leftOut,
   defaultBand,
   eligibleCatalog,
   freshCatalog,
@@ -156,13 +161,15 @@ async function keep(s: Session, contactId: string, basis: string, value: unknown
 export async function giftIdeas(s: Session, p: Person, ctx: GiftContext, locale: Locale, notes: string[] = []): Promise<GiftIdea[]> {
   const profile = giftProfile(p.card, notes);
   const basis = giftBasis(profile, ctx, locale);
-  const kept = sanitizeIdeas(await readKept(s, p.contactId, basis), profile.avoid);
+  const corpus = basisCorpus(profile, ctx);
+  const ground = (raw: unknown) => groundBasis(raw, corpus, profile.wishes, locale);
+  const kept = sanitizeIdeas(await readKept(s, p.contactId, basis), profile.avoid, IDEA_COUNT, ground);
   if (kept.length) return kept;
   const rules = () => ruleIdeas(p.card, ctx, locale);
   if (!aiConfigured() || !(await aiAllowed(s))) return rules();
   let ideas: GiftIdea[] = [];
   try {
-    ideas = parseIdeas(await askAI(ideasRequest(profile, ctx, locale, model())), profile.avoid);
+    ideas = parseIdeas(await askAI(ideasRequest(profile, ctx, locale, model())), profile.avoid, ground);
   } catch (e) {
     console.warn("gift ideas failed", e instanceof Error ? e.message : e);
   }
@@ -171,25 +178,36 @@ export async function giftIdeas(s: Session, p: Person, ctx: GiftContext, locale:
   return ideas;
 }
 
-/** 목록 방식: 가격대마다 다섯(AI가 고르고, 모자라면 기록만으로 채운다)과 처음 열어 둘 가격대. skip = 다시 고르기로 넘긴, 지난번에 보인 것 */
-export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, notes: string[], skip: string[] = []): Promise<{ bands: BandPicks[]; initial: PriceBand }> {
+/**
+ * 목록 방식: 가격대마다 다섯(AI가 고르고, 모자라면 기록만으로 채운다)과 처음 열어 둘 가격대. skip = 다시 고르기로 넘긴, 지난번에 보인 것.
+ * seen: 고른 근거를 모은 것(이 사람의 어떤 점을 보고 골랐는지), left: 빼고 고른 것(이미 준 선물·사양하는 것·알레르기)
+ */
+export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, notes: string[], skip: string[] = []): Promise<{ bands: BandPicks[]; initial: PriceBand; seen: string[]; left: string[] }> {
   const { locale } = s.profile;
   const profile = giftProfile(p.card, notes);
   const eligible = freshCatalog(eligibleCatalog(GIFT_CATALOG, p.card, ctx, profile.notes), skip);
   const basis = `links:${skip.join(",")}:${giftBasis(profile, ctx, locale)}`;
   const rules = ruleCatalogPicks(p.card, ctx, locale, eligible, profile.notes);
-  let ai: CatalogPick[] = sanitizeCatalogPicks(await readKept(s, p.contactId, basis), eligible);
+  const corpus = basisCorpus(profile, ctx);
+  const ground = (raw: unknown) => groundBasis(raw, corpus, profile.wishes, locale);
+  let ai: CatalogPick[] = sanitizeCatalogPicks(await readKept(s, p.contactId, basis), eligible, ground);
   if (!ai.length && aiConfigured() && eligible.length && (await aiAllowed(s))) {
     try {
-      ai = parseCatalogPicks(await askAI(catalogRequest(profile, ctx, locale, model(), eligible)), eligible);
+      ai = parseCatalogPicks(await askAI(catalogRequest(profile, ctx, locale, model(), eligible)), eligible, ground);
     } catch (e) {
       console.warn("gift picks failed", e instanceof Error ? e.message : e);
     }
     if (ai.length) await keep(s, p.contactId, basis, ai);
   }
-  const bands = bandPicks(ai, rules, eligible);
+  const wishes = profile.wishes.map((w) => w.replace(/\s+/g, ""));
+  const bands = bandPicks(ai, rules, eligible, (x) => catalogBasis(x, corpus, wishes, ctx, locale));
   const want = defaultBand(ctx);
-  return { bands, initial: bands.some((b) => b.band === want) ? want : (bands[0]?.band ?? want) };
+  return {
+    bands,
+    initial: bands.some((b) => b.band === want) ? want : (bands[0]?.band ?? want),
+    seen: basisSummary(bands, ctx, locale),
+    left: leftOut(GIFT_CATALOG, p.card, profile.notes, locale),
+  };
 }
 
 function readCached(payload: unknown): CoupangResult | null {

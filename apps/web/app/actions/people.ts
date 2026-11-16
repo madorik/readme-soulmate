@@ -45,7 +45,7 @@ export async function addNote(form: FormData): Promise<void> {
  * 선물 완료: 이번 챙길 날(label, 예: "2026 아빠 생일")에 한 선물을 메모로 남긴다(같은 날 것은 바꾼다).
  * 메모에 '선물'이 들어가 다음 선물 추천에서 같은 것은 빠진다
  */
-export async function markGiftDone(contactId: string, rawLabel: string, rawGift: string): Promise<{ ok: boolean }> {
+export async function markGiftDone(contactId: string, rawLabel: string, rawGift: string): Promise<{ ok: boolean; note?: string }> {
   if (typeof contactId !== "string" || typeof rawLabel !== "string" || typeof rawGift !== "string") return { ok: false };
   const { s } = await ownContact(contactId);
   const label = rawLabel.replace(/\s+/g, " ").trim().slice(0, 40);
@@ -61,7 +61,7 @@ export async function markGiftDone(contactId: string, rawLabel: string, rawGift:
   // 통계: 추천 목록에서 고른 선물이면 그 id(직접 적은 건 내용 없이)
   const fromList = GIFT_CATALOG.find((x) => x.q === gift);
   track("gift_done", { userId: s.user.id, item: fromList?.id ?? null, band: fromList?.band ?? null, source: fromList ? "list" : "own" });
-  return { ok: true };
+  return { ok: true, note: body };
 }
 
 export async function deleteNote(form: FormData): Promise<void> {

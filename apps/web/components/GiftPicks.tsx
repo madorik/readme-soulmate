@@ -1,6 +1,6 @@
 import type { YMD } from "@readme/core";
 import Link from "next/link";
-import { GiftLinkTabs, PicksLoading } from "@/components/GiftLinkTabs";
+import { BasisTags, GiftLinkTabs, PicksLoading } from "@/components/GiftLinkTabs";
 import { Icon } from "@/components/marks";
 import type { Person, Session } from "@/lib/data";
 import { giftCardUrl, giftContext, giftLinkPicks, giftNotes, giftPicks, giftPicksConfigured, type GiftPick } from "@/lib/gifts";
@@ -20,6 +20,7 @@ function Row({ pick, pad, t, priceOf }: { pick: GiftPick; pad: string; t: Return
       <div className={`flex items-start justify-between gap-3 pb-2.5 ${pad}`}>
         <span className="flex min-w-0 flex-col gap-1 pt-1">
           <span className="truncate text-[15.5px] font-bold tracking-[-0.01em]">{pick.keyword}</span>
+          {pick.basis?.length ? <BasisTags words={pick.basis} /> : null}
           <span className="line-clamp-3 text-[13.5px] leading-[1.5] text-ink-2">{pick.reason}</span>
         </span>
         {pick.products.length ? (
@@ -63,6 +64,39 @@ function Row({ pick, pad, t, priceOf }: { pick: GiftPick; pad: string; t: Return
   );
 }
 
+/** 이 사람의 어떤 점을 보고 골랐는지(고른 것들의 근거를 모아서)와 빼고 고른 것(이미 준 선물·사양하는 것·알레르기) */
+function PicksBasis({ seen, left, pad, t }: { seen: string[]; left: string[]; pad: string; t: ReturnType<typeof makeT> }) {
+  if (!seen.length && !left.length) return null;
+  return (
+    <div className={`pt-3.5 ${pad}`}>
+      <div data-basis="" className="flex flex-col gap-2.5 rounded-2xl bg-sky-soft px-4 py-3.5">
+        {seen.length ? (
+          <div className="flex flex-col gap-2">
+            <span className="text-[12.5px] font-bold text-accent">{t("picks.seen")}</span>
+            <ul className="flex flex-wrap gap-1.5">
+              {seen.map((w) => (
+                <li key={w} className="flex h-8 items-center rounded-full bg-white px-3 text-[13.5px] font-semibold shadow-[inset_0_0_0_1px_rgba(255,194,61,0.55)]">
+                  {w}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {left.length ? (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
+            <span className="font-bold">{t("picks.left")}</span>
+            {left.map((w) => (
+              <s key={w} className="decoration-red decoration-[1.5px]">
+                {w}
+              </s>
+            ))}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function PicksDisclosure({ text, pad = "px-6" }: { text: string; pad?: string }) {
   return <p className={`pt-4 text-[11.5px] leading-[1.5] text-muted ${pad}`}>{text}</p>;
 }
@@ -83,7 +117,7 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
   const t = makeT(locale);
   const [ctx, notes] = await Promise.all([giftContext(s, person, occasion, today), giftNotes(s, person)]);
   if (!giftPicksConfigured()) {
-    const { bands, initial } = await giftLinkPicks(s, person, ctx, notes, skip);
+    const { bands, initial, seen, left } = await giftLinkPicks(s, person, ctx, notes, skip);
     if (!bands.length) return null;
     const shown = bands.flatMap((b) => b.items.map((i) => i.id));
     const next = [...new Set([...skip, ...shown])].slice(-60).join(",");
@@ -101,13 +135,14 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
             {t("picks.again")}
           </Link>
         ) : null}
+        {title ? <PicksBasis seen={seen} left={left} pad={pad} t={t} /> : null}
         <GiftLinkTabs
           pad={pad}
           initial={initial}
           share={share}
           source={card ? "reminder" : "plan"}
           label={t("picks.bands")}
-          bands={bands.map((b) => ({ band: b.band, label: t(`picks.band.${b.band}` as "picks.band.1"), items: b.items.map((i) => ({ id: i.id, title: i.q, reason: i.reason, url: i.url, image: i.image })) }))}
+          bands={bands.map((b) => ({ band: b.band, label: t(`picks.band.${b.band}` as "picks.band.1"), items: b.items.map((i) => ({ id: i.id, title: i.q, reason: i.reason, url: i.url, image: i.image, basis: i.basis })) }))}
         />
         {title ? <PicksDisclosure text={t("picks.disclosure")} pad={pad} /> : null}
       </>

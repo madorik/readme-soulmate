@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { markGiftDone } from "@/app/actions/people";
 import { beacon } from "@/components/beacon";
@@ -29,8 +28,10 @@ export function GiftActions({
   labels: { together: string; shared: string; done: string; doneTitle: string; doneOwn: string; doneSave: string; doneEdit: string; close: string };
 }) {
   const share = useGiftShare();
-  const router = useRouter();
   const [sent, setSent] = useState(false);
+  // 남긴 것은 바로 보인다(화면 다시 그리기는 메모가 바뀌어 선물을 새로 고르느라 늦을 수 있다)
+  const [saved, setSaved] = useState<string | null>(null);
+  const shown = saved ?? done;
   const [open, setOpen] = useState(false);
   const [gift, setGift] = useState("");
   const [pending, start] = useTransition();
@@ -51,10 +52,11 @@ export function GiftActions({
 
   const save = () =>
     start(async () => {
+      // 화면은 액션 응답에 함께 다시 그려져 온다(revalidatePath). 따로 새로고침하지 않는다
       const r = await markGiftDone(contactId, doneLabel, gift);
       if (r.ok) {
+        setSaved(r.note ?? gift);
         setOpen(false);
-        router.refresh();
       }
     });
 
@@ -64,8 +66,8 @@ export function GiftActions({
         <button type="button" onClick={send} className="btn-outline">
           {sent ? labels.shared : labels.together}
         </button>
-        {done ? (
-          <button type="button" onClick={() => setOpen(true)} aria-label={`${labels.done} · ${done} · ${labels.doneEdit}`} className="btn-soft min-w-0 gap-1.5 !px-3">
+        {shown ? (
+          <button type="button" onClick={() => setOpen(true)} aria-label={`${labels.done} · ${shown} · ${labels.doneEdit}`} className="btn-soft min-w-0 gap-1.5 !px-3">
             <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-sky text-ink">
               <CheckGlyph size={11} />
             </span>
@@ -77,7 +79,7 @@ export function GiftActions({
           </button>
         )}
       </div>
-      {done ? <p className="truncate px-1 text-center text-[13px] text-muted">{done}</p> : null}
+      {shown ? <p className="truncate px-1 text-center text-[13px] text-muted">{shown}</p> : null}
       {open ? (
         <Sheet
           id="gift-done"
