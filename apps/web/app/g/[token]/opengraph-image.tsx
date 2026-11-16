@@ -24,7 +24,7 @@ async function dataUrl(src: string): Promise<string | null> {
 }
 
 export default async function Image({ params }: { params: Promise<{ token: string }> }) {
-  const c = readGiftCard(decodeURIComponent((await params).token));
+  const c = await readGiftCard((await params).token);
   const srcs = (c?.ids ?? []).map((id) => CATALOG_BY_ID.get(id)?.image).filter((x): x is string => !!x);
   const images = (await Promise.all(srcs.slice(0, 12).map(dataUrl))).filter((x): x is string => !!x).slice(0, 8);
   return new ImageResponse(

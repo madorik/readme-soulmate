@@ -40,7 +40,11 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
             scheduled on the device itself.
           </li>
           <li>
-            <b>Created automatically</b>: sign-in cookies and access logs kept by our hosting provider (IP address, browser or device type, time).
+            <b>Gift ideas</b>: gift cards you send to family (what you call the person, the upcoming date, the picked gifts) and notes you leave with Gift done.
+          </li>
+          <li>
+            <b>Created automatically</b>: sign-in cookies and access logs kept by our hosting provider (IP address, browser or device type, time), usage records (seeing gift ideas, tapping a gift link,
+            sending and opening a card, Gift done; never the content of your records or notes), and visit statistics (Vercel Web Analytics, aggregated without cookies; question and card links are stripped).
           </li>
         </ul>
 
@@ -171,7 +175,11 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           <b>설정과 기기</b>: 언어, 시간대, 알림 시점, 앱 잠금 사용 여부, 기기 언어. 휴대폰에서 알림을 허용하면 생일 알림은 기기 안에서 예약됩니다.
         </li>
         <li>
-          <b>자동으로 만들어지는 정보</b>: 로그인 유지를 위한 쿠키, 호스팅 업체가 남기는 접속 기록(IP 주소, 브라우저·기기 종류, 접속 시각)
+          <b>선물 추천</b>: 가족에게 보낸 선물 카드(부르는 말, 챙길 날, 고른 선물 목록), 선물 완료로 남긴 메모
+        </li>
+        <li>
+          <b>자동으로 만들어지는 정보</b>: 로그인 유지를 위한 쿠키, 호스팅 업체가 남기는 접속 기록(IP 주소, 브라우저·기기 종류, 접속 시각), 서비스 이용 기록(선물 추천을 본 것, 선물 링크를 누른 것,
+          카드를 보내고 연 것, 선물 완료. 기록·메모 내용은 남기지 않습니다), 방문 통계(Vercel 웹 분석. 쿠키 없이 모아서 보며, 물어보기·카드 주소는 빼고 보냅니다)
         </li>
       </ul>
 

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
 import { GiftActions } from "@/components/GiftActions";
+import { HintsPeek } from "@/components/HintsPeek";
 import { GiftPicks, GiftPicksSkeleton, parseSkip } from "@/components/GiftPicks";
 import { Icon, MarkerCircle } from "@/components/marks";
 import { displayName, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
@@ -92,8 +93,9 @@ export default async function Reminder({ params, searchParams }: { params: Promi
 
       <h1 className="headline mx-6 mt-6 text-[28px]">{next ? (next.daysUntil === 0 ? t("reminder.today", { event }) : t("reminder.left", { event, n: next.daysUntil })) : event}</h1>
 
-      <section className="flex flex-col px-6 pt-6">
-        <h2 className="mb-2 text-[15px] font-bold">{t("reminder.hints", { name })}</h2>
+      {/* 힌트는 접어 두고, 앱 아이콘 + '컨닝페이퍼 힐끗 보기'를 누르면 아래에서 올라온다 */}
+      <div className="flex px-6 pt-4">
+        <HintsPeek label={t("reminder.peek")} title={t("reminder.hints", { name })} closeLabel={t("common.close")}>
         {!hasHints ? <p className="row text-[14px] leading-[1.6] text-muted">{t("reminder.noHints", { name })}</p> : null}
         {life?.hobbies.length ? <Hint label={t("life.hobbies")}>{life.hobbies.join(t("common.and"))}</Hint> : null}
         {favHint ? <Hint label={t("fav.people")}>{favHint}</Hint> : null}
@@ -122,20 +124,25 @@ export default async function Reminder({ params, searchParams }: { params: Promi
               .join(" / ")}
           </Hint>
         ) : null}
-        <div className="border-t border-rule" />
-      </section>
+        </HintsPeek>
+      </div>
 
       {picksOn ? (
-        <section id="picks" aria-labelledby="picks-title" className="relative flex scroll-mt-2 flex-col pt-8">
-          <h2 id="picks-title" className="pl-6 pr-36 text-[15px] font-bold">
-            {t("picks.title")}
-          </h2>
+        <section id="picks" aria-labelledby="picks-title" className="relative flex scroll-mt-2 flex-col pt-7">
+          {/* 그 사람을 떠올리며 고민해서 고른 선물이라는 마음을 먼저 */}
+          <div className="pl-6 pr-36">
+            <h2 id="picks-title" className="text-[17px] font-bold leading-[1.4] tracking-[-0.02em]">
+              {t("picks.titleFor", { name })}
+            </h2>
+            <p className="pt-1 text-[13.5px] leading-[1.5] text-muted">{t("picks.thought", { name })}</p>
+          </div>
           {/* 다시 고르면 key가 바뀌어 고르는 동안 빈 자리와 문구를 다시 보인다 */}
           <Suspense key={skip.join(",")} fallback={<GiftPicksSkeleton loading={loading} />}>
             <GiftPicks s={s} person={p} occasion={occasion} today={today} skip={skip} again={again} card={{ name, event: shareText }} />
           </Suspense>
         </section>
       ) : null}
+
       <div className="h-6" />
 
       <div className="bottom-bar mt-auto flex flex-col gap-2.5 bg-bg px-6 pt-4">

@@ -261,12 +261,43 @@ function cardKey(): Buffer {
   return createHash("sha256").update(`gift-card\n${k}`).digest();
 }
 
-/** 가족에게 보낼 카드 주소 */
-export function giftCardUrl(card: GiftCard): string {
-  return absoluteUrl(`/g/${sealCard(cardKey(), card)}`);
+const SHORT_ID = /^[A-Za-z0-9]{8}$/;
+const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+/** 카드 내용에서 만든 짧은 id(8글자). 같은 카드는 같은 id */
+function shortId(token: string): string {
+  const h = createHash("sha256").update(cardKey()).update(token).digest();
+  return Array.from(h.subarray(0, 8), (b) => BASE62[b % 62]).join("");
 }
 
-/** 카드 주소의 토큰을 연다(서명이 안 맞거나 깨졌으면 null) */
-export function readGiftCard(token: string): GiftCard | null {
-  return openCard(cardKey(), token);
+/**
+ * 가족에게 보낼 카드 주소: 짧은 주소(/g/<8글자>, gift_cards에 둔다). 표가 없거나 못 쓰면 긴 주소(/g/<서명 토큰>)
+ */
+export async function giftCardUrl(userId: string, card: GiftCard): Promise<string> {
+  const token = sealCard(cardKey(), card);
+  const id = shortId(token);
+  try {
+    await asSystem((q) =>
+      q("insert into gift_cards (id, user_id, payload) values ($1, $2, $3) on conflict (id) do nothing", [id, userId, JSON.stringify({ l: card.locale, n: card.name, e: card.event, i: card.ids })]),
+    );
+    return absoluteUrl(`/g/${id}`);
+  } catch (e) {
+    console.warn("gift card short link failed", e instanceof Error ? e.message : e);
+    return absoluteUrl(`/g/${token}`);
+  }
+}
+
+/** 카드 주소를 연다: 짧은 id면 gift_cards에서, 아니면 서명 토큰(서명이 안 맞거나 깨졌으면 null) */
+export async function readGiftCard(raw: string): Promise<GiftCard | null> {
+  const token = decodeURIComponent(raw);
+  if (!SHORT_ID.test(token)) return openCard(cardKey(), token);
+  try {
+    const row = await asSystem((q) => q.one<{ payload: { l?: unknown; n?: unknown; e?: unknown; i?: unknown } }>("select payload from gift_cards where id = $1", [token]));
+    if (!row) return null;
+    const p = row.payload;
+    const ids = Array.isArray(p.i) ? p.i.filter((x): x is string => typeof x === "string" && /^[a-z0-9-]{1,40}$/.test(x)).slice(0, 40) : [];
+    return { locale: p.l === "en" ? "en" : "ko", name: typeof p.n === "string" ? p.n.slice(0, 40) : "", event: typeof p.e === "string" ? p.e.slice(0, 60) : "", ids };
+  } catch {
+    return null;
+  }
 }

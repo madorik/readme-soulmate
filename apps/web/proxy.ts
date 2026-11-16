@@ -3,12 +3,17 @@ import { NextResponse, type NextRequest } from "next/server";
 import { LEGACY_HOSTS, SITE_URL } from "@/lib/site";
 
 // 로그인해야 보이는 화면은 세션 쿠키가 없으면 시작 화면으로 보낸다(진짜 확인은 각 화면의 getSession이 한다).
-// 로그인 없이 열리는 곳: 시작·로그인·물어보기에 답하기(/r)·가족에게 보낸 선물 카드(/g)·로그인 API·앱 로그인 넘기기·크론·약관류·앱 링크 확인 파일
+// 로그인 없이 열리는 곳: 시작·로그인·물어보기에 답하기(/r)·가족에게 보낸 선물 카드(/g)·선물 가이드(/gifts)·우리 통계(/admin, 관리자 키로 화면에서 막는다)
+// ·이용 기록 받기(/api/e)·로그인 API·앱 로그인 넘기기·크론·약관류·robots·sitemap·llms.txt·앱 링크 확인 파일
 const PUBLIC = [
   /^\/$/,
   /^\/login/,
   /^\/r\//,
   /^\/g\//,
+  /^\/gifts(\/|$)/,
+  /^\/admin(\/|$)/,
+  /^\/api\/e$/,
+  /^\/(robots\.txt|sitemap\.xml|llms\.txt)$/,
   /^\/api\/auth\//,
   /^\/auth\//,
   /^\/api\/cron\//,

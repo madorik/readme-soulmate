@@ -6,6 +6,7 @@ import type { Person, Session } from "@/lib/data";
 import { giftCardUrl, giftContext, giftLinkPicks, giftNotes, giftPicks, giftPicksConfigured, type GiftPick } from "@/lib/gifts";
 import type { GiftContext } from "@/lib/gift-core";
 import { makeT } from "@/lib/i18n";
+import { track } from "@/lib/track";
 
 // 이런 선물은 어때요: 이 사람 기록 전체와 메모로 고른 선물. 쿠팡 API 키가 있으면 찾을 말마다 '왜'(이유)와 쿠팡 상품 줄,
 // 없으면(파트너스 최종 승인 전) 가격대 칩 + 미리 만든 파트너스 링크 목록에서 고른 것. 누르면 쿠팡(파트너스 링크)으로 간다.
@@ -86,7 +87,9 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
     if (!bands.length) return null;
     const shown = bands.flatMap((b) => b.items.map((i) => i.id));
     const next = [...new Set([...skip, ...shown])].slice(-60).join(",");
-    const share = card ? { url: giftCardUrl({ locale, name: card.name, event: card.event, ids: shown }), text: t("picks.shareText", { name: card.name }) } : undefined;
+    const share = card ? { url: await giftCardUrl(s.user.id, { locale, name: card.name, event: card.event, ids: shown }), text: t("picks.shareText", { name: card.name }) } : undefined;
+    track("gift_picks_view", { userId: s.user.id, source: card ? "reminder" : "plan" });
+    if (skip.length) track("gift_reroll", { userId: s.user.id });
     return (
       <>
         {again ? (
@@ -102,6 +105,7 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
           pad={pad}
           initial={initial}
           share={share}
+          source={card ? "reminder" : "plan"}
           label={t("picks.bands")}
           bands={bands.map((b) => ({ band: b.band, label: t(`picks.band.${b.band}` as "picks.band.1"), items: b.items.map((i) => ({ id: i.id, title: i.q, reason: i.reason, url: i.url, image: i.image })) }))}
         />

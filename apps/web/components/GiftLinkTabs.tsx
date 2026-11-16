@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { beacon } from "@/components/beacon";
 import { setGiftShare } from "@/components/giftShare";
 import { Icon } from "@/components/marks";
 
 // 이런 선물은 어때요(목록 방식): 가격대 칩을 누르거나 목록을 좌우로 밀면 그 가격대에서 고른 선물들.
-// 칸마다 그 찾을 말의 인기 상품 사진과 '왜'. 누르면 쿠팡 검색 화면(파트너스 링크)으로
+// 칸마다 그 상품 사진과 '왜'. 누르면 쿠팡 상품 페이지(파트너스 링크)로, 누른 것은 이용 기록으로(source: reminder·plan·card)
 
 export interface LinkBand {
   band: string;
@@ -16,7 +17,7 @@ export interface LinkBand {
 const SWIPE = 56;
 
 /** share: 주면 아래 단추 줄(가족과 같이 준비·선물 완료)에 카드 주소와 지금 가격대를 알린다(선물 힌트 화면 하나에서만) */
-export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share }: { bands: LinkBand[]; initial: string; pad?: string; label: string; share?: { url: string; text: string } }) {
+export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share, source }: { bands: LinkBand[]; initial: string; pad?: string; label: string; share?: { url: string; text: string }; source: "reminder" | "plan" | "card" }) {
   const [index, setIndex] = useState(() => Math.max(0, bands.findIndex((b) => b.band === initial)));
   const [enter, setEnter] = useState<"left" | "right" | null>(null);
   const [dx, setDx] = useState(0);
@@ -101,7 +102,7 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share }: { b
         >
           {cur.items.map((it) => (
             <li key={it.id}>
-              <a href={it.url} target="_blank" rel="sponsored noopener noreferrer" draggable={false} className="flex items-start gap-3 rounded-2xl bg-white p-3 ring-1 ring-rule active:bg-fill">
+              <a href={it.url} target="_blank" rel="sponsored noopener noreferrer" draggable={false} onClick={() => beacon("gift_click", { i: it.id, b: cur.band, s: source })} className="flex items-start gap-3 rounded-2xl bg-white p-3 ring-1 ring-rule active:bg-fill">
                 <span aria-hidden="true" className="h-[76px] w-[76px] shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-rule">
                   {it.image ? (
                     // 쿠팡 이미지 주소를 그대로(이미지 최적화 서버를 거치지 않게)

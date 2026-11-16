@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession, sealNote, writeContactSection } from "@/lib/data";
 import { isFolderColor, isFolderIcon } from "@/lib/folders";
+import { GIFT_CATALOG } from "@/lib/gift-catalog";
+import { track } from "@/lib/track";
 import type { SaveState } from "./card";
 
 function json(v: FormDataEntryValue | null): unknown {
@@ -55,6 +57,9 @@ export async function markGiftDone(contactId: string, rawLabel: string, rawGift:
   });
   revalidatePath(`/people/${contactId}`);
   revalidatePath(`/people/${contactId}/reminder`);
+  // 통계: 추천 목록에서 고른 선물이면 그 id(직접 적은 건 내용 없이)
+  const fromList = GIFT_CATALOG.find((x) => x.q === gift);
+  track("gift_done", { userId: s.user.id, item: fromList?.id ?? null, band: fromList?.band ?? null, source: fromList ? "list" : "own" });
   return { ok: true };
 }
 

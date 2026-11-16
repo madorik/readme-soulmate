@@ -738,12 +738,13 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   // 가족과 같이 준비: 고른 선물 카드 주소를 보내고, 그 카드는 로그인 없이 가격대별 선물·쿠팡 링크로 열린다
   await page.getByRole("button", { name: "가족과 같이 준비" }).click();
   const shared = (await page.evaluate(() => (window as unknown as { __shared?: { url?: string; text?: string } }).__shared)) ?? {};
-  expect(shared.text).toContain("아내님 선물 후보");
-  expect(shared.url).toMatch(/\/g\/[\w-]+\.[\w-]+\?b=1$/);
+  expect(shared.text).toContain("아내에게 줄 선물, 우리 같이 골라요");
+  // 짧은 주소(/g/8글자)
+  expect(shared.url).toMatch(/\/g\/[A-Za-z0-9]{8}\?b=1$/);
   const guest = await browser.newContext();
   const card = await guest.newPage();
   await card.goto(shared.url!);
-  await expect(card.getByRole("heading", { name: "아내님 선물 후보" })).toBeVisible();
+  await expect(card.getByRole("heading", { name: "아내에게 줄 선물, 같이 골라요" })).toBeVisible();
   await expect(card.getByRole("tab", { name: "1만원대" })).toHaveAttribute("aria-selected", "true");
   await expect(card.getByRole("tabpanel").getByRole("link")).toHaveCount(5);
   await expect(card.getByRole("tabpanel").getByRole("link").first()).toHaveAttribute("href", /^https:\/\/link\.coupang\.com\/a\//);
@@ -757,6 +758,14 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   await sheet.getByRole("button", { name: "기록하기" }).click();
   await expect(page.getByText(new RegExp(`^${first}[을를] 선물했어요$`))).toBeVisible();
   await expect(page.getByRole("button", { name: /선물 완료 · .* · 다시 적기/ })).toBeVisible();
+
+  // 힌트는 접혀 있다가, 앱 아이콘 + 컨닝페이퍼 힐끗 보기를 누르면 오른쪽에서 나온다
+  await expect(page.getByText("튤립", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "컨닝페이퍼 힐끗 보기" }).click();
+  const peek = page.getByRole("dialog", { name: "아내님을 위한 힌트" });
+  await expect(peek.getByText("튤립", { exact: true })).toBeVisible();
+  await peek.getByRole("button", { name: "닫기" }).click();
+  await expect(peek).toHaveCount(0);
   await page.goto("/privacy");
   await expect(page.getByText(/데모 계정이에요/)).toBeVisible();
   await expect(page.getByRole("button", { name: "시스템" })).toHaveAttribute("aria-pressed", "true");
@@ -812,4 +821,30 @@ test("기기 언어가 영어면 처음부터 영어로, 직접 고른 언어가
   await page.reload();
   await expect(page.getByRole("heading", { name: /사랑하는 사람들의/ })).toBeVisible();
   await ctx.close();
+});
+
+test("검색·AI 답변: 선물 가이드는 로그인 없이 열리고 구조화 데이터·robots·sitemap·llms.txt가 있으며, 개인 화면은 검색에서 닫는다", async ({ page, request }) => {
+  const hub = await request.get("/gifts");
+  expect(hub.status()).toBe(200);
+  expect(hub.headers()["x-robots-tag"]).toBeUndefined();
+  await page.goto("/gifts");
+  await expect(page.getByRole("heading", { name: "누구에게, 얼마로 줄까요?" })).toBeVisible();
+  await page.getByRole("link", { name: "부모님 선물" }).first().click();
+  await expect(page).toHaveURL(/\/gifts\/parents$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("부모님 선물 추천, 가격대별로 골랐어요");
+  await expect(page.getByRole("heading", { name: "5만원대 부모님 선물" })).toBeVisible();
+  const ld = await page.locator('script[type="application/ld+json"]').allTextContents();
+  const types = ld.flatMap((s) => [JSON.parse(s)].flat().map((x: { "@type": string }) => x["@type"]));
+  expect(types).toEqual(expect.arrayContaining(["BreadcrumbList", "ItemList", "FAQPage"]));
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/gifts\/parents$/);
+
+  const robots = await (await request.get("/robots.txt")).text();
+  expect(robots).toContain("Disallow: /people");
+  expect(robots).toContain("Sitemap:");
+  const sitemap = await (await request.get("/sitemap.xml")).text();
+  expect(sitemap).toContain("/gifts/parents");
+  const llms = await request.get("/llms.txt");
+  expect(llms.status()).toBe(200);
+  expect(await llms.text()).toContain("# 기억해유");
+  expect((await request.get("/people", { maxRedirects: 0 })).headers()["x-robots-tag"]).toBe("noindex, nofollow");
 });

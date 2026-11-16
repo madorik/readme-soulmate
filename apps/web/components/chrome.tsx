@@ -90,6 +90,11 @@ export function LegalLinks({ locale, t }: { locale: Locale; t: T }) {
       <a href={`/privacy-policy?lang=${locale}`} className="flex min-h-10 items-center underline underline-offset-2">
         {t("legal.privacy")}
       </a>
+      {locale === "ko" ? (
+        <a href="/gifts" className="flex min-h-10 items-center underline underline-offset-2">
+          선물 가이드
+        </a>
+      ) : null}
     </p>
   );
 }

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { markGiftDone } from "@/app/actions/people";
+import { beacon } from "@/components/beacon";
 import { useGiftShare } from "@/components/giftShare";
 import { CheckGlyph } from "@/components/marks";
 import { Sheet } from "@/components/Sheet";
@@ -37,6 +38,7 @@ export function GiftActions({
   const send = async () => {
     const url = share.url ? `${share.url}${share.band ? `?b=${share.band}` : ""}` : undefined;
     const text = url ? share.text : fallbackText;
+    if (url) beacon("card_share", { b: share.band ?? undefined, s: "reminder" });
     if (!(await nativeShare(text, url))) {
       try {
         await navigator.clipboard.writeText(url ? `${text}\n${url}` : text);

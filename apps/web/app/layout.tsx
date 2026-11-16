@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import { BRAND } from "@readme/core";
 import { KeyboardInset } from "@/components/KeyboardInset";
 import { LocaleSync } from "@/components/LocaleSync";
+import { WebAnalytics } from "@/components/WebAnalytics";
 import { getSession } from "@/lib/data";
 import { chosenLocale, requestLocale } from "@/lib/i18n";
 import { ogMetadata } from "@/lib/og";
@@ -22,6 +23,11 @@ export async function generateMetadata(): Promise<Metadata> {
     applicationName: BRAND[locale].name,
     appleWebApp: { capable: true, title: BRAND[locale].name, statusBarStyle: "default" },
     formatDetection: { telephone: false },
+    // 구글 서치 콘솔·네이버 서치어드바이저 사이트 확인(값은 환경 변수로)
+    verification: {
+      google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+      other: process.env.NAVER_SITE_VERIFICATION ? { "naver-site-verification": process.env.NAVER_SITE_VERIFICATION } : undefined,
+    },
   };
 }
 
@@ -45,6 +51,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div aria-hidden="true" className="bar-mask-bottom" />
         <KeyboardInset />
         <LocaleSync rendered={locale} chosen={chosen} signedIn={!!session} stored={session?.profile.systemLocale ?? null} />
+        <WebAnalytics />
       </body>
     </html>
   );
