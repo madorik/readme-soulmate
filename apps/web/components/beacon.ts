@@ -43,7 +43,7 @@ export function anonId(): string {
   }
 }
 
-let queue: UsageEvent[] = [];
+const queue: UsageEvent[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
 
 export function flush(): void {

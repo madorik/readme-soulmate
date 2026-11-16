@@ -91,9 +91,9 @@ export function LegalLinks({ locale, t }: { locale: Locale; t: T }) {
         {t("legal.privacy")}
       </a>
       {locale === "ko" ? (
-        <a href="/gifts" className="flex min-h-10 items-center underline underline-offset-2">
+        <Link href="/gifts" className="flex min-h-10 items-center underline underline-offset-2">
           선물 가이드
-        </a>
+        </Link>
       ) : null}
     </p>
   );

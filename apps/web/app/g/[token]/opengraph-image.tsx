@@ -33,7 +33,6 @@ export default async function Image({ params }: { params: Promise<{ token: strin
         <div style={{ display: "flex", flexWrap: "wrap", gap: GAP, width: TILE * 4 + GAP * 3, justifyContent: "center" }}>
           {images.map((src, i) => (
             <div key={i} style={{ display: "flex", width: TILE, height: TILE, borderRadius: 32, background: "#FFFFFF", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 3px #FFC23D" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src} width={TILE - 36} height={TILE - 36} style={{ objectFit: "contain" }} alt="" />
             </div>
           ))}
