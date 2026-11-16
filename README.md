@@ -85,10 +85,12 @@ pnpm open:ios / pnpm open:android                          # Xcode·Android Stud
 
 `.github/workflows/db-backup.yml`이 매일 03:17(KST) `scripts/backup-db.sh`로 운영 DB(public·app 스키마)를 덤프해 비밀번호(AES-256)로 암호화하고 S3 호환 저장소에 올린다. 이 저장소는 공개라서 Actions 아티팩트에는 두지 않는다. 이용 기록 내용·로그인 세션·캐시 표의 내용은 뺀다(표 모양은 들어 있다. 이용 기록도 넣으려면 `BACKUP_INCLUDE_EVENTS=1`).
 
+**상태(2026-11-16 켬)**: R2 버킷 `readme-backups`(아시아·태평양, 비공개, `readme-db/` 30일 뒤 삭제 규칙), 그 버킷 전용 토큰(Object Read & Write), 시크릿 6개 설정 완료, Actions 수동 실행으로 올리기→내려받기→복호화→새 DB 복원까지 확인했다. 접근 키는 `~/.readme/r2.env`, 암호화 비밀번호는 `~/.readme/backup-passphrase.txt`에 있다. GitHub는 시크릿을 다시 보여 주지 않으니 이 두 파일과 `DATA_ENCRYPTION_KEY`는 비밀번호 관리자 같은 다른 곳에도 보관한다. 아래 1~2는 처음 설정할 때의 순서다.
+
 1. 저장소 만들기(예: Cloudflare R2): 비공개 버킷 + 그 버킷만 읽기·쓰기 되는 API 토큰 + 객체 수명 규칙(30일 뒤 삭제).
 2. 시크릿 6개(저장소 Settings → Secrets, 또는 `gh secret set <이름> --repo madorik/remember-you < 값 파일`): `DATABASE_URL_UNPOOLED`(세션 풀러 5432 주소), `BACKUP_PASSPHRASE`(`openssl rand -base64 32`로 만들고 **GitHub는 시크릿을 다시 보여 주지 않으니 `~/.readme/`에도 보관**), `BACKUP_S3_BUCKET`, `BACKUP_S3_ENDPOINT`(R2는 `https://<계정 ID>.r2.cloudflarestorage.com`), `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY`. 비어 있으면 워크플로가 일부러 실패한다. Actions 탭에서 한 번 직접 실행해 확인한다.
 3. 내 컴퓨터에서 바로 한 번 뜨기: `DATABASE_URL_UNPOOLED=… BACKUP_PASSPHRASE=… scripts/backup-db.sh` (pg_dump 17 이상 필요).
-4. 복원(새 빈 DB에): `openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASSPHRASE -in <파일>.dump.enc > readme.dump` → `pg_restore --no-owner --dbname=<새 DB 주소> readme.dump`. `schema "public" already exists` 오류 1개는 정상이다. `app_user` 역할이 없는 DB면 먼저 `node scripts/migrate.mjs`를 한 번 돌려 역할을 만든다.
+4. 복원(새 빈 DB에): `openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASSPHRASE -in <파일>.dump.enc > readme.dump` → `pg_restore --no-owner --dbname=<새 DB 주소> readme.dump`. `schema "public" already exists` 1개와 `role "supabase_admin" does not exist` 3개(Supabase 전용 역할 권한 줄)는 정상이다(2026-11-16 시험 복원에서 그 4개만 나왔다). `app_user` 역할이 없는 DB면 먼저 `node scripts/migrate.mjs`를 한 번 돌려 역할을 만든다.
 5. **`DATA_ENCRYPTION_KEY`는 백업과 따로 보관한다.** 알레르기·사이즈·메모·기념일은 그 키로 암호화돼 있어서, 키가 없으면 복원해도 읽지 못한다.
 
 ## 남은 외부 설정
