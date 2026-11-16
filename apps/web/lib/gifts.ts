@@ -2,12 +2,22 @@ import "server-only";
 import type { Locale, YMD } from "@readme/core";
 import { aiConfigured } from "./ai";
 import { open, seal } from "./crypto";
-import { displayName, folderName, listFolders, type Person, type Session } from "./data";
+import { displayName, folderName, listFolders, listNotes, type Person, type Session } from "./data";
 import { asSystem } from "./db";
+import { GIFT_CATALOG, type PriceBand } from "./gift-catalog";
 import { makeT } from "./i18n";
 import {
   COUPANG_SEARCH_PATH,
   IDEA_COUNT,
+  bandPicks,
+  catalogRequest,
+  defaultBand,
+  eligibleCatalog,
+  parseCatalogPicks,
+  ruleCatalogPicks,
+  sanitizeCatalogPicks,
+  type BandPicks,
+  type CatalogPick,
   coupangAuthorization,
   coupangSearchQuery,
   coupangSearchUrl,
@@ -25,11 +35,13 @@ import {
   type GiftIdea,
 } from "./gift-core";
 
-// 선물 추천: 사람 기록 → 찾을 말 네 개(AI, 없으면 기록만으로) → 쿠팡 파트너스 상품 검색.
-// 키(COUPANG_ACCESS_KEY·COUPANG_SECRET_KEY)가 없으면 기능을 숨긴다. COUPANG_SUB_ID(채널), COUPANG_HOURLY_LIMIT(기본 20), COUPANG_BASE_URL(시험용 가짜 서버).
+// 선물 추천: 사람 기록 전체 + 메모를 보고 고른다. 두 가지 방식:
+// - 상품(쿠팡 API 키가 있을 때): 찾을 말 네 개(AI, 없으면 기록만으로) → 쿠팡 파트너스 상품 검색. COUPANG_ACCESS_KEY·COUPANG_SECRET_KEY, COUPANG_SUB_ID(채널), COUPANG_HOURLY_LIMIT(기본 20), COUPANG_BASE_URL(시험용 가짜 서버).
+// - 목록(키가 없을 때, 파트너스 최종 승인 전): 미리 만든 파트너스 링크 목록(gift-catalog)에서 가격대마다 둘.
+// 고른 것은 사람마다 봉인해 gift_ideas에 둔다(표가 없거나 실패해도 고르는 건 된다).
 // 쿠팡 API는 호출 한도를 넘으면 계정이 막힐 수 있어서: 같은 찾을 말은 하루 동안 DB에 둔 결과를 다시 쓰고, 지난 한 시간 호출이 한도에 닿으면 부르지 않고 쿠팡 검색 링크만 준다.
 
-export type { CoupangProduct, GiftIdea };
+export type { BandPicks, CoupangProduct, GiftIdea, PriceBand };
 
 export interface GiftPick extends GiftIdea {
   products: CoupangProduct[];
@@ -37,8 +49,14 @@ export interface GiftPick extends GiftIdea {
   more: string;
 }
 
+/** 쿠팡 API 키가 있으면 상품 방식 */
 export function giftPicksConfigured(): boolean {
   return !!(process.env.COUPANG_ACCESS_KEY && process.env.COUPANG_SECRET_KEY);
+}
+
+/** 선물 추천을 보일지(GIFT_PICKS=off면 숨긴다). 키가 없으면 목록 방식 */
+export function giftPicksOn(): boolean {
+  return process.env.GIFT_PICKS !== "off";
 }
 
 const IDEAS_FRESH_DAYS = 14;
@@ -70,53 +88,96 @@ export async function giftContext(s: Session, p: Person, occasion: GiftContext["
   };
 }
 
-async function askIdeas(ctx: GiftContext, p: Person, locale: Locale): Promise<GiftIdea[]> {
+/** 이 사람 메모(최근 것부터, "날 내용") */
+export async function giftNotes(s: Session, p: Person): Promise<string[]> {
+  const notes = await s.tx((q) => listNotes(q, s.user.id, p.contactId));
+  return notes.map((n) => (n.label ? `${n.label} ${n.body}` : n.body)).filter(Boolean);
+}
+
+async function askAI(body: unknown): Promise<unknown> {
   const key = process.env.OPENAI_API_KEY;
-  if (!key) return [];
-  const profile = giftProfile(p.card);
+  if (!key) throw new Error("ai_off");
   const base = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
   const res = await fetch(`${base}/responses`, {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify(ideasRequest(profile, ctx, locale, process.env.OPENAI_MODEL || "gpt-6-luna")),
-    signal: AbortSignal.timeout(20_000),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(25_000),
   });
   if (!res.ok) throw new Error(`ai_http_${res.status}`);
-  return parseIdeas(await res.json(), profile.avoid);
+  return res.json();
 }
 
-/** 찾을 말: 기록·날이 그대로면 지난번 것(14일), 아니면 새로 고른다. AI가 없거나 실패하면 기록만으로(저장하지 않는다) */
-export async function giftIdeas(s: Session, p: Person, ctx: GiftContext, locale: Locale): Promise<GiftIdea[]> {
-  const profile = giftProfile(p.card);
-  const basis = giftBasis(profile, ctx, locale);
-  const scope = `gift-ideas:${s.user.id}:${p.contactId}`;
-  const row = await s.tx((q) =>
-    q.one<{ basis: string; payload: unknown; fresh: boolean }>(
-      `select basis, payload, created_at > now() - make_interval(days => $3) as fresh from gift_ideas where user_id = $1 and contact_id = $2`,
-      [s.user.id, p.contactId, IDEAS_FRESH_DAYS],
-    ),
-  );
-  if (row && row.basis === basis && row.fresh) {
-    const kept = sanitizeIdeas(open(row.payload, scope), profile.avoid);
-    if (kept.length) return kept;
+const model = () => process.env.OPENAI_MODEL || "gpt-6-luna";
+
+/** 지난번에 고른 것(같은 basis, 14일 안). 표가 없거나 못 열면 null */
+async function readKept(s: Session, contactId: string, basis: string): Promise<unknown | null> {
+  try {
+    const row = await s.tx((q) =>
+      q.one<{ basis: string; payload: unknown; fresh: boolean }>(
+        "select basis, payload, created_at > now() - make_interval(days => $3) as fresh from gift_ideas where user_id = $1 and contact_id = $2",
+        [s.user.id, contactId, IDEAS_FRESH_DAYS],
+      ),
+    );
+    return row && row.basis === basis && row.fresh ? open(row.payload, `gift-ideas:${s.user.id}:${contactId}`) : null;
+  } catch (e) {
+    console.warn("gift ideas read failed", e instanceof Error ? e.message : e);
+    return null;
   }
+}
+
+async function keep(s: Session, contactId: string, basis: string, value: unknown): Promise<void> {
+  try {
+    await s.tx((q) =>
+      q(
+        `insert into gift_ideas (user_id, contact_id, basis, payload) values ($1, $2, $3, $4)
+         on conflict (user_id, contact_id) do update set basis = excluded.basis, payload = excluded.payload, created_at = now()`,
+        [s.user.id, contactId, basis, JSON.stringify(seal(value, `gift-ideas:${s.user.id}:${contactId}`))],
+      ),
+    );
+  } catch (e) {
+    console.warn("gift ideas write failed", e instanceof Error ? e.message : e);
+  }
+}
+
+/** 찾을 말(상품 방식): 기록·메모·날이 그대로면 지난번 것(14일), 아니면 새로 고른다. AI가 없거나 실패하면 기록만으로(저장하지 않는다) */
+export async function giftIdeas(s: Session, p: Person, ctx: GiftContext, locale: Locale, notes: string[] = []): Promise<GiftIdea[]> {
+  const profile = giftProfile(p.card, notes);
+  const basis = giftBasis(profile, ctx, locale);
+  const kept = sanitizeIdeas(await readKept(s, p.contactId, basis), profile.avoid);
+  if (kept.length) return kept;
   const rules = () => ruleIdeas(p.card, ctx, locale);
   if (!aiConfigured()) return rules();
   let ideas: GiftIdea[] = [];
   try {
-    ideas = await askIdeas(ctx, p, locale);
+    ideas = parseIdeas(await askAI(ideasRequest(profile, ctx, locale, model())), profile.avoid);
   } catch (e) {
     console.warn("gift ideas failed", e instanceof Error ? e.message : e);
   }
   if (!ideas.length) return rules();
-  await s.tx((q) =>
-    q(
-      `insert into gift_ideas (user_id, contact_id, basis, payload) values ($1, $2, $3, $4)
-       on conflict (user_id, contact_id) do update set basis = excluded.basis, payload = excluded.payload, created_at = now()`,
-      [s.user.id, p.contactId, basis, JSON.stringify(seal(ideas, scope))],
-    ),
-  );
+  await keep(s, p.contactId, basis, ideas);
   return ideas;
+}
+
+/** 목록 방식: 가격대마다 둘(AI가 고르고, 모자라면 기록만으로 채운다)과 처음 열어 둘 가격대 */
+export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, notes: string[]): Promise<{ bands: BandPicks[]; initial: PriceBand }> {
+  const { locale } = s.profile;
+  const profile = giftProfile(p.card, notes);
+  const eligible = eligibleCatalog(GIFT_CATALOG, p.card, ctx, profile.notes);
+  const basis = `links:${giftBasis(profile, ctx, locale)}`;
+  const rules = ruleCatalogPicks(p.card, ctx, locale, eligible, profile.notes);
+  let ai: CatalogPick[] = sanitizeCatalogPicks(await readKept(s, p.contactId, basis), eligible);
+  if (!ai.length && aiConfigured() && eligible.length) {
+    try {
+      ai = parseCatalogPicks(await askAI(catalogRequest(profile, ctx, locale, model(), eligible)), eligible);
+    } catch (e) {
+      console.warn("gift picks failed", e instanceof Error ? e.message : e);
+    }
+    if (ai.length) await keep(s, p.contactId, basis, ai);
+  }
+  const bands = bandPicks(ai, rules, eligible);
+  const want = defaultBand(ctx);
+  return { bands, initial: bands.some((b) => b.band === want) ? want : (bands[0]?.band ?? want) };
 }
 
 function readCached(payload: unknown): CoupangResult | null {
@@ -181,8 +242,8 @@ export async function coupangSearch(raw: string): Promise<CoupangResult | null> 
 }
 
 /** 찾을 말 몇 개와 그 상품들 */
-export async function giftPicks(s: Session, p: Person, ctx: GiftContext, max = IDEA_COUNT): Promise<GiftPick[]> {
-  const ideas = (await giftIdeas(s, p, ctx, s.profile.locale)).slice(0, max);
+export async function giftPicks(s: Session, p: Person, ctx: GiftContext, notes: string[], max = IDEA_COUNT): Promise<GiftPick[]> {
+  const ideas = (await giftIdeas(s, p, ctx, s.profile.locale, notes)).slice(0, max);
   const found = await Promise.all(ideas.map((i) => coupangSearch(i.keyword).catch(() => null)));
   return ideas.map((i, n) => ({ ...i, products: found[n]?.products.slice(0, PRODUCTS_PER_IDEA) ?? [], more: found[n]?.landingUrl ?? coupangSearchUrl(i.keyword) }));
 }

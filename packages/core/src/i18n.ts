@@ -394,6 +394,11 @@ export const ko = {
   "picks.coupang": "쿠팡에서 찾아보기",
   "picks.rocket": "로켓배송",
   "picks.price": "{n}원",
+  "picks.bands": "가격대",
+  "picks.band.1": "1만원대",
+  "picks.band.3": "3만원대",
+  "picks.band.5": "5만원대",
+  "picks.band.10": "10만원대",
   "picks.disclosure": "쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.",
 
 
@@ -978,6 +983,11 @@ export const en: Messages = {
   "picks.coupang": "Find on Coupang",
   "picks.rocket": "Rocket",
   "picks.price": "₩{n}",
+  "picks.bands": "Price range",
+  "picks.band.1": "~₩10k",
+  "picks.band.3": "~₩30k",
+  "picks.band.5": "~₩50k",
+  "picks.band.10": "~₩100k",
   "picks.disclosure": "As a Coupang Partners affiliate, we earn a commission on qualifying purchases.",
 
 

@@ -8,7 +8,7 @@ import { GiftPicks, GiftPicksSkeleton } from "@/components/GiftPicks";
 import { Icon, MarkerCircle } from "@/components/marks";
 import { ShareTextButton } from "@/components/ShareButtons";
 import { displayName, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
-import { giftPicksConfigured } from "@/lib/gifts";
+import { giftPicksOn } from "@/lib/gifts";
 import { makeT } from "@/lib/i18n";
 
 function Hint({ label, children, sub }: { label: string; children: React.ReactNode; sub?: string }) {
@@ -54,8 +54,8 @@ export default async function Reminder({ params, searchParams }: { params: Promi
     ...realCodes(safety?.dislikes).map((c) => labelOf(DISLIKES, c, locale)),
   ];
   const hasHints = !!(favHint || styleHint || taste?.dessert || life?.hobbies.length || fav?.flowers || fav?.scent || fav?.places?.length || gifts?.wishlist.length || gifts?.skip.length || meal.length || taste?.spicy != null || notes.length || sizes?.shoe);
-  // 이런 선물은 어때요(쿠팡 파트너스 키가 있을 때만)
-  const picksOn = giftPicksConfigured();
+  // 이런 선물은 어때요(쿠팡 API 키가 있으면 상품, 없으면 파트너스 링크 목록에서 가격대별로)
+  const picksOn = giftPicksOn();
   const occasion = anniversary ? { kind: "anniversary" as const, label: anniversary.label } : dates?.birthday ? { kind: "birthday" as const, label: "" } : null;
   const shareText = next ? `${event} ${formatDayFull(next.date, locale)}${spec?.calendar === "lunar" ? ` (${formatSpec(spec, locale)})` : ""}` : event;
 

@@ -8,7 +8,7 @@ import { GiftPicks, GiftPicksSkeleton, PicksDisclosure } from "@/components/Gift
 import { Icon } from "@/components/marks";
 import { displayName, requireSession, todayFor, type Person } from "@/lib/data";
 import { eventName, eventsFor } from "@/lib/events";
-import { giftPicksConfigured } from "@/lib/gifts";
+import { giftPicksOn } from "@/lib/gifts";
 import { makeT } from "@/lib/i18n";
 import { pickBack, resolvePick } from "@/lib/plan";
 import { ShareBar } from "../ShareBar";
@@ -23,7 +23,7 @@ export default async function PlanGift({ searchParams }: { searchParams: Promise
   const pick = await resolvePick(s, sp);
   if (!pick.people.length) redirect(pickBack(pick.query));
   const and = t("common.and");
-  const picksOn = giftPicksConfigured();
+  const picksOn = giftPicksOn();
 
   const hints = (p: Person) => {
     const { gifts: g, sizes: z, favorites: f, life: l, taste: tt, culture: c } = p.card;

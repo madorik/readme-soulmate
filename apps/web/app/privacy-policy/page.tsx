@@ -96,7 +96,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
             </tr>
             <tr>
               <td>OpenAI, L.L.C.</td>
-              <td>Sorting a sentence you say or type in Say it into people and sections, and picking gift ideas from a person&rsquo;s gift hints, only when you use them</td>
+              <td>Sorting a sentence you say or type in Say it into people and sections, and picking gift ideas from your records and notes about a person, only when you use them</td>
               <td>USA (sent over the network each time)</td>
             </tr>
           </tbody>
@@ -105,8 +105,8 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           Information is stored with these providers until you delete your account. If you don&rsquo;t want overseas transfer, you can choose not to sign up or delete your account; the service can&rsquo;t
           run without it. Voice input uses your device&rsquo;s or browser&rsquo;s speech recognition (Apple, Google, etc.); we never receive the audio. In Say it, the recognized sentence and the names of your people are
           sent to OpenAI only to sort the sentence; we don&rsquo;t keep the sentence itself, only the values saved to your records. For gift ideas, what you call the person, their folders, the
-          upcoming date and age, and their gift hints (tastes, brands, gift ideas, things to avoid such as allergies) are sent to OpenAI only to pick search words; sizes and notes are not
-          sent. Only those search words (like &ldquo;camping mug&rdquo;) are sent to Coupang to find products; opening a product takes you to Coupang, which follows its
+          upcoming date and age, your records about them (tastes, sizes, allergies and things to avoid, gift ideas) and your private notes about them are sent to OpenAI only to pick
+          gifts. Only search words (like &ldquo;camping mug&rdquo;) are sent to Coupang; opening a gift takes you to Coupang, which follows its
           own privacy policy. Sending a link through KakaoTalk or another app passes only the link to that app.
         </p>
 
@@ -227,7 +227,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           </tr>
           <tr>
             <td>OpenAI, L.L.C.</td>
-            <td>말로 적기에서 말하거나 적은 문장을 사람·항목으로 나누기, 선물 추천에서 선물 힌트로 찾을 말 고르기(쓸 때만)</td>
+            <td>말로 적기에서 말하거나 적은 문장을 사람·항목으로 나누기, 선물 추천에서 그 사람 기록·메모로 선물 고르기(쓸 때만)</td>
             <td>미국(쓸 때마다 네트워크로 전송)</td>
           </tr>
         </tbody>
@@ -235,8 +235,8 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
       <p>
         보유 기간은 회원 탈퇴 때까지입니다. 국외 이전을 원하지 않으면 가입하지 않거나 계정을 삭제할 수 있으며, 이 경우 서비스를 쓸 수 없습니다. 말로 입력하기는 기기·브라우저의 음성 인식(Apple·Google
         등)을 쓰며 운영자는 음성을 받지 않습니다. 말로 적기에서는 글로 바뀐 문장과 내 사람들의 이름을 문장을 나누는 데만 OpenAI에 보내고, 운영자는 문장 자체는 보관하지 않고 기록에 넣은 값만
-        저장합니다. 선물 추천에서는 부르는 말, 든 폴더, 다가오는 날과 나이, 선물 힌트(취향·브랜드·해주고 싶은 선물·알레르기 같은 피할 것)를 찾을 말을 고르는 데만 OpenAI에
-        보내고, 사이즈·메모는 보내지 않습니다. 쿠팡에는 고른 찾을 말(예: 캠핑 머그컵)만 보내 상품을 찾으며, 상품을 누르면 쿠팡으로 이동해 쿠팡의 개인정보처리방침을 따릅니다.
+        저장합니다. 선물 추천에서는 부르는 말, 든 폴더, 다가오는 날과 나이, 그 사람에 대한 기록(취향·사이즈·알레르기 같은 피할 것·해주고 싶은 선물)과 그 사람 메모를 선물을
+        고르는 데만 OpenAI에 보냅니다. 쿠팡에는 찾을 말(예: 캠핑 머그컵)만 보내며, 선물을 누르면 쿠팡으로 이동해 쿠팡의 개인정보처리방침을 따릅니다.
         카카오톡 등 다른 앱으로 보내기는 링크만 그 앱에 넘깁니다.
       </p>
 
