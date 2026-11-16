@@ -723,12 +723,10 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   await expect(picks.getByRole("tab")).toHaveText(["1만원대", "3만원대", "5만원대", "10만원 이상"], { timeout: 45_000 });
   await expect(picks.getByRole("tab", { name: "5만원대" })).toHaveAttribute("aria-selected", "true");
   await expect(picks.getByRole("tabpanel").getByRole("link")).toHaveCount(5);
-  // 이 사람의 어떤 점을 보고 골랐는지(근거)와 빼고 고른 것(새우 알레르기)
-  const basis = picks.locator("[data-basis]");
-  await expect(basis.getByText("이런 점을 보고 골랐어요")).toBeVisible();
-  await expect(basis.getByRole("listitem").first()).toBeVisible();
-  await expect(basis.locator("s", { hasText: "새우" })).toBeVisible();
-  await shot(page, "13-picks-basis");
+  // 무엇을 보고 어떻게 골랐는지 풀어 쓴 한두 문장
+  await expect(picks.locator("[data-note]")).toHaveText(/\S{2,}.*요\.?$/);
+  await expect(picks.getByText(/하나하나 떠올리며/)).toHaveCount(0);
+  await shot(page, "13-picks-note");
   await picks.getByRole("tab", { name: "1만원대" }).click();
   await expect(picks.getByRole("tabpanel").getByRole("link").first()).toHaveAttribute("href", /^https:\/\/link\.coupang\.com\/a\//);
   await expect(picks.getByText(/쿠팡 파트너스 활동의 일환으로/)).toBeVisible();

@@ -129,12 +129,11 @@ export default async function Reminder({ params, searchParams }: { params: Promi
 
       {picksOn ? (
         <section id="picks" aria-labelledby="picks-title" className="relative flex scroll-mt-2 flex-col pt-7">
-          {/* 그 사람을 떠올리며 고민해서 고른 선물이라는 마음을 먼저 */}
-          <div className="pl-6 pr-36">
+          {/* 아래(채워지면) 무엇을 보고 골랐는지 풀어 쓴 한두 문장. 높이는 오른쪽 다시 고르기 단추보다 아래로 */}
+          <div className="min-h-10 pl-6 pr-36">
             <h2 id="picks-title" className="text-[17px] font-bold leading-[1.4] tracking-[-0.02em]">
               {t("picks.titleFor", { name })}
             </h2>
-            <p className="pt-1 text-[13.5px] leading-[1.5] text-muted">{t("picks.thought", { name })}</p>
           </div>
           {/* 다시 고르면 key가 바뀌어 고르는 동안 빈 자리와 문구를 다시 보인다 */}
           <Suspense key={skip.join(",")} fallback={<GiftPicksSkeleton loading={loading} />}>

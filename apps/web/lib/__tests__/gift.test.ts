@@ -14,6 +14,8 @@ import {
   fallbackBasis,
   groundBasis,
   leftOut,
+  parseCatalogPicks,
+  picksNote,
   defaultBand,
   eligibleCatalog,
   freshCatalog,
@@ -254,13 +256,32 @@ test("고른 근거: 기록에 있는 말만 남기고(지어낸 골프는 버�
   const bands = bandPicks(ai, rules, eligible, (x) => catalogBasis(x, corpus, wishes, ctx, "ko"));
   assert.ok(bands.every((b) => b.items.every((i) => i.basis.length >= 1)));
   assert.deepEqual(bands[0]!.items[0]!.basis, catalogBasis(byId.get(aiPick.id)!, corpus, wishes, ctx, "ko"));
-  const seen = basisSummary([{ items: [{ basis: ["60대 아빠"] }, { basis: ["60대 아빠", "생일"] }, { basis: ["생일", "등산"] }] }], ctx, "ko");
-  assert.deepEqual(seen, ["등산", "60대 아빠", "생일"]);
-  assert.deepEqual(basisSummary([{ items: [{ basis: ["62세 아빠"] }, { basis: ["62세 아빠", "트로트"] }] }], ctx, "ko"), ["트로트", "62세 아빠"]);
+  const seen = basisSummary([{ items: [{ basis: ["60대 아빠"] }, { basis: ["60대 아빠", "생일"] }, { basis: ["생일", "가족", "등산"] }] }], ctx);
+  assert.deepEqual(seen, ["등산", "60대 아빠", "생일", "가족"]);
+  assert.deepEqual(basisSummary([{ items: [{ basis: ["62세 아빠"] }, { basis: ["62세 아빠", "트로트"] }] }], ctx), ["트로트", "62세 아빠"]);
   // 빼고 고른 것: 이미 준 지갑, 사양하는 텀블러, 안 마시는 술, 땅콩 알레르기
   assert.deepEqual(leftOut(GIFT_CATALOG, card, notes, "ko"), ["지갑", "텀블러", "술", "땅콩"]);
   // AI에 근거를 달라고 한다
   const req = catalogRequest(profile, ctx, "ko", "m", eligible.slice(0, 2));
   assert.deepEqual(req.text.format.schema.properties.picks.items.required, ["id", "reason", "basis"]);
   assert.match(req.instructions, /basis: 1 or 2 very short labels/);
+  assert.deepEqual(req.text.format.schema.required, ["note", "picks"]);
+  // AI 답: 고른 것과 고른 생각
+  const answer = { output: [{ type: "message", content: [{ type: "output_text", text: JSON.stringify({ note: "  주말마다 산에 오르시는 아빠라\n가벼운 것들로 골랐어요.  ", picks: [{ id: aiPick.id, reason: "좋아요", basis: ["등산"] }] }) }] }] };
+  const parsed = parseCatalogPicks(answer, eligible, (raw) => groundBasis(raw, corpus, w));
+  assert.equal(parsed.note, "주말마다 산에 오르시는 아빠라 가벼운 것들로 골랐어요.");
+  assert.deepEqual(parsed.picks.map((p) => p.basis), [["등산"]]);
+  assert.deepEqual(parseCatalogPicks({ output: [] }, eligible), { picks: [], note: "" });
+});
+
+test("고른 생각(AI가 못 쓸 때): 눈여겨본 기록·적어 둔 선물·빼 둔 것을 얘기하듯", () => {
+  const b = (...basis: string[][]) => [{ items: basis.map((x) => ({ basis: x })) }];
+  assert.equal(
+    picksNote(b(["등산", "60대 아빠"], ["등산"], ["허리 통증"], ["적어 둔 선물"], ["가족"]), ["지갑", "술"], ctx, "ko"),
+    "아빠 기록에 있는 등산, 허리 통증을 눈여겨보고, 적어 둔 선물도 함께 넣었어요. 지갑, 술은 빼 두었어요.",
+  );
+  assert.equal(picksNote(b(["트로트"]), [], ctx, "ko"), "아빠 기록에 있는 트로트를 눈여겨보고 골랐어요.");
+  assert.equal(picksNote(b(["적어 둔 선물"], ["60대 아빠"]), [], ctx, "ko"), "적어 둔 선물을 먼저 넣고, 60대 아빠에게 어울릴 만한 것들로 채웠어요.");
+  assert.equal(picksNote(b(["60대 아빠"], ["생일"]), ["스카프"], ctx, "ko"), "60대 아빠에게 무난하게 어울릴 만한 것들로 골랐어요. 스카프는 빼 두었어요.");
+  assert.equal(picksNote(b(["hiking"], ["golf"]), ["Wallet"], { ...ctx, call: "Dad" }, "en"), "We went by hiking and golf from what you've noted about Dad. Left out Wallet.");
 });

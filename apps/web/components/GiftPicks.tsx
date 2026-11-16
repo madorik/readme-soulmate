@@ -4,7 +4,7 @@ import { BasisTags, GiftLinkTabs, PicksLoading } from "@/components/GiftLinkTabs
 import { Icon } from "@/components/marks";
 import type { Person, Session } from "@/lib/data";
 import { giftCardUrl, giftContext, giftLinkPicks, giftNotes, giftPicks, giftPicksConfigured, type GiftPick } from "@/lib/gifts";
-import type { GiftContext } from "@/lib/gift-core";
+import { isGenericBasis, type GiftContext } from "@/lib/gift-core";
 import { makeT } from "@/lib/i18n";
 import { track } from "@/lib/track";
 
@@ -64,39 +64,6 @@ function Row({ pick, pad, t, priceOf }: { pick: GiftPick; pad: string; t: Return
   );
 }
 
-/** 이 사람의 어떤 점을 보고 골랐는지(고른 것들의 근거를 모아서)와 빼고 고른 것(이미 준 선물·사양하는 것·알레르기) */
-function PicksBasis({ seen, left, pad, t }: { seen: string[]; left: string[]; pad: string; t: ReturnType<typeof makeT> }) {
-  if (!seen.length && !left.length) return null;
-  return (
-    <div className={`pt-3.5 ${pad}`}>
-      <div data-basis="" className="flex flex-col gap-2.5 rounded-2xl bg-sky-soft px-4 py-3.5">
-        {seen.length ? (
-          <div className="flex flex-col gap-2">
-            <span className="text-[12.5px] font-bold text-accent">{t("picks.seen")}</span>
-            <ul className="flex flex-wrap gap-1.5">
-              {seen.map((w) => (
-                <li key={w} className="flex h-8 items-center rounded-full bg-white px-3 text-[13.5px] font-semibold shadow-[inset_0_0_0_1px_rgba(255,194,61,0.55)]">
-                  {w}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        {left.length ? (
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
-            <span className="font-bold">{t("picks.left")}</span>
-            {left.map((w) => (
-              <s key={w} className="decoration-red decoration-[1.5px]">
-                {w}
-              </s>
-            ))}
-          </p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 export function PicksDisclosure({ text, pad = "px-6" }: { text: string; pad?: string }) {
   return <p className={`pt-4 text-[11.5px] leading-[1.5] text-muted ${pad}`}>{text}</p>;
 }
@@ -117,7 +84,7 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
   const t = makeT(locale);
   const [ctx, notes] = await Promise.all([giftContext(s, person, occasion, today), giftNotes(s, person)]);
   if (!giftPicksConfigured()) {
-    const { bands, initial, seen, left } = await giftLinkPicks(s, person, ctx, notes, skip);
+    const { bands, initial, note } = await giftLinkPicks(s, person, ctx, notes, skip);
     if (!bands.length) return null;
     const shown = bands.flatMap((b) => b.items.map((i) => i.id));
     const next = [...new Set([...skip, ...shown])].slice(-60).join(",");
@@ -135,14 +102,19 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
             {t("picks.again")}
           </Link>
         ) : null}
-        {title ? <PicksBasis seen={seen} left={left} pad={pad} t={t} /> : null}
+        {/* 무엇을 보고 어떻게 골랐는지, 얘기하듯 */}
+        {title && note ? (
+          <p data-note="" className={`pt-1.5 text-[14.5px] leading-[1.6] text-ink-2 ${pad}`}>
+            {note}
+          </p>
+        ) : null}
         <GiftLinkTabs
           pad={pad}
           initial={initial}
           share={share}
           source={card ? "reminder" : "plan"}
           label={t("picks.bands")}
-          bands={bands.map((b) => ({ band: b.band, label: t(`picks.band.${b.band}` as "picks.band.1"), items: b.items.map((i) => ({ id: i.id, title: i.q, reason: i.reason, url: i.url, image: i.image, basis: i.basis })) }))}
+          bands={bands.map((b) => ({ band: b.band, label: t(`picks.band.${b.band}` as "picks.band.1"), items: b.items.map((i) => ({ id: i.id, title: i.q, reason: i.reason, url: i.url, image: i.image, basis: i.basis.filter((w) => !isGenericBasis(w, ctx)) })) }))}
         />
         {title ? <PicksDisclosure text={t("picks.disclosure")} pad={pad} /> : null}
       </>

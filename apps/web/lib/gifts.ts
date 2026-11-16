@@ -14,8 +14,8 @@ import {
   IDEA_COUNT,
   bandPicks,
   basisCorpus,
-  basisSummary,
   catalogBasis,
+  cleanNote,
   catalogRequest,
   groundBasis,
   leftOut,
@@ -23,6 +23,7 @@ import {
   eligibleCatalog,
   freshCatalog,
   parseCatalogPicks,
+  picksNote,
   ruleCatalogPicks,
   sanitizeCatalogPicks,
   openCard,
@@ -180,9 +181,9 @@ export async function giftIdeas(s: Session, p: Person, ctx: GiftContext, locale:
 
 /**
  * 목록 방식: 가격대마다 다섯(AI가 고르고, 모자라면 기록만으로 채운다)과 처음 열어 둘 가격대. skip = 다시 고르기로 넘긴, 지난번에 보인 것.
- * seen: 고른 근거를 모은 것(이 사람의 어떤 점을 보고 골랐는지), left: 빼고 고른 것(이미 준 선물·사양하는 것·알레르기)
+ * note: 무엇을 보고 어떻게 골랐는지 풀어 쓴 한두 문장(AI가 쓰고, 없으면 근거·빼 둔 것으로 만든다)
  */
-export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, notes: string[], skip: string[] = []): Promise<{ bands: BandPicks[]; initial: PriceBand; seen: string[]; left: string[] }> {
+export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, notes: string[], skip: string[] = []): Promise<{ bands: BandPicks[]; initial: PriceBand; note: string }> {
   const { locale } = s.profile;
   const profile = giftProfile(p.card, notes);
   const eligible = freshCatalog(eligibleCatalog(GIFT_CATALOG, p.card, ctx, profile.notes), skip);
@@ -190,14 +191,17 @@ export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, not
   const rules = ruleCatalogPicks(p.card, ctx, locale, eligible, profile.notes);
   const corpus = basisCorpus(profile, ctx);
   const ground = (raw: unknown) => groundBasis(raw, corpus, profile.wishes, locale);
-  let ai: CatalogPick[] = sanitizeCatalogPicks(await readKept(s, p.contactId, basis), eligible, ground);
+  // 둔 것: { picks, note }(예전 것은 고른 것 배열만)
+  const kept = (await readKept(s, p.contactId, basis)) as { picks?: unknown; note?: unknown } | unknown[] | null;
+  let ai: CatalogPick[] = sanitizeCatalogPicks(Array.isArray(kept) ? kept : kept?.picks, eligible, ground);
+  let aiNote = Array.isArray(kept) ? "" : cleanNote(kept?.note);
   if (!ai.length && aiConfigured() && eligible.length && (await aiAllowed(s))) {
     try {
-      ai = parseCatalogPicks(await askAI(catalogRequest(profile, ctx, locale, model(), eligible)), eligible, ground);
+      ({ picks: ai, note: aiNote } = parseCatalogPicks(await askAI(catalogRequest(profile, ctx, locale, model(), eligible)), eligible, ground));
     } catch (e) {
       console.warn("gift picks failed", e instanceof Error ? e.message : e);
     }
-    if (ai.length) await keep(s, p.contactId, basis, ai);
+    if (ai.length) await keep(s, p.contactId, basis, { picks: ai, note: aiNote });
   }
   const wishes = profile.wishes.map((w) => w.replace(/\s+/g, ""));
   const bands = bandPicks(ai, rules, eligible, (x) => catalogBasis(x, corpus, wishes, ctx, locale));
@@ -205,8 +209,8 @@ export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, not
   return {
     bands,
     initial: bands.some((b) => b.band === want) ? want : (bands[0]?.band ?? want),
-    seen: basisSummary(bands, ctx, locale),
-    left: leftOut(GIFT_CATALOG, p.card, profile.notes, locale),
+    // AI가 고른 게 없으면(기록만으로 고른 것) 그 생각도 기록으로
+    note: (ai.length && aiNote) || picksNote(bands, leftOut(GIFT_CATALOG, p.card, profile.notes, locale), ctx, locale),
   };
 }
 

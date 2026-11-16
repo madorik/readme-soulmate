@@ -105,7 +105,7 @@ export function giftProfile(card: PartialCard, notes: string[] = []): GiftProfil
 /** 같은 기록·같은 날이면 같은 값: 지난번에 고른 걸 다시 쓴다(기록이 그대로 남지 않게 해시로) */
 export function giftBasis(profile: GiftProfile, ctx: GiftContext, locale: Locale): string {
   // v: 고르는 지침이 바뀌면 올려서 지난번 것을 다시 고르게
-  return createHash("sha256").update(JSON.stringify({ v: 9, profile, ctx, locale })).digest("hex");
+  return createHash("sha256").update(JSON.stringify({ v: 10, profile, ctx, locale })).digest("hex");
 }
 
 // ── 고른 근거: 이 사람 기록의 어느 부분을 보고 골랐는지(선물마다 한두 개, 위에 모아서도) ──
@@ -163,17 +163,47 @@ export function fallbackBasis(ctx: GiftContext, locale: Locale): string[] {
 
 const wishBasis = (locale: Locale) => (locale === "ko" ? "적어 둔 선물" : "On your list");
 
-/** 위에 모아 보일 근거: 많이 나온 것부터, 나이대·부르는 말·챙길 날(맞는 취향이 없어 댄 것)은 뒤로 */
-export function basisSummary(bands: { items: { basis: string[] }[] }[], ctx: GiftContext, locale: Locale, max = 6): string[] {
+/** 취향이 아닌 일반 근거인지: 낱말이 모두 나이(70세, 60대)·부르는 말·폴더·챙길 날 */
+export function isGenericBasis(w: string, ctx: GiftContext): boolean {
+  const plain = new Set([clean(ctx.call, 40), ...ctx.folders, ...(ctx.occasion ? [occasionText(ctx), "birthday", "anniversary"] : [])].filter(Boolean).map((x) => x.toLowerCase()));
+  return w.toLowerCase().split(" ").every((x) => plain.has(x) || /^\d+(세|살|대|s)$/.test(x));
+}
+
+/** 고른 것들의 근거를 많이 나온 것부터, 일반 근거(나이대·부르는 말·폴더·챙길 날)는 뒤로 */
+export function basisSummary(bands: { items: { basis: string[] }[] }[], ctx: GiftContext, max = 6): string[] {
   const count = new Map<string, number>();
   for (const b of bands) for (const i of b.items) for (const w of i.basis) count.set(w, (count.get(w) ?? 0) + 1);
-  // 낱말이 모두 나이(70세, 60대)·부르는 말·챙길 날이면 일반 근거
-  const plain = new Set([clean(ctx.call, 40), ...(ctx.occasion ? [occasionText(ctx), "birthday", "anniversary"] : [])].filter(Boolean).map((w) => w.toLowerCase()));
-  const generic = (w: string) => w.toLowerCase().split(" ").every((x) => plain.has(x) || /^\d+(세|살|대|s)$/.test(x));
   return [...count.entries()]
-    .sort((a, b) => Number(generic(a[0])) - Number(generic(b[0])) || b[1] - a[1])
+    .sort((a, b) => Number(isGenericBasis(a[0], ctx)) - Number(isGenericBasis(b[0], ctx)) || b[1] - a[1])
     .slice(0, max)
     .map(([w]) => w);
+}
+
+/** 고른 생각을 풀어 쓴 한두 문장(AI가 못 쓸 때): 눈여겨본 기록, 적어 둔 선물, 빼 둔 것 */
+export function picksNote(bands: { items: { basis: string[] }[] }[], left: string[], ctx: GiftContext, locale: Locale): string {
+  const ko = locale === "ko";
+  const call = clean(ctx.call, 12) || (ko ? "그 사람" : "them");
+  const seen = basisSummary(bands, ctx, 8);
+  const wish = seen.includes(wishBasis(locale));
+  const tastes = seen.filter((w) => w !== wishBasis(locale) && !isGenericBasis(w, ctx)).slice(0, 3);
+  const who = [ageWord(ctx, locale), call].filter(Boolean).join(" ");
+  if (!ko) {
+    const list = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : (xs[0] ?? ""));
+    const first = tastes.length ? `We went by ${list(tastes)} from what you've noted about ${call}${wish ? ", and put in the gift you wrote down" : ""}.` : wish ? `We started with the gift you wrote down and filled in with things that suit ${who}.` : `Easy, safe picks that suit ${who}.`;
+    return left.length ? `${first} Left out ${list(left)}.` : first;
+  }
+  const list = (xs: string[], form: string) => `${xs.slice(0, -1).map((x) => `${x}, `).join("")}${josa(xs[xs.length - 1] ?? "", form)}`;
+  const first = tastes.length
+    ? `${call} 기록에 있는 ${list(tastes, "을")} 눈여겨보고${wish ? ", 적어 둔 선물도 함께 넣었어요." : " 골랐어요."}`
+    : wish
+      ? `적어 둔 선물을 먼저 넣고, ${josa(who, "에게")} 어울릴 만한 것들로 채웠어요.`
+      : `${josa(who, "에게")} 무난하게 어울릴 만한 것들로 골랐어요.`;
+  return left.length ? `${first} ${list(left, "은")} 빼 두었어요.` : first;
+}
+
+/** AI가 쓴 고른 생각: 한 줄로, 260자까지 */
+export function cleanNote(v: unknown): string {
+  return clean(v, 260);
 }
 
 const PITCH = `reason: a short, warm pitch in LANGUAGE that makes the user want to give this gift, written like a thoughtful friend's tip. Tie what you know about this person to what kind of this gift suits them and why:
@@ -406,6 +436,9 @@ export function defaultBand(ctx: GiftContext): PriceBand {
 
 const BAND_WORDS: Record<PriceBand, string> = { "1": "₩10,000s", "3": "₩30,000s", "5": "₩50,000s", "10": "₩100,000 and up" };
 
+const NOTE = `note: one or two sentences in LANGUAGE that explain your thinking to the user, like a friend telling them what they noticed about this person and how it shaped the picks. Weave in 2 to 4 concrete facts from WISHES, HINTS, NOTES, AGE or CALL (a hobby, a taste, a worry or news in the notes, a written-down wish) and the kind of gifts that led to. If something was left out because NOTES say it was already given, or because of AVOID, say so briefly at the end. Korean 60 to 130 characters, warm and polite (…했어요, …골랐어요), calling the person by CALL, with honorifics for parents and elders (…하시는); English up to 240 characters. Only facts in the input, never guesses. No lists, quotes, emoji, or sizes and numbers about their body.
+Good: "주말마다 산에 오르시고 요즘 무릎이 안 좋다고 하셨던 아빠라, 가볍고 무릎에 부담 없는 것들을 먼저 골랐어요. 작년에 드린 지갑은 뺐어요.", "트로트를 즐겨 들으시고 수국을 좋아하시는 엄마께, 적어 두신 안마 쿠션도 함께 담았어요.", "우디 향과 미니멀한 스타일을 좋아하는 아내라, 은은하고 군더더기 없는 것들로 골랐어요. 새우 알레르기가 있어 해산물은 뺐어요."`;
+
 const CATALOG_INSTRUCTIONS = `You pick gifts for one person from a fixed list (CATALOG) of Coupang searches, grouped by price band (${PRICE_BANDS.map((b) => `${b} = about ${BAND_WORDS[b]}`).join(", ")}).
 Input:
 - CALL: what the user calls this person (e.g. 아내, 아빠, or a name)
@@ -421,7 +454,8 @@ Input:
 Pick exactly ${PICKS_PER_BAND} items from each band (${PRICE_BANDS.length * PICKS_PER_BAND} in total), best first within a band. Prefer items that match their wishes, hobbies, tastes and notes; fill the rest with safe picks that suit their age, the relationship (CALL, GROUPS) and the occasion. Never pick anything in AVOID or something the notes say was already given.
 For parents and elders (엄마, 아빠, 부모님, 어머니, 아버님, 할머니, 할아버지 …): Korean parents most want cash (용돈 박스), clothes, travel and health foods, so favor health foods and supplements, comfort and massage items (효도), outdoor clothing, and gear for their hobbies (등산, 골프, 파크골프, 여행) unless their records point elsewhere.
 ${PITCH}
-${BASIS}`;
+${BASIS}
+${NOTE}`;
 
 /** 목록에서 고르기 AI 요청 몸(고를 수 있는 것만 보여 주고, id는 그 안에서만) */
 export function catalogRequest(profile: GiftProfile, ctx: GiftContext, locale: Locale, model: string, eligible: CatalogGift[]) {
@@ -439,8 +473,9 @@ export function catalogRequest(profile: GiftProfile, ctx: GiftContext, locale: L
         schema: {
           type: "object",
           additionalProperties: false,
-          required: ["picks"],
+          required: ["note", "picks"],
           properties: {
+            note: { type: "string" },
             picks: {
               type: "array",
               items: {
@@ -475,11 +510,13 @@ export function sanitizeCatalogPicks(raw: unknown, eligible: CatalogGift[], grou
   return out;
 }
 
-export function parseCatalogPicks(body: unknown, eligible: CatalogGift[], ground?: (raw: unknown) => string[]): CatalogPick[] {
+/** AI 답: 고른 것과 고른 생각(note) */
+export function parseCatalogPicks(body: unknown, eligible: CatalogGift[], ground?: (raw: unknown) => string[]): { picks: CatalogPick[]; note: string } {
   try {
-    return sanitizeCatalogPicks((JSON.parse(outputText(body) || "{}") as { picks?: unknown }).picks, eligible, ground);
+    const r = JSON.parse(outputText(body) || "{}") as { picks?: unknown; note?: unknown };
+    return { picks: sanitizeCatalogPicks(r.picks, eligible, ground), note: cleanNote(r.note) };
   } catch {
-    return [];
+    return { picks: [], note: "" };
   }
 }
 
