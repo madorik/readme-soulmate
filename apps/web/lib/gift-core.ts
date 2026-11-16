@@ -102,13 +102,13 @@ export function giftProfile(card: PartialCard, notes: string[] = []): GiftProfil
 /** 같은 기록·같은 날이면 같은 값: 지난번에 고른 걸 다시 쓴다(기록이 그대로 남지 않게 해시로) */
 export function giftBasis(profile: GiftProfile, ctx: GiftContext, locale: Locale): string {
   // v: 고르는 지침이 바뀌면 올려서 지난번 것을 다시 고르게
-  return createHash("sha256").update(JSON.stringify({ v: 6, profile, ctx, locale })).digest("hex");
+  return createHash("sha256").update(JSON.stringify({ v: 7, profile, ctx, locale })).digest("hex");
 }
 
 const PITCH = `reason: a short, warm pitch in LANGUAGE that makes the user want to give this gift, written like a thoughtful friend's tip. Tie what you know about this person to what kind of this gift suits them and why:
 - their tastes, hobbies, wishes and notes (e.g. 주말마다 산에 오른다, 요즘 허리가 아프다)
 - their body from the 사이즈 line in HINTS (a big frame or tall → roomy, sturdy; petite → light, compact) and their age (older → comfortable, supportive, easy to use; younger → stylish, trendy)
-- the price band when there is one (1만원대 → a light, thoughtful touch; 10만원대 → a well-made piece that lasts)
+- the price band when there is one (1만원대 → a light, thoughtful touch; 10만원 이상 → a well-made piece that lasts)
 The link opens a search page, so it helps to say which kind to pick (e.g. 등받이가 높은, 가볍게 접히는, 넉넉한 사이즈의, 은은한).
 One sentence; Korean 25 to 45 characters with a polite ending (…예요, …해요, …드려요, …골라 보세요); English up to 90 characters. Call the person by CALL when it reads naturally (아빠, 아내, a name). Never write sizes or numbers about their body. No quotes or emoji.
 Good: "키 큰 아빠도 등까지 편히 기대는 넉넉한 캠핑 의자로 골라 보세요", "주말마다 산에 오르시는 아빠, 가벼운 스틱이면 무릎 부담을 덜어 드려요", "우디 향을 좋아하는 아내에게, 은은하게 오래가는 향이 잘 어울려요", "요즘 허리가 아프다던 엄마, 등을 감싸는 안마 쿠션이면 소파에서도 편히 쉬세요", "트로트를 즐겨 들으시니, 버튼 하나로 켜지는 큰 글씨 라디오가 딱이에요".
@@ -301,6 +301,17 @@ export function eligibleCatalog(catalog: CatalogGift[], card: PartialCard, ctx: 
   });
 }
 
+/** 다시 고르기: 지난번에 보인 것(skip)을 빼되, 가격대에 둘도 안 남으면 그 가격대는 처음부터 다시 */
+export function freshCatalog(eligible: CatalogGift[], skip: string[]): CatalogGift[] {
+  if (!skip.length) return eligible;
+  const gone = new Set(skip);
+  return PRICE_BANDS.flatMap((band) => {
+    const all = eligible.filter((x) => x.band === band);
+    const left = all.filter((x) => !gone.has(x.id));
+    return left.length >= PICKS_PER_BAND ? left : all;
+  });
+}
+
 const CLOSE = /아내|남편|와이프|여자\s?친구|남자\s?친구|여친|남친|애인|자기/;
 const ELDERS = /엄마|아빠|어머니|아버지|어머님|아버님|부모님|할머니|할아버지|장모|장인|시어머니|시아버지/;
 
@@ -311,7 +322,7 @@ export function defaultBand(ctx: GiftContext): PriceBand {
   return "3";
 }
 
-const BAND_WORDS: Record<PriceBand, string> = { "1": "₩10,000s", "3": "₩30,000s", "5": "₩50,000s", "10": "₩100,000s" };
+const BAND_WORDS: Record<PriceBand, string> = { "1": "₩10,000s", "3": "₩30,000s", "5": "₩50,000s", "10": "₩100,000 and up" };
 
 const CATALOG_INSTRUCTIONS = `You pick gifts for one person from a fixed list (CATALOG) of Coupang searches, grouped by price band (${PRICE_BANDS.map((b) => `${b} = about ${BAND_WORDS[b]}`).join(", ")}).
 Input:
@@ -326,6 +337,7 @@ Input:
 - NOTES: the user's own notes about this person, newest first. A gift already given (e.g. "작년 생일에 지갑 선물함") must not be picked again, not even the same kind. Worries or wants in notes (e.g. "요즘 허리가 아프대", "캠핑 시작했대") are strong hints.
 - CATALOG: one item per line: id | search | band | ages | tags
 Pick exactly ${PICKS_PER_BAND} items from each band (${PRICE_BANDS.length * PICKS_PER_BAND} in total), best first within a band. Prefer items that match their wishes, hobbies, tastes and notes; fill the rest with safe picks that suit their age, the relationship (CALL, GROUPS) and the occasion. Never pick anything in AVOID or something the notes say was already given.
+For parents and elders (엄마, 아빠, 부모님, 어머니, 아버님, 할머니, 할아버지 …): Korean parents most want cash (용돈 박스), clothes, travel and health foods, so favor health foods and supplements, comfort and massage items (효도), outdoor clothing, and gear for their hobbies (등산, 골프, 파크골프, 여행) unless their records point elsewhere.
 ${PITCH}`;
 
 /** 목록에서 고르기 AI 요청 몸(고를 수 있는 것만 보여 주고, id는 그 안에서만) */

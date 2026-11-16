@@ -398,7 +398,12 @@ export const ko = {
   "picks.band.1": "1만원대",
   "picks.band.3": "3만원대",
   "picks.band.5": "5만원대",
-  "picks.band.10": "10만원대",
+  "picks.band.10": "10만원 이상",
+  "picks.again": "다시 고르기",
+  "picks.loading.1": "{name}님을 위한 선물을 고르고 있어요",
+  "picks.loading.2": "{name}님이 좋아할 만한 걸 생각 중이에요",
+  "picks.loading.3": "조금만 기다려 주세요",
+  "picks.loading.4": "거의 다 됐어요",
   "picks.disclosure": "쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.",
 
 
@@ -987,7 +992,12 @@ export const en: Messages = {
   "picks.band.1": "~₩10k",
   "picks.band.3": "~₩30k",
   "picks.band.5": "~₩50k",
-  "picks.band.10": "~₩100k",
+  "picks.band.10": "₩100k+",
+  "picks.again": "Show others",
+  "picks.loading.1": "Picking gifts for {name}",
+  "picks.loading.2": "Thinking about what {name} would love",
+  "picks.loading.3": "Just a moment",
+  "picks.loading.4": "Almost there",
   "picks.disclosure": "As a Coupang Partners affiliate, we earn a commission on qualifying purchases.",
 
 

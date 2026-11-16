@@ -98,7 +98,7 @@ export default async function PlanGift({ searchParams }: { searchParams: Promise
               )}
               {picksOn ? (
                 <div className="-mx-5 border-t border-[#e6e6e3] pb-2">
-                  <Suspense fallback={<GiftPicksSkeleton rows={1} pad="px-5" />}>
+                  <Suspense fallback={<GiftPicksSkeleton rows={1} pad="px-5" loading={[1, 2, 3, 4].map((n) => t(`picks.loading.${n}` as "picks.loading.1", { name }))} />}>
                     <GiftPicks s={s} person={p} occasion={next ? { kind: next.kind, label: next.label ?? "" } : null} today={today} max={2} pad="px-5" title={false} />
                   </Suspense>
                 </div>

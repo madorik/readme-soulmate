@@ -8,6 +8,7 @@ import {
   catalogRequest,
   defaultBand,
   eligibleCatalog,
+  freshCatalog,
   headWord,
   ruleCatalogPicks,
   sanitizeCatalogPicks,
@@ -187,4 +188,16 @@ test("목록 고르기: 처음 가격대는 관계로, 기록만으로는 맞는
   const req = catalogRequest(giftProfile(card), ctx, "ko", "m", eligible.slice(0, 3));
   assert.deepEqual(req.text.format.schema.properties.picks.items.properties.id.enum, eligible.slice(0, 3).map((x) => x.id));
   assert.match(req.input, /CATALOG:\n/);
+});
+
+test("다시 고르기: 지난번에 보인 것을 빼고, 가격대에 둘도 안 남으면 그 가격대는 처음부터", () => {
+  const eligible = eligibleCatalog(GIFT_CATALOG, {}, { ...ctx, age: null });
+  const ones = eligible.filter((x) => x.band === "1").map((x) => x.id);
+  const fresh = freshCatalog(eligible, ones.slice(0, 2));
+  assert.ok(!fresh.some((x) => ones.slice(0, 2).includes(x.id)));
+  assert.equal(freshCatalog(eligible, []).length, eligible.length);
+  const allButOne = freshCatalog(eligible, ones.slice(1));
+  assert.equal(allButOne.filter((x) => x.band === "1").length, ones.length, "하나만 남으면 그 가격대는 다시 전부");
+  assert.ok(GIFT_CATALOG.filter((x) => x.image).length >= GIFT_CATALOG.length - 5);
+  for (const x of GIFT_CATALOG) if (x.image) assert.match(x.image, /^https:\/\/[a-z0-9]+\.coupangcdn\.com\/thumbnails\//, x.id);
 });

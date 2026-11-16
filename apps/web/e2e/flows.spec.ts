@@ -716,12 +716,20 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   // 선물 고르기 → 이런 선물은 어때요: 가격대 넷, 아내(연인)는 5만원대가 먼저 열리고, 누르면 쿠팡 파트너스 링크
   await page.getByRole("link", { name: "선물 고르기" }).click();
   const picks = page.locator("#picks");
-  await expect(picks.getByRole("tab")).toHaveText(["1만원대", "3만원대", "5만원대", "10만원대"], { timeout: 45_000 });
+  await expect(picks.getByRole("tab")).toHaveText(["1만원대", "3만원대", "5만원대", "10만원 이상"], { timeout: 45_000 });
   await expect(picks.getByRole("tab", { name: "5만원대" })).toHaveAttribute("aria-selected", "true");
   await expect(picks.getByRole("tabpanel").getByRole("link")).toHaveCount(2);
   await picks.getByRole("tab", { name: "1만원대" }).click();
   await expect(picks.getByRole("tabpanel").getByRole("link").first()).toHaveAttribute("href", /^https:\/\/link\.coupang\.com\/a\//);
   await expect(picks.getByText(/쿠팡 파트너스 활동의 일환으로/)).toBeVisible();
+  // 다시 고르기: 지난번 것을 빼고 다른 선물들
+  const before = await picks.getByRole("tabpanel").getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  await picks.getByRole("link", { name: "다시 고르기" }).click();
+  await expect(page).toHaveURL(/skip=/);
+  await expect(picks.getByRole("tab", { name: "1만원대" })).toBeVisible({ timeout: 45_000 });
+  await picks.getByRole("tab", { name: "1만원대" }).click();
+  const after = await picks.getByRole("tabpanel").getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+  expect(after.some((h) => before.includes(h))).toBe(false);
   await page.goto("/privacy");
   await expect(page.getByText(/데모 계정이에요/)).toBeVisible();
   await expect(page.getByRole("button", { name: "시스템" })).toHaveAttribute("aria-pressed", "true");

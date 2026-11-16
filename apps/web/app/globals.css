@@ -491,3 +491,35 @@
   bottom: 0;
   height: var(--sab);
 }
+
+/* 이런 선물은 어때요: 가격대를 넘기면 옆에서 들어오고, 고르는 동안 문구가 살짝 바뀐다 */
+@keyframes picks-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes picks-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes picks-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

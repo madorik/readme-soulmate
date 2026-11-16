@@ -1,5 +1,6 @@
 import type { YMD } from "@readme/core";
-import { GiftLinkTabs } from "@/components/GiftLinkTabs";
+import Link from "next/link";
+import { GiftLinkTabs, PicksLoading } from "@/components/GiftLinkTabs";
 import { Icon } from "@/components/marks";
 import type { Person, Session } from "@/lib/data";
 import { giftContext, giftLinkPicks, giftNotes, giftPicks, giftPicksConfigured, type GiftPick } from "@/lib/gifts";
@@ -66,20 +67,40 @@ export function PicksDisclosure({ text, pad = "px-6" }: { text: string; pad?: st
 }
 
 /** 이 사람에게 어울릴 선물(max: 찾을 말 몇 개까지). title이 없으면 제목·고지 없이 줄만(여러 사람 화면) */
-export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6", title = true }: { s: Session; person: Person; occasion: GiftContext["occasion"]; today: YMD; max?: number; pad?: string; title?: boolean }) {
+/** 다시 고르기로 넘어온 '지난번에 보인 것'(주소 ?skip=a,b,…). 목록 id만, 60개까지 */
+export function parseSkip(v: string | undefined): string[] {
+  return [...new Set((v ?? "").split(",").filter((x) => /^[a-z0-9-]{1,40}$/.test(x)))].slice(-60);
+}
+
+/**
+ * 이 사람에게 어울릴 선물(max: 상품 방식에서 찾을 말 몇 개까지). title이 없으면 고지 없이(여러 사람 화면).
+ * again: 다시 고르기 주소의 앞부분(지금 화면 주소). 주면 오른쪽 위에 다시 고르기 단추(부모 section이 relative여야 한다)
+ */
+export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6", title = true, skip = [], again }: { s: Session; person: Person; occasion: GiftContext["occasion"]; today: YMD; max?: number; pad?: string; title?: boolean; skip?: string[]; again?: string }) {
   const { locale } = s.profile;
   const t = makeT(locale);
   const [ctx, notes] = await Promise.all([giftContext(s, person, occasion, today), giftNotes(s, person)]);
   if (!giftPicksConfigured()) {
-    const { bands, initial } = await giftLinkPicks(s, person, ctx, notes);
+    const { bands, initial } = await giftLinkPicks(s, person, ctx, notes, skip);
     if (!bands.length) return null;
+    const shown = bands.flatMap((b) => b.items.map((i) => i.id));
+    const next = [...new Set([...skip, ...shown])].slice(-60).join(",");
     return (
       <>
+        {again ? (
+          <Link href={`${again}${again.includes("?") ? "&" : "?"}skip=${next}#picks`} scroll={false} className="absolute right-3 top-[22px] flex h-10 items-center gap-1 rounded-full px-3 text-[13.5px] font-bold text-accent active:bg-sky-soft">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+              <path d="M20 4v5h-5" />
+            </svg>
+            {t("picks.again")}
+          </Link>
+        ) : null}
         <GiftLinkTabs
           pad={pad}
           initial={initial}
           label={t("picks.bands")}
-          bands={bands.map((b) => ({ band: b.band, label: t(`picks.band.${b.band}` as "picks.band.1"), items: b.items.map((i) => ({ id: i.id, title: i.q, reason: i.reason, url: i.url })) }))}
+          bands={bands.map((b) => ({ band: b.band, label: t(`picks.band.${b.band}` as "picks.band.1"), items: b.items.map((i) => ({ id: i.id, title: i.q, reason: i.reason, url: i.url, image: i.image })) }))}
         />
         {title ? <PicksDisclosure text={t("picks.disclosure")} pad={pad} /> : null}
       </>
@@ -99,20 +120,30 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
   );
 }
 
-/** 채우는 동안: 같은 모양의 빈 자리(목록 방식이면 가격대 칩 + 두 줄) */
-export function GiftPicksSkeleton({ rows = 2, pad = "px-6" }: { rows?: number; pad?: string }) {
+/** 채우는 동안: 같은 모양의 빈 자리(목록 방식이면 고르는 중 문구 + 가격대 칩 + 두 칸). loading = 차례로 바꿔 보일 문구 */
+export function GiftPicksSkeleton({ rows = 2, pad = "px-6", loading }: { rows?: number; pad?: string; loading?: string[] }) {
   if (!giftPicksConfigured()) {
     return (
-      <div aria-hidden="true" className="flex flex-col motion-safe:animate-pulse">
-        <div className={`flex gap-1.5 pb-1 pt-3 ${pad}`}>
-          {[64, 64, 64, 72].map((w, i) => (
-            <span key={i} style={{ width: w }} className={`h-10 rounded-full ${i ? "bg-fill" : "bg-sky-soft"}`} />
-          ))}
-        </div>
-        <div className={`flex flex-col gap-2 pt-2.5 ${pad}`}>
-          {[0, 1].map((i) => (
-            <span key={i} className="h-16 rounded-2xl bg-fill" />
-          ))}
+      <div className="flex flex-col">
+        {loading?.length ? <PicksLoading lines={loading} pad={pad} /> : null}
+        <div aria-hidden="true" className="flex flex-col motion-safe:animate-pulse">
+          <div className={`flex gap-1.5 pb-1 pt-3 ${pad}`}>
+            {[64, 64, 64, 84].map((w, i) => (
+              <span key={i} style={{ width: w }} className={`h-10 rounded-full ${i ? "bg-fill" : "bg-sky-soft"}`} />
+            ))}
+          </div>
+          <div className={`flex flex-col gap-2 pt-2.5 ${pad}`}>
+            {[0, 1].map((i) => (
+              <span key={i} className="flex gap-3 rounded-2xl bg-white p-3 ring-1 ring-rule">
+                <span className="h-[76px] w-[76px] shrink-0 rounded-xl bg-fill" />
+                <span className="flex flex-1 flex-col gap-2 pt-1">
+                  <span className="h-4 w-1/2 rounded bg-fill" />
+                  <span className="h-3 w-full rounded bg-fill" />
+                  <span className="h-3 w-4/5 rounded bg-fill" />
+                </span>
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     );

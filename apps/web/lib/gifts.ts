@@ -13,6 +13,7 @@ import {
   catalogRequest,
   defaultBand,
   eligibleCatalog,
+  freshCatalog,
   parseCatalogPicks,
   ruleCatalogPicks,
   sanitizeCatalogPicks,
@@ -159,12 +160,12 @@ export async function giftIdeas(s: Session, p: Person, ctx: GiftContext, locale:
   return ideas;
 }
 
-/** 목록 방식: 가격대마다 둘(AI가 고르고, 모자라면 기록만으로 채운다)과 처음 열어 둘 가격대 */
-export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, notes: string[]): Promise<{ bands: BandPicks[]; initial: PriceBand }> {
+/** 목록 방식: 가격대마다 둘(AI가 고르고, 모자라면 기록만으로 채운다)과 처음 열어 둘 가격대. skip = 다시 고르기로 넘긴, 지난번에 보인 것 */
+export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, notes: string[], skip: string[] = []): Promise<{ bands: BandPicks[]; initial: PriceBand }> {
   const { locale } = s.profile;
   const profile = giftProfile(p.card, notes);
-  const eligible = eligibleCatalog(GIFT_CATALOG, p.card, ctx, profile.notes);
-  const basis = `links:${giftBasis(profile, ctx, locale)}`;
+  const eligible = freshCatalog(eligibleCatalog(GIFT_CATALOG, p.card, ctx, profile.notes), skip);
+  const basis = `links:${skip.join(",")}:${giftBasis(profile, ctx, locale)}`;
   const rules = ruleCatalogPicks(p.card, ctx, locale, eligible, profile.notes);
   let ai: CatalogPick[] = sanitizeCatalogPicks(await readKept(s, p.contactId, basis), eligible);
   if (!ai.length && aiConfigured() && eligible.length) {

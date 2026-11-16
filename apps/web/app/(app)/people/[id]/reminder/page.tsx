@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
-import { GiftPicks, GiftPicksSkeleton } from "@/components/GiftPicks";
+import { GiftPicks, GiftPicksSkeleton, parseSkip } from "@/components/GiftPicks";
 import { Icon, MarkerCircle } from "@/components/marks";
 import { ShareTextButton } from "@/components/ShareButtons";
 import { displayName, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
@@ -23,7 +23,7 @@ function Hint({ label, children, sub }: { label: string; children: React.ReactNo
   );
 }
 
-export default async function Reminder({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ kind?: string; label?: string }> }) {
+export default async function Reminder({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ kind?: string; label?: string; skip?: string }> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const s = await requireSession();
   const { locale } = s.profile;
@@ -56,6 +56,13 @@ export default async function Reminder({ params, searchParams }: { params: Promi
   const hasHints = !!(favHint || styleHint || taste?.dessert || life?.hobbies.length || fav?.flowers || fav?.scent || fav?.places?.length || gifts?.wishlist.length || gifts?.skip.length || meal.length || taste?.spicy != null || notes.length || sizes?.shoe);
   // 이런 선물은 어때요(쿠팡 API 키가 있으면 상품, 없으면 파트너스 링크 목록에서 가격대별로)
   const picksOn = giftPicksOn();
+  // 다시 고르기: 지금 주소(날 종류·이름은 그대로)에 지난번에 보인 것(skip)을 실어 보낸다
+  const skip = parseSkip(sp.skip);
+  const here = new URLSearchParams();
+  if (sp.kind) here.set("kind", sp.kind);
+  if (sp.label) here.set("label", sp.label);
+  const again = `/people/${p.contactId}/reminder${here.size ? `?${here.toString()}` : ""}`;
+  const loading = [1, 2, 3, 4].map((n) => t(`picks.loading.${n}` as "picks.loading.1", { name }));
   const occasion = anniversary ? { kind: "anniversary" as const, label: anniversary.label } : dates?.birthday ? { kind: "birthday" as const, label: "" } : null;
   const shareText = next ? `${event} ${formatDayFull(next.date, locale)}${spec?.calendar === "lunar" ? ` (${formatSpec(spec, locale)})` : ""}` : event;
 
@@ -115,12 +122,13 @@ export default async function Reminder({ params, searchParams }: { params: Promi
       </section>
 
       {picksOn ? (
-        <section id="picks" aria-labelledby="picks-title" className="flex scroll-mt-2 flex-col pt-8">
-          <h2 id="picks-title" className="px-6 text-[15px] font-bold">
+        <section id="picks" aria-labelledby="picks-title" className="relative flex scroll-mt-2 flex-col pt-8">
+          <h2 id="picks-title" className="pl-6 pr-36 text-[15px] font-bold">
             {t("picks.title")}
           </h2>
-          <Suspense fallback={<GiftPicksSkeleton />}>
-            <GiftPicks s={s} person={p} occasion={occasion} today={today} />
+          {/* 다시 고르면 key가 바뀌어 고르는 동안 빈 자리와 문구를 다시 보인다 */}
+          <Suspense key={skip.join(",")} fallback={<GiftPicksSkeleton loading={loading} />}>
+            <GiftPicks s={s} person={p} occasion={occasion} today={today} skip={skip} again={again} />
           </Suspense>
         </section>
       ) : null}
