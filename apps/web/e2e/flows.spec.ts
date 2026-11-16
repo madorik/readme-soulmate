@@ -35,6 +35,12 @@ async function onlyTopics(page: import("@playwright/test").Page, names: string[]
   for (const name of names) await page.getByRole("button", { name, exact: true }).click();
 }
 
+/** 물어보기에서 새 사람: 찾기 칸에 이름을 적고 '○○ 새로'를 고른다 */
+async function askNew(page: import("@playwright/test").Page, name: string) {
+  await page.getByPlaceholder("이름이나 태그로 찾기").fill(name);
+  await page.getByRole("button", { name: `${name} 새로` }).click();
+}
+
 async function makeLink(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "링크 만들기" }).click();
   const url = await page.getByTestId("invite-url").inputValue();
@@ -92,7 +98,7 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   const page = await as(browser, "jisu");
   await page.goto("/request");
   await expect(page.getByRole("heading", { name: "물어보기" })).toBeVisible();
-  await page.getByPlaceholder("예: 아빠, 장인어른").fill("아빠");
+  await askNew(page, "아빠");
   askDadUrl = await makeLink(page);
   await shot(page, "04-ask-ready");
 
@@ -144,7 +150,7 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
 test("하나만 물으면 답하는 화면도 하나: 진행 막대 없이 바로 보내기", async ({ browser }) => {
   const page = await as(browser, "jisu");
   await page.goto("/request");
-  await page.getByPlaceholder("예: 아빠, 장인어른").fill("이모");
+  await askNew(page, "이모");
   await onlyTopics(page, ["생활·여행"]);
   const url = await makeLink(page);
 
@@ -194,6 +200,23 @@ test("아는 사람에게 다시 물어보기: 내 기록 값이 미리 채워�
   // 아직 안 적힌 항목이 먼저 골라져 있다(생일·알레르기는 적혀 있다)
   await expect(page.getByRole("button", { name: "사이즈", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "생일·기념일", exact: true })).toHaveAttribute("aria-pressed", "false");
+
+  // 물어보기 첫 화면에서 찾아 골라도 같다: 아빠를 고르면 새로가 아니라 그 사람(아직 안 적힌 항목이 먼저), 다시 고르기로 되돌린다
+  await page.goto("/request");
+  await page.getByPlaceholder("이름이나 태그로 찾기").fill("아");
+  await expect(page.getByRole("button", { name: "아 새로" })).toBeVisible();
+  await page.getByPlaceholder("이름이나 태그로 찾기").fill("아빠");
+  await expect(page.getByRole("button", { name: "아빠 새로" })).toHaveCount(0);
+  await page.getByRole("button", { name: /아빠/ }).first().click();
+  await expect(page.locator('input[name="to"]')).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "사이즈", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "생일·기념일", exact: true })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByLabel("같이 보낼 말")).toHaveValue("");
+  await page.getByRole("button", { name: "다시 고르기" }).click();
+  await expect(page.getByPlaceholder("이름이나 태그로 찾기")).toBeVisible();
+  // 다시 찾아 아빠를 골라 보낸다: 답은 아빠 기록에 들어간다(아래에서 확인)
+  await page.getByPlaceholder("이름이나 태그로 찾기").fill("아빠");
+  await page.getByRole("button", { name: /아빠/ }).first().click();
   await onlyTopics(page, ["생일·기념일"]);
   const url = await makeLink(page);
 
@@ -238,7 +261,7 @@ test("로그인하고 답하기: 내 리드미 값이 미리 채워지고, 내 �
 
   const jisu = await as(browser, "jisu");
   await jisu.goto("/request");
-  await jisu.getByPlaceholder("예: 아빠, 장인어른").fill("도윤이");
+  await askNew(jisu, "도윤이");
   await onlyTopics(jisu, ["생일·기념일", "사이즈"]);
   const url = await makeLink(jisu);
 

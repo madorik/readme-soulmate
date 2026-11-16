@@ -1,26 +1,59 @@
 "use client";
 
-import { SECTIONS, SECTIONS_BY_IMPORTANCE, type Locale, type Section } from "@readme/core";
+import { SECTIONS, SECTIONS_BY_IMPORTANCE, type AvatarConfig, type Locale, type Section } from "@readme/core";
 import { useActionState, useState } from "react";
 import { createRequest, type InviteState } from "@/app/actions/request";
 import { useT } from "@/components/editors/shared";
-import { CheckGlyph } from "@/components/marks";
+import { Avatar } from "@/components/Avatar";
+import { CheckGlyph, Icon } from "@/components/marks";
 import { Mascot } from "@/components/Mascot";
 import { SectionIcon } from "@/components/SectionIcon";
+import { TagChip } from "@/components/PersonRow";
 import { LinkField, ShareButtons } from "@/components/ShareButtons";
+import { matchesPerson } from "@/lib/search";
 
 const INITIAL: InviteState = { url: null, text: "", error: null };
 
+export interface AskPerson {
+  id: string;
+  name: string;
+  /** 내가 붙인 태그(부르는 말). 이름과 같거나 없으면 "" */
+  tag: string;
+  /** 부르는 이름(태그가 있으면 태그) */
+  label: string;
+  avatar: AvatarConfig | null;
+  /** 아직 안 적힌 항목(고르면 이걸 먼저 묻는다) */
+  missing: Section[];
+}
+
+type Who = { kind: "person"; person: AskPerson } | { kind: "new"; name: string };
+
 /**
- * to: 주소록 사람에게 물어볼 때(이름은 고정, 내 기록에 적힌 값은 서버가 미리 채워 보낸다). 없으면 새 사람 이름을 적는다
+ * 누구에게: 주소록 사람을 이름·태그로 찾아 고르면 그 사람에게 묻고 답은 그 사람 기록에 들어간다(내 기록에 적힌 값은 서버가 미리 채워 보낸다).
+ * 없는 사람이면 적은 이름으로 새로. fixed(사람 화면에서 왔을 때)면 그 사람으로 정해져 있다
  */
-export function RequestForm({ locale, to, name: initialName, topics: initialTopics }: { locale: Locale; to: string | null; name: string; topics: Section[] }) {
+export function RequestForm({ locale, people, fixed, initialName, defaults }: { locale: Locale; people: AskPerson[]; fixed: string | null; initialName: string; defaults: Section[] }) {
   const t = useT(locale);
-  const [name, setName] = useState(initialName);
-  const [topics, setTopics] = useState<Section[]>(initialTopics);
-  const [message, setMessage] = useState(t("request.messageDefault"));
+  const topicsFor = (p: AskPerson | null) => (p && p.missing.length ? p.missing : defaults);
+  const fixedPerson = fixed ? (people.find((p) => p.id === fixed) ?? null) : null;
+  const [who, setWho] = useState<Who | null>(fixedPerson ? { kind: "person", person: fixedPerson } : initialName ? { kind: "new", name: initialName } : null);
+  const [query, setQuery] = useState("");
+  const [topics, setTopics] = useState<Section[]>(topicsFor(fixedPerson));
+  const [message, setMessage] = useState("");
   const [state, action, pending] = useActionState(createRequest, INITIAL);
-  const quickNames = t("request.quickNames").split(",");
+  const name = who ? (who.kind === "person" ? who.person.label : who.name) : "";
+  const q = query.replace(/\s+/g, " ").trim();
+  const matches = (q ? people.filter((p) => matchesPerson(q, p.name, p.tag)) : people).slice(0, 12);
+  const exact = people.some((p) => [p.name, p.tag, p.label].some((x) => x && x.replace(/\s+/g, "") === q.replace(/\s+/g, "")));
+  const choose = (p: AskPerson) => {
+    setWho({ kind: "person", person: p });
+    setTopics(topicsFor(p));
+  };
+  const chooseNew = () => {
+    setWho({ kind: "new", name: q.slice(0, 40) });
+    setTopics(defaults);
+  };
+  const shareText = message.trim() ? `${state.text}\n${message.trim()}` : state.text;
 
   const topicLabel = (x: Section) => t(`request.topic.${x}` as "request.topic.dates");
 
@@ -43,11 +76,11 @@ export function RequestForm({ locale, to, name: initialName, topics: initialTopi
         </section>
         <section className="card mx-4 mt-3 flex flex-col gap-2.5 px-5 py-5">
           <h3 className="text-[13.5px] font-bold text-muted">{t("request.message")}</h3>
-          <p className="whitespace-pre-line rounded-2xl rounded-tl-md bg-sky-soft px-4 py-3 text-[15px] leading-[1.55]">{`${state.text}\n${message}`}</p>
+          <p className="whitespace-pre-line rounded-2xl rounded-tl-md bg-sky-soft px-4 py-3 text-[15px] leading-[1.55]">{shareText}</p>
           <LinkField url={state.url} label={t("common.copyLink")} />
         </section>
         <div className="bottom-bar mt-auto bg-bg px-4 pt-4">
-          <ShareButtons locale={locale} url={state.url} text={`${state.text}\n${message}`} sendLabel={t("request.send")} />
+          <ShareButtons locale={locale} url={state.url} text={shareText} sendLabel={t("request.send")} />
         </div>
       </div>
     );
@@ -56,26 +89,81 @@ export function RequestForm({ locale, to, name: initialName, topics: initialTopi
   return (
     <form action={action} className="flex flex-1 flex-col">
       <input type="hidden" name="sections" value={JSON.stringify(topics)} />
-      {to ? <input type="hidden" name="to" value={to} /> : null}
+      {who?.kind === "person" ? <input type="hidden" name="to" value={who.person.id} /> : null}
       <input type="hidden" name="name" value={name} />
 
-      {to ? null : (
+      {fixed ? null : (
         <section className="card mx-4 mt-4 flex flex-col gap-3 px-5 py-5">
-          <label htmlFor="request-name" className="text-[15px] font-bold">
+          <label htmlFor="request-who" className="text-[15px] font-bold">
             {t("request.who")}
           </label>
-          <input id="request-name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={40} placeholder={t("request.namePlaceholder")} className="field" />
-          <div className="flex flex-wrap gap-1.5">
-            {quickNames.map((n) => (
-              <button key={n} type="button" aria-pressed={name === n} onClick={() => setName(name === n ? "" : n)} className={`chip !min-h-9 !px-3.5 !text-[14px] ${name === n ? "chip-on" : ""}`}>
-                {n}
+          {who ? (
+            <div className="flex items-center gap-1.5">
+              <span className="chip-on flex h-12 min-w-0 items-center gap-2 rounded-full pl-1.5 pr-4 text-[16px] font-bold">
+                {who.kind === "person" ? (
+                  <Avatar config={who.person.avatar} size={36} label={who.person.label} />
+                ) : (
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white">
+                    <Icon name="personAdd" size={18} strokeWidth={2} />
+                  </span>
+                )}
+                <span className="truncate">{name}</span>
+                {who.kind === "new" ? <TagChip>{t("voice.newPerson")}</TagChip> : null}
+              </span>
+              <button
+                type="button"
+                aria-label={t("request.whoAgain")}
+                onClick={() => {
+                  setWho(null);
+                  setQuery("");
+                  setTopics(defaults);
+                }}
+                className="flex h-11 w-11 shrink-0 items-center justify-center text-muted"
+              >
+                <Icon name="close" size={18} strokeWidth={2} />
               </button>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <>
+              <div className="relative">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="pointer-events-none absolute left-[14px] top-[15px] text-muted">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M20 20l-4-4" />
+                </svg>
+                <input
+                  id="request-who"
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  maxLength={40}
+                  enterKeyHint="search"
+                  placeholder={t("people.search")}
+                  className="field !pl-[42px] [&::-webkit-search-cancel-button]:appearance-none"
+                />
+              </div>
+              {matches.length || (q && !exact) ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {matches.map((p) => (
+                    <button key={p.id} type="button" onClick={() => choose(p)} className="flex h-11 items-center gap-1.5 rounded-full bg-white pl-1 pr-3.5 text-[14.5px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-edge)]">
+                      <Avatar config={p.avatar} size={34} label={p.label} />
+                      {p.label}
+                    </button>
+                  ))}
+                  {q && !exact ? (
+                    <button type="button" onClick={chooseNew} className="flex h-11 items-center gap-1.5 rounded-full pl-3 pr-3.5 text-[14.5px] font-bold text-accent shadow-[inset_0_0_0_1.5px_#f0d27a]">
+                      <Icon name="personAdd" size={17} strokeWidth={2} />
+                      {q}
+                      <TagChip>{t("voice.newPerson")}</TagChip>
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
+          )}
         </section>
       )}
 
-      <section className={`card mx-4 flex flex-col gap-3 px-4 py-5 ${to ? "mt-4" : "mt-3"}`}>
+      <section className={`card mx-4 flex flex-col gap-3 px-4 py-5 ${fixed ? "mt-4" : "mt-3"}`}>
         <div className="flex items-baseline justify-between px-1">
           <h2 className="text-[15px] font-bold">{t("request.topics")}</h2>
           <span className="num text-[13px] !font-bold text-muted">{topics.length}</span>

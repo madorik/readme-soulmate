@@ -4,28 +4,30 @@ import { displayName, listPeople, requireSession } from "@/lib/data";
 import { makeT } from "@/lib/i18n";
 import { RequestForm } from "./RequestForm";
 
-// 물어보기: 주소록 사람(to)에게, 또는 새 사람(name)에게. 이미 아는 사람이면 아직 안 적힌 항목을 먼저 고른다
+// 물어보기: 주소록 사람에게(찾아서 고르거나 사람 화면에서 to로), 또는 새 사람(이름을 적어 새로)에게.
+// 아는 사람이면 아직 안 적힌 항목을 먼저 고르고, 받은 답은 그 사람 기록에 들어간다
 export default async function Request({ searchParams }: { searchParams: Promise<{ to?: string; name?: string }> }) {
   const sp = await searchParams;
   const s = await requireSession();
   const t = makeT(s.profile.locale);
-  let name = (sp.name ?? "").slice(0, 40);
-  let to: string | null = null;
-  let topics: Section[] = ["dates", "safety", "gifts"];
-  if (sp.to) {
-    const p = (await listPeople(s)).find((x) => x.contactId === sp.to);
-    if (p) {
-      to = p.contactId;
-      name = displayName(p);
-      const missing = SECTIONS.filter((x) => !p.card[x]);
-      if (missing.length) topics = missing;
-    }
-  }
+  const defaults: Section[] = ["dates", "safety", "gifts"];
+  // 찾기에 쓸 사람들(즐겨찾기 먼저). 사람마다 아직 안 적힌 항목
+  const people = [...(await listPeople(s))]
+    .sort((a, b) => Number(b.favorite) - Number(a.favorite))
+    .map((p) => ({
+      id: p.contactId,
+      name: p.name || displayName(p),
+      tag: p.nickname && p.nickname !== (p.name || displayName(p)) ? p.nickname : "",
+      label: displayName(p),
+      avatar: p.avatar,
+      missing: SECTIONS.filter((x) => !p.card[x]),
+    }));
+  const fixed = sp.to ? (people.find((p) => p.id === sp.to) ?? null) : null;
   return (
     <div className="flex flex-1 flex-col">
-      <TopBar close={to ? `/people/${to}` : "/home"} label={t("common.close")} />
-      <h1 className="headline px-6 pt-1 text-[28px]">{to ? t("request.titleTo", { name }) : t("request.title")}</h1>
-      <RequestForm locale={s.profile.locale} to={to} name={name} topics={topics} />
+      <TopBar close={fixed ? `/people/${fixed.id}` : "/home"} label={t("common.close")} />
+      <h1 className="headline px-6 pt-1 text-[28px]">{fixed ? t("request.titleTo", { name: fixed.label }) : t("request.title")}</h1>
+      <RequestForm locale={s.profile.locale} people={people} fixed={fixed?.id ?? null} initialName={(sp.name ?? "").slice(0, 40)} defaults={defaults} />
     </div>
   );
 }
