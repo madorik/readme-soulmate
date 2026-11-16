@@ -718,7 +718,7 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   const picks = page.locator("#picks");
   await expect(picks.getByRole("tab")).toHaveText(["1만원대", "3만원대", "5만원대", "10만원 이상"], { timeout: 45_000 });
   await expect(picks.getByRole("tab", { name: "5만원대" })).toHaveAttribute("aria-selected", "true");
-  await expect(picks.getByRole("tabpanel").getByRole("link")).toHaveCount(2);
+  await expect(picks.getByRole("tabpanel").getByRole("link")).toHaveCount(5);
   await picks.getByRole("tab", { name: "1만원대" }).click();
   await expect(picks.getByRole("tabpanel").getByRole("link").first()).toHaveAttribute("href", /^https:\/\/link\.coupang\.com\/a\//);
   await expect(picks.getByText(/쿠팡 파트너스 활동의 일환으로/)).toBeVisible();

@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { test } from "node:test";
 import type { PartialCard } from "@readme/core";
 import { GIFT_CATALOG, PRICE_BANDS } from "../gift-catalog";
+import { PICKS_PER_BAND } from "../gift-core";
 import {
   bandPicks,
   catalogRequest,
@@ -167,24 +168,18 @@ test("목록 고르기: 처음 가격대는 관계로, 기록만으로는 맞는
   assert.equal(defaultBand({ ...ctx, call: "민지", folders: ["친구들"] }), "3");
   const eligible = eligibleCatalog(GIFT_CATALOG, card, ctx);
   const picks = ruleCatalogPicks(card, ctx, "ko", eligible);
-  assert.equal(picks.length, PRICE_BANDS.length * 2);
+  assert.equal(picks.length, PRICE_BANDS.length * PICKS_PER_BAND);
   const byId = new Map(GIFT_CATALOG.map((x) => [x.id, x]));
-  for (const b of PRICE_BANDS) assert.equal(picks.filter((p) => byId.get(p.id)!.band === b).length, 2);
+  for (const b of PRICE_BANDS) assert.equal(picks.filter((p) => byId.get(p.id)!.band === b).length, PICKS_PER_BAND);
   assert.ok(picks.some((p) => /^(등산|캠핑)을 좋아하는 아빠에게/.test(p.reason)));
-  // AI가 고른 게 모자라면 채우고, 고를 수 없는 것·한 가격대 셋째는 버린다
-  const ai = sanitizeCatalogPicks(
-    [
-      { id: "camp-chair", reason: "캠핑 좋아해서" },
-      { id: "no-such", reason: "x" },
-      { id: "perfume", reason: "우디 향 좋아해서" },
-      { id: "hand-drip", reason: "커피" },
-    ],
-    eligible,
-  );
-  assert.deepEqual(ai.map((p) => p.id), ["camp-chair", "perfume"]);
-  const bands = bandPicks(ai, picks, eligible);
+  // AI가 고른 게 모자라면 채우고, 고를 수 없는 것·겹친 것·한 가격대에 다섯 넘는 것은 버린다
+  const five = eligible.filter((x) => x.band === "5").slice(0, 6).map((x) => ({ id: x.id, reason: x.q }));
+  const ai = sanitizeCatalogPicks([{ id: "no-such", reason: "x" }, ...five, five[0]], eligible);
+  assert.deepEqual(ai.map((p) => p.id), five.slice(0, PICKS_PER_BAND).map((p) => p.id));
+  const bands = bandPicks(ai.slice(0, 2), picks, eligible);
   assert.equal(bands.length, 4);
-  assert.deepEqual(bands.find((b) => b.band === "5")!.items.slice(0, 2).map((i) => i.id), ["camp-chair", "perfume"]);
+  for (const b of bands) assert.equal(b.items.length, PICKS_PER_BAND);
+  assert.deepEqual(bands.find((b) => b.band === "5")!.items.slice(0, 2).map((i) => i.id), ai.slice(0, 2).map((p) => p.id));
   const req = catalogRequest(giftProfile(card), ctx, "ko", "m", eligible.slice(0, 3));
   assert.deepEqual(req.text.format.schema.properties.picks.items.properties.id.enum, eligible.slice(0, 3).map((x) => x.id));
   assert.match(req.input, /CATALOG:\n/);
@@ -196,8 +191,8 @@ test("다시 고르기: 지난번에 보인 것을 빼고, 가격대에 둘도 �
   const fresh = freshCatalog(eligible, ones.slice(0, 2));
   assert.ok(!fresh.some((x) => ones.slice(0, 2).includes(x.id)));
   assert.equal(freshCatalog(eligible, []).length, eligible.length);
-  const allButOne = freshCatalog(eligible, ones.slice(1));
-  assert.equal(allButOne.filter((x) => x.band === "1").length, ones.length, "하나만 남으면 그 가격대는 다시 전부");
+  const fewLeft = freshCatalog(eligible, ones.slice(PICKS_PER_BAND - 1));
+  assert.equal(fewLeft.filter((x) => x.band === "1").length, ones.length, "다섯도 안 남으면 그 가격대는 다시 전부");
   assert.ok(GIFT_CATALOG.filter((x) => x.image).length >= GIFT_CATALOG.length - 5);
   for (const x of GIFT_CATALOG) if (x.image) assert.match(x.image, /^https:\/\/[a-z0-9]+\.coupangcdn\.com\/thumbnails\//, x.id);
 });

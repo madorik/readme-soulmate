@@ -38,7 +38,7 @@ import {
 
 // 선물 추천: 사람 기록 전체 + 메모를 보고 고른다. 두 가지 방식:
 // - 상품(쿠팡 API 키가 있을 때): 찾을 말 네 개(AI, 없으면 기록만으로) → 쿠팡 파트너스 상품 검색. COUPANG_ACCESS_KEY·COUPANG_SECRET_KEY, COUPANG_SUB_ID(채널), COUPANG_HOURLY_LIMIT(기본 20), COUPANG_BASE_URL(시험용 가짜 서버).
-// - 목록(키가 없을 때, 파트너스 최종 승인 전): 미리 만든 파트너스 링크 목록(gift-catalog)에서 가격대마다 둘.
+// - 목록(키가 없을 때, 파트너스 최종 승인 전): 미리 만든 파트너스 링크 목록(gift-catalog)에서 가격대마다 다섯.
 // 고른 것은 사람마다 봉인해 gift_ideas에 둔다(표가 없거나 실패해도 고르는 건 된다).
 // 쿠팡 API는 호출 한도를 넘으면 계정이 막힐 수 있어서: 같은 찾을 말은 하루 동안 DB에 둔 결과를 다시 쓰고, 지난 한 시간 호출이 한도에 닿으면 부르지 않고 쿠팡 검색 링크만 준다.
 
@@ -160,7 +160,7 @@ export async function giftIdeas(s: Session, p: Person, ctx: GiftContext, locale:
   return ideas;
 }
 
-/** 목록 방식: 가격대마다 둘(AI가 고르고, 모자라면 기록만으로 채운다)과 처음 열어 둘 가격대. skip = 다시 고르기로 넘긴, 지난번에 보인 것 */
+/** 목록 방식: 가격대마다 다섯(AI가 고르고, 모자라면 기록만으로 채운다)과 처음 열어 둘 가격대. skip = 다시 고르기로 넘긴, 지난번에 보인 것 */
 export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, notes: string[], skip: string[] = []): Promise<{ bands: BandPicks[]; initial: PriceBand }> {
   const { locale } = s.profile;
   const profile = giftProfile(p.card, notes);

@@ -1,5 +1,5 @@
 // 선물 추천 중 서버 키와 상관없는 것: 기록 전체 + 메모 → 힌트 줄, AI 요청 몸·응답 풀기, 기록만으로 고르기(AI가 없거나 실패할 때), 쿠팡 파트너스 서명·응답 풀기,
-// 쿠팡 API 키가 없을 때 쓰는 찾을 말 목록(gift-catalog)에서 고르기(가격대마다 둘).
+// 쿠팡 API 키가 없을 때 쓰는 찾을 말 목록(gift-catalog)에서 고르기(가격대마다 다섯).
 // 서버 전용 표시가 없어 시험에서 바로 불러 쓴다. 쿠팡은 한국 쇼핑몰이라 찾을 말·힌트는 늘 한국어로, 이유(reason)만 화면 언어로.
 import { createHash, createHmac } from "node:crypto";
 import { ALCOHOL_KINDS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, PATTERNS, SEASONS, STYLES, VIBES, josa, labelOf, realCodes, type Locale, type PartialCard } from "@readme/core";
@@ -102,7 +102,7 @@ export function giftProfile(card: PartialCard, notes: string[] = []): GiftProfil
 /** 같은 기록·같은 날이면 같은 값: 지난번에 고른 걸 다시 쓴다(기록이 그대로 남지 않게 해시로) */
 export function giftBasis(profile: GiftProfile, ctx: GiftContext, locale: Locale): string {
   // v: 고르는 지침이 바뀌면 올려서 지난번 것을 다시 고르게
-  return createHash("sha256").update(JSON.stringify({ v: 7, profile, ctx, locale })).digest("hex");
+  return createHash("sha256").update(JSON.stringify({ v: 8, profile, ctx, locale })).digest("hex");
 }
 
 const PITCH = `reason: a short, warm pitch in LANGUAGE that makes the user want to give this gift, written like a thoughtful friend's tip. Tie what you know about this person to what kind of this gift suits them and why:
@@ -260,7 +260,7 @@ export function ruleIdeas(card: PartialCard, ctx: GiftContext, locale: Locale): 
 
 // ── 찾을 말 목록에서 고르기(쿠팡 API 키가 없을 때) ──────────────────
 
-export const PICKS_PER_BAND = 2;
+export const PICKS_PER_BAND = 5;
 
 export interface CatalogPick {
   id: string;
@@ -301,7 +301,7 @@ export function eligibleCatalog(catalog: CatalogGift[], card: PartialCard, ctx: 
   });
 }
 
-/** 다시 고르기: 지난번에 보인 것(skip)을 빼되, 가격대에 둘도 안 남으면 그 가격대는 처음부터 다시 */
+/** 다시 고르기: 지난번에 보인 것(skip)을 빼되, 가격대에 PICKS_PER_BAND개도 안 남으면 그 가격대는 처음부터 다시 */
 export function freshCatalog(eligible: CatalogGift[], skip: string[]): CatalogGift[] {
   if (!skip.length) return eligible;
   const gone = new Set(skip);
@@ -374,7 +374,7 @@ export function catalogRequest(profile: GiftProfile, ctx: GiftContext, locale: L
   };
 }
 
-/** 고를 수 있는 것 안에서, 겹치지 않게, 가격대마다 둘까지 */
+/** 고를 수 있는 것 안에서, 겹치지 않게, 가격대마다 PICKS_PER_BAND개까지 */
 export function sanitizeCatalogPicks(raw: unknown, eligible: CatalogGift[]): CatalogPick[] {
   const byId = new Map(eligible.map((x) => [x.id, x]));
   const count = new Map<PriceBand, number>();
@@ -403,7 +403,7 @@ export function parseCatalogPicks(body: unknown, eligible: CatalogGift[]): Catal
 /** 이유로 쓰지 않는 맞춤 말(취향이 아니라 상황) */
 const CONTEXT_TAGS = new Set(["부모님", "회사", "출근", "실용", "장마", "손주", "정장", "집", "겨울", "건강", "휴식", "취미"]);
 
-/** AI 없이: 기록·해주고 싶은 선물·메모에 든 말과 맞는 것부터, 가격대마다 둘 */
+/** AI 없이: 기록·해주고 싶은 선물·메모에 든 말과 맞는 것부터, 가격대마다 PICKS_PER_BAND개 */
 export function ruleCatalogPicks(card: PartialCard, ctx: GiftContext, locale: Locale, eligible: CatalogGift[], notes: string[] = []): CatalogPick[] {
   const profile = giftProfile(card, notes);
   const corpus = [...profile.hints, ...profile.wishes, ...profile.notes].join(" ").replace(/\s+/g, "");

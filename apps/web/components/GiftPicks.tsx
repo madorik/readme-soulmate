@@ -120,7 +120,7 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
   );
 }
 
-/** 채우는 동안: 같은 모양의 빈 자리(목록 방식이면 고르는 중 문구 + 가격대 칩 + 두 칸). loading = 차례로 바꿔 보일 문구 */
+/** 채우는 동안: 같은 모양의 빈 자리(목록 방식이면 고르는 중 문구 + 가격대 칩 + 세 칸). loading = 차례로 바꿔 보일 문구 */
 export function GiftPicksSkeleton({ rows = 2, pad = "px-6", loading }: { rows?: number; pad?: string; loading?: string[] }) {
   if (!giftPicksConfigured()) {
     return (
@@ -133,7 +133,7 @@ export function GiftPicksSkeleton({ rows = 2, pad = "px-6", loading }: { rows?: 
             ))}
           </div>
           <div className={`flex flex-col gap-2 pt-2.5 ${pad}`}>
-            {[0, 1].map((i) => (
+            {[0, 1, 2].map((i) => (
               <span key={i} className="flex gap-3 rounded-2xl bg-white p-3 ring-1 ring-rule">
                 <span className="h-[76px] w-[76px] shrink-0 rounded-xl bg-fill" />
                 <span className="flex flex-1 flex-col gap-2 pt-1">
