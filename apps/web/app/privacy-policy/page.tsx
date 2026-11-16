@@ -43,8 +43,10 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
             <b>Gift ideas</b>: gift cards you send to family (what you call the person, the upcoming date, the picked gifts) and notes you leave with Gift done.
           </li>
           <li>
-            <b>Created automatically</b>: sign-in cookies and access logs kept by our hosting provider (IP address, browser or device type, time), usage records (seeing gift ideas, tapping a gift link,
-            sending and opening a card, Gift done; never the content of your records or notes), and visit statistics (Vercel Web Analytics, aggregated without cookies; question and card links are stripped).
+            <b>Created automatically</b>: sign-in cookies and access logs kept by our hosting provider (IP address, browser or device type, time), usage records (screens you open and how long they stay
+            on screen, features you use such as saving a record or asking, seeing gift ideas, tapping a gift link, sending and opening a card, Gift done; never the content of your records or notes),
+            how you arrived (the referring site&rsquo;s domain and campaign tags only), device type (app or web, operating system, browser), a random ID stored on your device, and visit statistics (Vercel
+            Web Analytics and, if enabled, Google Analytics; person IDs, question and card links are stripped before sending).
           </li>
         </ul>
 
@@ -55,6 +57,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           <li>To send birthday and anniversary reminders (solar dates are calculated from lunar ones)</li>
           <li>To suggest gifts from what you&rsquo;ve recorded about a person</li>
           <li>To answer questions and keep the service safe (preventing abuse)</li>
+          <li>To see in aggregate how the service is used and improve it (which screens and features are used, where people leave, how they found us)</li>
         </ul>
         <p>We don&rsquo;t sell your information, show ads, or use it for marketing.</p>
 
@@ -101,6 +104,11 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
             <tr>
               <td>OpenAI, L.L.C.</td>
               <td>Sorting a sentence you say or type in Say it into people and sections, and picking gift ideas from your records and notes about a person, only when you use them</td>
+              <td>USA (sent over the network each time)</td>
+            </tr>
+            <tr>
+              <td>Google LLC</td>
+              <td>Usage statistics (Google Analytics·Tag Manager, only if enabled): screens opened, features used, device type, how you arrived</td>
               <td>USA (sent over the network each time)</td>
             </tr>
           </tbody>
@@ -178,8 +186,9 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           <b>선물 추천</b>: 가족에게 보낸 선물 카드(부르는 말, 챙길 날, 고른 선물 목록), 선물 완료로 남긴 메모
         </li>
         <li>
-          <b>자동으로 만들어지는 정보</b>: 로그인 유지를 위한 쿠키, 호스팅 업체가 남기는 접속 기록(IP 주소, 브라우저·기기 종류, 접속 시각), 서비스 이용 기록(선물 추천을 본 것, 선물 링크를 누른 것,
-          카드를 보내고 연 것, 선물 완료. 기록·메모 내용은 남기지 않습니다), 방문 통계(Vercel 웹 분석. 쿠키 없이 모아서 보며, 물어보기·카드 주소는 빼고 보냅니다)
+          <b>자동으로 만들어지는 정보</b>: 로그인 유지를 위한 쿠키, 호스팅 업체가 남기는 접속 기록(IP 주소, 브라우저·기기 종류, 접속 시각), 서비스 이용 기록(연 화면과 화면을 보고 있던 시간, 기록 저장·물어보기 같은
+          기능을 쓴 것, 선물 추천을 본 것, 선물 링크를 누른 것, 카드를 보내고 연 것, 선물 완료. 기록·메모 내용은 남기지 않습니다), 들어온 경로(들어온 사이트의 도메인과 캠페인 표시만), 기기 종류(앱·웹, 운영체제,
+          브라우저), 기기에 저장되는 무작위 식별값, 방문 통계(Vercel 웹 분석과, 켠 경우 구글 애널리틱스. 사람 id·물어보기·카드 주소는 빼고 보냅니다)
         </li>
       </ul>
 
@@ -190,6 +199,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
         <li>생일·기념일 알림(음력은 양력으로 바꿔 계산)</li>
         <li>사람 기록에 적은 선물 힌트로 선물 추천</li>
         <li>문의 응대, 부정 이용 방지 등 서비스 안전 관리</li>
+        <li>서비스를 어떻게 쓰는지 모아서 보고 고치기(많이 쓰는 화면·기능, 그만두는 곳, 들어온 경로)</li>
       </ul>
       <p>개인정보를 팔거나 광고·마케팅에 쓰지 않습니다.</p>
 
@@ -236,6 +246,11 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           <tr>
             <td>OpenAI, L.L.C.</td>
             <td>말로 적기에서 말하거나 적은 문장을 사람·항목으로 나누기, 선물 추천에서 그 사람 기록·메모로 선물 고르기(쓸 때만)</td>
+            <td>미국(쓸 때마다 네트워크로 전송)</td>
+          </tr>
+          <tr>
+            <td>Google LLC</td>
+            <td>이용 통계(구글 애널리틱스·태그 매니저, 켠 경우만): 연 화면, 쓴 기능, 기기 종류, 들어온 경로</td>
             <td>미국(쓸 때마다 네트워크로 전송)</td>
           </tr>
         </tbody>

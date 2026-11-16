@@ -36,6 +36,7 @@ export async function addNote(form: FormData): Promise<void> {
     await s.tx((q) =>
       q("insert into notes (author_id, contact_id, label, payload) values ($1, $2, $3, $4)", [s.user.id, contactId, label, JSON.stringify(sealNote(s.user.id, contactId, body))]),
     );
+    track("note_add", { userId: s.user.id });
   }
   revalidatePath(`/people/${contactId}`);
 }
@@ -128,6 +129,7 @@ export async function createPerson(form: FormData): Promise<void> {
     if (UUID.test(folder)) await q("insert into contact_group_members (group_id, contact_id, user_id) values ($1, $2, $3)", [folder, c!.id, s.user.id]);
     return c!.id;
   });
+  track("person_add", { userId: s.user.id });
   revalidatePath("/people");
   revalidatePath("/home");
   redirect(`/people/${contactId}`);
@@ -144,6 +146,7 @@ export async function savePersonSection(_: SaveState, form: FormData): Promise<S
   } catch {
     return { saved: false, error: true };
   }
+  track("record_save", { userId: s.user.id, source: section as string });
   revalidatePath(`/people/${contactId}`, "layout");
   revalidatePath("/people");
   revalidatePath("/home");
@@ -173,6 +176,7 @@ export async function setFavorite(contactId: string, on: boolean): Promise<{ ok:
   const s = await requireSession();
   if (typeof contactId !== "string") return { ok: false };
   const row = await s.tx((q) => q.one<{ id: string }>("update contacts set favorite = $2 where id::text = $1 returning id", [contactId, on === true]));
+  if (row && on) track("favorite", { userId: s.user.id });
   revalidatePeople(contactId);
   return { ok: !!row };
 }
@@ -188,6 +192,7 @@ export async function createFolder(input: { name: string; icon: string; color: s
     const same = await q.one<{ id: string }>("select id from contact_groups where user_id = $1 and builtin is null and name = $2", [s.user.id, name]);
     return same ?? (await q.one<{ id: string }>("insert into contact_groups (user_id, name, icon, color) values ($1, $2, $3, $4) returning id", [s.user.id, name, icon, color]));
   });
+  if (row) track("folder_create", { userId: s.user.id });
   revalidatePeople();
   return row ? { id: String(row.id) } : null;
 }

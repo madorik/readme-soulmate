@@ -1,5 +1,6 @@
 "use server";
 
+import { track } from "@/lib/track";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -25,6 +26,8 @@ export async function deleteAccount(form: FormData): Promise<void> {
   if (form.get("confirm") !== "1") return;
   const s = await requireSession();
   await s.tx((q) => q("select delete_my_account()"));
+  // 지운 사람과 잇지 않고 수만 남긴다
+  track("account_delete", {});
   // 세션은 사용자와 함께 지워졌다. 남은 쿠키만 치운다
   const jar = await cookies();
   for (const c of jar.getAll()) if (c.name.includes("better-auth")) jar.delete(c.name);

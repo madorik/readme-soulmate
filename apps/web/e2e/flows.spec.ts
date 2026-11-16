@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type BrowserContext } from "@playwright/test";
 import { lunarToSolar, nextOccurrence, todayIn } from "@readme/core";
-import { CRON_SECRET, onboard, signIn } from "./helpers";
+import { ADMIN_KEY, CRON_SECRET, onboard, signIn } from "./helpers";
 
 // 흐름을 실제로 눌러 본다: 가입·온보딩 → 물어보기·앱 없이 답하기(답이 내 기록에) → 받은 답 고치기 → 다시 물어보기 → 로그인하고 답하기 → 영어
 test.describe.configure({ mode: "serial" });
@@ -847,4 +847,23 @@ test("검색·AI 답변: 선물 가이드는 로그인 없이 열리고 구조�
   expect(llms.status()).toBe(200);
   expect(await llms.text()).toContain("# 기억해유");
   expect((await request.get("/people", { maxRedirects: 0 })).headers()["x-robots-tag"]).toBe("noindex, nofollow");
+});
+
+test("통계: 이용 기록을 받고, 관리자 키로 들어가 기간을 바꿔 본다", async ({ page, request }) => {
+  const ok = await request.post("/api/e", { data: { a: "testAnon12345678", e: [{ n: "visit", p: "/gifts", s: "naver" }, { n: "page_view", p: "/gifts" }, { n: "page_time", p: "/gifts", v: 4200 }] } });
+  expect(ok.status()).toBe(204);
+  expect((await request.post("/api/e", { data: { e: [{ n: "drop_table" }] } })).status()).toBe(400);
+
+  const key = ADMIN_KEY;
+  test.skip(!key, "ADMIN_KEY가 없는 개발 환경");
+  await page.goto("/admin");
+  await page.getByPlaceholder("관리자 키").fill("wrong");
+  await page.getByRole("button", { name: "들어가기" }).click();
+  await expect(page.getByText("키가 맞지 않아요")).toBeVisible();
+  await page.getByPlaceholder("관리자 키").fill(key!);
+  await page.getByRole("button", { name: "들어가기" }).click();
+  for (const name of ["요약", "추이", "유입", "가입 퍼널", "리텐션", "화면별", "기능별 사용", "기기", "선물"]) await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "7일", exact: true }).click();
+  await expect(page).toHaveURL(/range=7/);
+  await expect(page.getByText(/\(7일\)/)).toBeVisible();
 });

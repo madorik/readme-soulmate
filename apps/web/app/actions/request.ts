@@ -1,5 +1,6 @@
 "use server";
 
+import { track } from "@/lib/track";
 import { hashToken, isSection, sanitizeSection, sanitizeSections, translate, type PartialCard, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -69,6 +70,7 @@ export async function createRequest(_: InviteState, form: FormData): Promise<Inv
     revalidatePath("/home");
     revalidatePath("/privacy");
     const from = s.profile.displayName || translate(s.profile.locale, "app.name");
+    track("ask_create", { userId: s.user.id, source: to ? "person" : "new" });
     return { url: absoluteUrl(`/r/${invite.token}`), text: translate(s.profile.locale, "request.text", { from }), error: null };
   } catch {
     return { url: null, text: "", error: "common" };
@@ -137,5 +139,6 @@ export async function submitAnswer(_: AnswerState, form: FormData): Promise<Answ
       path: `/people/${n.contactId}`,
     }));
   }
+  track("ask_answer", { userId: session?.user.id ?? null, source: session ? "signed_in" : "guest" });
   return { sent: true, savedMine: saveMine, error: null };
 }

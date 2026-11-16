@@ -11,6 +11,7 @@ const env = Object.fromEntries(
 );
 
 export const CRON_SECRET = env.CRON_SECRET!;
+export const ADMIN_KEY = env.ADMIN_KEY;
 
 /** 데모 로그인(샘플 없이 빈 계정). 지금 화면에 로그인 버튼이 있어야 한다. ?demo=empty는 개발 서버에서만 먹는다 */
 export async function signIn(page: Page) {

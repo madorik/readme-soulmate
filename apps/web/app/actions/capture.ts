@@ -1,5 +1,6 @@
 "use server";
 
+import { track } from "@/lib/track";
 import { captureField, describeCapture, isSection, mergeCapture, sanitizeSection, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { aiConfigured, classifyCapture } from "@/lib/ai";
@@ -144,6 +145,7 @@ export async function captureNote(raw: string, aboutId?: string, picked?: { id: 
     return { lines: [], undo: [], error: "failed" };
   }
   if (!lines.length) return { lines: [], undo: [], error: "nothing" };
+  track("capture", { userId: s.user.id });
   revalidatePath("/people", "layout");
   revalidatePath("/home");
   revalidatePath("/me");

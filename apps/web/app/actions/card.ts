@@ -1,5 +1,6 @@
 "use server";
 
+import { track } from "@/lib/track";
 import { applyAnswer, emptySection, isSection, QUESTIONS, sanitizeAvatar, sanitizeOffsets, type DailyQuestion, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -62,6 +63,7 @@ export async function finishOnboarding(form: FormData): Promise<void> {
     await writeSection(q, s.user.id, "dates", { ...(card.dates ?? emptySection("dates")), birthday: json(form.get("birthday")) });
     await q("update profiles set reminder_offsets = $2, onboarded_at = coalesce(onboarded_at, now()) where id = $1", [s.user.id, sanitizeOffsets(json(form.get("offsets")))]);
   });
+  track("onboarding_done", { userId: s.user.id });
   redirect(safeNext(String(form.get("next") ?? "")));
 }
 
@@ -80,6 +82,7 @@ export async function saveSection(_: SaveState, form: FormData): Promise<SaveSta
   } catch {
     return { saved: false, error: true };
   }
+  track("me_save", { userId: s.user.id, source: section as string });
   revalidatePath("/me");
   revalidatePath("/me/edit");
   revalidatePath("/home");
@@ -98,6 +101,7 @@ export async function answerQuestion(form: FormData): Promise<void> {
       if (isSection(section)) await writeSection(q, s.user.id, section, data);
     }
   });
+  track("daily_answer", { userId: s.user.id, source: id.toLowerCase().replace(/[^a-z_]/g, "_").slice(0, 20) });
   revalidatePath("/home");
   redirect("/home?answered=1");
 }

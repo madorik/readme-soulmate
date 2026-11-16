@@ -3,6 +3,8 @@ import { Manrope } from "next/font/google";
 import { BRAND } from "@readme/core";
 import { KeyboardInset } from "@/components/KeyboardInset";
 import { LocaleSync } from "@/components/LocaleSync";
+import { Tags } from "@/components/Tags";
+import { UsageTracker } from "@/components/UsageTracker";
 import { WebAnalytics } from "@/components/WebAnalytics";
 import { getSession } from "@/lib/data";
 import { chosenLocale, requestLocale } from "@/lib/i18n";
@@ -52,6 +54,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <KeyboardInset />
         <LocaleSync rendered={locale} chosen={chosen} signedIn={!!session} stored={session?.profile.systemLocale ?? null} />
         <WebAnalytics />
+        <UsageTracker />
+        <Tags />
       </body>
     </html>
   );
