@@ -310,6 +310,26 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
     setActive(0);
     placeCaret(el, at + ins.length);
   };
+  /** 아래 사람 줄에서 얼굴을 누르면 커서 자리에 '@부름 '을 넣는다. 이미 부른 사람이면 글에서 그 부름을 뺀다 */
+  const togglePerson = (p: MentionOption) => {
+    const el = field.current;
+    const label = mentionLabel(p);
+    if (who.some((w) => w.id === p.id)) {
+      const next = text.replace(new RegExp(`@${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s?`, "g"), "");
+      setText(next);
+      setTagged((prev) => prev.filter((m) => m.id !== p.id));
+      placeCaret(el, Math.min(caret, next.length));
+      return;
+    }
+    // 이름 바로 뒤에 커서(띄어쓰기 없이): '@아내는 …'처럼 조사를 바로 붙여 적는다. 찾기 줄은 다음 글자를 적을 때까지 닫아 둔다
+    const at = el ? el.selectionStart : text.length;
+    const before = text.slice(0, at);
+    const ins = `${before && !/\s$/.test(before) ? " " : ""}@${label}`;
+    setText(before + ins + text.slice(at));
+    setTagged((prev) => [...prev.filter((m) => m.id !== p.id), { id: p.id, label }]);
+    setDismissed(true);
+    placeCaret(el, at + ins.length);
+  };
   const mentionProps = {
     onSelect: (e: React.SyntheticEvent<HTMLTextAreaElement>) => setCaret(e.currentTarget.selectionStart),
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -540,7 +560,10 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
     </p>
   ) : null;
 
-  if (mode === "text")
+  // 글로: 적는 칸은 위에, 사람 줄(@ · 얼굴들)과 기억해 두기는 아래 막대에 붙여 키보드가 떠도 바로 위에 보인다.
+  // '@낱말'을 적는 동안은 같은 줄이 찾은 사람으로 바뀐다(줄 높이가 그대로라 적는 칸을 가리지 않는다)
+  if (mode === "text") {
+    const row = listOpen ? options : people.filter((p, i) => i < 12 || who.some((w) => w.id === p.id));
     return (
       <form
         className="flex flex-1 flex-col"
@@ -550,7 +573,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
         }}
       >
         {toggle}
-        <div className="flex flex-1 flex-col gap-2 px-4 pt-5">
+        <div className="flex flex-col gap-2 px-4 pt-5">
           <textarea
             ref={field}
             value={text}
@@ -561,37 +584,57 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
             autoFocus={canListen}
             placeholder={labels.placeholderText}
             aria-label={labels.placeholderText}
-            className="card min-h-[180px] w-full resize-none p-5 text-[18px] font-medium leading-[1.55] tracking-[-0.01em] outline-none placeholder:text-muted/60 focus:shadow-[inset_0_0_0_2px_var(--color-sky)]"
+            className="card min-h-[168px] w-full resize-none p-5 [html[data-kb]_&]:min-h-[132px] text-[18px] font-medium leading-[1.55] tracking-[-0.01em] outline-none placeholder:text-muted/60 focus:shadow-[inset_0_0_0_2px_var(--color-sky)]"
           />
-          {mentionList("field")}
+          <div className="flex min-h-8 items-center justify-center">{errorLine}</div>
+        </div>
+        <div className="bottom-bar mt-auto flex flex-col gap-2.5 bg-bg px-4 pt-2.5">
           {people.length ? (
-            <div className="flex flex-wrap items-center gap-2">
+            <div
+              id={listOpen ? "mention-list" : undefined}
+              role={listOpen ? "listbox" : "group"}
+              aria-label={labels.mentionList}
+              className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={startMention}
                 aria-label={labels.mention}
-                className="flex h-11 min-w-11 items-center justify-center rounded-full bg-white px-3 text-[19px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-edge)]"
+                className="flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full bg-white px-3 text-[19px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-edge)]"
               >
                 @
               </button>
-              {who.map((p) => (
-                <span key={p.id} className="chip-on flex h-9 items-center gap-1.5 rounded-full pl-1 pr-3 text-[14px] font-bold">
-                  <Avatar config={p.avatar} size={28} label={mentionLabel(p)} />
-                  {mentionLabel(p)}
-                </span>
-              ))}
+              {row.map((p, i) => {
+                const on = listOpen ? i === activeIndex : who.some((w) => w.id === p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    id={listOpen ? `mention-${p.id}` : undefined}
+                    role={listOpen ? "option" : undefined}
+                    aria-selected={listOpen ? on : undefined}
+                    aria-pressed={listOpen ? undefined : on}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => (listOpen ? pick(field.current, p) : togglePerson(p))}
+                    className={`flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-1 pr-3.5 text-[14.5px] font-bold transition-colors ${
+                      on ? "chip-on" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"
+                    }`}
+                  >
+                    <Avatar config={p.avatar} size={34} label={mentionLabel(p)} />
+                    {mentionLabel(p)}
+                  </button>
+                );
+              })}
             </div>
           ) : null}
-          <div className="flex min-h-8 items-center justify-center">{errorLine}</div>
-        </div>
-        <div className="bottom-bar mt-auto bg-bg px-5 pt-3">
           <button disabled={pending || !text.trim()} className="btn-primary w-full">
             {pending ? "…" : labels.save}
           </button>
         </div>
       </form>
     );
+  }
 
   return (
     <form

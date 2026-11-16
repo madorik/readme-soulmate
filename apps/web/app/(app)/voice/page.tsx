@@ -18,7 +18,8 @@ export default async function Voice() {
   return (
     <div className="flex flex-1 flex-col">
       <TopBar close="/home" label={t("common.close")} />
-      <h1 className="headline whitespace-pre-line px-6 pt-1 text-center text-[22px] leading-[1.35]">{t("voice.headline")}</h1>
+      {/* 키보드가 뜨면(적는 동안) 제목은 숨겨 적는 칸과 사람 줄이 한 화면에 */}
+      <h1 className="headline whitespace-pre-line px-6 pt-1 text-center text-[22px] leading-[1.35] [html[data-kb]_&]:hidden">{t("voice.headline")}</h1>
       <VoiceCapture
         locale={locale}
         people={people}
