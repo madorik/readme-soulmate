@@ -73,6 +73,24 @@ pnpm open:ios / pnpm open:android                          # Xcode·Android Stud
 - `vercel.json`이 매일 오전 8시(KST)에 생일 알림 크론을 부르고, 그때 7일 지난 데모 계정을 지운다.
 - 약관류(로그인 없이 열림, `?lang=en`): `/privacy-policy`, `/terms`, `/delete-account`.
 
+## 비용·한도
+
+고정비는 거의 없고(Vercel·Supabase 무료, 사진 저장소 없음, 음성 인식은 기기, 로그인은 직접 운영), 규모가 커질 때 튀는 곳은 아래 셋이다.
+
+- **AI(OpenAI)**: 부르기 전에 `reserve_ai_call`(0022)로 자리를 잡는다(`lib/ai-quota.ts`). 지난 24시간 기준, 환경 변수로 바꾼다 — `AI_CAPTURE_DAILY_LIMIT`(말로 적기, 사람마다 기본 40), `AI_GIFT_DAILY_LIMIT`(선물 추천, 기본 60, 차면 AI 없이 기록만으로 고른다), `AI_DEMO_DAILY_LIMIT`(데모·익명 계정은 종류마다, 기본 5), `AI_GLOBAL_DAILY_LIMIT`(서비스 전체, 기본 3000). 0이면 그 기능을 막는다. 표·함수가 아직 없으면(배포와 마이그레이션 사이) 예전처럼 통과시키고, 그 밖의 오류는 막는다. **코드와 별개로 OpenAI 프로젝트에 월 사용 한도(Limits → Budget)를 꼭 건다.** 말로 적기의 추론 강도는 `OPENAI_CAPTURE_EFFORT`(기본 medium) — low로 내리면 싸지만 실제 문장으로 정확도를 견준 뒤에.
+- **이용 기록(`app_events`)**: 화면에서 모아 보낸 것은 한 번에 넣는다(`unnest`). 매일 크론이 `APP_EVENTS_KEEP_DAYS`(기본 180, 90 밑으로는 못 내림)일보다 오래된 날을 (한국 날짜, 사람)마다 줄 하나로 접는다(`compact_app_events`, 0023): 그 날 활동한 사람 수(DAU·WAU·MAU·리텐션·방문자)와 머문 시간 합계는 그대로, 화면 보기 수와 화면별·경로별 숫자는 그 날부터 줄어든다. 최근 180일은 그대로라 /admin의 90일 범위와 8주 리텐션은 영향이 없다.
+- **플랜 계단**: Vercel Hobby는 비상업용이라 쿠팡 파트너스 수익이 생기면 Pro(월 $20/seat 수준)로 올린다. 사용자 정보를 다루는 DB는 무료 플랜에 백업이 없으니 사용자가 늘면 Supabase Pro로 올린다(아래 백업은 그 전까지의 안전망). Vercel 웹 분석과 우리 통계(/admin)·GA4는 방문을 겹쳐 센다 — 요금이 문제 되면 하나를 끈다.
+
+## 백업·복원
+
+`.github/workflows/db-backup.yml`이 매일 03:17(KST) `scripts/backup-db.sh`로 운영 DB(public·app 스키마)를 덤프해 비밀번호(AES-256)로 암호화하고 S3 호환 저장소에 올린다. 이 저장소는 공개라서 Actions 아티팩트에는 두지 않는다. 이용 기록 내용·로그인 세션·캐시 표의 내용은 뺀다(표 모양은 들어 있다. 이용 기록도 넣으려면 `BACKUP_INCLUDE_EVENTS=1`).
+
+1. 저장소 만들기(예: Cloudflare R2): 비공개 버킷 + 그 버킷만 읽기·쓰기 되는 API 토큰 + 객체 수명 규칙(30일 뒤 삭제).
+2. 시크릿 6개(저장소 Settings → Secrets, 또는 `gh secret set <이름> --repo madorik/remember-you < 값 파일`): `DATABASE_URL_UNPOOLED`(세션 풀러 5432 주소), `BACKUP_PASSPHRASE`(`openssl rand -base64 32`로 만들고 **GitHub는 시크릿을 다시 보여 주지 않으니 `~/.readme/`에도 보관**), `BACKUP_S3_BUCKET`, `BACKUP_S3_ENDPOINT`(R2는 `https://<계정 ID>.r2.cloudflarestorage.com`), `BACKUP_S3_ACCESS_KEY_ID`, `BACKUP_S3_SECRET_ACCESS_KEY`. 비어 있으면 워크플로가 일부러 실패한다. Actions 탭에서 한 번 직접 실행해 확인한다.
+3. 내 컴퓨터에서 바로 한 번 뜨기: `DATABASE_URL_UNPOOLED=… BACKUP_PASSPHRASE=… scripts/backup-db.sh` (pg_dump 17 이상 필요).
+4. 복원(새 빈 DB에): `openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASSPHRASE -in <파일>.dump.enc > readme.dump` → `pg_restore --no-owner --dbname=<새 DB 주소> readme.dump`. `schema "public" already exists` 오류 1개는 정상이다. `app_user` 역할이 없는 DB면 먼저 `node scripts/migrate.mjs`를 한 번 돌려 역할을 만든다.
+5. **`DATA_ENCRYPTION_KEY`는 백업과 따로 보관한다.** 알레르기·사이즈·메모·기념일은 그 키로 암호화돼 있어서, 키가 없으면 복원해도 읽지 못한다.
+
 ## 남은 외부 설정
 
 1. **구글 로그인**: Google Cloud 프로젝트 `readme-514623`(Google 인증 플랫폼, 앱 이름 리드미, 외부, 승인된 도메인 watalabs.com), 웹 클라이언트 `readme web`(리디렉션 `https://remember-you.watalabs.com/api/auth/callback/google`, 예전 주소 `https://readme.watalabs.com/api/auth/callback/google`, `http://localhost:3200/api/auth/callback/google`). 값은 Vercel·`apps/web/.env.local`·`~/.readme/google-oauth.env`. **게시 상태가 '테스트 중'이면 테스트 사용자만 로그인된다** → 대상 > 앱 게시로 프로덕션.

@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import type { Locale, YMD } from "@readme/core";
 import { aiConfigured } from "./ai";
+import { reserveAi } from "./ai-quota";
 import { open, seal } from "./crypto";
 import { displayName, folderName, listFolders, listNotes, type Person, type Session } from "./data";
 import { asSystem } from "./db";
@@ -116,6 +117,11 @@ async function askAI(body: unknown): Promise<unknown> {
 
 const model = () => process.env.OPENAI_MODEL || "gpt-6-luna";
 
+/** AI를 부르기 전 하루 한도 확인(사람마다·서비스 전체). 막히면 AI 없이 기록만으로 고른다 */
+async function aiAllowed(s: Session): Promise<boolean> {
+  return (await reserveAi({ id: s.user.id, demo: s.user.isAnonymous || s.profile.isDemo }, "gift")) === "ok";
+}
+
 /** 지난번에 고른 것(같은 basis, 14일 안). 표가 없거나 못 열면 null */
 async function readKept(s: Session, contactId: string, basis: string): Promise<unknown | null> {
   try {
@@ -153,7 +159,7 @@ export async function giftIdeas(s: Session, p: Person, ctx: GiftContext, locale:
   const kept = sanitizeIdeas(await readKept(s, p.contactId, basis), profile.avoid);
   if (kept.length) return kept;
   const rules = () => ruleIdeas(p.card, ctx, locale);
-  if (!aiConfigured()) return rules();
+  if (!aiConfigured() || !(await aiAllowed(s))) return rules();
   let ideas: GiftIdea[] = [];
   try {
     ideas = parseIdeas(await askAI(ideasRequest(profile, ctx, locale, model())), profile.avoid);
@@ -173,7 +179,7 @@ export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, not
   const basis = `links:${skip.join(",")}:${giftBasis(profile, ctx, locale)}`;
   const rules = ruleCatalogPicks(p.card, ctx, locale, eligible, profile.notes);
   let ai: CatalogPick[] = sanitizeCatalogPicks(await readKept(s, p.contactId, basis), eligible);
-  if (!ai.length && aiConfigured() && eligible.length) {
+  if (!ai.length && aiConfigured() && eligible.length && (await aiAllowed(s))) {
     try {
       ai = parseCatalogPicks(await askAI(catalogRequest(profile, ctx, locale, model(), eligible)), eligible);
     } catch (e) {

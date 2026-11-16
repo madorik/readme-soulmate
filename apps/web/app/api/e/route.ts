@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getSession } from "@/lib/data";
+import { getAuth } from "@/lib/auth";
 import { isBot, platformOf, trackMany, type TrackInfo } from "@/lib/track";
 import { CLIENT_EVENTS, uaInfo, type ClientEvent } from "@/lib/usage";
 
@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
   }
   // 예전 모양(하나씩 { n, i, b, s })도 받는다
   const raw = Array.isArray(body.e) ? body.e : [body];
-  const session = await getSession().catch(() => null);
+  // 사람 id만 필요하다: 프로필까지 읽는 화면용 getSession(DB 한 번) 대신 인증 세션(쿠키 캐시 5분 동안은 DB 없이)
+  const session = await getAuth().api.getSession({ headers: request.headers }).catch(() => null);
   const platform = platformOf(ua);
   const { os, browser } = uaInfo(ua);
   const anon = typeof body.a === "string" ? body.a : null;

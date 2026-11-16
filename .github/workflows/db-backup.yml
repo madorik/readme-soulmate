@@ -1,0 +1,72 @@
+# 매일 새벽 3시 17분(KST) 운영 DB를 덤프해서 비밀번호로 암호화한 뒤 S3 호환 저장소(Cloudflare R2·AWS S3 등)에 올린다.
+# 설정(시크릿 6개)·복원 방법은 README의 '백업·복원'. 시크릿이 비어 있으면 일부러 실패한다(백업이 조용히 안 도는 것보다 낫다).
+# 이 저장소는 공개라서: Actions 아티팩트에는 두지 않고(누구나 받을 수 있다), 실패 로그에도 DB·저장소 주소가 안 남게 명령의 오류 출력은 숨긴다.
+name: db-backup
+
+on:
+  schedule:
+    - cron: "17 18 * * *" # UTC 18:17 = KST 03:17
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+      BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+    steps:
+      - name: 시크릿 확인
+        run: |
+          missing=""
+          for v in DATABASE_URL_UNPOOLED BACKUP_PASSPHRASE BACKUP_S3_BUCKET BACKUP_S3_ENDPOINT AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::비어 있는 시크릿(BACKUP_S3_*는 이름 앞에 붙은 것):$missing. README의 '백업·복원'을 보세요"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/backup-db.sh
+          sparse-checkout-cone-mode: false
+
+      # DB가 17이라 pg_dump도 17 이상이어야 한다(러너 기본은 16)
+      - name: pg_dump 17 설치
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: 덤프·암호화
+        run: |
+          file="readme-$(date -u +%Y%m%dT%H%M%SZ).dump.enc"
+          echo "BACKUP_FILE=$file" >> "$GITHUB_ENV"
+          if ! bash scripts/backup-db.sh "$file" > /dev/null 2>&1; then
+            echo "::error::덤프 실패. 오류 내용은 공개 로그에 남기지 않았어요(같은 명령을 내 컴퓨터에서 실행해 보세요)"
+            exit 1
+          fi
+          echo "백업 파일 만듦: $(wc -c < "$file" | tr -d ' ')바이트"
+
+      - name: 저장소에 올리기
+        run: |
+          if ! aws s3 cp "$BACKUP_FILE" "s3://$BACKUP_S3_BUCKET/readme-db/$BACKUP_FILE" --endpoint-url "$BACKUP_S3_ENDPOINT" --only-show-errors > /dev/null 2>&1; then
+            echo "::error::올리기 실패. 오류 내용은 공개 로그에 남기지 않았어요(버킷 이름·주소·키를 확인하세요)"
+            exit 1
+          fi
+          echo "올림: readme-db/$BACKUP_FILE"

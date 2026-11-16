@@ -2,6 +2,7 @@ import { dueReminders, eventTitle, isLocale, sanitizeOffsets, sanitizeSection, t
 import { NextResponse, type NextRequest } from "next/server";
 import { aad, open } from "@/lib/crypto";
 import { asSystem } from "@/lib/db";
+import { tidyUsage } from "@/lib/housekeeping";
 import { sendPush } from "@/lib/push";
 
 // 매일 아침 한 번(vercel.json): 오늘 알릴 생일·기념일을 알림으로 남기고, 푸시 키가 있으면 보낸다.
@@ -103,5 +104,7 @@ export async function GET(request: NextRequest) {
   }
   // 데모 계정은 7일 지나면 지운다(카드·연락처·알림은 외래 키로 함께 지워진다)
   const demos = await asSystem((q) => q(`delete from "user" where "isAnonymous" and "createdAt" < now() - interval '7 days' returning id`));
-  return NextResponse.json({ users, created, pushed, demosRemoved: demos.length });
+  // 이용 기록 접기·AI 호출 기록 지우기(표가 끝없이 커지지 않게)
+  const tidy = await tidyUsage();
+  return NextResponse.json({ users, created, pushed, demosRemoved: demos.length, tidy });
 }

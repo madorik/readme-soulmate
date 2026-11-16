@@ -54,14 +54,28 @@ export function trackMany(rows: { name: EventName; info: TrackInfo }[]): void {
   const list = rows.filter((r) => isEventName(r.name)).slice(0, 30).map((r) => ({ name: r.name, ...clean(r.info) }));
   if (!list.length) return;
   const write = () =>
-    asSystem(async (q) => {
-      for (const e of list) {
-        await q(
-          "insert into app_events (name, user_id, item, band, source, path, value, anon, platform, ref, campaign, os, browser) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
-          [e.name, e.userId, e.item, e.band, e.source, e.path, e.value, e.anon, e.platform, e.ref, e.campaign, e.os, e.browser],
-        );
-      }
-    }).then(
+    // 화면에서 모아 보낸 것(최대 30개)을 한 번에 넣는다: 왕복 한 번(전에는 줄마다 한 번)
+    asSystem((q) =>
+      q(
+        `insert into app_events (name, user_id, item, band, source, path, value, anon, platform, ref, campaign, os, browser)
+         select * from unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::integer[], $8::text[], $9::text[], $10::text[], $11::text[], $12::text[], $13::text[])`,
+        [
+          list.map((e) => e.name),
+          list.map((e) => e.userId),
+          list.map((e) => e.item),
+          list.map((e) => e.band),
+          list.map((e) => e.source),
+          list.map((e) => e.path),
+          list.map((e) => e.value),
+          list.map((e) => e.anon),
+          list.map((e) => e.platform),
+          list.map((e) => e.ref),
+          list.map((e) => e.campaign),
+          list.map((e) => e.os),
+          list.map((e) => e.browser),
+        ],
+      ),
+    ).then(
       () => undefined,
       (err) => console.warn("track failed", err instanceof Error ? err.message : err),
     );

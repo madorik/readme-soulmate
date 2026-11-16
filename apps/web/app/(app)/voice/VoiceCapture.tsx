@@ -219,6 +219,7 @@ type Labels = CaptureBadgeLabels & {
   more: string;
   aiOff: string;
   failed: string;
+  limit: string;
   nothing: string;
   micError: string;
 };
@@ -476,7 +477,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
     r.start();
   };
 
-  const error = result?.error === "ai_off" ? labels.aiOff : result?.error === "failed" ? labels.failed : result?.error === "nothing" ? labels.nothing : micError ? labels.micError : "";
+  const error = result?.error === "ai_off" ? labels.aiOff : result?.error === "failed" ? labels.failed : result?.error === "limit" ? labels.limit : result?.error === "nothing" ? labels.nothing : micError ? labels.micError : "";
 
   // 적은 뒤: 어디에 들어갔는지 한 줄씩, 아래에 되돌리기·더 말하기
   if (result && !result.error) {

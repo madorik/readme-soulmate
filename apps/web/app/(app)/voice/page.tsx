@@ -46,6 +46,7 @@ export default async function Voice() {
           more: t("voice.more"),
           aiOff: t("voice.aiOff"),
           failed: t("voice.failed"),
+          limit: t("voice.limit"),
           nothing: t("voice.nothing"),
           micError: t("voice.micError"),
         }}

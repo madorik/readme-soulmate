@@ -140,6 +140,7 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
             undo: t("voice.undo"),
             undone: t("voice.undone"),
             failed: t("voice.failed"),
+            limit: t("voice.limit"),
             nothing: t("person.quickNothing"),
             aiOff: t("voice.aiOff"),
           }}

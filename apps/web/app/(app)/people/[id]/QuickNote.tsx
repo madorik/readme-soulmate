@@ -14,7 +14,7 @@ export function QuickNote({
   labels,
 }: {
   contactId: string;
-  labels: CaptureBadgeLabels & { placeholder: string; save: string; undo: string; undone: string; failed: string; nothing: string; aiOff: string };
+  labels: CaptureBadgeLabels & { placeholder: string; save: string; undo: string; undone: string; failed: string; limit: string; nothing: string; aiOff: string };
 }) {
   const [text, setText] = useState("");
   const [result, setResult] = useState<CaptureState | null>(null);
@@ -33,7 +33,7 @@ export function QuickNote({
     });
   };
 
-  const error = result?.error === "ai_off" ? labels.aiOff : result?.error === "nothing" ? labels.nothing : result?.error ? labels.failed : null;
+  const error = result?.error === "ai_off" ? labels.aiOff : result?.error === "nothing" ? labels.nothing : result?.error === "limit" ? labels.limit : result?.error ? labels.failed : null;
 
   return (
     <div className="card mx-4 mt-5 flex flex-col p-1.5">

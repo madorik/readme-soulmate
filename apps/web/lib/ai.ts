@@ -11,6 +11,12 @@ export function aiConfigured(): boolean {
   return !!process.env.OPENAI_API_KEY;
 }
 
+/** 말로 적기의 추론 강도: OPENAI_CAPTURE_EFFORT(none·low·medium·high). 기본 medium. 값싼 쪽(low)으로 내리려면 실제 문장으로 정확도를 견주어 본 뒤에 */
+function captureEffort(): "none" | "low" | "medium" | "high" {
+  const v = process.env.OPENAI_CAPTURE_EFFORT;
+  return v === "none" || v === "low" || v === "medium" || v === "high" ? v : "medium";
+}
+
 /** 문장 하나를 나눈다. 실패하면 throw */
 export async function classifyCapture(text: string, people: CapturePerson[], locale: Locale, about: CapturePerson | null = null, mentioned: CapturePerson[] = []): Promise<CaptureItem[]> {
   const key = process.env.OPENAI_API_KEY;
@@ -19,7 +25,7 @@ export async function classifyCapture(text: string, people: CapturePerson[], loc
   const res = await fetch(`${base}/responses`, {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify(captureRequest(text, people, locale, process.env.OPENAI_MODEL || "gpt-6-luna", "medium", about, mentioned)),
+    body: JSON.stringify(captureRequest(text, people, locale, process.env.OPENAI_MODEL || "gpt-6-luna", captureEffort(), about, mentioned)),
     signal: AbortSignal.timeout(25_000),
   });
   if (!res.ok) throw new Error(`ai_http_${res.status}`);

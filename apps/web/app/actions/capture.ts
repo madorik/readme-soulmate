@@ -4,6 +4,7 @@ import { track } from "@/lib/track";
 import { captureField, describeCapture, isSection, mergeCapture, sanitizeSection, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { aiConfigured, classifyCapture } from "@/lib/ai";
+import { reserveAi } from "@/lib/ai-quota";
 import { displayName, listNotes, listPeople, readCard, requireSession, sealNote, writeContactSection, writeSection, type Person } from "@/lib/data";
 import { resolveMentions } from "@/lib/mention";
 
@@ -32,7 +33,7 @@ export type UndoOp =
 export interface CaptureState {
   lines: CaptureLine[];
   undo: UndoOp[];
-  error: "ai_off" | "failed" | "nothing" | null;
+  error: "ai_off" | "failed" | "nothing" | "limit" | null;
 }
 
 /**
@@ -59,6 +60,10 @@ export async function captureNote(raw: string, aboutId?: string, picked?: { id: 
   const asCapture = (p: Person) => ({ id: p.contactId, name: p.name, nickname: p.nickname });
   const mentioned = ids.map((id) => people.find((p) => p.contactId === id)).filter((p): p is Person => !!p);
   const about = aboutId ? people.find((p) => p.contactId === aboutId) : mentioned.length === 1 ? mentioned[0] : undefined;
+  // 하루 한도(사람마다·서비스 전체). 막히면 OpenAI를 부르지 않는다
+  const gate = await reserveAi({ id: s.user.id, demo: s.user.isAnonymous || s.profile.isDemo }, "capture");
+  if (gate === "user_limit" || gate === "global_limit") return { lines: [], undo: [], error: "limit" };
+  if (gate !== "ok") return { lines: [], undo: [], error: "failed" };
   let items;
   try {
     items = await classifyCapture(text, people.map(asCapture), locale, about ? asCapture(about) : null, mentioned.map(asCapture));
