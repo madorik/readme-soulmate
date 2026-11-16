@@ -3,7 +3,7 @@ import Link from "next/link";
 import { GiftLinkTabs, PicksLoading } from "@/components/GiftLinkTabs";
 import { Icon } from "@/components/marks";
 import type { Person, Session } from "@/lib/data";
-import { giftContext, giftLinkPicks, giftNotes, giftPicks, giftPicksConfigured, type GiftPick } from "@/lib/gifts";
+import { giftCardUrl, giftContext, giftLinkPicks, giftNotes, giftPicks, giftPicksConfigured, type GiftPick } from "@/lib/gifts";
 import type { GiftContext } from "@/lib/gift-core";
 import { makeT } from "@/lib/i18n";
 
@@ -75,8 +75,9 @@ export function parseSkip(v: string | undefined): string[] {
 /**
  * 이 사람에게 어울릴 선물(max: 상품 방식에서 찾을 말 몇 개까지). title이 없으면 고지 없이(여러 사람 화면).
  * again: 다시 고르기 주소의 앞부분(지금 화면 주소). 주면 오른쪽 위에 다시 고르기 단추(부모 section이 relative여야 한다)
+ * card: 주면 고른 선물로 가족에게 보낼 카드 주소를 만들어 아래 단추 줄에 알린다(부르는 말·챙길 날 한 줄)
  */
-export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6", title = true, skip = [], again }: { s: Session; person: Person; occasion: GiftContext["occasion"]; today: YMD; max?: number; pad?: string; title?: boolean; skip?: string[]; again?: string }) {
+export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6", title = true, skip = [], again, card }: { s: Session; person: Person; occasion: GiftContext["occasion"]; today: YMD; max?: number; pad?: string; title?: boolean; skip?: string[]; again?: string; card?: { name: string; event: string } }) {
   const { locale } = s.profile;
   const t = makeT(locale);
   const [ctx, notes] = await Promise.all([giftContext(s, person, occasion, today), giftNotes(s, person)]);
@@ -85,6 +86,7 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
     if (!bands.length) return null;
     const shown = bands.flatMap((b) => b.items.map((i) => i.id));
     const next = [...new Set([...skip, ...shown])].slice(-60).join(",");
+    const share = card ? { url: giftCardUrl({ locale, name: card.name, event: card.event, ids: shown }), text: t("picks.shareText", { name: card.name }) } : undefined;
     return (
       <>
         {again ? (
@@ -99,6 +101,7 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
         <GiftLinkTabs
           pad={pad}
           initial={initial}
+          share={share}
           label={t("picks.bands")}
           bands={bands.map((b) => ({ band: b.band, label: t(`picks.band.${b.band}` as "picks.band.1"), items: b.items.map((i) => ({ id: i.id, title: i.q, reason: i.reason, url: i.url, image: i.image })) }))}
         />

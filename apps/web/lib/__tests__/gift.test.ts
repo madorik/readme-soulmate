@@ -10,6 +10,8 @@ import {
   defaultBand,
   eligibleCatalog,
   freshCatalog,
+  openCard,
+  sealCard,
   headWord,
   ruleCatalogPicks,
   sanitizeCatalogPicks,
@@ -195,4 +197,17 @@ test("다시 고르기: 지난번에 보인 것을 빼고, 가격대에 둘도 �
   assert.equal(fewLeft.filter((x) => x.band === "1").length, ones.length, "다섯도 안 남으면 그 가격대는 다시 전부");
   assert.ok(GIFT_CATALOG.filter((x) => x.image).length >= GIFT_CATALOG.length - 5);
   for (const x of GIFT_CATALOG) if (x.image) assert.match(x.image, /^https:\/\/[a-z0-9]+\.coupangcdn\.com\/thumbnails\//, x.id);
+});
+
+test("공유 카드 토큰: 서명이 맞아야 열리고, 고친 토큰·다른 키는 안 열린다", () => {
+  const key = Buffer.alloc(32, 7);
+  const card = { locale: "ko" as const, name: "아빠", event: "아빠 생일 12월 14일 월요일", ids: ["drip-bag", "radio", "BAD ID", "hanwoo"] };
+  const token = sealCard(key, card);
+  assert.ok(token.length < 300, `짧게: ${token.length}`);
+  assert.deepEqual(openCard(key, token), { ...card, ids: ["drip-bag", "radio", "hanwoo"] });
+  assert.equal(openCard(Buffer.alloc(32, 8), token), null);
+  const [body, sig] = token.split(".");
+  assert.equal(openCard(key, `${body}x.${sig}`), null);
+  assert.equal(openCard(key, body!), null);
+  assert.equal(openCard(key, "garbage"), null);
 });

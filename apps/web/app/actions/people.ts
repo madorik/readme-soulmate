@@ -1,6 +1,6 @@
 "use server";
 
-import { isSection, sanitizeAvatar, type AvatarConfig, type Section } from "@readme/core";
+import { isSection, josa, sanitizeAvatar, type AvatarConfig, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession, sealNote, writeContactSection } from "@/lib/data";
@@ -36,6 +36,26 @@ export async function addNote(form: FormData): Promise<void> {
     );
   }
   revalidatePath(`/people/${contactId}`);
+}
+
+/**
+ * 선물 완료: 이번 챙길 날(label, 예: "2026 아빠 생일")에 한 선물을 메모로 남긴다(같은 날 것은 바꾼다).
+ * 메모에 '선물'이 들어가 다음 선물 추천에서 같은 것은 빠진다
+ */
+export async function markGiftDone(contactId: string, rawLabel: string, rawGift: string): Promise<{ ok: boolean }> {
+  if (typeof contactId !== "string" || typeof rawLabel !== "string" || typeof rawGift !== "string") return { ok: false };
+  const { s } = await ownContact(contactId);
+  const label = rawLabel.replace(/\s+/g, " ").trim().slice(0, 40);
+  const gift = rawGift.replace(/\s+/g, " ").trim().slice(0, 80);
+  if (!label || !gift) return { ok: false };
+  const body = s.profile.locale === "ko" ? `${josa(gift, "을")} 선물했어요` : `Gave ${gift}`;
+  await s.tx(async (q) => {
+    await q("delete from notes where contact_id = $1 and label = $2", [contactId, label]);
+    await q("insert into notes (author_id, contact_id, label, payload) values ($1, $2, $3, $4)", [s.user.id, contactId, label, JSON.stringify(sealNote(s.user.id, contactId, body))]);
+  });
+  revalidatePath(`/people/${contactId}`);
+  revalidatePath(`/people/${contactId}/reminder`);
+  return { ok: true };
 }
 
 export async function deleteNote(form: FormData): Promise<void> {

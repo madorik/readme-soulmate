@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
+import { GiftActions } from "@/components/GiftActions";
 import { GiftPicks, GiftPicksSkeleton, parseSkip } from "@/components/GiftPicks";
 import { Icon, MarkerCircle } from "@/components/marks";
-import { ShareTextButton } from "@/components/ShareButtons";
 import { displayName, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
 import { giftPicksOn } from "@/lib/gifts";
 import { makeT } from "@/lib/i18n";
@@ -65,6 +65,10 @@ export default async function Reminder({ params, searchParams }: { params: Promi
   const loading = [1, 2, 3, 4].map((n) => t(`picks.loading.${n}` as "picks.loading.1", { name }));
   const occasion = anniversary ? { kind: "anniversary" as const, label: anniversary.label } : dates?.birthday ? { kind: "birthday" as const, label: "" } : null;
   const shareText = next ? `${event} ${formatDayFull(next.date, locale)}${spec?.calendar === "lunar" ? ` (${formatSpec(spec, locale)})` : ""}` : event;
+  // 선물 완료: 이번 챙길 날 메모 이름(지난 지 얼마 안 된 날이면 그해). 남겼으면 무엇을 했는지
+  const doneYear = next ? (next.daysUntil > 180 ? next.date.y - 1 : next.date.y) : today.y;
+  const doneLabel = `${doneYear} ${event}`.slice(0, 40);
+  const done = notes.find((n) => n.label === doneLabel)?.body ?? null;
 
   return (
     <>
@@ -128,7 +132,7 @@ export default async function Reminder({ params, searchParams }: { params: Promi
           </h2>
           {/* 다시 고르면 key가 바뀌어 고르는 동안 빈 자리와 문구를 다시 보인다 */}
           <Suspense key={skip.join(",")} fallback={<GiftPicksSkeleton loading={loading} />}>
-            <GiftPicks s={s} person={p} occasion={occasion} today={today} skip={skip} again={again} />
+            <GiftPicks s={s} person={p} occasion={occasion} today={today} skip={skip} again={again} card={{ name, event: shareText }} />
           </Suspense>
         </section>
       ) : null}
@@ -136,18 +140,22 @@ export default async function Reminder({ params, searchParams }: { params: Promi
 
       <div className="bottom-bar mt-auto flex flex-col gap-2.5 bg-bg px-6 pt-4">
         {next && next.daysUntil > 0 && s.profile.reminderOffsets.includes(0) ? <span className="text-[13px] text-muted">{t("reminder.again")}</span> : null}
-        <div className="grid grid-cols-2 gap-2.5">
-          <ShareTextButton text={shareText} label={t("reminder.together")} doneLabel={t("reminder.shared")} className="btn-outline" />
-          {picksOn ? (
-            <a href="#picks" className="btn-primary">
-              {t("person.pickGift")}
-            </a>
-          ) : (
-            <Link href={`/people/${p.contactId}#gifts`} className="btn-primary">
-              {t("person.pickGift")}
-            </Link>
-          )}
-        </div>
+        <GiftActions
+          contactId={p.contactId}
+          doneLabel={doneLabel}
+          done={done}
+          fallbackText={shareText}
+          labels={{
+            together: t("reminder.together"),
+            shared: t("reminder.shared"),
+            done: t("picks.done"),
+            doneTitle: t("picks.doneTitle"),
+            doneOwn: t("picks.doneOwn"),
+            doneSave: t("picks.doneSave"),
+            doneEdit: t("picks.doneEdit"),
+            close: t("common.close"),
+          }}
+        />
       </div>
     </>
   );

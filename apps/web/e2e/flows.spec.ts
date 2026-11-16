@@ -701,7 +701,11 @@ test("영어로 바꾸면 영어 화면", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /사랑하는 사람들의/ })).toBeVisible();
 });
 
-test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정이라고 알려 준다", async ({ page }) => {
+test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정이라고 알려 준다", async ({ page, browser }) => {
+  // 공유창 대신 보낸 것을 잡아 둔다
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", { configurable: true, value: async (d: unknown) => void ((window as unknown as { __shared: unknown }).__shared = d) });
+  });
   await page.goto("/");
   await page.getByRole("button", { name: "데모로 둘러보기" }).click();
   await expect(page).toHaveURL(/\/home/);
@@ -730,6 +734,29 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   await picks.getByRole("tab", { name: "1만원대" }).click();
   const after = await picks.getByRole("tabpanel").getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
   expect(after.some((h) => before.includes(h))).toBe(false);
+
+  // 가족과 같이 준비: 고른 선물 카드 주소를 보내고, 그 카드는 로그인 없이 가격대별 선물·쿠팡 링크로 열린다
+  await page.getByRole("button", { name: "가족과 같이 준비" }).click();
+  const shared = (await page.evaluate(() => (window as unknown as { __shared?: { url?: string; text?: string } }).__shared)) ?? {};
+  expect(shared.text).toContain("아내님 선물 후보");
+  expect(shared.url).toMatch(/\/g\/[\w-]+\.[\w-]+\?b=1$/);
+  const guest = await browser.newContext();
+  const card = await guest.newPage();
+  await card.goto(shared.url!);
+  await expect(card.getByRole("heading", { name: "아내님 선물 후보" })).toBeVisible();
+  await expect(card.getByRole("tab", { name: "1만원대" })).toHaveAttribute("aria-selected", "true");
+  await expect(card.getByRole("tabpanel").getByRole("link")).toHaveCount(5);
+  await expect(card.getByRole("tabpanel").getByRole("link").first()).toHaveAttribute("href", /^https:\/\/link\.coupang\.com\/a\//);
+  await guest.close();
+
+  // 선물 완료: 고른 것 중 하나를 골라 남기면 완료로 바뀌고 무엇을 했는지 보인다
+  await page.getByRole("button", { name: "선물 완료" }).click();
+  const sheet = page.getByRole("dialog", { name: "어떤 선물을 했나요?" });
+  const first = (await sheet.getByRole("button").filter({ hasNotText: "기록하기" }).nth(1).innerText()).trim();
+  await sheet.getByRole("button", { name: first, exact: true }).click();
+  await sheet.getByRole("button", { name: "기록하기" }).click();
+  await expect(page.getByText(new RegExp(`^${first}[을를] 선물했어요$`))).toBeVisible();
+  await expect(page.getByRole("button", { name: /선물 완료 · .* · 다시 적기/ })).toBeVisible();
   await page.goto("/privacy");
   await expect(page.getByText(/데모 계정이에요/)).toBeVisible();
   await expect(page.getByRole("button", { name: "시스템" })).toHaveAttribute("aria-pressed", "true");

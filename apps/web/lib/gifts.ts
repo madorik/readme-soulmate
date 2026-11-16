@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import type { Locale, YMD } from "@readme/core";
 import { aiConfigured } from "./ai";
 import { open, seal } from "./crypto";
@@ -6,6 +7,7 @@ import { displayName, folderName, listFolders, listNotes, type Person, type Sess
 import { asSystem } from "./db";
 import { GIFT_CATALOG, type PriceBand } from "./gift-catalog";
 import { makeT } from "./i18n";
+import { absoluteUrl } from "./site";
 import {
   COUPANG_SEARCH_PATH,
   IDEA_COUNT,
@@ -17,8 +19,11 @@ import {
   parseCatalogPicks,
   ruleCatalogPicks,
   sanitizeCatalogPicks,
+  openCard,
+  sealCard,
   type BandPicks,
   type CatalogPick,
+  type GiftCard,
   coupangAuthorization,
   coupangSearchQuery,
   coupangSearchUrl,
@@ -247,4 +252,21 @@ export async function giftPicks(s: Session, p: Person, ctx: GiftContext, notes: 
   const ideas = (await giftIdeas(s, p, ctx, s.profile.locale, notes)).slice(0, max);
   const found = await Promise.all(ideas.map((i) => coupangSearch(i.keyword).catch(() => null)));
   return ideas.map((i, n) => ({ ...i, products: found[n]?.products.slice(0, PRODUCTS_PER_IDEA) ?? [], more: found[n]?.landingUrl ?? coupangSearchUrl(i.keyword) }));
+}
+
+// 공유 카드: 서버 키(DATA_ENCRYPTION_KEY)에서 뽑은 서명 키
+function cardKey(): Buffer {
+  const k = process.env.DATA_ENCRYPTION_KEY;
+  if (!k) throw new Error("DATA_ENCRYPTION_KEY is missing");
+  return createHash("sha256").update(`gift-card\n${k}`).digest();
+}
+
+/** 가족에게 보낼 카드 주소 */
+export function giftCardUrl(card: GiftCard): string {
+  return absoluteUrl(`/g/${sealCard(cardKey(), card)}`);
+}
+
+/** 카드 주소의 토큰을 연다(서명이 안 맞거나 깨졌으면 null) */
+export function readGiftCard(token: string): GiftCard | null {
+  return openCard(cardKey(), token);
 }

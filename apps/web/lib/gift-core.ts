@@ -1,8 +1,9 @@
 // 선물 추천 중 서버 키와 상관없는 것: 기록 전체 + 메모 → 힌트 줄, AI 요청 몸·응답 풀기, 기록만으로 고르기(AI가 없거나 실패할 때), 쿠팡 파트너스 서명·응답 풀기,
 // 쿠팡 API 키가 없을 때 쓰는 찾을 말 목록(gift-catalog)에서 고르기(가격대마다 다섯).
 // 서버 전용 표시가 없어 시험에서 바로 불러 쓴다. 쿠팡은 한국 쇼핑몰이라 찾을 말·힌트는 늘 한국어로, 이유(reason)만 화면 언어로.
-import { createHash, createHmac } from "node:crypto";
-import { ALCOHOL_KINDS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, PATTERNS, SEASONS, STYLES, VIBES, josa, labelOf, realCodes, type Locale, type PartialCard } from "@readme/core";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { deflateRawSync, inflateRawSync } from "node:zlib";
+import { ALCOHOL_KINDS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, PATTERNS, SEASONS, STYLES, VIBES, josa, isLocale, labelOf, realCodes, type Locale, type PartialCard } from "@readme/core";
 import { PRICE_BANDS, type CatalogGift, type PriceBand } from "./gift-catalog";
 
 export interface GiftIdea {
@@ -515,4 +516,41 @@ export function parseCoupangSearch(body: unknown, extraHost?: string): CoupangRe
 /** API가 막혔을 때: 쿠팡 검색 화면(파트너스 링크 아님) */
 export function coupangSearchUrl(keyword: string): string {
   return `https://www.coupang.com/np/search?q=${encodeURIComponent(keyword)}`;
+}
+
+// ── 공유 카드(가족과 같이 준비) ─────────────────────────────────
+// 로그인 없이 가족이 여는 카드 주소(/g/<토큰>). DB 없이 토큰에 담는다: 부르는 말·날·고른 선물 id만(이유·기록은 담지 않는다).
+// 서버 키로 서명해서 남이 내용을 꾸며 넣지 못하게 하고, 링크·사진·상품명은 열 때 목록에서 찾는다.
+
+export interface GiftCard {
+  locale: Locale;
+  /** 부르는 말(아빠) */
+  name: string;
+  /** 챙길 날 한 줄(아빠 생일 · 12월 14일 월요일) */
+  event: string;
+  /** 고른 선물(gift-catalog id) */
+  ids: string[];
+}
+
+const sign = (key: Buffer, body: string) => createHmac("sha256", key).update(body).digest("base64url").slice(0, 22);
+
+export function sealCard(key: Buffer, c: GiftCard): string {
+  const json = JSON.stringify({ l: c.locale, n: clean(c.name, 40), e: clean(c.event, 60), i: c.ids.filter((x) => /^[a-z0-9-]{1,40}$/.test(x)).slice(0, 40).join(" ") });
+  const body = deflateRawSync(Buffer.from(json), { level: 9 }).toString("base64url");
+  return `${body}.${sign(key, body)}`;
+}
+
+export function openCard(key: Buffer, token: string): GiftCard | null {
+  const [body, sig, extra] = String(token).split(".");
+  if (!body || !sig || extra !== undefined || body.length > 2000) return null;
+  const want = Buffer.from(sign(key, body));
+  const got = Buffer.from(sig);
+  if (got.length !== want.length || !timingSafeEqual(got, want)) return null;
+  try {
+    const raw = JSON.parse(inflateRawSync(Buffer.from(body, "base64url"), { maxOutputLength: 8192 }).toString("utf8")) as Record<string, unknown>;
+    const ids = typeof raw.i === "string" ? raw.i.split(" ").filter((x) => /^[a-z0-9-]{1,40}$/.test(x)) : [];
+    return { locale: isLocale(raw.l) ? raw.l : "ko", name: clean(raw.n, 40), event: clean(raw.e, 60), ids };
+  } catch {
+    return null;
+  }
 }

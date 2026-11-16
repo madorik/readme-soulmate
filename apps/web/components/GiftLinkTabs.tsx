@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { setGiftShare } from "@/components/giftShare";
 import { Icon } from "@/components/marks";
 
 // 이런 선물은 어때요(목록 방식): 가격대 칩을 누르거나 목록을 좌우로 밀면 그 가격대에서 고른 선물들.
@@ -9,12 +10,13 @@ import { Icon } from "@/components/marks";
 export interface LinkBand {
   band: string;
   label: string;
-  items: { id: string; title: string; reason: string; url: string; image: string }[];
+  items: { id: string; title: string; reason: string; url: string; image: string; name?: string }[];
 }
 
 const SWIPE = 56;
 
-export function GiftLinkTabs({ bands, initial, pad = "px-6", label }: { bands: LinkBand[]; initial: string; pad?: string; label: string }) {
+/** share: 주면 아래 단추 줄(가족과 같이 준비·선물 완료)에 카드 주소와 지금 가격대를 알린다(선물 힌트 화면 하나에서만) */
+export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share }: { bands: LinkBand[]; initial: string; pad?: string; label: string; share?: { url: string; text: string } }) {
   const [index, setIndex] = useState(() => Math.max(0, bands.findIndex((b) => b.band === initial)));
   const [enter, setEnter] = useState<"left" | "right" | null>(null);
   const [dx, setDx] = useState(0);
@@ -25,6 +27,14 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label }: { bands: L
   useEffect(() => {
     chips.current[index]?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
   }, [index]);
+
+  const curBand = cur?.band ?? null;
+  const curItems = (cur?.items ?? []).map((i) => i.title).join("\n");
+  useEffect(() => {
+    if (!share) return;
+    setGiftShare({ url: share.url, text: share.text, band: curBand, items: curItems ? curItems.split("\n") : [] });
+  }, [share, curBand, curItems]);
+  useEffect(() => (share ? () => setGiftShare(null) : undefined), [share]);
 
   if (!cur) return null;
   const go = (to: number) => {
@@ -108,7 +118,11 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label }: { bands: L
                     <span className="truncate text-[15.5px] font-bold tracking-[-0.01em]">{it.title}</span>
                     <Icon name="external" size={15} className="shrink-0 text-muted" />
                   </span>
-                  <span className="line-clamp-3 text-[13.5px] leading-[1.5] text-ink-2">{it.reason}</span>
+                  {it.reason ? (
+                    <span className="line-clamp-3 text-[13.5px] leading-[1.5] text-ink-2">{it.reason}</span>
+                  ) : it.name ? (
+                    <span className="line-clamp-2 text-[13px] leading-[1.45] text-muted">{it.name}</span>
+                  ) : null}
                 </span>
               </a>
             </li>
