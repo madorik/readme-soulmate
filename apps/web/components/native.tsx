@@ -100,8 +100,9 @@ export function NativeBridge({ locale, appLock, reminders, pushEnabled }: { loca
     return () => remove?.();
   }, [router]);
 
-  // 바깥 링크(쿠팡 파트너스·지도·적어 둔 링크)는 앱 웹뷰 안에서 열지 않고 인앱 브라우저(사파리·크롬)로.
-  // 쿠팡은 웹뷰에서 열면 '권한 없음'으로 막는다. 앱 주소·http 아닌 링크(tel: 등)는 그대로
+  // 바깥 링크(쿠팡 파트너스·지도·적어 둔 링크)는 앱 웹뷰 안에서 열지 않고 휴대폰에 넘긴다: 웹뷰가 앱 밖 주소로 가려 하면
+  // Capacitor가 막고 휴대폰에 넘긴다(iOS UIApplication.open, Android ACTION_VIEW). 쿠팡 앱이 링크를 받으면 쿠팡 앱이, 아니면 기본 브라우저가 연다.
+  // (인앱 브라우저는 기본 브라우저의 탭이라 쿠팡 앱으로 넘어가지 않는다.) 앱 주소·http 아닌 링크(tel: 등)는 그대로
   useEffect(() => {
     if (!isNativeApp()) return;
     const onClick = (e: MouseEvent) => {
@@ -116,9 +117,7 @@ export function NativeBridge({ locale, appLock, reminders, pushEnabled }: { loca
       }
       if (!/^https?:$/.test(url.protocol) || url.origin === window.location.origin) return;
       e.preventDefault();
-      void import("@capacitor/browser")
-        .then(({ Browser }) => Browser.open({ url: url.toString() }))
-        .catch(() => window.open(url.toString(), "_blank"));
+      window.location.href = url.toString();
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
