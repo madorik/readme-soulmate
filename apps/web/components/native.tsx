@@ -100,6 +100,30 @@ export function NativeBridge({ locale, appLock, reminders, pushEnabled }: { loca
     return () => remove?.();
   }, [router]);
 
+  // 바깥 링크(쿠팡 파트너스·지도·적어 둔 링크)는 앱 웹뷰 안에서 열지 않고 인앱 브라우저(사파리·크롬)로.
+  // 쿠팡은 웹뷰에서 열면 '권한 없음'으로 막는다. 앱 주소·http 아닌 링크(tel: 등)는 그대로
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0) return;
+      const a = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (!a) return;
+      let url: URL;
+      try {
+        url = new URL(a.href, window.location.href);
+      } catch {
+        return;
+      }
+      if (!/^https?:$/.test(url.protocol) || url.origin === window.location.origin) return;
+      e.preventDefault();
+      void import("@capacitor/browser")
+        .then(({ Browser }) => Browser.open({ url: url.toString() }))
+        .catch(() => window.open(url.toString(), "_blank"));
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, []);
+
   // 푸시 토큰 등록: 서버에 FCM 키가 있을 때만(Firebase 설정 없이 등록하면 Android 앱이 멈출 수 있다)
   useEffect(() => {
     if (!isNativeApp() || !pushEnabled) return;
