@@ -1,4 +1,4 @@
-import { addDays, countWord, formatDayFull, formatSpec, NONE, NONE_LABEL, questionFor, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
+import { addDays, canAnswerOwn, countWord, formatDayFull, formatSpec, NONE, NONE_LABEL, questionFor, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
 import Link from "next/link";
 import { answerQuestion } from "@/app/actions/card";
 import { Avatar } from "@/components/Avatar";
@@ -226,6 +226,24 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
               </form>
             );
           })()}
+          {/* 보기에 없는 답은 직접(음료·꽃·향·음악·영화) */}
+          {canAnswerOwn(question.id) ? (
+            <form action={answerQuestion} className="flex items-center gap-1.5 rounded-2xl bg-fill py-1 pl-4 pr-1 focus-within:shadow-[inset_0_0_0_2px_var(--color-sky)]">
+              <input type="hidden" name="id" value={question.id} />
+              <input
+                name="value"
+                required
+                maxLength={60}
+                enterKeyHint="send"
+                placeholder={t("home.questionOwn")}
+                aria-label={t("home.questionOwn")}
+                className="h-11 min-w-0 flex-1 bg-transparent text-[15.5px] font-medium outline-none placeholder:text-muted"
+              />
+              <button aria-label={t("common.save")} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-rule)] active:scale-95">
+                <Icon name="up" size={18} strokeWidth={2.2} />
+              </button>
+            </form>
+          ) : null}
         </section>
       ) : null}
       {answered ? (

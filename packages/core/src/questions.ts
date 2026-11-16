@@ -93,6 +93,13 @@ export const QUESTIONS: DailyQuestion[] = [
   { id: "style", prompt: { ko: "평소 옷 스타일은?", en: "Your everyday style?" }, options: fromCatalog(STYLES, ["minimal", "casual", "classic", "street"]) },
 ];
 
+/** 보기에 없는 답을 직접 적을 수 있는 질문과 그 답이 들어갈 글 칸(음악은 즐겨 듣는 노래, 영화는 인생 영화) */
+const OWN_ANSWER = ["drinks", "flowers", "scent", "musicGenre", "movieGenre"] as const satisfies DailyQuestion["id"][];
+
+export function canAnswerOwn(id: DailyQuestion["id"]): boolean {
+  return (OWN_ANSWER as readonly string[]).includes(id);
+}
+
 /** 이미 답이 있는 질문 */
 export function isAnswered(card: Partial<CardData>, id: DailyQuestion["id"]): boolean {
   switch (id) {
@@ -109,8 +116,9 @@ export function isAnswered(card: Partial<CardData>, id: DailyQuestion["id"]): bo
     case "season":
       return !!card.life?.seasons.length;
     case "musicGenre":
+      return !!card.culture?.musicGenres?.length || !!card.culture?.song;
     case "movieGenre":
-      return !!card.culture?.[CULTURE_QUESTION_KEY[id]]?.length;
+      return !!card.culture?.movieGenres?.length || !!card.culture?.movie;
     default:
       return !!card.favorites?.[FAVORITE_QUESTION_KEY[id]]?.length;
   }
@@ -151,6 +159,9 @@ export function applyAnswer(card: Partial<CardData>, id: DailyQuestion["id"], va
     case "movieGenre": {
       const key = CULTURE_QUESTION_KEY[id];
       const base = { ...emptySection("culture"), ...card.culture };
+      // 보기에 없는 말(직접 적은 답)은 글 칸으로: 음악은 즐겨 듣는 노래, 영화는 인생 영화
+      const known = v === NONE || (id === "musicGenre" ? MUSIC_GENRES : MOVIE_GENRES).some((c) => c.code === v);
+      if (!known) return { culture: { ...base, [id === "musicGenre" ? "song" : "movie"]: v } };
       return { culture: { ...base, [key]: add(base[key] ?? []) } };
     }
     default: {

@@ -8,6 +8,7 @@ import {
   orderNote,
   ageOn,
   applyAnswer,
+  canAnswerOwn,
   describeRing,
   describeShoe,
   describeTop,
@@ -167,6 +168,15 @@ test("오늘의 질문: 답한 건 건너뛰고, 답은 카드 칸에", () => {
   // 향·꽃은 취향 칸으로
   assert.equal(applyAnswer({}, "flowers", "튤립").favorites?.flowers, "튤립");
   assert.equal(applyAnswer({}, "scent", "우디").favorites?.scent, "우디");
+  // 보기에 없는 답은 직접: 음료·꽃·향은 그 칸에, 음악은 즐겨 듣는 노래, 영화는 인생 영화로(보기 코드는 그대로 장르로)
+  assert.equal(canAnswerOwn("drinks"), true);
+  assert.equal(canAnswerOwn("pattern"), false);
+  assert.equal(applyAnswer({}, "drinks", "보리차").taste?.drinks, "보리차");
+  assert.equal(applyAnswer({}, "musicGenre", "재즈").culture?.song, "재즈");
+  assert.deepEqual(applyAnswer({}, "musicGenre", "재즈").culture?.musicGenres, []);
+  assert.deepEqual(applyAnswer({}, "musicGenre", "indie").culture?.musicGenres, ["indie"]);
+  assert.equal(applyAnswer({}, "movieGenre", "인터스텔라").culture?.movie, "인터스텔라");
+  assert.equal(isAnswered({ culture: sanitizeSection("culture", { song: "재즈" }) }, "musicGenre"), true);
 });
 
 test("초대 토큰과 코드", async () => {
