@@ -13,7 +13,7 @@ export default async function EditSection({ params }: { params: Promise<{ sectio
   const { card } = await s.tx((q) => readCard(q, s.user.id));
   return (
     <div className="flex flex-1 flex-col">
-      <TopBar back="/me" label={t("common.back")} />
+      <TopBar back={`/me/edit?open=${section}`} label={t("common.back")} />
       <div className="flex flex-col gap-1.5 px-6 pt-2">
         <h1 className="headline text-[28px]">{t(`section.${section}` as "section.safety")}</h1>
         <p className="text-[14px] leading-[1.5] text-muted">{t(`section.${section}.sub` as "section.safety.sub")}</p>

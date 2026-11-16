@@ -6,9 +6,6 @@ import { SectionForm } from "@/components/editors/SectionForm";
 import { Icon } from "@/components/marks";
 import { SectionIcon } from "@/components/SectionIcon";
 
-/** 고정된 프로필 영역 바로 아래(상태바 + 프로필 높이) */
-const BELOW_HEAD = "calc(var(--sat) + var(--me-head))";
-
 export interface MyRow {
   section: Section;
   title: string;
@@ -18,7 +15,7 @@ export interface MyRow {
 
 /**
  * 내 리드미 항목 목록. 누르면 화면을 옮기지 않고 그 항목 아래에 편집기를 펼친다(한 번에 하나).
- * 위의 프로필 영역은 고정되고, 펼친 항목은 머리(주제와 설명)가 그 바로 아래에 붙어 고치는 동안 계속 보인다. 고치면 바로 저장된다(저장 버튼 없음).
+ * 펼친 항목은 머리(주제와 설명)가 화면 위에 붙어 고치는 동안 계속 보인다. 고치면 바로 저장된다(저장 버튼 없음).
  * 펼친 항목은 주소(?open=)에도 적어 두어, 저장 후 다시 그려지거나 새로고침·뒤로가기를 해도 펼친 채로 있다.
  */
 export function MyReadmeList({
@@ -27,7 +24,7 @@ export function MyReadmeList({
   locale,
   initialOpen = null,
   contactId,
-  stickyTop = BELOW_HEAD,
+  stickyTop = "var(--sat)",
 }: {
   rows: MyRow[];
   card: PartialCard;
@@ -35,7 +32,7 @@ export function MyReadmeList({
   initialOpen?: Section | null;
   /** 있으면 그 사람 기록에 저장(사람 정보 수정 화면) */
   contactId?: string;
-  /** 펼친 항목 머리가 붙을 위치(기본: 내 리드미의 고정 프로필 아래) */
+  /** 펼친 항목 머리가 붙을 위치(기본: 상태바 바로 아래) */
   stickyTop?: string;
 }) {
   const [open, setOpen] = useState<Section | null>(initialOpen);

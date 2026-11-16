@@ -81,6 +81,7 @@ export async function saveSection(_: SaveState, form: FormData): Promise<SaveSta
     return { saved: false, error: true };
   }
   revalidatePath("/me");
+  revalidatePath("/me/edit");
   revalidatePath("/home");
   return { saved: true, error: false };
 }

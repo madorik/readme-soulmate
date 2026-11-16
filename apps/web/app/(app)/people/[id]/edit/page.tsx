@@ -31,7 +31,6 @@ export default async function EditPerson({ params, searchParams }: { params: Pro
         locale={locale}
         initialOpen={isSection(open) ? open : null}
         contactId={p.contactId}
-        stickyTop="var(--sat)"
       />
     </div>
   );

@@ -64,12 +64,23 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   await shot(page, "02b-calendar");
   await page.goto("/me");
   await expect(page.getByRole("heading", { name: "지수" })).toBeVisible();
+  // 나는 적어 둔 것을 미리보기로 보여 준다(알레르기·못 먹는 것)
+  const mine = page.getByRole("region", { name: "나에 대한 기록" });
+  await expect(mine.getByText("새우", { exact: true })).toBeVisible();
+  await expect(mine.getByText("오이")).toBeVisible();
   await shot(page, "03-me");
-  // 내 리드미 목록엔 적은 값 대신 고를 수 있는 것만. 미리보기·보내기 버튼은 없다
-  await expect(page.getByText("새우 알레르기")).toHaveCount(0);
+  // 연필을 누르면 고치기: 목록엔 적은 값 대신 고를 수 있는 것만. 미리보기·보내기 버튼은 없다
+  await mine.getByRole("link", { name: "수정" }).click();
+  await expect(page).toHaveURL(/\/me\/edit$/);
+  await expect(page.getByRole("heading", { name: "나에 대한 기록" })).toBeVisible();
+  await expect(page.getByText("새우", { exact: true })).toHaveCount(0);
   await expect(page.getByText("알레르기, 못 먹는 것, 식단, 꼭 알려 둘 말")).toBeVisible();
   await expect(page.getByRole("button", { name: /^문화생활\s*영화, 드라마, TV·예능·유튜브, 음악, 노래, 책/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "미리보기" })).toHaveCount(0);
+  await shot(page, "03b-me-edit");
+  // 고친 뒤 뒤로 가면 다시 미리보기
+  await page.getByRole("link", { name: "뒤로" }).click();
+  await expect(page).toHaveURL(/\/me$/);
   const res = await page.request.get("/api/export");
   const data = await res.json();
   expect(data.aboutMe.safety.allergens).toContain("shrimp");
@@ -441,13 +452,16 @@ test("언어는 설정에서 바꾸고, 내 리드미에는 내 정보만", asyn
 
 test("내 리드미: 고치기를 누르면 화면을 옮기지 않고 그 항목 아래에서 고치고, 고치면 바로 저장된다", async ({ browser }) => {
   const jisu = await as(browser, "jisu");
-  await jisu.goto("/me");
+  // 예전 주소(/me?open=…)는 고치는 화면으로 옮겨 준다
+  await jisu.goto("/me?open=taste");
+  await expect(jisu).toHaveURL(/\/me\/edit\?open=taste$/);
+  await jisu.goto("/me/edit");
   const sizes = jisu.getByRole("button", { name: /^사이즈/ });
   await expect(sizes).toHaveAttribute("aria-expanded", "false");
   await sizes.click();
   await expect(sizes).toHaveAttribute("aria-expanded", "true");
   // 펼친 항목은 주소에 적혀 새로고침해도 펼친 채로
-  await expect(jisu).toHaveURL(/\/me\?open=sizes$/);
+  await expect(jisu).toHaveURL(/\/me\/edit\?open=sizes$/);
   await expect(jisu.getByRole("button", { name: "저장" })).toHaveCount(0);
   // 적는 칸은 칸을 벗어날 때 저장된다
   await jisu.getByPlaceholder("예: 235").fill("240");
@@ -473,9 +487,21 @@ test("내 리드미: 고치기를 누르면 화면을 옮기지 않고 그 항�
   await expect(jisu.getByText("저장했어요.", { exact: true })).toBeVisible();
   await favs.click();
   await expect(favs).not.toContainText("가을");
-  await jisu.reload();
+  // 다시 펼쳐도(새로고침 없이) 고친 값 그대로
   await favs.click();
   await expect(jisu.getByRole("button", { name: "가을", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await jisu.reload();
+  await expect(jisu.getByRole("button", { name: "가을", exact: true })).toHaveAttribute("aria-pressed", "true");
+  // 뒤로 가면 미리보기에 고친 것이 보인다
+  await jisu.getByRole("link", { name: "뒤로" }).click();
+  await expect(jisu).toHaveURL(/\/me$/);
+  const mine = jisu.getByRole("region", { name: "나에 대한 기록" });
+  await expect(mine).toContainText("240");
+  await expect(mine).toContainText("가을");
+  // 미리보기 항목을 누르면 그 항목을 펼친 고치기 화면으로
+  await mine.getByRole("link", { name: /^사이즈/ }).click();
+  await expect(jisu).toHaveURL(/\/me\/edit\?open=sizes$/);
+  await expect(jisu.getByRole("button", { name: /^사이즈/ })).toHaveAttribute("aria-expanded", "true");
 });
 
 test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴더), 폴더 없는 사람만 목록에, 끌어서 폴더에 넣기, 찾기, 즐겨찾기", async ({ browser }) => {

@@ -48,8 +48,6 @@
     --grad-btn: #ffc23d;
     --shadow-btn: 0 4px 0 #e09a12;
     --shadow-float: 0 8px 24px rgba(31, 35, 64, 0.08);
-    /* 내 리드미 위에 고정되는 프로필 영역 높이(펼친 항목 머리가 그 아래에 붙는다) */
-    --me-head: 114px;
   }
   html {
     -webkit-text-size-adjust: 100%;
