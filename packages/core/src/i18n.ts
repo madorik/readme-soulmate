@@ -389,6 +389,12 @@ export const ko = {
   "reminder.together": "가족과 같이 준비",
   "reminder.shared": "보냈어요",
   "reminder.noHints": "아직 힌트가 없어요. {name}님에게 살짝 물어볼까요?",
+  "picks.title": "이런 선물은 어때요",
+  "picks.more": "더 보기",
+  "picks.coupang": "쿠팡에서 찾아보기",
+  "picks.rocket": "로켓배송",
+  "picks.price": "{n}원",
+  "picks.disclosure": "쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.",
 
 
   "section.safety": "알레르기와 못 먹는 음식",
@@ -967,6 +973,12 @@ export const en: Messages = {
   "reminder.together": "Plan together",
   "reminder.shared": "Shared",
   "reminder.noHints": "No hints yet. Why not ask {name}?",
+  "picks.title": "Gift ideas",
+  "picks.more": "More",
+  "picks.coupang": "Find on Coupang",
+  "picks.rocket": "Rocket",
+  "picks.price": "₩{n}",
+  "picks.disclosure": "As a Coupang Partners affiliate, we earn a commission on qualifying purchases.",
 
 
   "section.safety": "Allergies and foods to avoid",

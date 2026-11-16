@@ -1,11 +1,14 @@
 import { realCodes, ALLERGENS, DISLIKES, METALS, PATTERNS, SPICY_LEVELS, eventTitle, formatDayFull, formatSpec, labelOf, monthName, nextOccurrence, weekdayLong, type DateSpec } from "@readme/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
+import { GiftPicks, GiftPicksSkeleton } from "@/components/GiftPicks";
 import { Icon, MarkerCircle } from "@/components/marks";
 import { ShareTextButton } from "@/components/ShareButtons";
 import { displayName, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
+import { giftPicksConfigured } from "@/lib/gifts";
 import { makeT } from "@/lib/i18n";
 
 function Hint({ label, children, sub }: { label: string; children: React.ReactNode; sub?: string }) {
@@ -51,6 +54,9 @@ export default async function Reminder({ params, searchParams }: { params: Promi
     ...realCodes(safety?.dislikes).map((c) => labelOf(DISLIKES, c, locale)),
   ];
   const hasHints = !!(favHint || styleHint || taste?.dessert || life?.hobbies.length || fav?.flowers || fav?.scent || fav?.places?.length || gifts?.wishlist.length || gifts?.skip.length || meal.length || taste?.spicy != null || notes.length || sizes?.shoe);
+  // 이런 선물은 어때요(쿠팡 파트너스 키가 있을 때만)
+  const picksOn = giftPicksConfigured();
+  const occasion = anniversary ? { kind: "anniversary" as const, label: anniversary.label } : dates?.birthday ? { kind: "birthday" as const, label: "" } : null;
   const shareText = next ? `${event} ${formatDayFull(next.date, locale)}${spec?.calendar === "lunar" ? ` (${formatSpec(spec, locale)})` : ""}` : event;
 
   return (
@@ -108,13 +114,31 @@ export default async function Reminder({ params, searchParams }: { params: Promi
         <div className="border-t border-rule" />
       </section>
 
+      {picksOn ? (
+        <section id="picks" aria-labelledby="picks-title" className="flex scroll-mt-2 flex-col pt-8">
+          <h2 id="picks-title" className="px-6 text-[15px] font-bold">
+            {t("picks.title")}
+          </h2>
+          <Suspense fallback={<GiftPicksSkeleton />}>
+            <GiftPicks s={s} person={p} occasion={occasion} today={today} />
+          </Suspense>
+        </section>
+      ) : null}
+      <div className="h-6" />
+
       <div className="bottom-bar mt-auto flex flex-col gap-2.5 bg-bg px-6 pt-4">
         {next && next.daysUntil > 0 && s.profile.reminderOffsets.includes(0) ? <span className="text-[13px] text-muted">{t("reminder.again")}</span> : null}
         <div className="grid grid-cols-2 gap-2.5">
           <ShareTextButton text={shareText} label={t("reminder.together")} doneLabel={t("reminder.shared")} className="btn-outline" />
-          <Link href={`/people/${p.contactId}#gifts`} className="btn-primary">
-            {t("person.pickGift")}
-          </Link>
+          {picksOn ? (
+            <a href="#picks" className="btn-primary">
+              {t("person.pickGift")}
+            </a>
+          ) : (
+            <Link href={`/people/${p.contactId}#gifts`} className="btn-primary">
+              {t("person.pickGift")}
+            </Link>
+          )}
         </div>
       </div>
     </>

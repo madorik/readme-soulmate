@@ -1,11 +1,14 @@
 import { COLORS, METALS, PATTERNS, STYLES, describeShoe, describeTop, labelOf } from "@readme/core";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
+import { GiftPicks, GiftPicksSkeleton, PicksDisclosure } from "@/components/GiftPicks";
 import { Icon } from "@/components/marks";
 import { displayName, requireSession, todayFor, type Person } from "@/lib/data";
 import { eventName, eventsFor } from "@/lib/events";
+import { giftPicksConfigured } from "@/lib/gifts";
 import { makeT } from "@/lib/i18n";
 import { pickBack, resolvePick } from "@/lib/plan";
 import { ShareBar } from "../ShareBar";
@@ -20,6 +23,7 @@ export default async function PlanGift({ searchParams }: { searchParams: Promise
   const pick = await resolvePick(s, sp);
   if (!pick.people.length) redirect(pickBack(pick.query));
   const and = t("common.and");
+  const picksOn = giftPicksConfigured();
 
   const hints = (p: Person) => {
     const { gifts: g, sizes: z, favorites: f, life: l, taste: tt, culture: c } = p.card;
@@ -92,10 +96,18 @@ export default async function PlanGift({ searchParams }: { searchParams: Promise
               ) : (
                 <p className="border-t border-[#e6e6e3] py-3 text-[13.5px] text-muted">{t("plan.giftNone")}</p>
               )}
+              {picksOn ? (
+                <div className="-mx-5 border-t border-[#e6e6e3] pb-2">
+                  <Suspense fallback={<GiftPicksSkeleton rows={1} pad="px-5" />}>
+                    <GiftPicks s={s} person={p} occasion={next ? { kind: next.kind, label: next.label ?? "" } : null} today={today} max={2} pad="px-5" title={false} />
+                  </Suspense>
+                </div>
+              ) : null}
             </section>
           );
         })}
       </div>
+      {picksOn ? <PicksDisclosure text={t("picks.disclosure")} /> : null}
       <div className="h-6" />
       <ShareBar plain={shareText} label={t("plan.share")} doneLabel={t("plan.sent")} />
     </div>

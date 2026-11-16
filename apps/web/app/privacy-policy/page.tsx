@@ -5,7 +5,7 @@ import { CEO, legalLocale, OPERATOR, SUPPORT_EMAIL } from "@/lib/legal";
 export const metadata: Metadata = { title: "개인정보 처리방침 · Privacy Policy" };
 
 // 「개인정보 보호법」 제30조 항목을 실제로 처리하는 대로 적는다(2026-11-14 코드 기준).
-// 위탁: Vercel(호스팅), Supabase(DB, 서울), Google·Apple(로그인). 푸시(FCM)·분석 도구를 켜면 여기와 시행일(lib/legal.ts)을 같이 고친다.
+// 위탁: Vercel(호스팅), Supabase(DB, 서울), Google·Apple(로그인), OpenAI(말로 적기·선물 추천 찾을 말). 쿠팡에는 찾을 말만 보낸다. 푸시(FCM)·분석 도구를 켜면 여기와 시행일(lib/legal.ts)을 같이 고친다.
 export default async function PrivacyPolicy({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const locale = await legalLocale((await searchParams).lang);
   const mail = <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>;
@@ -49,6 +49,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           <li>To sign you in and keep your account</li>
           <li>To keep About me and your records about your people, and to deliver the questions you ask and the answers you receive</li>
           <li>To send birthday and anniversary reminders (solar dates are calculated from lunar ones)</li>
+          <li>To suggest gifts from what you&rsquo;ve recorded about a person</li>
           <li>To answer questions and keep the service safe (preventing abuse)</li>
         </ul>
         <p>We don&rsquo;t sell your information, show ads, or use it for marketing.</p>
@@ -95,7 +96,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
             </tr>
             <tr>
               <td>OpenAI, L.L.C.</td>
-              <td>Sorting a sentence you say or type in Say it into people and sections, only when you use it</td>
+              <td>Sorting a sentence you say or type in Say it into people and sections, and picking gift ideas from a person&rsquo;s gift hints, only when you use them</td>
               <td>USA (sent over the network each time)</td>
             </tr>
           </tbody>
@@ -103,8 +104,10 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
         <p>
           Information is stored with these providers until you delete your account. If you don&rsquo;t want overseas transfer, you can choose not to sign up or delete your account; the service can&rsquo;t
           run without it. Voice input uses your device&rsquo;s or browser&rsquo;s speech recognition (Apple, Google, etc.); we never receive the audio. In Say it, the recognized sentence and the names of your people are
-          sent to OpenAI only to sort the sentence; we don&rsquo;t keep the sentence itself, only the values saved to your records. Sending a link through KakaoTalk or another app passes
-          only the link to that app.
+          sent to OpenAI only to sort the sentence; we don&rsquo;t keep the sentence itself, only the values saved to your records. For gift ideas, what you call the person, their folders, the
+          upcoming date and age, and their gift hints (tastes, brands, gift ideas, things to avoid such as allergies) are sent to OpenAI only to pick search words; sizes and notes are not
+          sent. Only those search words (like &ldquo;camping mug&rdquo;) are sent to Coupang to find products; opening a product takes you to Coupang, which follows its
+          own privacy policy. Sending a link through KakaoTalk or another app passes only the link to that app.
         </p>
 
         <h2>6. How long we keep it</h2>
@@ -177,6 +180,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
         <li>회원 확인, 로그인 유지, 계정 관리</li>
         <li>나에 대한 기록과 내 사람들 기록 보관, 물어보기 전달과 받은 답 저장</li>
         <li>생일·기념일 알림(음력은 양력으로 바꿔 계산)</li>
+        <li>사람 기록에 적은 선물 힌트로 선물 추천</li>
         <li>문의 응대, 부정 이용 방지 등 서비스 안전 관리</li>
       </ul>
       <p>개인정보를 팔거나 광고·마케팅에 쓰지 않습니다.</p>
@@ -223,7 +227,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           </tr>
           <tr>
             <td>OpenAI, L.L.C.</td>
-            <td>말로 적기에서 말하거나 적은 문장을 사람·항목으로 나누기(쓸 때만)</td>
+            <td>말로 적기에서 말하거나 적은 문장을 사람·항목으로 나누기, 선물 추천에서 선물 힌트로 찾을 말 고르기(쓸 때만)</td>
             <td>미국(쓸 때마다 네트워크로 전송)</td>
           </tr>
         </tbody>
@@ -231,7 +235,9 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
       <p>
         보유 기간은 회원 탈퇴 때까지입니다. 국외 이전을 원하지 않으면 가입하지 않거나 계정을 삭제할 수 있으며, 이 경우 서비스를 쓸 수 없습니다. 말로 입력하기는 기기·브라우저의 음성 인식(Apple·Google
         등)을 쓰며 운영자는 음성을 받지 않습니다. 말로 적기에서는 글로 바뀐 문장과 내 사람들의 이름을 문장을 나누는 데만 OpenAI에 보내고, 운영자는 문장 자체는 보관하지 않고 기록에 넣은 값만
-        저장합니다. 카카오톡 등 다른 앱으로 보내기는 링크만 그 앱에 넘깁니다.
+        저장합니다. 선물 추천에서는 부르는 말, 든 폴더, 다가오는 날과 나이, 선물 힌트(취향·브랜드·해주고 싶은 선물·알레르기 같은 피할 것)를 찾을 말을 고르는 데만 OpenAI에
+        보내고, 사이즈·메모는 보내지 않습니다. 쿠팡에는 고른 찾을 말(예: 캠핑 머그컵)만 보내 상품을 찾으며, 상품을 누르면 쿠팡으로 이동해 쿠팡의 개인정보처리방침을 따릅니다.
+        카카오톡 등 다른 앱으로 보내기는 링크만 그 앱에 넘깁니다.
       </p>
 
       <h2>6. 보유 기간과 파기</h2>

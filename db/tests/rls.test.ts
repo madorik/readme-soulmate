@@ -308,6 +308,20 @@ describe("메모·알림·폴더·푸시", () => {
     assert.equal(after.favorite, true);
   });
 
+  test("선물 찾을 말은 내 주소록 사람에게만, 나만 보고, 사람을 지우면 같이 지워진다. 쿠팡 검색 저장·호출 기록은 앱 역할로 못 본다", async () => {
+    const c = await person(alice, "아빠");
+    const put = "insert into gift_ideas (user_id, contact_id, basis, payload) values ($1, $2, 'b', '{}')";
+    await rows(alice, put, [alice, c]);
+    assert.equal((await rows(alice, "select 1 from gift_ideas where contact_id = $1", [c])).length, 1);
+    assert.equal((await rows(bob, "select 1 from gift_ideas where contact_id = $1", [c])).length, 0);
+    await rejects(rows(bob, put, [bob, c]), /row-level security/);
+    await rejects(rows(bob, put, [alice, c]), /row-level security/);
+    await rows(alice, "delete from contacts where id = $1", [c]);
+    assert.equal((await pool.query("select 1 from gift_ideas where contact_id = $1", [c])).rowCount, 0);
+    await rejects(rows(alice, "select * from coupang_searches"), /permission denied/);
+    await rejects(rows(alice, "insert into coupang_calls default values"), /permission denied/);
+  });
+
   test("푸시 토큰은 내 것만", async () => {
     await rows(bob, "insert into push_tokens (user_id, token, platform) values ($1, 'tok-bob', 'android')", [bob]);
     assert.equal((await rows(carol, "select * from push_tokens where user_id = $1", [bob])).length, 0);
