@@ -9,7 +9,7 @@ import { PRICE_BANDS, type CatalogGift, type PriceBand } from "./gift-catalog";
 export interface GiftIdea {
   /** 쿠팡 찾을 말(한국어). 예: 캠핑 머그컵 */
   keyword: string;
-  /** 주고 싶어지게 포장한 한 문장. 예: 주말마다 산에 오르시는 아빠, 무릎 부담을 덜어 드려요 */
+  /** 주고 싶어지게 포장한 한 문장(부르는 말 없이). 예: 주말마다 산에 오르시니, 가벼운 스틱이면 무릎 부담을 덜어 드려요 */
   reason: string;
   /** 이 사람 기록의 어느 부분을 보고 골랐는지 짧은 말 한두 개(등산, 허리 통증, 60대 아빠). 기록에 있는 것만 */
   basis?: string[];
@@ -105,7 +105,7 @@ export function giftProfile(card: PartialCard, notes: string[] = []): GiftProfil
 /** 같은 기록·같은 날이면 같은 값: 지난번에 고른 걸 다시 쓴다(기록이 그대로 남지 않게 해시로) */
 export function giftBasis(profile: GiftProfile, ctx: GiftContext, locale: Locale): string {
   // v: 고르는 지침이 바뀌면 올려서 지난번 것을 다시 고르게
-  return createHash("sha256").update(JSON.stringify({ v: 10, profile, ctx, locale })).digest("hex");
+  return createHash("sha256").update(JSON.stringify({ v: 11, profile, ctx, locale })).digest("hex");
 }
 
 // ── 고른 근거: 이 사람 기록의 어느 부분을 보고 골랐는지(선물마다 한두 개, 위에 모아서도) ──
@@ -179,26 +179,31 @@ export function basisSummary(bands: { items: { basis: string[] }[] }[], ctx: Gif
     .map(([w]) => w);
 }
 
-/** 고른 생각을 풀어 쓴 한두 문장(AI가 못 쓸 때): 눈여겨본 기록, 적어 둔 선물, 빼 둔 것 */
+/** 고른 생각 한 문장(AI가 못 쓰거나 너무 길 때): 눈여겨본 것 둘까지와 빼 둔 것 둘까지. 부르는 말은 넣지 않는다 */
 export function picksNote(bands: { items: { basis: string[] }[] }[], left: string[], ctx: GiftContext, locale: Locale): string {
   const ko = locale === "ko";
-  const call = clean(ctx.call, 12) || (ko ? "그 사람" : "them");
   const seen = basisSummary(bands, ctx, 8);
   const wish = seen.includes(wishBasis(locale));
-  const tastes = seen.filter((w) => w !== wishBasis(locale) && !isGenericBasis(w, ctx)).slice(0, 3);
-  const who = [ageWord(ctx, locale), call].filter(Boolean).join(" ");
+  const facts = [...(wish ? [wishBasis(locale)] : []), ...seen.filter((w) => w !== wishBasis(locale) && !isGenericBasis(w, ctx))].slice(0, 2);
+  const out = left.slice(0, 2);
+  const age = ageWord(ctx, locale);
   if (!ko) {
-    const list = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : (xs[0] ?? ""));
-    const first = tastes.length ? `We went by ${list(tastes)} from what you've noted about ${call}${wish ? ", and put in the gift you wrote down" : ""}.` : wish ? `We started with the gift you wrote down and filled in with things that suit ${who}.` : `Easy, safe picks that suit ${who}.`;
-    return left.length ? `${first} Left out ${list(left)}.` : first;
+    const went = facts.length ? `Picked with ${facts.join(" and ")} in mind` : `Safe picks${age ? ` for their ${age}` : ""}`;
+    return `${went}${out.length ? `, leaving out ${out.join(" and ")}` : ""}.`;
   }
-  const list = (xs: string[], form: string) => `${xs.slice(0, -1).map((x) => `${x}, `).join("")}${josa(xs[xs.length - 1] ?? "", form)}`;
-  const first = tastes.length
-    ? `${call} 기록에 있는 ${list(tastes, "을")} 눈여겨보고${wish ? ", 적어 둔 선물도 함께 넣었어요." : " 골랐어요."}`
-    : wish
-      ? `적어 둔 선물을 먼저 넣고, ${josa(who, "에게")} 어울릴 만한 것들로 채웠어요.`
-      : `${josa(who, "에게")} 무난하게 어울릴 만한 것들로 골랐어요.`;
-  return left.length ? `${first} ${list(left, "은")} 빼 두었어요.` : first;
+  const pair = (xs: string[], form: string) => (xs.length > 1 ? `${josa(xs[0]!, "과")} ${josa(xs[1]!, form)}` : josa(xs[0] ?? "", form));
+  const parts = [facts.length ? `${pair(facts, "을")} 보고` : `${age ? `${age}에 ` : ""}무난한 것들로`];
+  if (out.length) parts.push(`${pair(out, "은")} 빼고`);
+  return `${parts.join(", ")} 골랐어요`;
+}
+
+/** AI가 쓴 고른 생각을 쓸지: 한 줄, 짧게(한국어 50자·영어 110자), 부르는 말·관계 말이 없을 때만. 아니면 빈칸(기록으로 만든 문장을 쓴다) */
+export function acceptNote(v: unknown, ctx: GiftContext, locale: Locale): string {
+  const note = clean(v, 200);
+  const call = clean(ctx.call, 40);
+  if (!note || note.length > (locale === "ko" ? 50 : 110)) return "";
+  if ((call && note.includes(call)) || CLOSE.test(note) || ELDERS.test(note) || /남편|부모님|어머님|아버님/.test(note)) return "";
+  return note;
 }
 
 /** AI가 쓴 고른 생각: 한 줄로, 260자까지 */
@@ -211,8 +216,8 @@ const PITCH = `reason: a short, warm pitch in LANGUAGE that makes the user want 
 - their body from the 사이즈 line in HINTS (a big frame or tall → roomy, sturdy; petite → light, compact) and their age (older → comfortable, supportive, easy to use; younger → stylish, trendy)
 - the price band when there is one (1만원대 → a light, thoughtful touch; 10만원 이상 → a well-made piece that lasts)
 The link opens a search page, so it helps to say which kind to pick (e.g. 등받이가 높은, 가볍게 접히는, 넉넉한 사이즈의, 은은한).
-One sentence; Korean 25 to 45 characters with a polite ending (…예요, …해요, …드려요, …골라 보세요); English up to 90 characters. Call the person by CALL when it reads naturally (아빠, 아내, a name). Never write sizes or numbers about their body. No quotes or emoji.
-Good: "키 큰 아빠도 등까지 편히 기대는 넉넉한 캠핑 의자로 골라 보세요", "주말마다 산에 오르시는 아빠, 가벼운 스틱이면 무릎 부담을 덜어 드려요", "우디 향을 좋아하는 아내에게, 은은하게 오래가는 향이 잘 어울려요", "요즘 허리가 아프다던 엄마, 등을 감싸는 안마 쿠션이면 소파에서도 편히 쉬세요", "트로트를 즐겨 들으시니, 버튼 하나로 켜지는 큰 글씨 라디오가 딱이에요".
+One sentence; Korean 25 to 45 characters with a polite ending (…예요, …해요, …드려요, …골라 보세요); English up to 90 characters. Never name or address the person: no CALL words (엄마, 아빠, 아내, 남편 …) and no names. Never write sizes or numbers about their body. No quotes or emoji.
+Good: "키가 커도 등까지 편히 기대는 넉넉한 캠핑 의자로 골라 보세요", "주말마다 산에 오르시니, 가벼운 스틱이면 무릎 부담을 덜어 드려요", "우디 향을 좋아하니, 은은하게 오래가는 향이 잘 어울려요", "요즘 허리가 아프다니, 등을 감싸는 안마 쿠션이면 소파에서도 편히 쉬어요", "트로트를 즐겨 들으시니, 버튼 하나로 켜지는 큰 글씨 라디오가 딱이에요".
 Bad (just repeats a hint): "캠핑 좋아해서", "우디 향 좋아해서", "취미라서", "생일 선물로".
 Every reason is different. Never mention allergies or things to avoid.`;
 
@@ -328,17 +333,16 @@ export function parseIdeas(body: unknown, avoid: string[] = [], ground?: (raw: u
 
 /** AI 없이 고를 때의 이유 문장(포장한 틀): 해주고 싶던 선물 · 좋아하는 것 · 챙길 날 */
 export function pitch(kind: "wish" | "likes" | "occasion", ctx: GiftContext, locale: Locale, value = ""): string {
-  const call = clean(ctx.call, 12);
   const occasion = ctx.occasion?.kind === "anniversary" ? ctx.occasion.label || "기념일" : "생일";
   if (locale !== "ko") {
     if (kind === "wish") return "The very gift you noted you wanted to give";
     if (kind === "likes") return `A gift that fits their love of ${value}`;
     return ctx.occasion?.kind === "anniversary" ? "A warm way to mark your anniversary" : "A warm way to say happy birthday";
   }
-  const who = call || "그 사람";
-  if (kind === "wish") return `${josa(who, "에게")} 해 주고 싶다고 적어 둔 바로 그 선물이에요`;
-  if (kind === "likes") return `${josa(value, "을")} 좋아하는 ${josa(who, "에게")} 잘 어울리는 선물이에요`;
-  return `${who}의 ${occasion}, 마음을 전하기 좋은 선물이에요`;
+  // 부르는 말(엄마·아빠)은 넣지 않는다
+  if (kind === "wish") return "해 주고 싶다고 적어 둔 바로 그 선물이에요";
+  if (kind === "likes") return `${josa(value, "을")} 좋아하니 반길 만한 선물이에요`;
+  return `${occasion}에 마음을 전하기 좋은 선물이에요`;
 }
 
 /** AI 없이 기록만으로: 해주고 싶은 선물(첫 번째만) → 취미 → 향·꽃 → 좋아하는 것들 → 챙길 날 선물 */
@@ -436,8 +440,8 @@ export function defaultBand(ctx: GiftContext): PriceBand {
 
 const BAND_WORDS: Record<PriceBand, string> = { "1": "₩10,000s", "3": "₩30,000s", "5": "₩50,000s", "10": "₩100,000 and up" };
 
-const NOTE = `note: one or two sentences in LANGUAGE that explain your thinking to the user, like a friend telling them what they noticed about this person and how it shaped the picks. Weave in 2 to 4 concrete facts from WISHES, HINTS, NOTES, AGE or CALL (a hobby, a taste, a worry or news in the notes, a written-down wish) and the kind of gifts that led to. If something was left out because NOTES say it was already given, or because of AVOID, say so briefly at the end. Korean 60 to 130 characters, warm and polite (…했어요, …골랐어요), calling the person by CALL, with honorifics for parents and elders (…하시는); English up to 240 characters. Only facts in the input, never guesses. No lists, quotes, emoji, or sizes and numbers about their body.
-Good: "주말마다 산에 오르시고 요즘 무릎이 안 좋다고 하셨던 아빠라, 가볍고 무릎에 부담 없는 것들을 먼저 골랐어요. 작년에 드린 지갑은 뺐어요.", "트로트를 즐겨 들으시고 수국을 좋아하시는 엄마께, 적어 두신 안마 쿠션도 함께 담았어요.", "우디 향과 미니멀한 스타일을 좋아하는 아내라, 은은하고 군더더기 없는 것들로 골랐어요. 새우 알레르기가 있어 해산물은 뺐어요."`;
+const NOTE = `note: one short sentence in LANGUAGE telling the user what you went by: the 1 or 2 key facts from WISHES, HINTS or NOTES that shaped the picks, and, if any, one thing left out because NOTES say it was already given or it is in AVOID. Korean 18 to 40 characters ending with 골랐어요; English up to 80 characters. Never name or address the person: no CALL words (엄마, 아빠, 아내 …), no names, no honorific subject. Only facts in the input. No lists of three or more, quotes or emoji.
+Good: "걷기와 트로트를 보고, 작년에 드린 홍삼은 빼고 골랐어요", "적어 둔 안마 쿠션과 수국 취향을 보고 골랐어요", "우디 향과 미니멀한 취향을 보고 골랐어요".`;
 
 const CATALOG_INSTRUCTIONS = `You pick gifts for one person from a fixed list (CATALOG) of Coupang searches, grouped by price band (${PRICE_BANDS.map((b) => `${b} = about ${BAND_WORDS[b]}`).join(", ")}).
 Input:

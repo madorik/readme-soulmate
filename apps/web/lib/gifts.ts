@@ -15,6 +15,7 @@ import {
   bandPicks,
   basisCorpus,
   catalogBasis,
+  acceptNote,
   cleanNote,
   catalogRequest,
   groundBasis,
@@ -210,7 +211,7 @@ export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, not
     bands,
     initial: bands.some((b) => b.band === want) ? want : (bands[0]?.band ?? want),
     // AI가 고른 게 없으면(기록만으로 고른 것) 그 생각도 기록으로
-    note: (ai.length && aiNote) || picksNote(bands, leftOut(GIFT_CATALOG, p.card, profile.notes, locale), ctx, locale),
+    note: (ai.length && acceptNote(aiNote, ctx, locale)) || picksNote(bands, leftOut(GIFT_CATALOG, p.card, profile.notes, locale), ctx, locale),
   };
 }
 

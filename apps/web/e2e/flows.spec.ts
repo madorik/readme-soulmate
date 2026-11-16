@@ -725,6 +725,7 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   await expect(picks.getByRole("tabpanel").getByRole("link")).toHaveCount(5);
   // 무엇을 보고 어떻게 골랐는지 풀어 쓴 한두 문장
   await expect(picks.locator("[data-note]")).toHaveText(/\S{2,}.*요\.?$/);
+  await expect(picks.locator("[data-note]")).not.toContainText("아내");
   await expect(picks.getByText(/하나하나 떠올리며/)).toHaveCount(0);
   await shot(page, "13-picks-note");
   await picks.getByRole("tab", { name: "1만원대" }).click();

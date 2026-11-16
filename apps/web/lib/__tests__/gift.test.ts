@@ -13,6 +13,7 @@ import {
   catalogRequest,
   fallbackBasis,
   groundBasis,
+  acceptNote,
   leftOut,
   parseCatalogPicks,
   picksNote,
@@ -132,12 +133,12 @@ test("AI 답 풀기: 겹치거나 빈 것, 피할 것이 든 것은 빼고 네 �
 test("기록만으로 고르기: 해주고 싶은 선물이 먼저, 취미·향·꽃 순, 없으면 챙길 날 선물", () => {
   const ideas = ruleIdeas(card, ctx, "ko");
   assert.deepEqual(ideas.slice(0, 4), [
-    { keyword: "블루투스 스피커", reason: "아빠에게 해 주고 싶다고 적어 둔 바로 그 선물이에요", basis: ["적어 둔 선물"] },
-    { keyword: "캠핑 용품", reason: "캠핑을 좋아하는 아빠에게 잘 어울리는 선물이에요", basis: ["캠핑"] },
-    { keyword: "등산 용품", reason: "등산을 좋아하는 아빠에게 잘 어울리는 선물이에요", basis: ["등산"] },
-    { keyword: "우디 향수", reason: "우디 향을 좋아하는 아빠에게 잘 어울리는 선물이에요", basis: ["우디 향"] },
+    { keyword: "블루투스 스피커", reason: "해 주고 싶다고 적어 둔 바로 그 선물이에요", basis: ["적어 둔 선물"] },
+    { keyword: "캠핑 용품", reason: "캠핑을 좋아하니 반길 만한 선물이에요", basis: ["캠핑"] },
+    { keyword: "등산 용품", reason: "등산을 좋아하니 반길 만한 선물이에요", basis: ["등산"] },
+    { keyword: "우디 향수", reason: "우디 향을 좋아하니 반길 만한 선물이에요", basis: ["우디 향"] },
   ]);
-  assert.deepEqual(ruleIdeas({}, ctx, "ko"), [{ keyword: "아빠 생일 선물", reason: "아빠의 생일, 마음을 전하기 좋은 선물이에요", basis: ["60대 아빠"] }]);
+  assert.deepEqual(ruleIdeas({}, ctx, "ko"), [{ keyword: "아빠 생일 선물", reason: "생일에 마음을 전하기 좋은 선물이에요", basis: ["60대 아빠"] }]);
   assert.deepEqual(ruleIdeas({}, { ...ctx, call: "아내", age: null, occasion: { kind: "anniversary", label: "결혼기념일" } }, "en"), [{ keyword: "아내 결혼기념일 선물", reason: "A warm way to mark your anniversary", basis: ["아내"] }]);
   assert.ok(!ruleIdeas({ gifts: { giftCard: null, wishlist: [{ title: "보온 텀블러", url: "" }], skip: ["텀블러"], brands: [] } }, ctx, "ko").some((i) => i.keyword.includes("텀블러")));
 });
@@ -182,7 +183,8 @@ test("목록 고르기: 처음 가격대는 관계로, 기록만으로는 맞는
   assert.equal(picks.length, PRICE_BANDS.length * PICKS_PER_BAND);
   const byId = new Map(GIFT_CATALOG.map((x) => [x.id, x]));
   for (const b of PRICE_BANDS) assert.equal(picks.filter((p) => byId.get(p.id)!.band === b).length, PICKS_PER_BAND);
-  assert.ok(picks.some((p) => /^(등산|캠핑)을 좋아하는 아빠에게/.test(p.reason)));
+  assert.ok(picks.some((p) => /^(등산|캠핑)을 좋아하니/.test(p.reason)));
+  assert.ok(picks.every((p) => !p.reason.includes("아빠")), "이유에 부르는 말을 넣지 않는다");
   // AI가 고른 게 모자라면 채우고, 고를 수 없는 것·겹친 것·한 가격대에 다섯 넘는 것은 버린다
   const five = eligible.filter((x) => x.band === "5").slice(0, 6).map((x) => ({ id: x.id, reason: x.q }));
   const ai = sanitizeCatalogPicks([{ id: "no-such", reason: "x" }, ...five, five[0]], eligible);
@@ -274,14 +276,17 @@ test("고른 근거: 기록에 있는 말만 남기고(지어낸 골프는 버�
   assert.deepEqual(parseCatalogPicks({ output: [] }, eligible), { picks: [], note: "" });
 });
 
-test("고른 생각(AI가 못 쓸 때): 눈여겨본 기록·적어 둔 선물·빼 둔 것을 얘기하듯", () => {
+test("고른 생각: 한 줄로 짧게, 부르는 말 없이(AI 문장이 길거나 엄마·아빠가 들면 기록으로 만든 문장)", () => {
   const b = (...basis: string[][]) => [{ items: basis.map((x) => ({ basis: x })) }];
-  assert.equal(
-    picksNote(b(["등산", "60대 아빠"], ["등산"], ["허리 통증"], ["적어 둔 선물"], ["가족"]), ["지갑", "술"], ctx, "ko"),
-    "아빠 기록에 있는 등산, 허리 통증을 눈여겨보고, 적어 둔 선물도 함께 넣었어요. 지갑, 술은 빼 두었어요.",
-  );
-  assert.equal(picksNote(b(["트로트"]), [], ctx, "ko"), "아빠 기록에 있는 트로트를 눈여겨보고 골랐어요.");
-  assert.equal(picksNote(b(["적어 둔 선물"], ["60대 아빠"]), [], ctx, "ko"), "적어 둔 선물을 먼저 넣고, 60대 아빠에게 어울릴 만한 것들로 채웠어요.");
-  assert.equal(picksNote(b(["60대 아빠"], ["생일"]), ["스카프"], ctx, "ko"), "60대 아빠에게 무난하게 어울릴 만한 것들로 골랐어요. 스카프는 빼 두었어요.");
-  assert.equal(picksNote(b(["hiking"], ["golf"]), ["Wallet"], { ...ctx, call: "Dad" }, "en"), "We went by hiking and golf from what you've noted about Dad. Left out Wallet.");
+  assert.equal(picksNote(b(["등산", "60대 아빠"], ["등산"], ["허리 통증"], ["적어 둔 선물"], ["가족"]), ["지갑", "술", "땅콩"], ctx, "ko"), "적어 둔 선물과 등산을 보고, 지갑과 술은 빼고 골랐어요");
+  assert.equal(picksNote(b(["트로트"], ["수국"], ["트로트"]), [], ctx, "ko"), "트로트와 수국을 보고 골랐어요");
+  assert.equal(picksNote(b(["60대 아빠"], ["생일"]), ["스카프"], ctx, "ko"), "60대에 무난한 것들로, 스카프는 빼고 골랐어요");
+  assert.equal(picksNote(b(["아빠"]), [], { ...ctx, age: null }, "ko"), "무난한 것들로 골랐어요");
+  assert.equal(picksNote(b(["hiking"], ["golf"]), ["Wallet"], { ...ctx, call: "Dad" }, "en"), "Picked with hiking and golf in mind, leaving out Wallet.");
+  for (const note of [picksNote(b(["등산"]), ["지갑"], ctx, "ko"), picksNote(b(["60대 아빠"]), [], ctx, "ko")]) assert.ok(!note.includes("아빠"), note);
+  // AI 문장은 짧고 부르는 말이 없을 때만
+  assert.equal(acceptNote("걷기와 트로트를 보고, 작년에 드린 홍삼은 빼고 골랐어요", { ...ctx, call: "엄마" }, "ko"), "걷기와 트로트를 보고, 작년에 드린 홍삼은 빼고 골랐어요");
+  assert.equal(acceptNote("걷기를 즐기시는 엄마께 골랐어요", { ...ctx, call: "엄마" }, "ko"), "");
+  assert.equal(acceptNote("등산을 좋아하시는 아버님께 골랐어요", ctx, "ko"), "");
+  assert.equal(acceptNote("안마 쿠션을 적어 두셨고, 걷기와 트로트를 좋아하시니 편안한 휴식과 즐거움을 더할 선물을 먼저 골랐어요", ctx, "ko"), "");
 });
