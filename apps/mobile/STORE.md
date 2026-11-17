@@ -34,11 +34,20 @@
 node apps/mobile/scripts/store/listing.mjs
 
 # 운영 주소로 앱을 묶어서 서명된 AAB 만들기(versionCode는 android/app/build.gradle에서 올릴 때마다 +1)
+cp ~/.readme/google-services.json apps/mobile/android/app/google-services.json   # 푸시(FCM). 없으면 푸시 없이 빌드된다
 cd apps/mobile && CAP_SERVER_URL=https://remember-you.watalabs.com npx cap sync android && cd android && ./gradlew bundleRelease
 cd ../../.. && node apps/mobile/scripts/store/release.mjs apps/mobile/android/app/build/outputs/bundle/release/app-release.aab alpha "첫 비공개 테스트"
 ```
 
 네 번째 인자로 영어 출시 노트를 줄 수 있다(`release.mjs <aab> alpha "한국어 노트" "English notes"`). 2026-11-15 비공개 테스트에 0.2.0(versionCode 3) 올림(말로 적기 기기 음성 인식). R8이 Capacitor 플러그인 어노테이션을 지우면 권한 요청에서 앱이 죽으므로 `proguard-rules.pro`의 keep 규칙을 지운다면 안 된다. 앱이 아직 한 번도 검토를 안 거쳤으면 Play가 초안 출시만 받는다. 스크립트가 알아서 초안으로 만들고, 콘솔에서 '검토를 위해 전송'을 누른다.
+
+### 푸시(Firebase)
+
+2026-11-17 Firebase 프로젝트 `remember-you`(ID `remember-you-b58b1`, 맹고와 따로, 애널리틱스·Gemini 끔)를 만들고 Android·iOS 앱 `kr.readme.app`을 등록했다.
+설정 파일 `google-services.json`·`GoogleService-Info.plist`와 서버 발송 키 `firebase-admin.json`은 저장소 밖 `~/.readme/`에 있고(저장소에는 넣지 않는다, .gitignore),
+Vercel 운영에 `FCM_PROJECT_ID`·`FCM_CLIENT_EMAIL`·`FCM_PRIVATE_KEY`(줄바꿈은 `\n`)를 넣었다.
+첫 푸시 빌드는 0.3.0(versionCode 8). 웹은 versionCode 8 미만 앱에서는 푸시를 등록하지 않는다(설정 없이 빌드한 앱은 등록하면 멈춘다, `PUSH_MIN_ANDROID_BUILD`).
+서버 푸시는 답장처럼 기기가 모르는 것만 보낸다(생일 알림은 기기 로컬 알림). iOS는 Firebase Messaging과 APNs 키(Apple)가 아직이라 등록하지 않는다.
 
 ## 3. 앱 콘텐츠(정책) 답
 

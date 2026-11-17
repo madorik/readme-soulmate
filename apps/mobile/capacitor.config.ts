@@ -26,7 +26,7 @@ const config: CapacitorConfig = {
     // 화면 끝까지 그리고(웹이 안전 영역만큼 띄운다), 상태바·아래 막대 아이콘은 흰 바탕에 맞춰 어둡게
     SystemBars: { insetsHandling: "css", style: "LIGHT", initialViewportFitValueHint: "cover" },
     SplashScreen: { launchShowDuration: 1500, launchAutoHide: true, backgroundColor: "#FFFFFF", showSpinner: false },
-    LocalNotifications: { iconColor: "#E8352C" },
+    LocalNotifications: { smallIcon: "ic_stat_notify", iconColor: "#F2A900" },
     PushNotifications: { presentationOptions: ["banner", "sound"] },
   },
 };

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 알림 작은 아이콘(흰 실루엣): 컨닝페이퍼를 보는 눈 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M12,5C6.6,5 2.8,8.9 1.5,12c1.3,3.1 5.1,7 10.5,7s9.2,-3.9 10.5,-7C21.2,8.9 17.4,5 12,5zM12,8.2a3.8,3.8 0 1,0 0.01,0zM12,10.4a1.6,1.6 0 1,0 0.01,0z" />
+</vector>

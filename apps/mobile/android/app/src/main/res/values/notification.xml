@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 알림 아이콘 색(기억해유 망고) -->
+    <color name="notification_color">#F2A900</color>
+</resources>

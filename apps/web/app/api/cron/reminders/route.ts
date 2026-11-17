@@ -81,7 +81,9 @@ export async function GET(request: NextRequest) {
       created += inserted.length;
       if (!inserted.length) continue;
 
-      const tokens = await asSystem((q) => q<{ token: string }>("select token from push_tokens where user_id = $1", [me]));
+      // 앱(안드로이드·iOS)은 생일·기념일 알림을 기기에 직접 예약한다(native.tsx 기기 로컬 알림). 서버 푸시까지 보내면 두 번 오므로
+      // 앱 기기에는 보내지 않는다(서버 푸시는 답장처럼 기기가 알 수 없는 것만). 웹 푸시가 생기면 그 기기에만 보낸다
+      const tokens = await asSystem((q) => q<{ token: string }>("select token from push_tokens where user_id = $1 and platform not in ('android', 'ios')", [me]));
       for (const n of inserted) {
         const e = due.find((x) => x.event.contactId === n.contact_id && x.event.kind === n.kind && x.offset === n.offset_days && (x.event.label ?? "") === n.label)?.event;
         if (!e) continue;
