@@ -102,3 +102,17 @@ Vercel 운영에 `FCM_PROJECT_ID`·`FCM_CLIENT_EMAIL`·`FCM_PRIVATE_KEY`(줄바�
 
 - 아이콘·스플래시·그래픽 이미지: `node apps/mobile/scripts/make-assets.mjs`(READ / ME, ME에 빨간 펜 동그라미). 앱 화면은 2026-11-14에 시안 C2(먹색·Manrope·가는 선)로 바뀌어서, 아이콘·그래픽·스크린샷은 다시 만들어 올려야 톤이 맞는다
 - 스크린샷 1080×1920(한/영 6장씩, 운영 사이트 데모 계정): `node apps/mobile/scripts/store-screens.mjs`
+
+## iOS App Store (2026-11-17 첫 심사 제출)
+
+- App Store Connect 앱 ID 6834970170, 번들 kr.readme.app, 팀 QYS79FM739. 1.0(9)을 심사에 냄(자동 출시).
+- 빌드 올리기: `cd apps/mobile && CAP_SERVER_URL=https://remember-you.watalabs.com npx cap sync ios`, 그다음 `ios/App`에서
+  `xcodebuild archive -project App.xcodeproj -scheme App -configuration Release -destination generic/platform=iOS -archivePath <dir>/App.xcarchive -allowProvisioningUpdates`,
+  `xcodebuild -exportArchive -archivePath <dir>/App.xcarchive -exportOptionsPlist <dir>/ExportOptions.plist -exportPath <dir>/export -allowProvisioningUpdates`
+  (ExportOptions: method app-store-connect, destination upload, teamID QYS79FM739, signingStyle automatic). Xcode에 로그인된 계정으로 올라간다. 올릴 때마다 CURRENT_PROJECT_VERSION을 1씩 올린다.
+- 아이폰 전용(TARGETED_DEVICE_FAMILY 1): 아이패드 스크린샷이 필요 없게. 스크린샷은 6.3형 1206×2622(운영 데모 계정으로 찍음).
+- 판매: 무료, 대한민국만(EU DSA 판매자 공개·중국 규정 신고를 피함). 연령 등급 16+(술 선물 언급 드물게 → 13+, 약관 만 14세 이상이라 16+).
+- 개인정보: 이름·이메일·건강(알레르기)·기타 사용자 콘텐츠·사용자 ID·기기 ID(앱 기능·분석), 제품 상호 작용(분석). 모두 사용자와 연결, 추적 안 함. 처리방침 /privacy-policy, 지원 /support.
+- 심사 4.8: 애플로 로그인(Services ID kr.readme.app.web, 키 SKH7CXH449는 ~/.readme). 심사 메모: 로그인 없이 '데모로 둘러보기', 기기 기능(로컬 알림·음성 인식·Face ID·공유창), 계정 삭제, 쿠팡 제휴 고지.
+- 심사 연락처: 이름 MinGyun Jeong, 이메일 watalabs.help@gmail.com, 전화는 Apple 개발자 계정 번호.
+- iOS 푸시는 아직: APNs 키 + 앱에 Firebase Messaging(GoogleService-Info.plist는 ~/.readme)을 넣어야 FCM 토큰을 받는다. 웹은 iOS에서 푸시 등록을 하지 않는다.
