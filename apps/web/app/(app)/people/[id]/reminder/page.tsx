@@ -71,6 +71,40 @@ export default async function Reminder({ params, searchParams }: { params: Promi
   const doneLabel = `${doneYear} ${event}`.slice(0, 40);
   const done = notes.find((n) => n.label === doneLabel)?.body ?? null;
 
+  // 컨닝페이퍼 힐끗 보기: 앱 아이콘 + 한 줄. 누르면 오른쪽에서 힌트가 나온다. 가격대 칩 바로 위 오른쪽에 둔다
+  const peek = (
+    <HintsPeek label={t("reminder.peek")} title={t("reminder.hints", { name })} closeLabel={t("common.close")}>
+      {!hasHints ? <p className="row text-[14px] leading-[1.6] text-muted">{t("reminder.noHints", { name })}</p> : null}
+      {life?.hobbies.length ? <Hint label={t("life.hobbies")}>{life.hobbies.join(t("common.and"))}</Hint> : null}
+      {favHint ? <Hint label={t("fav.people")}>{favHint}</Hint> : null}
+      {gifts?.wishlist.length ? <Hint label={t("reminder.wish")}>{gifts.wishlist.map((w) => w.title).join(t("common.and"))}</Hint> : null}
+      {fav?.flowers ? <Hint label={t("reminder.flowers")}>{fav.flowers}</Hint> : null}
+      {fav?.scent ? <Hint label={t("reminder.scent")}>{fav.scent}</Hint> : null}
+      {fav?.places?.length ? <Hint label={t("fav.places")}>{fav.places.join(t("common.and"))}</Hint> : null}
+      {sizes?.shoe ? <Hint label={t("size.shoe")}>{sizes.shoe}mm</Hint> : null}
+      {styleHint ? <Hint label={t("fav.style")}>{styleHint}</Hint> : null}
+      {taste?.dessert ? <Hint label={t("fav.dessert")}>{taste.dessert}</Hint> : null}
+      {gifts?.skip.length ? (
+        <Hint label={t("reminder.skip")}>
+          <span className="text-muted line-through decoration-red decoration-2">{gifts.skip.join(t("common.and"))}</span>
+        </Hint>
+      ) : null}
+      {meal.length || taste?.spicy != null ? (
+        <Hint label={t("reminder.meal")}>
+          {[...meal, ...(taste?.spicy != null ? [`${t("taste.spicy")} ${SPICY_LEVELS[taste.spicy]?.[locale]}`] : [])].join(t("common.and"))}
+        </Hint>
+      ) : null}
+      {notes.length ? (
+        <Hint label={t("reminder.pastNotes")}>
+          {notes
+            .slice(0, 3)
+            .map((n) => (n.label ? `${n.label} ${n.body}` : n.body))
+            .join(" / ")}
+        </Hint>
+      ) : null}
+    </HintsPeek>
+  );
+
   return (
     <>
       <TopBar back={`/people/${p.contactId}`} label={t("common.back")} right={<Link href="/privacy#reminders" aria-label={t("privacy.reminders")} className="flex h-11 w-11 items-center justify-center"><Icon name="bell" /></Link>} />
@@ -93,39 +127,8 @@ export default async function Reminder({ params, searchParams }: { params: Promi
 
       <h1 className="headline mx-6 mt-6 text-[28px]">{next ? (next.daysUntil === 0 ? t("reminder.today", { event }) : t("reminder.left", { event, n: next.daysUntil })) : event}</h1>
 
-      {/* 힌트는 접어 두고, 앱 아이콘 + '컨닝페이퍼 힐끗 보기'를 누르면 아래에서 올라온다 */}
-      <div className="flex px-6 pt-4">
-        <HintsPeek label={t("reminder.peek")} title={t("reminder.hints", { name })} closeLabel={t("common.close")}>
-        {!hasHints ? <p className="row text-[14px] leading-[1.6] text-muted">{t("reminder.noHints", { name })}</p> : null}
-        {life?.hobbies.length ? <Hint label={t("life.hobbies")}>{life.hobbies.join(t("common.and"))}</Hint> : null}
-        {favHint ? <Hint label={t("fav.people")}>{favHint}</Hint> : null}
-        {gifts?.wishlist.length ? <Hint label={t("reminder.wish")}>{gifts.wishlist.map((w) => w.title).join(t("common.and"))}</Hint> : null}
-        {fav?.flowers ? <Hint label={t("reminder.flowers")}>{fav.flowers}</Hint> : null}
-        {fav?.scent ? <Hint label={t("reminder.scent")}>{fav.scent}</Hint> : null}
-        {fav?.places?.length ? <Hint label={t("fav.places")}>{fav.places.join(t("common.and"))}</Hint> : null}
-        {sizes?.shoe ? <Hint label={t("size.shoe")}>{sizes.shoe}mm</Hint> : null}
-        {styleHint ? <Hint label={t("fav.style")}>{styleHint}</Hint> : null}
-        {taste?.dessert ? <Hint label={t("fav.dessert")}>{taste.dessert}</Hint> : null}
-        {gifts?.skip.length ? (
-          <Hint label={t("reminder.skip")}>
-            <span className="text-muted line-through decoration-red decoration-2">{gifts.skip.join(t("common.and"))}</span>
-          </Hint>
-        ) : null}
-        {meal.length || taste?.spicy != null ? (
-          <Hint label={t("reminder.meal")}>
-            {[...meal, ...(taste?.spicy != null ? [`${t("taste.spicy")} ${SPICY_LEVELS[taste.spicy]?.[locale]}`] : [])].join(t("common.and"))}
-          </Hint>
-        ) : null}
-        {notes.length ? (
-          <Hint label={t("reminder.pastNotes")}>
-            {notes
-              .slice(0, 3)
-              .map((n) => (n.label ? `${n.label} ${n.body}` : n.body))
-              .join(" / ")}
-          </Hint>
-        ) : null}
-        </HintsPeek>
-      </div>
+      {/* 선물을 안 보이는 설정이면 힌트 단추는 여기(보이면 가격대 칩 바로 위 오른쪽) */}
+      {!picksOn ? <div className="flex px-6 pt-4">{peek}</div> : null}
 
       {picksOn ? (
         <section id="picks" aria-labelledby="picks-title" className="relative flex scroll-mt-2 flex-col pt-7">
@@ -136,8 +139,8 @@ export default async function Reminder({ params, searchParams }: { params: Promi
             </h2>
           </div>
           {/* 다시 고르면 key가 바뀌어 고르는 동안 빈 자리와 문구를 다시 보인다 */}
-          <Suspense key={skip.join(",")} fallback={<GiftPicksSkeleton loading={loading} />}>
-            <GiftPicks s={s} person={p} occasion={occasion} today={today} skip={skip} again={again} card={{ name, event: shareText }} />
+          <Suspense key={skip.join(",")} fallback={<GiftPicksSkeleton loading={loading} peek={peek} />}>
+            <GiftPicks s={s} person={p} occasion={occasion} today={today} skip={skip} again={again} card={{ name, event: shareText }} peek={peek} />
           </Suspense>
         </section>
       ) : null}

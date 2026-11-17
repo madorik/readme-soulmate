@@ -64,6 +64,11 @@ function Row({ pick, pad, t, priceOf }: { pick: GiftPick; pad: string; t: Return
   );
 }
 
+/** 가격대 칩 바로 위 오른쪽 줄 */
+function PeekRow({ pad, children }: { pad: string; children: React.ReactNode }) {
+  return <div className={`flex justify-end pt-3 ${pad}`}>{children}</div>;
+}
+
 export function PicksDisclosure({ text, pad = "px-6" }: { text: string; pad?: string }) {
   return <p className={`pt-4 text-[11.5px] leading-[1.5] text-muted ${pad}`}>{text}</p>;
 }
@@ -78,14 +83,16 @@ export function parseSkip(v: string | undefined): string[] {
  * 이 사람에게 어울릴 선물(max: 상품 방식에서 찾을 말 몇 개까지). title이 없으면 고지 없이(여러 사람 화면).
  * again: 다시 고르기 주소의 앞부분(지금 화면 주소). 주면 오른쪽 위에 다시 고르기 단추(부모 section이 relative여야 한다)
  * card: 주면 고른 선물로 가족에게 보낼 카드 주소를 만들어 아래 단추 줄에 알린다(부르는 말·챙길 날 한 줄)
+ * peek: 가격대 칩 바로 위 오른쪽에 둘 것(선물 힌트 화면의 '컨닝페이퍼 힐끗 보기')
  */
-export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6", title = true, skip = [], again, card }: { s: Session; person: Person; occasion: GiftContext["occasion"]; today: YMD; max?: number; pad?: string; title?: boolean; skip?: string[]; again?: string; card?: { name: string; event: string } }) {
+export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6", title = true, skip = [], again, card, peek }: { s: Session; person: Person; occasion: GiftContext["occasion"]; today: YMD; max?: number; pad?: string; title?: boolean; skip?: string[]; again?: string; card?: { name: string; event: string }; peek?: React.ReactNode }) {
   const { locale } = s.profile;
   const t = makeT(locale);
   const [ctx, notes] = await Promise.all([giftContext(s, person, occasion, today), giftNotes(s, person)]);
+  const peekRow = peek ? <PeekRow pad={pad}>{peek}</PeekRow> : null;
   if (!giftPicksConfigured()) {
     const { bands, initial, note } = await giftLinkPicks(s, person, ctx, notes, skip);
-    if (!bands.length) return null;
+    if (!bands.length) return peekRow;
     const shown = bands.flatMap((b) => b.items.map((i) => i.id));
     const next = [...new Set([...skip, ...shown])].slice(-60).join(",");
     const share = card ? { url: await giftCardUrl(s.user.id, { locale, name: card.name, event: card.event, ids: shown }), text: t("picks.shareText", { name: card.name }) } : undefined;
@@ -108,6 +115,7 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
             {note}
           </p>
         ) : null}
+        {peekRow}
         <GiftLinkTabs
           pad={pad}
           initial={initial}
@@ -121,11 +129,12 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
     );
   }
   const picks = await giftPicks(s, person, ctx, notes, max);
-  if (!picks.length) return null;
+  if (!picks.length) return peekRow;
   const num = new Intl.NumberFormat(locale === "ko" ? "ko-KR" : "en-US");
   const priceOf = (n: number) => t("picks.price", { n: num.format(n) });
   return (
     <>
+      {peekRow}
       {picks.map((pick) => (
         <Row key={pick.keyword} pick={pick} pad={pad} t={t} priceOf={priceOf} />
       ))}
@@ -134,12 +143,13 @@ export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6",
   );
 }
 
-/** 채우는 동안: 같은 모양의 빈 자리(목록 방식이면 고르는 중 문구 + 가격대 칩 + 세 칸). loading = 차례로 바꿔 보일 문구 */
-export function GiftPicksSkeleton({ rows = 2, pad = "px-6", loading }: { rows?: number; pad?: string; loading?: string[] }) {
+/** 채우는 동안: 같은 모양의 빈 자리(목록 방식이면 고르는 중 문구 + 가격대 칩 + 세 칸). loading = 차례로 바꿔 보일 문구. peek: 고르는 동안에도 힌트는 볼 수 있게 */
+export function GiftPicksSkeleton({ rows = 2, pad = "px-6", loading, peek }: { rows?: number; pad?: string; loading?: string[]; peek?: React.ReactNode }) {
   if (!giftPicksConfigured()) {
     return (
       <div className="flex flex-col">
         {loading?.length ? <PicksLoading lines={loading} pad={pad} /> : null}
+        {peek ? <PeekRow pad={pad}>{peek}</PeekRow> : null}
         <div aria-hidden="true" className="flex flex-col motion-safe:animate-pulse">
           <div className={`flex gap-1.5 pb-1 pt-3 ${pad}`}>
             {[64, 64, 64, 84].map((w, i) => (
@@ -163,7 +173,9 @@ export function GiftPicksSkeleton({ rows = 2, pad = "px-6", loading }: { rows?: 
     );
   }
   return (
-    <div aria-hidden="true" className="flex flex-col motion-safe:animate-pulse">
+    <>
+      {peek ? <PeekRow pad={pad}>{peek}</PeekRow> : null}
+      <div aria-hidden="true" className="flex flex-col motion-safe:animate-pulse">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex flex-col pt-3.5">
           <div className={`flex min-h-11 items-center ${pad}`}>
@@ -180,6 +192,7 @@ export function GiftPicksSkeleton({ rows = 2, pad = "px-6", loading }: { rows?: 
           </div>
         </div>
       ))}
-    </div>
+      </div>
+    </>
   );
 }
