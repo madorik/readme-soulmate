@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/data";
+import { revokeApple } from "@/lib/apple";
 
 const PREFS = ["app_lock", "push_enabled"] as const;
 
@@ -25,6 +26,8 @@ export async function setPreference(form: FormData): Promise<void> {
 export async function deleteAccount(form: FormData): Promise<void> {
   if (form.get("confirm") !== "1") return;
   const s = await requireSession();
+  // 애플로 로그인했으면 애플 쪽 권한도 끊는다(계정 줄이 지워지기 전에)
+  await revokeApple(s.user.id);
   await s.tx((q) => q("select delete_my_account()"));
   // 지운 사람과 잇지 않고 수만 남긴다
   track("account_delete", {});

@@ -4,6 +4,7 @@ import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { anonymous } from "better-auth/plugins/anonymous";
 import { oneTimeToken } from "better-auth/plugins/one-time-token";
+import { appleClientSecret } from "./apple";
 import { pool } from "./db";
 import { PRODUCTION_ORIGINS, SITE_URL } from "./site";
 
@@ -12,7 +13,7 @@ import { PRODUCTION_ORIGINS, SITE_URL } from "./site";
 
 export const PROVIDERS = {
   google: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
-  apple: !!(process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET),
+  apple: !!(process.env.APPLE_CLIENT_ID && appleClientSecret()),
 };
 
 function create() {
@@ -30,7 +31,7 @@ function create() {
     socialProviders: {
       ...(PROVIDERS.google ? { google: { clientId: process.env.GOOGLE_CLIENT_ID!, clientSecret: process.env.GOOGLE_CLIENT_SECRET!, prompt: "select_account" as const } } : {}),
       ...(PROVIDERS.apple
-        ? { apple: { clientId: process.env.APPLE_CLIENT_ID!, clientSecret: process.env.APPLE_CLIENT_SECRET!, appBundleIdentifier: process.env.APPLE_APP_BUNDLE_ID ?? APP_ID } }
+        ? { apple: { clientId: process.env.APPLE_CLIENT_ID!, clientSecret: appleClientSecret()!, appBundleIdentifier: process.env.APPLE_APP_BUNDLE_ID ?? APP_ID } }
         : {}),
     },
     account: { accountLinking: { enabled: true, trustedProviders: ["google", "apple"] } },

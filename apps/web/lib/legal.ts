@@ -6,7 +6,7 @@ import { requestLocale } from "./i18n";
 export const OPERATOR = { ko: "와타랩스", en: "WataLabs" } as const;
 export const CEO = { ko: "정민균", en: "Mingyun Jeong" } as const;
 export const SUPPORT_EMAIL = "watalabs.help@gmail.com";
-export const LEGAL_EFFECTIVE_ON = "2026-11-16";
+export const LEGAL_EFFECTIVE_ON = "2026-11-17";
 
 /** 약관류는 ?lang=en|ko 로 언어를 고를 수 있다(스토어 등록 화면에 언어별 주소를 넣으려고) */
 export async function legalLocale(lang: string | undefined): Promise<Locale> {

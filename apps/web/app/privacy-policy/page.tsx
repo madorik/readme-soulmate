@@ -5,7 +5,7 @@ import { CEO, legalLocale, OPERATOR, SUPPORT_EMAIL } from "@/lib/legal";
 export const metadata: Metadata = { title: "개인정보 처리방침 · Privacy Policy" };
 
 // 「개인정보 보호법」 제30조 항목을 실제로 처리하는 대로 적는다(2026-11-14 코드 기준).
-// 위탁: Vercel(호스팅), Supabase(DB, 서울), Google·Apple(로그인), OpenAI(말로 적기·선물 추천 찾을 말). 쿠팡에는 찾을 말만 보낸다. 푸시(FCM)·분석 도구를 켜면 여기와 시행일(lib/legal.ts)을 같이 고친다.
+// 위탁: Vercel(호스팅), Supabase(DB, 서울), Google·Apple(로그인), OpenAI(말로 적기·선물 추천 찾을 말), Google(푸시 FCM, 2026-11-17부터). 쿠팡에는 찾을 말만 보낸다. 위탁이 바뀌면 여기와 시행일(lib/legal.ts)을 같이 고친다.
 export default async function PrivacyPolicy({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const locale = await legalLocale((await searchParams).lang);
   const mail = <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>;
@@ -37,7 +37,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           </li>
           <li>
             <b>Settings and device</b>: language, time zone, reminder timing, whether app lock is on, and the device language. If you allow notifications on a phone, reminders are
-            scheduled on the device itself.
+            scheduled on the device itself, and we keep that phone&rsquo;s push token to tell you when someone answers your question.
           </li>
           <li>
             <b>Gift ideas</b>: gift cards you send to family (what you call the person, the upcoming date, the picked gifts) and notes you leave with Gift done.
@@ -104,6 +104,11 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
             <tr>
               <td>OpenAI, L.L.C.</td>
               <td>Sorting a sentence you say or type in Say it into people and sections, and picking gift ideas from your records and notes about a person, only when you use them</td>
+              <td>USA (sent over the network each time)</td>
+            </tr>
+            <tr>
+              <td>Google LLC</td>
+              <td>Push notifications (Firebase Cloud Messaging), only if you allow notifications in the app: the phone&rsquo;s push token and the notification text (for example, that someone replied)</td>
               <td>USA (sent over the network each time)</td>
             </tr>
             <tr>
@@ -180,7 +185,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           아바타가 보이고, 고르면 나에 대한 기록에도 저장됩니다.
         </li>
         <li>
-          <b>설정과 기기</b>: 언어, 시간대, 알림 시점, 앱 잠금 사용 여부, 기기 언어. 휴대폰에서 알림을 허용하면 생일 알림은 기기 안에서 예약됩니다.
+          <b>설정과 기기</b>: 언어, 시간대, 알림 시점, 앱 잠금 사용 여부, 기기 언어. 휴대폰에서 알림을 허용하면 생일 알림은 기기 안에서 예약되고, 물어보기에 답장이 오면 알려 드리려고 그 휴대폰의 푸시 토큰을 보관합니다.
         </li>
         <li>
           <b>선물 추천</b>: 가족에게 보낸 선물 카드(부르는 말, 챙길 날, 고른 선물 목록), 선물 완료로 남긴 메모
@@ -246,6 +251,11 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           <tr>
             <td>OpenAI, L.L.C.</td>
             <td>말로 적기에서 말하거나 적은 문장을 사람·항목으로 나누기, 선물 추천에서 그 사람 기록·메모로 선물 고르기(쓸 때만)</td>
+            <td>미국(쓸 때마다 네트워크로 전송)</td>
+          </tr>
+          <tr>
+            <td>Google LLC</td>
+            <td>푸시 알림(Firebase 클라우드 메시징, 앱에서 알림을 허용한 경우만): 휴대폰의 푸시 토큰과 알림 문구(예: 답장이 왔다는 것)</td>
             <td>미국(쓸 때마다 네트워크로 전송)</td>
           </tr>
           <tr>
