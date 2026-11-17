@@ -10,6 +10,7 @@ import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/Capt
 import { TagChip } from "@/components/PersonRow";
 import { insertMention, mentionAt, mentionLabel, resolveMentions, type MentionPerson } from "@/lib/mention";
 import { matchesPerson } from "@/lib/search";
+import { startDictation, type Dictation, type NativeSpeech } from "@/lib/speech";
 
 /** @로 부를 수 있는 사람(즐겨찾기가 먼저) */
 export type MentionOption = MentionPerson & { avatar: AvatarConfig | null };
@@ -25,14 +26,6 @@ type WebRecognition = {
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
   onend: (() => void) | null;
-};
-
-type NativeSpeech = {
-  available: () => Promise<{ available: boolean }>;
-  requestPermissions: () => Promise<{ speechRecognition: string }>;
-  start: (o: { language: string; partialResults: boolean; popup: boolean; maxResults: number }) => Promise<unknown>;
-  stop: () => Promise<void>;
-  addListener: (event: "partialResults" | "listeningState", fn: (d: { matches?: string[]; status?: string }) => void) => Promise<{ remove: () => Promise<void> }>;
 };
 
 function webCtor(): (new () => WebRecognition) | null {
@@ -232,12 +225,15 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
   );
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
+  // 앱: 멈춘 뒤 마지막 말까지 든 최종 결과를 기다리는 중(길어야 1.5초)
+  const [settling, setSettling] = useState(false);
   const [micError, setMicError] = useState(false);
   const [result, setResult] = useState<CaptureState | null>(null);
   const [undone, setUndone] = useState(false);
   const [pending, start] = useTransition();
   const web = useRef<WebRecognition | null>(null);
-  const native = useRef<{ plugin: NativeSpeech; remove: () => Promise<void> } | null>(null);
+  const native = useRef<Dictation | null>(null);
+  const alive = useRef(true);
   const heard = useRef("");
   // 말로(물방울) / 글로(적는 칸). 마지막에 고른 방식을 기억한다(이 기기에서만). 음성 인식을 못 쓰는 기기는 글로만
   const stored = useSyncExternalStore(
@@ -386,13 +382,14 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
     el.style.height = `${el.scrollHeight}px`;
   }, [text, result]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
       web.current?.stop();
-      void native.current?.plugin.stop();
-    },
-    [],
-  );
+      native.current?.cancel();
+    };
+  }, []);
 
   const submit = (value: string) => {
     const v = value.trim();
@@ -403,20 +400,14 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
     });
   };
 
+  // 웹은 멈추면 최종 결과 뒤에 onend가 온다. 앱은 최종 결과를 기다렸다가 onDone(lib/speech)
   const stopListening = async () => {
     if (web.current) web.current.stop();
-    if (native.current) {
-      const n = native.current;
-      native.current = null;
-      // 플러그인(안드로이드)의 stop()은 끝났다는 답을 주지 않는다. 기다리지 않고 바로 마무리한다
-      void n.plugin.stop().catch(() => {});
-      void n.remove().catch(() => {});
-      setListening(false);
-      if (heard.current.trim()) submit(heard.current);
-    }
+    native.current?.stop();
   };
 
   const listen = async () => {
+    if (settling) return;
     if (listening) return stopListening();
     setMicError(false);
     setResult(null);
@@ -429,25 +420,31 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
       try {
         const perm = await plugin.requestPermissions();
         if (perm.speechRecognition !== "granted") throw new Error("denied");
-        const sub = await plugin.addListener("partialResults", (d) => {
-          heard.current = d.matches?.[0] ?? heard.current;
-          setText(heard.current);
-        });
-        // 말이 끝나 기기가 스스로 멈춰도(조용해지면) 받아 적은 말로 바로 나눠 적는다
-        const state = await plugin.addListener("listeningState", (d) => {
-          if (d.status === "stopped" && native.current) void stopListening();
-        });
-        native.current = {
-          plugin,
-          remove: async () => {
-            await sub.remove();
-            await state.remove();
-          },
-        };
         setListening(true);
-        await plugin.start({ language: lang, partialResults: true, popup: false, maxResults: 1 });
+        // 말이 끝나 기기가 스스로 멈추거나 멈춤을 누르면, 마지막 말까지 받은 뒤 받아 적은 말로 나눠 적는다
+        native.current = await startDictation(plugin, {
+          language: lang,
+          onText: (t) => {
+            heard.current = t;
+            setText(t);
+          },
+          onSettling: () => {
+            setListening(false);
+            setSettling(true);
+          },
+          onDone: (t) => {
+            native.current = null;
+            if (!alive.current) return;
+            setSettling(false);
+            if (t) heard.current = t;
+            setText(heard.current);
+            if (heard.current.trim()) submit(heard.current);
+          },
+        });
       } catch {
+        native.current = null;
         setListening(false);
+        setSettling(false);
         setMicError(true);
       }
       return;
@@ -537,7 +534,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
 
   // 말로: 가운데 물방울(누르면 듣기·멈추기), 바로 밑에 받아 적는 글, 아래 둥근 마이크 · 기억해 두기
   // 글로: 적는 칸 하나와 기억해 두기
-  const idle = !!text && !listening && !pending;
+  const idle = !!text && !listening && !settling && !pending;
   const toggle = canListen ? (
     <div role="radiogroup" aria-label={labels.mode} className="mx-auto mt-4 flex shrink-0 rounded-full bg-fill p-1">
       {(["voice", "text"] as const).map((m) => (
@@ -652,10 +649,10 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
           onClick={() => void listen()}
           aria-pressed={listening}
           aria-label={listening ? labels.listening : labels.speak}
-          disabled={pending || !canListen}
+          disabled={pending || settling || !canListen}
           className="shrink-0 rounded-full transition-transform active:scale-95 disabled:active:scale-100"
         >
-          <WaterDrop active={listening} measure={!nativeSpeech()} />
+          <WaterDrop active={listening || settling} measure={!nativeSpeech()} />
         </button>
         <textarea
           ref={box}
@@ -687,13 +684,13 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
             onClick={() => void listen()}
             aria-pressed={listening}
             aria-label={listening ? labels.listening : labels.speak}
-            disabled={pending}
+            disabled={pending || settling}
             className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-colors ${listening ? "bg-ink text-white" : "bg-white text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
           >
             <Icon name="mic" size={24} strokeWidth={2} />
           </button>
         ) : null}
-        <button disabled={pending || listening || !text.trim()} className="btn-primary flex-1">
+        <button disabled={pending || listening || settling || !text.trim()} className="btn-primary flex-1">
           {pending ? "…" : labels.save}
         </button>
       </div>
