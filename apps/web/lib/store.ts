@@ -1,0 +1,18 @@
+// 앱 받기: 기기에 맞는 스토어로. 안드로이드·PC는 Play 스토어(PC에서는 폰으로 설치를 보낼 수 있다),
+// 아이폰은 App Store 주소(APP_STORE_URL)가 생기기 전까지 웹으로 이어 쓰게 next로.
+// 지금은 Play 비공개 테스트(테스터만 설치) 중이라 정식 출시 전에는 테스터가 아니면 Play에서 찾을 수 없다고 나온다.
+
+export const ANDROID_APP_ID = "kr.readme.app";
+
+/** Play 스토어 앱 화면. referrer의 utm은 Play 콘솔 유입 보고에 잡힌다 */
+export function playUrl(source: string): string {
+  const referrer = encodeURIComponent(`utm_source=${source}&utm_medium=web&utm_campaign=app_get`);
+  return `https://play.google.com/store/apps/details?id=${ANDROID_APP_ID}&referrer=${referrer}`;
+}
+
+/** 기기에 맞는 곳: 아이폰·아이패드는 App Store(없으면 next), 그 밖에는 Play 스토어 */
+export function storeTarget(userAgent: string | null, o: { source: string; next: string; appStore?: string }): { url: string; os: "ios" | "android" | "other" } {
+  const ua = userAgent ?? "";
+  if (/iPhone|iPad|iPod/.test(ua)) return { url: o.appStore || o.next, os: "ios" };
+  return { url: playUrl(o.source), os: /Android/.test(ua) ? "android" : "other" };
+}

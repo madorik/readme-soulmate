@@ -125,7 +125,11 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await dad.getByRole("button", { name: /건강 정보를 지수님에게 보내 저장하는 데 동의해요/ }).click();
   await dad.getByRole("button", { name: "보내기", exact: true }).click();
   await expect(dad.getByRole("heading", { name: "마음이 전해졌어요" })).toBeVisible();
-  await expect(dad.getByRole("link", { name: "나도 물어보기" })).toHaveAttribute("href", /next=%2Frequest%3Fname%3D/);
+  // 나도 물어보기 = 앱 받기(/get: 안드로이드·PC는 Play 스토어, 아이폰은 아직 웹으로 이어서 로그인 → 물어보기)
+  await expect(dad.getByRole("link", { name: "나도 물어보기" })).toHaveAttribute("href", /^\/get\?from=answer&next=%2F%3Fnext%3D%252Frequest%253Fname%253D/);
+  const store = async (ua: string) => (await dad.request.get("/get?from=answer&next=%2Frequest", { headers: { "user-agent": ua }, maxRedirects: 0 })).headers().location ?? "";
+  expect(await store("Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile Safari/537.36")).toMatch(/^https:\/\/play\.google\.com\/store\/apps\/details\?id=kr\.readme\.app&referrer=utm_source%3Danswer/);
+  expect(await store("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148")).toMatch(/\/request$/);
   await shot(dad, "06-answer-done");
 
   // 같은 링크로 다시 답할 수 없다
@@ -278,7 +282,7 @@ test("로그인하고 답하기: 내 리드미 값이 미리 채워지고, 내 �
   await expect(doyun.getByRole("button", { name: "나에 대한 기록에도 저장" })).toHaveAttribute("aria-pressed", "true");
   await doyun.getByRole("button", { name: "보내기", exact: true }).click();
   await expect(doyun.getByRole("heading", { name: "마음이 전해졌어요" })).toBeVisible();
-  await expect(doyun.getByRole("link", { name: "나도 물어보기" })).toHaveAttribute("href", /^\/request\?name=/);
+  await expect(doyun.getByRole("link", { name: "나도 물어보기" })).toHaveAttribute("href", /^\/get\?from=answer&next=%2Frequest%3Fname%3D/);
   await doyun.getByRole("link", { name: "기억해유 열기" }).click();
   await expect(doyun).toHaveURL(/\/me$/);
   const mine = await (await doyun.request.get("/api/export")).json();

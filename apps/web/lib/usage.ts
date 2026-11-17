@@ -23,6 +23,7 @@ export const SERVER_EVENTS = [
   "demo_start",
   "logout",
   "account_delete",
+  "app_get",
 ] as const;
 
 export type ClientEvent = (typeof CLIENT_EVENTS)[number];
@@ -51,6 +52,7 @@ export const FEATURE_LABEL: Record<string, string> = {
   card_share: "가족에게 카드 보냄",
   card_open: "가족 카드 열림",
   gift_done: "선물 완료",
+  app_get: "앱 받기 누름",
 };
 
 /** 화면 이름(통계 화면용). 주소 모양 → 이름 */

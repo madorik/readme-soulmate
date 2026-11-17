@@ -492,6 +492,18 @@
   height: var(--sab);
 }
 
+/* 말로 적기: 듣는 동안 물방울·마이크에서 퍼져 나가는 물결 고리 */
+@keyframes drop-ripple {
+  from {
+    opacity: 0.75;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
 /* 이런 선물은 어때요: 가격대를 넘기면 옆에서 들어오고, 고르는 동안 문구가 살짝 바뀐다 */
 @keyframes picks-in-right {
   from {

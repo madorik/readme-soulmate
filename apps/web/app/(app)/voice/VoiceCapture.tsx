@@ -45,13 +45,29 @@ function nativeSpeech(): NativeSpeech | null {
  * 속은 거의 투명하고 가장자리만 빛이 꺾이듯 푸르스름하며, 왼쪽 위에 흰 반짝임과 가장자리를 따라 비친 초승달 빛, 오른쪽 아래에 모인 빛, 바닥에 그림자와 물을 지난 밝은 빛.
  * 테두리 모양(border-radius)을 조금씩 바꿔 말랑하게 흔들리고, 속물이 출렁인다. 목소리가 클수록 크고 빠르게 흔들린다.
  * 브라우저는 마이크 소리 크기(AnalyserNode)를, 잴 수 없는 곳(앱의 기기 인식)은 듣는 동안 부드럽게 오르내리는 값을 쓴다.
+ * 듣는 동안에는 물방울에서 물결 고리가 퍼져 나가고(소리가 클수록 진하게), 밑에 음성 막대가 소리 크기에 맞춰 오르내린다.
+ * 소리를 잴 수 없는 앱에서는 받아 적은 글자가 들어올 때마다(beat) 출렁인다.
  * 움직임 줄이기를 켠 사람에게는 멈춘다. 값은 그릴 때마다 DOM에 바로 넣는다(화면을 다시 그리지 않게)
  */
-function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: boolean; size?: number }) {
+const BARS = [0.55, 0.8, 1, 0.8, 0.55];
+const BAR_ROW = 36;
+
+function WaterDrop({ active, measure, beat = 0, size = 210 }: { active: boolean; measure: boolean; beat?: number; size?: number }) {
   const body = useRef<HTMLDivElement>(null);
   const slosh = useRef<HTMLDivElement>(null);
   const shine = useRef<HTMLDivElement>(null);
   const shadow = useRef<HTMLDivElement>(null);
+  const ripples = useRef<HTMLDivElement>(null);
+  const bars = useRef<(HTMLSpanElement | null)[]>([]);
+  const kick = useRef(0);
+  const firstBeat = useRef(true);
+  useEffect(() => {
+    if (firstBeat.current) {
+      firstBeat.current = false;
+      return;
+    }
+    kick.current = 1;
+  }, [beat]);
   useEffect(() => {
     const still = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
@@ -73,8 +89,9 @@ function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: 
         for (const v of data) sum += ((v - 128) / 128) ** 2;
         target = Math.min(1, Math.sqrt(sum / data.length) * 7);
       } else if (active) {
-        target = 0.35 + 0.25 * Math.sin(t / 380);
+        target = Math.min(1, 0.3 + 0.12 * Math.sin(t / 380) + 0.6 * kick.current);
       }
+      kick.current *= 0.9;
       level += (target - level) * 0.14;
       if (!still) phase += dt * (1.1 + 3.2 * level);
       const a = still ? 0 : 2.2 + 7 * level; // 테두리 출렁임(%)
@@ -90,6 +107,12 @@ function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: 
         slosh.current.style.transform = `translate(${Math.sin(phase * 0.9) * (6 + 14 * level)}px, ${Math.cos(phase * 1.2) * (4 + 10 * level)}px) rotate(${Math.sin(phase * 0.7) * 12}deg)`;
       if (shine.current) shine.current.style.transform = `translate(${-Math.sin(phase * 0.9) * 3}px, ${-Math.cos(phase * 1.2) * 2}px) rotate(-28deg)`;
       if (shadow.current) shadow.current.style.transform = `translateX(-50%) scale(${grow * (1 + squash * 1.5)}, 1)`;
+      if (ripples.current) ripples.current.style.opacity = String(0.6 + 0.4 * level);
+      bars.current.forEach((bar, i) => {
+        if (!bar) return;
+        const wave = still ? 0.8 : 0.55 + 0.45 * Math.abs(Math.sin(phase * 1.9 + i * 1.25));
+        bar.style.height = `${active ? 6 + 28 * Math.min(1, (0.25 + level) * wave) * BARS[i]! : 6}px`;
+      });
       raf = requestAnimationFrame(draw);
     };
     void (async () => {
@@ -116,13 +139,30 @@ function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: 
     };
   }, [active, measure]);
   return (
-    <div aria-hidden="true" className="relative" style={{ width: size, height: size + 26 }}>
+    <div aria-hidden="true" className="relative" style={{ width: size, height: size + 26 + BAR_ROW }}>
+      {/* 듣는 동안 물방울에서 퍼져 나가는 물결 고리 */}
+      {active ? (
+        <div ref={ripples} className="pointer-events-none absolute left-0 top-0" style={{ width: size, height: size }}>
+          {[0, 0.8, 1.6].map((delay) => (
+            <span
+              key={delay}
+              className="absolute inset-0 rounded-full opacity-0 motion-safe:animate-[drop-ripple_2.4s_cubic-bezier(0.2,0.6,0.35,1)_infinite]"
+              style={{
+                animationDelay: `${delay}s`,
+                border: "2.5px solid rgba(80,160,230,0.75)",
+                background: "radial-gradient(circle, rgba(150,210,250,0) 58%, rgba(150,210,250,0.22) 100%)",
+                boxShadow: "0 0 16px rgba(120,195,250,0.4), inset 0 0 20px rgba(140,205,250,0.3)",
+              }}
+            />
+          ))}
+        </div>
+      ) : null}
       {/* 바닥 그림자와, 물을 지나 모인 밝은 빛 */}
       <div
         ref={shadow}
         className="absolute left-1/2 rounded-[50%]"
         style={{
-          bottom: 0,
+          bottom: BAR_ROW,
           width: size * 0.72,
           height: 22,
           transform: "translateX(-50%)",
@@ -187,6 +227,19 @@ function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: 
         }}
       />
       <div className="absolute rounded-full bg-white/90" style={{ left: size * 0.47, top: size * 0.12, width: size * 0.045, height: size * 0.045, filter: "blur(0.5px)" }} />
+      {/* 음성 막대: 듣는 동안 소리 크기에 맞춰 */}
+      <div className={`absolute bottom-0 left-1/2 flex h-9 -translate-x-1/2 items-center gap-1.5 transition-opacity duration-300 ${active ? "opacity-100" : "opacity-0"}`}>
+        {BARS.map((_, i) => (
+          <span
+            key={i}
+            ref={(el) => {
+              bars.current[i] = el;
+            }}
+            className="w-1.5 rounded-full"
+            style={{ height: 6, background: "linear-gradient(to top, rgba(70,145,215,0.9), rgba(150,210,250,0.95))" }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -565,7 +618,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
   // 글로: 적는 칸 하나와 기억해 두기
   const idle = !!text && !listening && !settling && !pending;
   const toggle = canListen ? (
-    <div role="radiogroup" aria-label={labels.mode} className="mx-auto mt-4 flex shrink-0 rounded-full bg-fill p-1">
+    <div role="radiogroup" aria-label={labels.mode} className="relative z-10 mx-auto mt-4 flex shrink-0 rounded-full bg-fill p-1">
       {(["voice", "text"] as const).map((m) => (
         <button
           key={m}
@@ -681,7 +734,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
           disabled={pending || settling || !canListen}
           className="shrink-0 rounded-full transition-transform active:scale-95 disabled:active:scale-100"
         >
-          <WaterDrop active={listening || settling} measure={!nativeSpeech()} />
+          <WaterDrop active={listening || settling} measure={!nativeSpeech()} beat={shown.length} />
         </button>
         <textarea
           ref={box}
@@ -692,7 +745,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
           maxLength={500}
           placeholder={labels.placeholder}
           aria-label={labels.placeholder}
-          className="mt-9 max-h-[30vh] min-h-[84px] w-full resize-none overflow-y-auto bg-transparent text-center text-[20px] font-semibold leading-[1.5] tracking-[-0.02em] outline-none placeholder:font-medium placeholder:text-muted/55"
+          className="mt-2 max-h-[30vh] min-h-[84px] w-full resize-none overflow-y-auto bg-transparent text-center text-[20px] font-semibold leading-[1.5] tracking-[-0.02em] outline-none placeholder:font-medium placeholder:text-muted/55"
         />
         {mentionList("box")}
         <div className="flex h-8 items-center">
@@ -714,9 +767,11 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
             aria-pressed={listening}
             aria-label={listening ? labels.listening : labels.speak}
             disabled={pending || settling}
-            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-colors ${listening ? "bg-ink text-white" : "bg-white text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
+            className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-colors ${listening ? "bg-ink text-white" : "bg-white text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
           >
-            <Icon name="mic" size={24} strokeWidth={2} />
+            {/* 듣는 동안 마이크 둘레로 퍼지는 고리 */}
+            {listening || settling ? <span aria-hidden="true" className="absolute inset-0 rounded-full border-2 border-sky opacity-0 motion-safe:animate-[drop-ripple_1.8s_ease-out_infinite]" /> : null}
+            <Icon name="mic" size={24} strokeWidth={2} className="relative" />
           </button>
         ) : null}
         <button disabled={pending || listening || settling || !text.trim()} className="btn-primary flex-1">

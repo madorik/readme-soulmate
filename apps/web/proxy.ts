@@ -10,6 +10,7 @@ const PUBLIC = [
   /^\/login/,
   /^\/r\//,
   /^\/g\//,
+  /^\/get$/,
   /^\/gifts(\/|$)/,
   /^\/admin(\/|$)/,
   /^\/api\/e$/,

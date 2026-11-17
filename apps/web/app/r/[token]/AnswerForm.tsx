@@ -4,6 +4,7 @@ import { emptySection, type CardData, type GiftsData, type Locale, type PartialC
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { submitAnswer, type AnswerState } from "@/app/actions/request";
+import { useIsNative } from "@/components/native";
 import { DateSpecPicker } from "@/components/editors/DatesEditor";
 import { CultureEditor } from "@/components/editors/CultureEditor";
 import { FavoritesEditor } from "@/components/editors/FavoritesEditor";
@@ -74,11 +75,13 @@ export function AnswerForm({
   const [saveMine, setSaveMine] = useState(true);
   const [step, setStep] = useState(0);
   const [state, action, pending] = useActionState(submitAnswer, INITIAL);
+  const inApp = useIsNative();
 
   if (state.sent) {
     const sent = sections.filter((x) => modes[x] != null);
-    // 답한 뒤: 나도 그 사람에게 물어보기(로그인 안 했으면 로그인부터)
+    // 답한 뒤: 나도 그 사람에게 물어보기. 웹에서는 앱 받기(기기에 맞는 스토어, 아이폰은 아직 웹으로 이어서), 앱 안에서는 바로 물어보기(로그인 안 했으면 로그인부터)
     const askBack = `/request?name=${encodeURIComponent(from)}`;
+    const here = signedIn ? askBack : `/?next=${encodeURIComponent(askBack)}`;
     return (
       <AnswerDone
         title={t("answer.sent.title")}
@@ -95,9 +98,15 @@ export function AnswerForm({
               ]
         }
       >
-        <Link href={signedIn ? askBack : `/?next=${encodeURIComponent(askBack)}`} className="btn-primary w-full">
-          {t("answer.askBack")}
-        </Link>
+        {inApp ? (
+          <Link href={here} className="btn-primary w-full">
+            {t("answer.askBack")}
+          </Link>
+        ) : (
+          <a href={`/get?from=answer&next=${encodeURIComponent(here)}`} className="btn-primary w-full">
+            {t("answer.askBack")}
+          </a>
+        )}
         {state.savedMine ? (
           <Link href="/me" className="flex min-h-11 items-center justify-center text-[14px] font-bold">
             {t("answer.openApp")}
