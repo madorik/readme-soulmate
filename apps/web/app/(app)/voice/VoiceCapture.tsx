@@ -10,7 +10,7 @@ import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/Capt
 import { TagChip } from "@/components/PersonRow";
 import { insertMention, mentionAt, mentionLabel, resolveMentions, type MentionPerson } from "@/lib/mention";
 import { matchesPerson } from "@/lib/search";
-import { startDictation, type Dictation, type NativeSpeech } from "@/lib/speech";
+import { commonPrefix, nextTyped, startDictation, type Dictation, type NativeSpeech } from "@/lib/speech";
 
 /** @로 부를 수 있는 사람(즐겨찾기가 먼저) */
 export type MentionOption = MentionPerson & { avatar: AvatarConfig | null };
@@ -191,6 +191,33 @@ function WaterDrop({ active, measure, size = 210 }: { active: boolean; measure: 
   );
 }
 
+/**
+ * 받아 적는 글을 한 글자씩 타자 치듯(on일 때만, 기기는 말을 덩어리로 보낸다). 고쳐 들어 앞이 달라지면 같은 앞부분까지 바로 지우고 다시 친다.
+ * 움직임 줄이기를 켠 사람에게는 바로 보인다
+ */
+function useTyped(target: string, on: boolean): string {
+  const [typed, setTyped] = useState(target);
+  const cur = useRef(target);
+  useEffect(() => {
+    if (!on) {
+      cur.current = target;
+      return;
+    }
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const next = still ? target : nextTyped(cur.current.slice(0, commonPrefix(cur.current, target)), target);
+      if (next === cur.current) return;
+      cur.current = next;
+      setTyped(next);
+      timer = setTimeout(tick, 42);
+    };
+    timer = setTimeout(tick, 0);
+    return () => clearTimeout(timer);
+  }, [target, on]);
+  return on ? typed.slice(0, commonPrefix(typed, target)) : target;
+}
+
 const MODE_KEY = "remember-you.capture-mode";
 
 type Labels = CaptureBadgeLabels & {
@@ -231,6 +258,8 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
   const [result, setResult] = useState<CaptureState | null>(null);
   const [undone, setUndone] = useState(false);
   const [pending, start] = useTransition();
+  // 말로 적는 동안(듣기·최종 결과 기다리기·나눠 적기) 받아 적은 글은 한 글자씩
+  const shown = useTyped(text, listening || settling || pending);
   const web = useRef<WebRecognition | null>(null);
   const native = useRef<Dictation | null>(null);
   const alive = useRef(true);
@@ -380,7 +409,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
-  }, [text, result]);
+  }, [shown, result]);
 
   useEffect(() => {
     alive.current = true;
@@ -656,7 +685,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
         </button>
         <textarea
           ref={box}
-          value={text}
+          value={shown}
           onChange={onType}
           {...mentionProps}
           rows={1}

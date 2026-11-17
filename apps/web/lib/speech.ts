@@ -96,3 +96,20 @@ export async function startDictation(
     },
   };
 }
+
+// ── 받아 적는 글을 타자 치듯 보이기 ─────────────────────────────
+
+/** 두 글의 같은 앞부분 길이 */
+export function commonPrefix(a: string, b: string): number {
+  let k = 0;
+  while (k < a.length && k < b.length && a[k] === b[k]) k++;
+  return k;
+}
+
+/** 한 걸음: 같은 앞부분 뒤로 한 글자씩(고쳐 들어 달라진 뒤쪽은 버리고), 많이 밀리면 두세 글자씩 */
+export function nextTyped(cur: string, target: string): string {
+  const k = commonPrefix(cur, target);
+  const left = target.length - k;
+  if (left <= 0) return target;
+  return target.slice(0, k + (left > 30 ? 3 : left > 12 ? 2 : 1));
+}

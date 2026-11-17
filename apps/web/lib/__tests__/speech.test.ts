@@ -94,3 +94,20 @@ test("받아쓰기: 시작이 실패하면 듣기를 떼고 오류를 넘긴다"
   await assert.rejects(startDictation(f.plugin, { ...opts, onText: () => {}, onDone: () => {} }), /denied/);
   assert.equal(f.removed(), 2);
 });
+
+test("타자 치듯: 같은 앞부분 뒤로 한 글자씩, 고쳐 들으면 달라진 데부터, 밀리면 두세 글자씩", async () => {
+  const { commonPrefix, nextTyped } = await import("../speech");
+  assert.equal(commonPrefix("엄마는 수국", "엄마는 수박"), 5);
+  assert.equal(nextTyped("", "엄마는"), "엄");
+  assert.equal(nextTyped("엄", "엄마는"), "엄마");
+  assert.equal(nextTyped("엄마는", "엄마는"), "엄마는");
+  assert.equal(nextTyped("엄마는 수국", "엄마는 수박을"), "엄마는 수박", "달라진 '국'은 버리고 '박'부터");
+  assert.equal(nextTyped("엄마는 수국을", "엄마는"), "엄마는");
+  assert.equal(nextTyped("", "가".repeat(20)), "가가");
+  assert.equal(nextTyped("", "가".repeat(40)), "가가가");
+  // 끝까지 치면 목표 글과 같다
+  let cur = "";
+  const target = "아빠 생일에는 등산화를 사 드리기로 했어요";
+  for (let i = 0; i < 100 && cur !== target; i++) cur = nextTyped(cur, target);
+  assert.equal(cur, target);
+});
