@@ -290,6 +290,7 @@ type Labels = CaptureBadgeLabels & {
   undo: string;
   undone: string;
   more: string;
+  done: string;
   aiOff: string;
   failed: string;
   limit: string;
@@ -584,9 +585,12 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
             ))}
           </ul>
         </section>
-        <div className="bottom-bar mt-auto grid grid-cols-2 gap-2.5 bg-bg px-4 pt-4">
+        {/* 되돌리기(아이콘) · 더 말하기(마이크·연필 아이콘, 적는 화면으로) · 완료(홈으로) */}
+        <div className="bottom-bar mt-auto flex items-center gap-2.5 bg-bg px-4 pt-4">
           <button
             type="button"
+            aria-label={undone ? labels.undone : labels.undo}
+            title={labels.undo}
             disabled={undone || pending || !result.undo.length}
             onClick={() =>
               start(async () => {
@@ -594,21 +598,27 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
                 if (r.ok) setUndone(true);
               })
             }
-            className="btn-outline disabled:opacity-40"
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:bg-fill disabled:opacity-40"
           >
-            {labels.undo}
+            <Icon name="undo" size={22} strokeWidth={2} />
           </button>
           <button
             type="button"
+            aria-label={labels.more}
+            title={labels.more}
             onClick={() => {
               setResult(null);
               setText("");
               setTagged([]);
             }}
-            className="btn-primary"
+            className="flex h-14 shrink-0 items-center justify-center gap-1 rounded-full bg-white px-4 text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:bg-fill"
           >
-            {labels.more}
+            <Icon name="mic" size={21} strokeWidth={2} />
+            <Icon name="pencil" size={19} strokeWidth={2} />
           </button>
+          <Link href="/home" className="btn-primary flex-1">
+            {labels.done}
+          </Link>
         </div>
       </div>
     );

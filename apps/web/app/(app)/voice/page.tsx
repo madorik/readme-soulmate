@@ -44,6 +44,7 @@ export default async function Voice() {
           undo: t("voice.undo"),
           undone: t("voice.undone"),
           more: t("voice.more"),
+          done: t("voice.done"),
           aiOff: t("voice.aiOff"),
           failed: t("voice.failed"),
           limit: t("voice.limit"),

@@ -67,11 +67,17 @@ export function CheckGlyph({ size = 14 }: { size?: number }) {
 
 type IconName =
   | "back" | "close" | "lock" | "alert" | "mic" | "camera" | "link" | "share" | "gift" | "external" | "bell"
-  | "plus" | "check" | "calendar" | "people" | "card" | "globe" | "personAdd" | "chevron" | "trash" | "pick" | "map" | "eye" | "settings" | "star" | "pencil" | "up";
+  | "plus" | "check" | "calendar" | "people" | "card" | "globe" | "personAdd" | "chevron" | "trash" | "pick" | "map" | "eye" | "settings" | "star" | "pencil" | "up" | "undo";
 
 const ICONS: Record<IconName, React.ReactNode> = {
   back: <path d="M15 18l-6-6 6-6" />,
   close: <path d="M18 6L6 18M6 6l12 12" />,
+  undo: (
+    <>
+      <path d="M4 12a8 8 0 1 0 2.34-5.66" />
+      <path d="M4 4v5h5" />
+    </>
+  ),
   lock: (
     <>
       <rect x="3" y="11" width="18" height="11" rx="2" />
