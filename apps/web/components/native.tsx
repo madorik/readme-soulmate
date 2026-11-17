@@ -17,6 +17,9 @@ export function isNativeApp(): boolean {
 
 const noop = () => () => {};
 
+/** Firebase 설정을 넣고 빌드한 첫 안드로이드 판(versionCode). 이보다 낮은 앱은 푸시를 등록하지 않는다 */
+const PUSH_MIN_ANDROID_BUILD = 8;
+
 /** 앱 안인지(서버 렌더링과 어긋나지 않게 처음엔 false) */
 export function useIsNative(): boolean {
   return useSyncExternalStore(noop, isNativeApp, () => false);
@@ -123,13 +126,17 @@ export function NativeBridge({ locale, appLock, reminders, pushEnabled }: { loca
     return () => document.removeEventListener("click", onClick, true);
   }, []);
 
-  // 푸시 토큰 등록: 서버에 FCM 키가 있을 때만(Firebase 설정 없이 등록하면 Android 앱이 멈출 수 있다)
+  // 푸시 토큰 등록: 서버에 FCM 키가 있고, 앱이 Firebase 설정(google-services.json)을 넣고 빌드한 판일 때만.
+  // 설정 없이 빌드한 예전 앱(안드로이드 versionCode 7 이하)이 등록하면 앱이 멈춘다. iOS는 Firebase Messaging을 아직 안 넣어서(APNs 토큰이라 FCM으로 못 보낸다) 등록하지 않는다
   useEffect(() => {
     if (!isNativeApp() || !pushEnabled) return;
     void (async () => {
       try {
-        const { PushNotifications } = await import("@capacitor/push-notifications");
         const { Capacitor } = await import("@capacitor/core");
+        if (Capacitor.getPlatform() !== "android") return;
+        const { App } = await import("@capacitor/app");
+        if (Number((await App.getInfo()).build) < PUSH_MIN_ANDROID_BUILD) return;
+        const { PushNotifications } = await import("@capacitor/push-notifications");
         const perm = await PushNotifications.requestPermissions();
         if (perm.receive !== "granted") return;
         await PushNotifications.addListener("registration", (token) => {
