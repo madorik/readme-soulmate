@@ -7,6 +7,7 @@ const LINKS = [
   { path: "/privacy-policy", ko: "개인정보 처리방침", en: "Privacy Policy" },
   { path: "/terms", ko: "이용약관", en: "Terms of Use" },
   { path: "/delete-account", ko: "계정 삭제", en: "Delete Account" },
+  { path: "/support", ko: "고객 지원", en: "Support" },
 ] as const;
 
 /** 약관·처리방침·계정 삭제 안내(로그인 없이 열린다) */

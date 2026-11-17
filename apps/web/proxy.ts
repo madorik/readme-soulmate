@@ -21,6 +21,7 @@ const PUBLIC = [
   /^\/privacy-policy/,
   /^\/terms/,
   /^\/delete-account/,
+  /^\/support$/,
   /^\/\.well-known\//,
 ];
 

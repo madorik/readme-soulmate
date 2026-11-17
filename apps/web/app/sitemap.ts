@@ -13,5 +13,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...GUIDES.map((g) => ({ url: absoluteUrl(`/gifts/${g.slug}`), lastModified: GUIDES_UPDATED, changeFrequency: "weekly" as const, priority: 0.8 })),
     { url: absoluteUrl("/terms"), lastModified: LEGAL_EFFECTIVE_ON, changeFrequency: "yearly", priority: 0.2 },
     { url: absoluteUrl("/privacy-policy"), lastModified: LEGAL_EFFECTIVE_ON, changeFrequency: "yearly", priority: 0.2 },
+    { url: absoluteUrl("/support"), lastModified: LEGAL_EFFECTIVE_ON, changeFrequency: "yearly", priority: 0.2 },
   ];
 }

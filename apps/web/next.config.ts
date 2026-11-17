@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
     ];
     return [
       { source: "/:path*", headers: base },
-      { source: "/((?!$|gifts|terms|privacy-policy|robots\\.txt|sitemap\\.xml|llms\\.txt).*)", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/((?!$|gifts|terms|privacy-policy|support$|robots\\.txt|sitemap\\.xml|llms\\.txt).*)", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
       // 폰트 조각은 파일 이름이 안 바뀌면 내용도 안 바뀐다(바꿀 땐 scripts/fetch-fonts.mjs가 통째로 다시 만든다)
       { source: "/fonts/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
     ];
