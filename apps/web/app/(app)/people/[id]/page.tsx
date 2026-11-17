@@ -8,7 +8,8 @@ import { Icon } from "@/components/marks";
 import { SectionBody } from "@/components/SectionBody";
 import { SectionIcon } from "@/components/SectionIcon";
 import { aiConfigured } from "@/lib/ai";
-import { displayName, folderViews, listFolders, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
+import { displayName, folderViews, listFolders, listNotes, listPeople, requireSession, todayFor, unreadAnswers } from "@/lib/data";
+import { SeeAnswers } from "@/components/SeeAnswers";
 import { makeT } from "@/lib/i18n";
 import { FavoriteStar } from "./FavoriteStar";
 import { NotesButton } from "./NotesButton";
@@ -30,13 +31,18 @@ export default async function PersonPage({ params, searchParams }: { params: Pro
   if (!p) notFound();
   const name = displayName(p);
   const today = todayFor(s.profile);
-  const [notes, folders] = await Promise.all([s.tx((q) => listNotes(q, s.user.id, p.contactId)), s.tx((q) => listFolders(q, s.user.id))]);
+  const [notes, folders, answered] = await Promise.all([
+    s.tx((q) => listNotes(q, s.user.id, p.contactId)),
+    s.tx((q) => listFolders(q, s.user.id)),
+    s.tx((q) => unreadAnswers(q, s.user.id, p.contactId)),
+  ]);
   const waiting = p.asking?.state === "active" ? p.asking : null;
   // 적어 둔 항목만(중요한 순서)
   const filled = SECTIONS_BY_IMPORTANCE.map((section) => ({ section, body: SectionBody({ section, card: p.card, today, locale, t }) })).filter((x) => x.body != null);
 
   return (
     <>
+      {answered.length ? <SeeAnswers contactId={p.contactId} /> : null}
       <TopBar
         back={back}
         label={t("common.back")}

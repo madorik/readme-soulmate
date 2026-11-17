@@ -9,7 +9,7 @@ import { FaceStack } from "@/components/FaceStack";
 import { Mascot } from "@/components/Mascot";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { Icon } from "@/components/marks";
-import { displayName, listPeople, readCard, requireSession, todayFor } from "@/lib/data";
+import { displayName, listPeople, readCard, requireSession, todayFor, unreadAnswers } from "@/lib/data";
 import { eventName, eventsFor } from "@/lib/events";
 import { makeT } from "@/lib/i18n";
 import { aiConfigured } from "@/lib/ai";
@@ -21,7 +21,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
   const { locale } = s.profile;
   const t = makeT(locale);
   const today = todayFor(s.profile);
-  const [people, mine] = await Promise.all([listPeople(s), s.tx((q) => readCard(q, s.user.id))]);
+  const [people, mine, answers] = await Promise.all([listPeople(s), s.tx((q) => readCard(q, s.user.id)), s.tx((q) => unreadAnswers(q, s.user.id))]);
+  // 물어보기에 온 답장(아직 안 본 것): 맨 위에. 누르면 그 사람 화면, 열면 읽은 것으로
+  const rtf = new Intl.RelativeTimeFormat(locale === "ko" ? "ko" : "en", { numeric: "auto" });
+  const ago = (min: number) => {
+    if (min < 1) return t("home.justNow");
+    if (min < 60) return rtf.format(-min, "minute");
+    if (min < 60 * 24) return rtf.format(-Math.round(min / 60), "hour");
+    return rtf.format(-Math.round(min / (60 * 24)), "day");
+  };
   const events = eventsFor(people, today);
   const next = events.find((e) => e.daysUntil <= 60) ?? null;
   const personOf = (contactId: string) => people.find((p) => p.contactId === contactId) ?? null;
@@ -55,6 +63,25 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ a
         <Wordmark locale={locale} />
         <ProfileMenu avatar={s.profile.avatar} labels={{ menu: t("home.profileMenu"), profile: t("profile.title"), signOut: t("privacy.signOut") }} />
       </div>
+
+      {answers.length ? (
+        <section aria-label={t("home.replies")} className="mx-4 mb-3 flex flex-col overflow-hidden rounded-[22px] bg-sky-soft shadow-[inset_0_0_0_1.5px_rgba(255,194,61,0.55)]">
+          {answers.map((a, i) => {
+            const who = personOf(a.contactId);
+            const name = who ? displayName(who) : a.label;
+            return (
+              <Link key={a.id} href={`/people/${a.contactId}`} className={`flex min-h-[64px] items-center gap-3 px-4 py-2.5 active:bg-[rgba(255,194,61,0.18)] ${i ? "border-t border-[rgba(255,194,61,0.4)]" : ""}`}>
+                <Avatar config={who?.avatar ?? null} size={38} label={name || t("notif.answeredAnon")} />
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="truncate text-[15px] font-bold tracking-[-0.01em]">{name ? t("notif.answered", { name }) : t("notif.answeredAnon")}</span>
+                  <span className="text-[12.5px] text-muted">{ago(a.minutes)}</span>
+                </span>
+                <Icon name="chevron" size={18} className="shrink-0 text-muted" />
+              </Link>
+            );
+          })}
+        </section>
+      ) : null}
 
       {/* 오늘은 카드 밖에. 카드 안 날짜는 챙길 날 것만 */}
       <p className="flex items-center gap-2 px-5 pb-2.5 pt-1 text-[13px] font-medium text-muted">

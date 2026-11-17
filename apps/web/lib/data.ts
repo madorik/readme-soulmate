@@ -293,6 +293,27 @@ export interface Note {
   createdAt: string;
 }
 
+/** 아직 안 본 답장(물어보기에 답이 온 것). 사람 화면을 열면 읽은 것으로 바뀐다(seeAnswers) */
+export interface UnreadAnswer {
+  id: string;
+  contactId: string;
+  /** 물어볼 때 적은 이름 */
+  label: string;
+  at: string;
+  /** 몇 분 전에 왔는지 */
+  minutes: number;
+}
+
+export async function unreadAnswers(q: Q, me: string, contactId?: string): Promise<UnreadAnswer[]> {
+  const rows = await q<{ id: string; contact_id: string; label: string; created_at: Date; minutes: number }>(
+    `select id, contact_id, label, created_at, floor(extract(epoch from now() - created_at) / 60)::int as minutes from notifications
+     where user_id = $1 and kind = 'answered' and read_at is null and contact_id is not null and ($2::uuid is null or contact_id = $2::uuid)
+     order by created_at desc limit 5`,
+    [me, contactId ?? null],
+  );
+  return rows.map((r) => ({ id: r.id, contactId: r.contact_id, label: r.label, at: iso(r.created_at)!, minutes: Math.max(0, Number(r.minutes) || 0) }));
+}
+
 export async function listNotes(q: Q, me: string, contactId: string): Promise<Note[]> {
   const rows = await q<{ id: string; label: string; payload: unknown; created_at: Date }>(
     "select id, label, payload, created_at from notes where contact_id = $1 order by created_at desc",

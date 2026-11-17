@@ -64,6 +64,14 @@ export async function markGiftDone(contactId: string, rawLabel: string, rawGift:
   return { ok: true, note: body };
 }
 
+/** 이 사람이 보낸 답장 알림을 읽은 것으로(사람 화면을 열었을 때). 홈 위의 답장 카드가 사라진다 */
+export async function seeAnswers(contactId: string): Promise<void> {
+  if (typeof contactId !== "string" || !/^[0-9a-f-]{36}$/.test(contactId)) return;
+  const s = await requireSession();
+  await s.tx((q) => q("update notifications set read_at = now() where user_id = $1 and contact_id = $2 and kind = 'answered' and read_at is null", [s.user.id, contactId]));
+  revalidatePath("/home");
+}
+
 export async function deleteNote(form: FormData): Promise<void> {
   const contactId = String(form.get("contactId"));
   const { s } = await ownContact(contactId);

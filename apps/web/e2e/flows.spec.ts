@@ -136,6 +136,17 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await dad.goto(askDadUrl);
   await expect(dad.getByText("이미 답한 링크예요.")).toBeVisible();
 
+  // 답장이 오면 홈 맨 위에 알림. 누르면 그 사람 화면, 열면 읽은 것으로 사라진다
+  await page.goto("/home");
+  const reply = page.getByRole("region", { name: "새 답장" }).getByRole("link", { name: /아빠님이 답장을 보냈어요/ });
+  await expect(reply).toBeVisible();
+  await expect(reply).toContainText(/방금|분 전/);
+  await shot(page, "07a-home-reply");
+  await reply.click();
+  await expect(page).toHaveURL(/\/people\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("link", { name: /알레르기와 못 먹는 음식/ })).toBeVisible();
+  await expect.poll(async () => (await page.request.get("/home")).text().then((h) => h.includes("답장을 보냈어요"))).toBe(false);
+
   // 아빠는 지수 사람들에 들어가 있고, 답한 항목에 받은 날이 붙는다
   await page.goto("/people");
   const today = todayIn("Asia/Seoul");
@@ -147,6 +158,7 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await expect(page.getByRole("listitem").filter({ has: page.getByRole("link", { name: /알레르기와 못 먹는 음식/ }) }).getByText("굴", { exact: true })).toBeVisible();
   await shot(page, "07-person-answered");
   await page.goto("/home");
+  await expect(page.getByRole("region", { name: "새 답장" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: /아빠/ })).toBeVisible();
   await shot(page, "08-home");
 });
