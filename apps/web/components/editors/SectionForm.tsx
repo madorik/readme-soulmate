@@ -9,6 +9,7 @@ import { CultureEditor } from "@/components/editors/CultureEditor";
 import { FavoritesEditor } from "@/components/editors/FavoritesEditor";
 import { GiftsEditor } from "@/components/editors/GiftsEditor";
 import { LifeEditor } from "@/components/editors/LifeEditor";
+import { PetsEditor } from "@/components/editors/PetsEditor";
 import { SafetyEditor } from "@/components/editors/SafetyEditor";
 import { SizesEditor } from "@/components/editors/SizesEditor";
 import { TasteEditor } from "@/components/editors/TasteEditor";
@@ -105,6 +106,7 @@ export function SectionForm<S extends Section>({
       {section === "favorites" ? <FavoritesEditor value={value as CardData["favorites"]} onChange={change} locale={locale} /> : null}
       {section === "culture" ? <CultureEditor value={value as CardData["culture"]} onChange={change} locale={locale} /> : null}
       {section === "life" ? <LifeEditor value={value as CardData["life"]} onChange={change} locale={locale} /> : null}
+      {section === "pets" ? <PetsEditor value={value as CardData["pets"]} onChange={change} locale={locale} /> : null}
     </div>
   );
 

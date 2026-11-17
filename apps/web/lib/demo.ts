@@ -66,6 +66,7 @@ function samples(locale: Locale, today: YMD): { me: { name: string; card: Partia
           }),
           culture: sanitizeSection("culture", { musicGenres: ["trot"], shows: ko ? "인간극장" : "Antiques Roadshow" }),
           life: sanitizeSection("life", { hobbies: ko ? ["걷기", "트로트"] : ["Walking", "Gardening"], seasons: ["autumn"] }),
+          pets: sanitizeSection("pets", { pets: [{ name: ko ? "콩이" : "Coco", kind: "dog", breed: ko ? "말티즈" : "Maltese", treats: ko ? ["닭가슴살 육포"] : ["Chicken jerky"], note: ko ? "7살, 산책을 좋아해요" : "7 years old, loves walks" }] }),
           sizes: sanitizeSection("sizes", { shoe: 240 }),
           gifts: sanitizeSection("gifts", {
             giftCard: "yes",

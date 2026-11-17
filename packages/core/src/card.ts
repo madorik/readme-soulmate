@@ -1,19 +1,19 @@
 import { isValidSpec, type DateSpec } from "./calendar";
-import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, VIBES, MUSIC_GENRES, NONE, NONE_LABEL, PATTERNS, SEASONS, STYLES, codesOf, type CatalogItem, type Relation } from "./catalog";
+import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, VIBES, MUSIC_GENRES, NONE, NONE_LABEL, PATTERNS, PET_KINDS, SEASONS, STYLES, codesOf, type CatalogItem, type Relation } from "./catalog";
 
-// 리드미(카드)는 항목(section) 여덟 개로 나눠 저장한다. 공유도 항목 단위로 허락한다.
+// 리드미(카드)는 항목(section) 아홉 개로 나눠 저장한다. 공유도 항목 단위로 허락한다.
 
-export const SECTIONS = ["safety", "taste", "sizes", "gifts", "favorites", "culture", "life", "dates"] as const;
+export const SECTIONS = ["safety", "taste", "sizes", "gifts", "favorites", "culture", "life", "pets", "dates"] as const;
 export type Section = (typeof SECTIONS)[number];
 
-/** 내가 고치고 공유를 고를 때 보이는 순서: 챙길 날 → 건강(알레르기) → 자주 쓰는 입맛 → 선물 힌트 → 사이즈 → 있으면 좋은 것(좋아하는 것들 · 문화생활 · 생활과 여행) */
-export const SECTIONS_BY_IMPORTANCE = ["dates", "safety", "taste", "gifts", "sizes", "favorites", "culture", "life"] as const satisfies readonly Section[];
+/** 내가 고치고 공유를 고를 때 보이는 순서: 챙길 날 → 건강(알레르기) → 자주 쓰는 입맛 → 선물 힌트 → 사이즈 → 있으면 좋은 것(좋아하는 것들 · 문화생활 · 생활과 여행 · 반려동물) */
+export const SECTIONS_BY_IMPORTANCE = ["dates", "safety", "taste", "gifts", "sizes", "favorites", "culture", "life", "pets"] as const satisfies readonly Section[];
 
 /** 관계별로 처음 보여 줄 항목. DB accept_share의 '받으면서 내 것도 보내기' 기본값과 같다 */
 export function defaultShareSections(relation: Relation | null): Section[] {
   if (relation === "partner") return [...SECTIONS];
-  if (relation === "friend") return ["safety", "taste", "gifts", "favorites", "culture", "life", "dates"];
-  return ["safety", "taste", "sizes", "favorites", "culture", "life", "dates"];
+  if (relation === "friend") return ["safety", "taste", "gifts", "favorites", "culture", "life", "pets", "dates"];
+  return ["safety", "taste", "sizes", "favorites", "culture", "life", "pets", "dates"];
 }
 
 /** 서버 키로 암호화해서 저장하는 항목 */
@@ -112,6 +112,21 @@ export interface LifeData {
   travel: string;
 }
 
+/** 반려동물 한 마리: 이름 · 종류(PET_KINDS 코드) · 품종 · 좋아하는 간식·장난감 · 메모(나이, 성격 등) */
+export interface Pet {
+  name: string;
+  kind: string | null;
+  breed: string;
+  treats: string[];
+  note: string;
+}
+
+/** 반려동물: 여러 마리. none = 키우지 않는다(답한 것으로 친다) */
+export interface PetsData {
+  pets: Pet[];
+  none: boolean;
+}
+
 export interface Anniversary {
   label: string;
   spec: DateSpec;
@@ -130,6 +145,7 @@ export interface CardData {
   favorites: FavoritesData;
   culture: CultureData;
   life: LifeData;
+  pets: PetsData;
   dates: DatesData;
 }
 
@@ -157,6 +173,7 @@ export function emptySection<S extends Section>(section: S): CardData[S] {
     },
     culture: { movieGenres: [], movie: "", drama: "", shows: "", musicGenres: [], song: "", book: "" },
     life: { hobbies: [], seasons: [], travel: "" },
+    pets: { pets: [], none: false },
     dates: { birthday: null, anniversaries: [] },
   };
   return structuredClone(empty[section]);
@@ -171,6 +188,7 @@ export function emptyCard(): CardData {
     favorites: emptySection("favorites"),
     culture: emptySection("culture"),
     life: emptySection("life"),
+    pets: emptySection("pets"),
     dates: emptySection("dates"),
   };
 }
@@ -282,6 +300,21 @@ const CULTURE_CODES = {
 export const CULTURE_TEXT_KEYS = ["movie", "drama", "shows", "song", "book"] as const;
 export const CULTURE_CODE_KEYS = ["movieGenres", "musicGenres"] as const;
 const SEASON_CODES = codesOf(SEASONS);
+const PET_KIND_CODES = codesOf(PET_KINDS);
+export const PETS_MAX = 10;
+
+/** 반려동물 한 마리 정리. 이름·종류·품종·간식이 다 비면 null */
+export function sanitizePet(v: unknown): Pet | null {
+  const r = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  const pet: Pet = {
+    name: text(r.name, 30),
+    kind: typeof r.kind === "string" && PET_KIND_CODES.has(r.kind) ? r.kind : null,
+    breed: text(r.breed, 40),
+    treats: textList(r.treats, 10),
+    note: text(r.note, 200),
+  };
+  return pet.name || pet.kind || pet.breed || pet.treats.length || pet.note ? pet : null;
+}
 
 
 /** 들어온 값을 항목 모양에 맞춰 정리한다. 모르는 키·코드는 버린다 */
@@ -346,6 +379,11 @@ export function sanitizeSection<S extends Section>(section: S, input: unknown): 
     case "life":
       out = { hobbies: textList(o.hobbies), seasons: noneableList(o.seasons, SEASON_CODES), travel: text(o.travel) } satisfies LifeData;
       break;
+    case "pets": {
+      const pets = (Array.isArray(o.pets) ? o.pets : []).map(sanitizePet).filter((p): p is Pet => !!p).slice(0, PETS_MAX);
+      out = { pets, none: !pets.length && o.none === true } satisfies PetsData;
+      break;
+    }
     case "dates": {
       const anniversaries = (Array.isArray(o.anniversaries) ? o.anniversaries : [])
         .map((a) => {
@@ -399,14 +437,18 @@ export function isEmptySection(section: Section, data: CardData[Section] | null 
       const d = data as LifeData;
       return !d.hobbies.length && !d.seasons.length && !d.travel;
     }
+    case "pets": {
+      const d = data as PetsData;
+      return !d.pets?.length && !d.none;
+    }
   }
 }
 
 /** 관계별로 처음 켜 두는 항목 */
 export const RELATION_PRESETS: Record<Relation, Section[]> = {
-  partner: ["safety", "taste", "sizes", "gifts", "favorites", "culture", "life", "dates"],
-  family: ["safety", "taste", "sizes", "favorites", "culture", "life", "dates"],
-  friend: ["safety", "taste", "gifts", "favorites", "culture", "life", "dates"],
+  partner: ["safety", "taste", "sizes", "gifts", "favorites", "culture", "life", "pets", "dates"],
+  family: ["safety", "taste", "sizes", "favorites", "culture", "life", "pets", "dates"],
+  friend: ["safety", "taste", "gifts", "favorites", "culture", "life", "pets", "dates"],
 };
 
 /** 정해진 순서로, 중복 없이 */

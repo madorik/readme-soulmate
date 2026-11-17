@@ -82,6 +82,7 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   await expect(page.getByText("새우", { exact: true })).toHaveCount(0);
   await expect(page.getByText("알레르기, 못 먹는 것, 식단, 꼭 알려 둘 말")).toBeVisible();
   await expect(page.getByRole("button", { name: /^문화생활\s*영화, 드라마, TV·예능·유튜브, 음악, 노래, 책/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^반려동물\s*이름, 종류, 품종, 좋아하는 간식/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "미리보기" })).toHaveCount(0);
   await shot(page, "03b-me-edit");
   // 고친 뒤 뒤로 가면 다시 미리보기
@@ -729,6 +730,13 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   await expect(page.getByRole("link", { name: /아내/ }).first()).toBeVisible();
   await expect(page.getByText("엄마 칠순")).toBeVisible();
   await shot(page, "12-demo-home");
+  // 반려동물: 엄마 기록에 콩이(강아지 · 말티즈)와 좋아하는 간식
+  await page.locator('a[href^="/people/"]:not([href*="/reminder"])').filter({ hasText: "엄마" }).first().click();
+  await expect(page).toHaveURL(/\/people\/[0-9a-f-]{36}$/);
+  await expect(page.getByText("콩이", { exact: true })).toBeVisible();
+  await expect(page.getByText(/닭가슴살 육포/)).toBeVisible();
+  await shot(page, "12b-demo-pets");
+  await page.goto("/home");
   await page.getByRole("link", { name: /아내/ }).first().click();
   await expect(page.getByRole("link", { name: /알레르기와 못 먹는 음식/ })).toBeVisible();
   await expect(page.getByText("새우", { exact: true })).toBeVisible();

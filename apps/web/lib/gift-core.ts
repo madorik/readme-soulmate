@@ -3,7 +3,7 @@
 // 서버 전용 표시가 없어 시험에서 바로 불러 쓴다. 쿠팡은 한국 쇼핑몰이라 찾을 말·힌트는 늘 한국어로, 이유(reason)만 화면 언어로.
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { deflateRawSync, inflateRawSync } from "node:zlib";
-import { ALCOHOL_KINDS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, PATTERNS, SEASONS, STYLES, VIBES, josa, isLocale, labelOf, realCodes, type Locale, type PartialCard } from "@readme/core";
+import { ALCOHOL_KINDS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, PATTERNS, PET_KINDS, SEASONS, STYLES, VIBES, josa, isLocale, labelOf, realCodes, type Locale, type PartialCard } from "@readme/core";
 import { PRICE_BANDS, type CatalogGift, type PriceBand } from "./gift-catalog";
 
 export interface GiftIdea {
@@ -51,7 +51,13 @@ function sizeLine(card: PartialCard): string {
 
 /** 기록 전체와 메모를 선물 고를 때 쓰는 줄로(메모는 최근 20개, 하나에 200자까지) */
 export function giftProfile(card: PartialCard, notes: string[] = []): GiftProfile {
-  const { gifts: g, favorites: f, taste: t, culture: c, life: l, safety: s } = card;
+  const { gifts: g, favorites: f, taste: t, culture: c, life: l, safety: s, pets: p } = card;
+  // 반려동물: "콩이(강아지 말티즈)"처럼, 간식·장난감은 따로 한 줄
+  const pets = (p?.pets ?? []).map((x) => {
+    const what = [x.kind ? labelOf(PET_KINDS, x.kind, "ko") : "", x.breed].filter(Boolean).join(" ");
+    return x.name && what ? `${x.name}(${what})` : x.name || what;
+  });
+  const petTreats = (p?.pets ?? []).flatMap((x) => x.treats.map((tr) => (x.name ? `${x.name}: ${tr}` : tr)));
   const line = (label: string, values: (string | undefined | null)[]) => {
     const v = values.map((x) => clean(x, 80)).filter(Boolean);
     return v.length ? `${label}: ${v.join(", ")}` : "";
@@ -72,6 +78,8 @@ export function giftProfile(card: PartialCard, notes: string[] = []): GiftProfil
     line("좋아하는 캐릭터", [f?.character]),
     line("응원하는 팀", [f?.team]),
     line("좋아하는 동물", [f?.animal]),
+    line("키우는 반려동물", pets),
+    line("반려동물이 좋아하는 간식·장난감", petTreats),
     line("좋아하는 음식", t?.likes ?? []),
     line("좋아하는 디저트·간식", [t?.dessert]),
     line("자주 마시는 음료", [t?.drinks]),

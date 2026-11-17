@@ -1,7 +1,7 @@
 // 말로 적기: "와이프는 바닐라라떼를 좋아해" 같은 말을 AI가 (사람, 칸, 값)으로 나누면, 여기서 그 칸에 합친다.
 // 어느 칸에도 안 맞는 말은 그 사람의 메모로 간다(target "memo"). 순수 함수라 서버·테스트가 같이 쓴다.
-import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, PATTERNS, SEASONS, SPICY_LEVELS, STYLES, VIBES, type CatalogItem } from "./catalog";
-import { emptySection, sanitizeSection, type CardData, type Section } from "./card";
+import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, PATTERNS, PET_KINDS, SEASONS, SPICY_LEVELS, STYLES, VIBES, type CatalogItem } from "./catalog";
+import { emptySection, sanitizeSection, type CardData, type Pet, type Section } from "./card";
 import type { DateSpec } from "./calendar";
 import type { Locale } from "./locale";
 
@@ -15,8 +15,10 @@ import type { Locale } from "./locale";
  * - number: 수(매운맛 0–4, 신발 mm, 반지 호수). 바꾼다
  * - date: 생일. 바꾼다
  * - anniversary: 기념일(이름 + 날짜). 같은 이름이면 바꾸고 아니면 더한다
+ * - pet: 반려동물 한 마리(label = 이름). pets.pet은 종류(codes)·품종(text), pets.treats는 좋아하는 간식·장난감(text, 쉼표), pets.note는 메모(text).
+ *   이름이 같은(이름이 없으면 종류가 같은, 그것도 없으면 한 마리뿐인) 반려동물에 합치고, 없으면 새로 더한다
  */
-export type CaptureKind = "text" | "list" | "codes" | "tags" | "code" | "number" | "date" | "anniversary";
+export type CaptureKind = "text" | "list" | "codes" | "tags" | "code" | "number" | "date" | "anniversary" | "pet";
 
 export interface CaptureField {
   key: string;
@@ -78,6 +80,9 @@ export const CAPTURE_FIELDS: CaptureField[] = [
   f("life.hobbies", "list", "취미", "Hobbies"),
   f("life.seasons", "codes", "좋아하는 계절", "Seasons", { catalog: SEASONS }),
   f("life.travel", "text", "가 보고 싶은 곳", "Dream trip"),
+  f("pets.pet", "pet", "반려동물(이름·종류·품종)", "Pet (name, kind, breed)", { catalog: PET_KINDS }),
+  f("pets.treats", "pet", "반려동물이 좋아하는 간식·장난감", "Pet's favorite treats & toys", { catalog: PET_KINDS }),
+  f("pets.note", "pet", "반려동물 메모(나이·성격)", "Pet note (age, personality)", { catalog: PET_KINDS }),
   f("dates.birthday", "date", "생일", "Birthday"),
   f("dates.anniversary", "anniversary", "기념일", "Anniversary"),
 ];
@@ -113,6 +118,16 @@ const matches = (a: string, b: string) => {
   const y = squash(b);
   return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
 };
+
+/** 합칠 반려동물: 이름이 같은 것, 이름이 없으면 종류가 같은 한 마리, 그것도 없으면 한 마리뿐일 때 그 한 마리 */
+function findPet(list: Pet[], name: string, kind: string | null): Pet | null {
+  if (name) return list.find((p) => same(p.name, name)) ?? list.find((p) => !p.name && (!kind || p.kind === kind)) ?? null;
+  if (kind) {
+    const ofKind = list.filter((p) => p.kind === kind);
+    return ofKind.length === 1 ? ofKind[0]! : null;
+  }
+  return list.length === 1 ? list[0]! : null;
+}
 
 /** 칸의 실제 저장 위치(술 두 칸은 taste.alcohol 안에 있다) */
 function getRaw(data: Record<string, unknown>, key: string): unknown {
@@ -217,6 +232,31 @@ export function mergeCapture<S extends Section>(field: CaptureField, current: Ca
       base.anniversaries = list;
       break;
     }
+    case "pet": {
+      const name = (value.label ?? "").trim();
+      const kind = codes[0] ?? null;
+      const list = ((base.pets as Pet[]) ?? []).map((p) => ({ ...p, treats: [...(p.treats ?? [])] }));
+      const items = text.split(/\s*,\s*/).filter(Boolean);
+      if (field.key === "pets.pet" ? !name && !kind && !text : !items.length) return null;
+      let pet = findPet(list, name, kind);
+      if (!pet) {
+        pet = { name, kind, breed: "", treats: [], note: "" };
+        list.push(pet);
+      }
+      if (name && !pet.name) pet.name = name;
+      if (kind && (replace || !pet.kind)) pet.kind = kind;
+      if (field.key === "pets.pet") {
+        if (text && (replace || !pet.breed)) pet.breed = text;
+      } else if (field.key === "pets.treats") {
+        pet.treats = replace ? items : [...pet.treats, ...items.filter((x) => !pet!.treats.some((y) => same(x, y)))];
+      } else {
+        const old = pet.note.trim();
+        pet.note = replace || !old ? text : old.split(/\s*,\s*/).some((p) => same(p, text)) ? old : `${old}, ${text}`;
+      }
+      base.pets = list;
+      base.none = false;
+      break;
+    }
   }
   const out = sanitizeSection(section, base);
   return JSON.stringify(out) === before ? null : out;
@@ -282,6 +322,27 @@ function removeFrom(field: CaptureField, base: Record<string, unknown>, text: st
       base.anniversaries = list.filter((a) => !(label ? matches(a.label, label) : a.spec.month === d!.month && a.spec.day === d!.day));
       return (base.anniversaries as unknown[]).length !== list.length;
     }
+    case "pet": {
+      const list = ((base.pets as Pet[]) ?? []).map((p) => ({ ...p, treats: [...(p.treats ?? [])] }));
+      const name = (value.label ?? "").trim();
+      const pet = findPet(list, name, codes[0] ?? null);
+      if (!pet) return false;
+      if (field.key === "pets.pet") {
+        base.pets = list.filter((p) => p !== pet);
+        return true;
+      }
+      if (field.key === "pets.treats") {
+        const items = text.split(/\s*,\s*/).filter(Boolean);
+        const keep = items.length ? pet.treats.filter((x) => !items.some((y) => matches(x, y))) : [];
+        if (keep.length === pet.treats.length) return false;
+        pet.treats = keep;
+      } else {
+        if (!pet.note) return false;
+        pet.note = "";
+      }
+      base.pets = list;
+      return true;
+    }
   }
 }
 
@@ -299,6 +360,11 @@ export function describeCapture(field: CaptureField, value: CaptureValue, locale
       if (value.number == null) return "";
       if (field.key === "taste.spicy") return SPICY_LEVELS[Math.round(value.number)]?.[locale] ?? String(value.number);
       return String(value.number);
+    case "pet": {
+      const who = (value.label ?? "").trim();
+      if (field.key === "pets.pet") return [who, codeLabel(value.codes?.[0] ?? ""), (value.text ?? "").trim()].filter(Boolean).join(" · ");
+      return [who, (value.text ?? "").trim()].filter(Boolean).join(" · ");
+    }
     case "date":
     case "anniversary": {
       const d = value.date;

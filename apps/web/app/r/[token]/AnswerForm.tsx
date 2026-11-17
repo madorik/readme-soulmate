@@ -9,6 +9,7 @@ import { DateSpecPicker } from "@/components/editors/DatesEditor";
 import { CultureEditor } from "@/components/editors/CultureEditor";
 import { FavoritesEditor } from "@/components/editors/FavoritesEditor";
 import { LifeEditor } from "@/components/editors/LifeEditor";
+import { PetsEditor } from "@/components/editors/PetsEditor";
 import { SafetyEditor } from "@/components/editors/SafetyEditor";
 import { SizesEditor } from "@/components/editors/SizesEditor";
 import { TasteEditor } from "@/components/editors/TasteEditor";
@@ -251,6 +252,7 @@ export function AnswerForm({
               {s === "favorites" ? <FavoritesEditor value={answers.favorites ?? emptySection("favorites")} onChange={(v) => set("favorites", v)} locale={locale} /> : null}
               {s === "culture" ? <CultureEditor value={answers.culture ?? emptySection("culture")} onChange={(v) => set("culture", v)} locale={locale} /> : null}
               {s === "life" ? <LifeEditor value={answers.life ?? emptySection("life")} onChange={(v) => set("life", v)} locale={locale} /> : null}
+              {s === "pets" ? <PetsEditor value={answers.pets ?? emptySection("pets")} onChange={(v) => set("pets", v)} locale={locale} /> : null}
             </div>
           ) : null}
           {!prefill[s] ? (

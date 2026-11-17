@@ -25,6 +25,7 @@ import {
   type PartialCard,
   type Section,
   type YMD,
+  PET_KINDS,
 } from "@readme/core";
 import type { T } from "@/lib/i18n";
 import { ChiliMeter } from "./Chili";
@@ -207,6 +208,31 @@ export function SectionBody({ section, card, today, locale, t }: { section: Sect
       );
     }
 
+    case "pets": {
+      const p = card.pets!;
+      if (!p.pets.length) return <Row label={t("section.pets")}>{t("pets.none")}</Row>;
+      return (
+        <>
+          {p.pets.map((pet, i) => {
+            const kind = pet.kind ? labelOf(PET_KINDS, pet.kind, locale) : "";
+            const what = [kind, pet.breed].filter(Boolean).join(" · ");
+            return (
+              <Row key={i} label={pet.name || kind || t("section.pets")}>
+                <span className="flex flex-col gap-0.5">
+                  {what && pet.name ? <span>{what}</span> : pet.breed && !pet.name ? <span>{pet.breed}</span> : null}
+                  {pet.treats.length ? (
+                    <span className="text-[14px] text-ink-2">
+                      {t("pets.treats")} · {pet.treats.join(and)}
+                    </span>
+                  ) : null}
+                  {pet.note ? <span className="text-[14px] text-muted">{pet.note}</span> : null}
+                </span>
+              </Row>
+            );
+          })}
+        </>
+      );
+    }
     case "life": {
       const l = card.life!;
       return (

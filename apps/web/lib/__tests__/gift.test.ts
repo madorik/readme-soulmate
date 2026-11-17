@@ -290,3 +290,17 @@ test("고른 생각: 한 줄로 짧게, 부르는 말 없이(AI 문장이 길거
   assert.equal(acceptNote("등산을 좋아하시는 아버님께 골랐어요", ctx, "ko"), "");
   assert.equal(acceptNote("안마 쿠션을 적어 두셨고, 걷기와 트로트를 좋아하시니 편안한 휴식과 즐거움을 더할 선물을 먼저 골랐어요", ctx, "ko"), "");
 });
+
+test("반려동물: 키우는 아이와 좋아하는 간식이 힌트에 들고, 기록만으로 골라도 강아지 간식이 근거와 함께 나온다", () => {
+  const withPet: PartialCard = { ...card, pets: { pets: [{ name: "콩이", kind: "dog", breed: "말티즈", treats: ["닭가슴살 육포"], note: "" }], none: false } };
+  const p = giftProfile(withPet);
+  assert.ok(p.hints.includes("키우는 반려동물: 콩이(강아지 말티즈)"));
+  assert.ok(p.hints.includes("반려동물이 좋아하는 간식·장난감: 콩이: 닭가슴살 육포"));
+  // 다른 취향 없이 반려동물만 적힌 사람
+  const onlyPet: PartialCard = { pets: withPet.pets };
+  const eligible = eligibleCatalog(GIFT_CATALOG, onlyPet, ctx);
+  const picks = ruleCatalogPicks(onlyPet, ctx, "ko", eligible);
+  const dog = picks.find((x) => GIFT_CATALOG.find((g) => g.id === x.id)?.tags.includes("강아지"));
+  assert.ok(dog, "강아지 간식이 골라진다");
+  assert.ok(dog!.basis.includes("강아지"));
+});

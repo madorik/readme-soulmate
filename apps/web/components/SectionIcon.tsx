@@ -13,6 +13,7 @@ const TILE: Record<Section, string> = {
   favorites: "#F1ECFF",
   culture: "#E9EDFF",
   life: "#E6F3FB",
+  pets: "#F6EDE3",
 };
 
 const line = { stroke: INK, strokeWidth: 1.9, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
@@ -100,6 +101,17 @@ function Art({ section }: { section: Section }) {
           <path d="M11 9.5V25M21 9.5V25" {...line} />
           <circle cx="10" cy="27" r="1.3" fill={INK} />
           <circle cx="22" cy="27" r="1.3" fill={INK} />
+        </>
+      );
+    case "pets":
+      // 발바닥
+      return (
+        <>
+          <path d="M16 15.5c3.6 0 7 3.6 7 6.6 0 2.4-1.9 3.4-3.6 3.4-1.4 0-2.2-.7-3.4-.7s-2 .7-3.4.7C10.9 25.5 9 24.5 9 22.1c0-3 3.4-6.6 7-6.6z" fill="#C98E5A" {...line} />
+          <ellipse cx="8.6" cy="13.6" rx="2.3" ry="2.9" fill="#C98E5A" {...line} />
+          <ellipse cx="13.1" cy="8.9" rx="2.3" ry="3" fill="#C98E5A" {...line} />
+          <ellipse cx="18.9" cy="8.9" rx="2.3" ry="3" fill="#C98E5A" {...line} />
+          <ellipse cx="23.4" cy="13.6" rx="2.3" ry="2.9" fill="#C98E5A" {...line} />
         </>
       );
   }

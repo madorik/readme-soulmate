@@ -82,6 +82,7 @@ target: the most specific field from FIELDS. Rules:
 - codes kinds: use only listed codes. If the thing is not in the list, use a text/list field that fits, otherwise memo.
 - tags kinds (safety.allergens, safety.dislikes): use the listed code when the food is in the list; when it is not, put the food name in text (short, e.g. "국밥", "고등어") and it is added as a new item. Never use memo or safety.allergyNote for a food that fits here.
 - Foods they like → taste.likes. Coffee/tea/drinks they like lately → taste.drinks. Desserts/snacks → taste.dessert.
+- Pets the person keeps (강아지, 고양이 … with a name like 콩이) → pets.pet with label = the pet's name if said, codes = kind, text = breed only (e.g. "말티즈"). Treats, food or toys the PET likes → pets.treats with label = the pet's name, text = comma list (never taste.dessert or taste.likes). Other facts about the pet (age, personality, health) → pets.note with label = the pet's name. favorites.animal is only an animal the person likes, not a pet they keep.
 - Food allergies → safety.allergens. Foods or drinks they won't, can't or don't eat (안 먹어, 못 먹어, 안 드셔, 싫어해, 별로) → safety.dislikes. A food not in the list is still one of these, added by name in text. Only non-food allergies (cats, pollen, medicine) or extra context that is not a single food (e.g. "국물에 들어간 것도 안 돼요") → safety.allergyNote as short text.
 - NEGATIVE preferences (doesn't like, avoids, can't, 싫어해, 안 좋아해, 별로, 못 먹어, 안 마셔) must NEVER be added to a "likes" field (taste.likes, taste.dessert, taste.drinks, favorites.*, culture.* text, life.*). Foods and drinks go to safety.dislikes (listed code, or the food name as text, e.g. "단 것"); gifts they don't want go to gifts.skip; anything else goes to memo, written as the negative fact.
 - Gift ideas → gifts.wishlist: things they want, and gifts the speaker plans to give them (사 줘야지, 선물해야지, 사 주고 싶다, 다음에 ~ 해 줘야지). Gifts to avoid → gifts.skip.
@@ -89,7 +90,7 @@ target: the most specific field from FIELDS. Rules:
 - Birthday → dates.birthday with date (lunar if 음력/lunar). Other days → dates.anniversary with label.
 - Shoe size in mm (e.g. 270), ring size number (호).
 - How much spice they can take (매운 거 잘 먹어/못 먹어) → taste.spicy number: ${SPICY_LEVELS.map((l, i) => `${i}=${l.ko}`).join(", ")}.
-- Put a value only in a field whose meaning matches it: favorites.animal only for animals, favorites.flowers for flowers and plants, favorites.idol for singers and celebrities, culture.* for movies, dramas, shows, music and books, favorites.places or life.travel for places, life.hobbies for activities. Never use a field just because it is a "favorite" slot.
+- Put a value only in a field whose meaning matches it: favorites.animal only for animals they like (not pets they keep), favorites.flowers for flowers and plants, favorites.idol for singers and celebrities, culture.* for movies, dramas, shows, music and books, favorites.places or life.travel for places, life.hobbies for activities. Never use a field just because it is a "favorite" slot.
 - Anything that fits no field → memo with a short note in the speaker's language.
 op: what to do with the field (the speaker may add, correct or delete what was kept):
 - "add" (default): a new fact.

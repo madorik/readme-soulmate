@@ -20,7 +20,8 @@ export default async function Request({ searchParams }: { searchParams: Promise<
       tag: p.nickname && p.nickname !== (p.name || displayName(p)) ? p.nickname : "",
       label: displayName(p),
       avatar: p.avatar,
-      missing: SECTIONS.filter((x) => !p.card[x]),
+      // 반려동물은 키우는 사람만 해당돼서 처음부터 고르지 않는다(직접 고를 수 있다)
+      missing: SECTIONS.filter((x) => !p.card[x] && x !== "pets"),
     }));
   const fixed = sp.to ? (people.find((p) => p.id === sp.to) ?? null) : null;
   return (

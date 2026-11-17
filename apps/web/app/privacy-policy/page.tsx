@@ -25,7 +25,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           </li>
           <li>
             <b>About me</b>: the name you go by, your avatar, foods you like and dislike, <b>allergies and foods you can&rsquo;t eat (health information)</b>, clothing and shoe sizes, gift ideas and favorite
-            brands, favorites (patterns, style, celebrities, characters, teams, movies, dramas, shows, music, seasons, desserts, places, animals, books), drinking preferences, date of birth (solar or lunar; the year is optional) and anniversaries.
+            brands, favorites (patterns, style, celebrities, characters, teams, movies, dramas, shows, music, seasons, desserts, places, animals, books), pets (name, kind, breed, favorite treats), drinking preferences, date of birth (solar or lunar; the year is optional) and anniversaries.
           </li>
           <li>
             <b>Your people</b>: the people you add, nicknames and groups you give them, what you write down about them (favorites, allergies, sizes, gifts, dates), the answers they send when you ask them,
@@ -175,7 +175,7 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
           중계 이메일 주소를 받습니다. <b>데모 계정</b>은 이메일·이름 없이 만들어집니다.
         </li>
         <li>
-          <b>나에 대한 기록</b>: 부를 이름, 아바타, 좋아하는·싫어하는 음식, <b>알레르기·못 먹는 음식(건강 정보)</b>, 옷·신발 사이즈, 받고 싶은 선물과 좋아하는 브랜드, 좋아하는 것들(무늬·스타일·연예인·캐릭터·응원팀·영화·드라마·TV·음악·계절·디저트·여행지·동물·책), 술 취향, 생년월일(양력·음력, 태어난 해는 선택)과 기념일
+          <b>나에 대한 기록</b>: 부를 이름, 아바타, 좋아하는·싫어하는 음식, <b>알레르기·못 먹는 음식(건강 정보)</b>, 옷·신발 사이즈, 받고 싶은 선물과 좋아하는 브랜드, 좋아하는 것들(무늬·스타일·연예인·캐릭터·응원팀·영화·드라마·TV·음악·계절·디저트·여행지·동물·책), 반려동물(이름·종류·품종·좋아하는 간식), 술 취향, 생년월일(양력·음력, 태어난 해는 선택)과 기념일
         </li>
         <li>
           <b>내 사람들</b>: 내가 더한 사람, 내가 붙인 호칭과 그룹, 그 사람에 대해 적어 둔 내용(취향, 알레르기, 사이즈, 선물, 기념일), 물어봐서 받은 답, 나만 보는 메모

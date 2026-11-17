@@ -1,4 +1,4 @@
-import { NONE, ALCOHOL_LEVELS, ALLERGENS, COLORS, DISLIKES, MUSIC_GENRES, PATTERNS, SEASONS, SPICY_LEVELS, formatSpec, formatSpecFull, labelOf, type CardData, type Locale, type Section } from "@readme/core";
+import { NONE, PET_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DISLIKES, MUSIC_GENRES, PATTERNS, SEASONS, SPICY_LEVELS, formatSpec, formatSpecFull, labelOf, type CardData, type Locale, type Section } from "@readme/core";
 import type { T } from "./i18n";
 
 /** 내 리드미 목록에 보일 한 줄 요약 */
@@ -61,6 +61,16 @@ export function summarize(section: Section, data: CardData[Section] | undefined,
     case "life": {
       const d = data as CardData["life"];
       return [d.hobbies.slice(0, 3).join(and), d.seasons.map((c) => labelOf(SEASONS, c, locale)).join(and), d.travel].filter(Boolean).join(" / ");
+    }
+    case "pets": {
+      const d = data as CardData["pets"];
+      if (!d.pets.length) return d.none ? t("pets.none") : "";
+      return d.pets
+        .map((p) => {
+          const who = [p.name, [p.kind ? labelOf(PET_KINDS, p.kind, locale) : "", p.breed].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
+          return p.treats.length ? `${who} (${p.treats.slice(0, 3).join(and)})` : who;
+        })
+        .join(" / ");
     }
     case "dates": {
       const d = data as CardData["dates"];

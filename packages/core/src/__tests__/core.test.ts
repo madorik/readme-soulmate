@@ -104,7 +104,7 @@ test("카드 정리: 숫자 범위와 날짜", () => {
 });
 
 test("관계별 기본 공개 항목", () => {
-  assert.deepEqual(RELATION_PRESETS.family, ["safety", "taste", "sizes", "favorites", "culture", "life", "dates"]);
+  assert.deepEqual(RELATION_PRESETS.family, ["safety", "taste", "sizes", "favorites", "culture", "life", "pets", "dates"]);
   assert.deepEqual(sanitizeSections(["dates", "safety", "bogus", "dates"]), ["safety", "dates"]);
 });
 
@@ -373,4 +373,24 @@ test("같이 고르기: 목록에 없는 안 먹는 것·알레르기도 메뉴 
   assert.deepEqual(pork.reasons.map((r) => r.code), ["삼겹살"]);
   assert.equal(v.find((x) => x.item.code === "tonkatsu")!.status, "avoid");
   assert.equal(v.find((x) => x.item.code === "sushi")!.status, "ok");
+});
+
+test("반려동물: 마리마다 이름·종류·품종·간식·메모, 빈 마리는 버리고, 없음은 키우는 동물이 없을 때만", () => {
+  const p = sanitizeSection("pets", {
+    pets: [
+      { name: " 콩이 ", kind: "dog", breed: "말티즈", treats: "닭가슴살 육포, 삑삑이 공, 닭가슴살 육포", note: "7살" },
+      { name: "", kind: "lion", breed: "", treats: [], note: "" },
+      { name: "나비", kind: "cat", treats: ["츄르"] },
+    ],
+    none: true,
+  });
+  assert.deepEqual(p.pets.map((x) => [x.name, x.kind, x.breed, x.treats, x.note]), [
+    ["콩이", "dog", "말티즈", ["닭가슴살 육포", "삑삑이 공"], "7살"],
+    ["나비", "cat", "", ["츄르"], ""],
+  ]);
+  assert.equal(p.none, false, "키우는 동물이 있으면 없음이 아니다");
+  assert.deepEqual(sanitizeSection("pets", { pets: [], none: true }), { pets: [], none: true });
+  assert.equal(isEmptySection("pets", sanitizeSection("pets", { none: true })), false, "없음도 답한 것");
+  assert.equal(isEmptySection("pets", sanitizeSection("pets", {})), true);
+  assert.equal(sanitizeSection("pets", { pets: Array.from({ length: 15 }, (_, i) => ({ name: `${i}` })) }).pets.length, 10);
 });

@@ -135,3 +135,29 @@ test("취향: 향·꽃·분위기·장소", () => {
   // 선물 칸에는 향·꽃이 더 없다
   assert.deepEqual(Object.keys(sanitizeSection("gifts", { scent: "우디", flowers: "튤립" })).sort(), ["brands", "giftCard", "skip", "wishlist"]);
 });
+
+test("반려동물: 이름으로 같은 아이를 찾아 합치고(없으면 새로), 간식은 그 아이에게, 지우기는 그 아이만", () => {
+  const a = merge(field("pets.pet"), null, { label: "콩이", codes: ["dog"], text: "말티즈" })!;
+  assert.deepEqual(a.pets.map((p: { name: string; kind: string; breed: string }) => [p.name, p.kind, p.breed]), [["콩이", "dog", "말티즈"]]);
+  // 이름만 말해도 한 마리뿐이면 그 아이에게
+  const b = merge(field("pets.treats"), a, { label: "", text: "닭가슴살 육포, 삑삑이 공" })!;
+  assert.deepEqual(b.pets[0].treats, ["닭가슴살 육포", "삑삑이 공"]);
+  const c = merge(field("pets.treats"), b, { label: "콩이", text: "삑삑이 공, 고구마" })!;
+  assert.deepEqual(c.pets[0].treats, ["닭가슴살 육포", "삑삑이 공", "고구마"]);
+  // 다른 이름은 새 아이로
+  const d = merge(field("pets.pet"), c, { label: "나비", codes: ["cat"] })!;
+  assert.deepEqual(d.pets.map((p: { name: string }) => p.name), ["콩이", "나비"]);
+  const e = merge(field("pets.note"), d, { label: "나비", text: "3살" })!;
+  assert.equal(e.pets[1].note, "3살");
+  // 두 마리일 때 이름 없이 간식만 말하면 누구 것인지 몰라 새 아이로 두지 않고 종류로 찾는다
+  const f2 = merge(field("pets.treats"), e, { label: "", codes: ["cat"], text: "츄르" })!;
+  assert.deepEqual(f2.pets[1].treats, ["츄르"]);
+  // 지우기: 간식 하나, 그다음 아이 하나
+  const g = merge(field("pets.treats"), f2, { label: "콩이", text: "고구마" }, "remove")!;
+  assert.deepEqual(g.pets[0].treats, ["닭가슴살 육포", "삑삑이 공"]);
+  const h = merge(field("pets.pet"), g, { label: "나비" }, "remove")!;
+  assert.deepEqual(h.pets.map((p: { name: string }) => p.name), ["콩이"]);
+  assert.equal(merge(field("pets.pet"), h, { label: "없는 아이" }, "remove"), null);
+  assert.equal(describeCapture(field("pets.pet"), { label: "콩이", codes: ["dog"], text: "말티즈" }, "ko"), "콩이 · 강아지 · 말티즈");
+  assert.equal(describeCapture(field("pets.treats"), { label: "콩이", text: "육포" }, "ko"), "콩이 · 육포");
+});

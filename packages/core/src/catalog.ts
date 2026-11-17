@@ -160,6 +160,18 @@ export const MUSIC_GENRES: CatalogItem[] = [
   item("trot", "트로트", "Trot"),
 ];
 
+/** 반려동물 종류 */
+export const PET_KINDS: CatalogItem[] = [
+  item("dog", "강아지", "Dog"),
+  item("cat", "고양이", "Cat"),
+  item("rabbit", "토끼", "Rabbit"),
+  item("hamster", "햄스터", "Hamster"),
+  item("bird", "새", "Bird"),
+  item("fish", "물고기", "Fish"),
+  item("reptile", "파충류", "Reptile"),
+  item("other", "기타", "Other"),
+];
+
 /** 좋아하는 것들: 계절 */
 export const SEASONS: CatalogItem[] = [
   item("spring", "봄", "Spring"),
