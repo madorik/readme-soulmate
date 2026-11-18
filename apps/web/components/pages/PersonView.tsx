@@ -54,7 +54,8 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
         </Link>
         <div className="flex min-w-0 flex-1 flex-col gap-1 pt-1">
           <div className="flex items-center gap-0.5">
-            <h1 className="min-w-0 truncate text-[32px] font-bold leading-[1.15] tracking-[-0.03em]">{p.name || name}</h1>
+            {/* 긴 이름은 두 줄까지(좁은 화면은 28px, 390px부터 32px) */}
+            <h1 className="line-clamp-2 min-w-0 break-words text-[28px] font-bold leading-[1.2] tracking-[-0.03em] min-[390px]:text-[32px]">{p.name || name}</h1>
             <Link href={`/people/${p.contactId}/profile`} aria-label={t("me.face")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-fill">
               <Icon name="pencil" size={18} strokeWidth={2} />
             </Link>
@@ -157,7 +158,7 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
             ))}
           </ul>
         ) : (
-          <Link href={`/people/${p.contactId}/edit`} className="card mt-1 flex min-h-[72px] items-center justify-center gap-1.5 text-[15px] font-bold text-accent">
+          <Link href={`/people/${p.contactId}/edit?open=dates`} className="card mt-1 flex min-h-[72px] items-center justify-center gap-1.5 text-[15px] font-bold text-accent">
             <Icon name="plus" size={17} strokeWidth={2.4} />
             {t("person.write")}
           </Link>

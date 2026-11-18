@@ -114,7 +114,8 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
 
       {between}
 
-      <div role="tablist" aria-label={t("avatar.parts")} className="mt-3 grid grid-cols-6 border-b border-rule">
+      {/* 여섯 칸: 좁은 화면에서 영어(Clothes·Glasses)도 칸을 넘지 않게 13px, 380px부터 14.5px */}
+      <div role="tablist" aria-label={t("avatar.parts")} className="mt-3 grid grid-cols-[repeat(6,minmax(0,1fr))] border-b border-rule">
         {TABS.map((k) => {
           const on = tab === k;
           return (
@@ -124,7 +125,7 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
               role="tab"
               aria-selected={on}
               onClick={() => setTab(k)}
-              className={`relative h-12 whitespace-nowrap text-[14.5px] tracking-[-0.02em] ${on ? "font-bold text-ink" : "font-medium text-muted"}`}
+              className={`relative h-12 whitespace-nowrap text-[13px] tracking-[-0.02em] min-[380px]:text-[14.5px] ${on ? "font-bold text-ink" : "font-medium text-muted"}`}
             >
               {t(TAB_KEY[k])}
               <span aria-hidden="true" className={`absolute inset-x-[22%] -bottom-px h-[3px] rounded-full ${on ? "bg-accent" : "bg-transparent"}`} />

@@ -1,5 +1,5 @@
 // 말로 적기 AI 부분 중 서버 키와 상관없는 것(요청 몸·응답 풀기). 서버 전용 표시가 없어 시험 스크립트에서도 불러 쓴다
-import { CAPTURE_FIELDS, CAPTURE_TARGETS, SPICY_LEVELS, type CaptureOp, type CaptureValue, type DateSpec, type Locale } from "@readme/core";
+import { CAPTURE_FIELDS, CAPTURE_TARGETS, SPEC_YEAR_MIN, SPICY_LEVELS, clip, isValidSpec, type CaptureOp, type CaptureValue, type DateSpec, type Locale } from "@readme/core";
 
 export interface CapturePerson {
   id: string;
@@ -112,6 +112,26 @@ function outputText(body: unknown): string {
   return "";
 }
 
+/** 모델에 보내는 사람 수 위쪽 한도(프롬프트가 한없이 길어지지 않게) */
+export const PEOPLE_MAX = 300;
+
+/** 모델에는 id·이름·부름만 보낸다(다른 값이 딸려 가지 않게) */
+const slim = (p: CapturePerson): CapturePerson => ({ id: p.id, name: clip(p.name, 40), nickname: clip(p.nickname, 40) });
+
+/** 모델에 보낼 사람 목록: 지금 쓰는 사람(ABOUT)과 @로 짚은 사람(MENTIONED)을 맨 앞에 두고 PEOPLE_MAX명까지 */
+export function capturePeople(people: CapturePerson[], about: CapturePerson | null = null, mentioned: CapturePerson[] = [], max = PEOPLE_MAX): CapturePerson[] {
+  const lead = [...(about ? [about] : []), ...mentioned];
+  const picked = new Set<string>();
+  const out: CapturePerson[] = [];
+  for (const p of [...lead, ...people]) {
+    if (picked.has(p.id)) continue;
+    picked.add(p.id);
+    out.push(slim(p));
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 /** OpenAI Responses API 요청 몸 */
 export function captureRequest(
   text: string,
@@ -126,37 +146,54 @@ export function captureRequest(
       model,
       reasoning: { effort },
       instructions: INSTRUCTIONS,
-      input: `LANGUAGE: ${locale}\nPEOPLE: ${JSON.stringify(people)}\n${about ? `ABOUT: ${JSON.stringify(about)}\n` : ""}${mentioned.length ? `MENTIONED: ${JSON.stringify(mentioned)}\n` : ""}NOTE: ${text}`,
+      input: `LANGUAGE: ${locale}\nPEOPLE: ${JSON.stringify(capturePeople(people, about, mentioned))}\n${about ? `ABOUT: ${JSON.stringify(slim(about))}\n` : ""}${mentioned.length ? `MENTIONED: ${JSON.stringify(mentioned.map(slim))}\n` : ""}NOTE: ${text}`,
       text: { format: { type: "json_schema", name: "capture", strict: true, schema: SCHEMA } },
       store: false,
     };
 }
 
+/**
+ * AI가 준 날짜를 다듬는다. 두 자리 연도는 풀고(올해 두 자리 이하는 2000년대, 아니면 1900년대: 90 → 1990, 5 → 2005),
+ * 없는 날짜(4월 31일, 13월)는 버린다. 연도만 이상하면(0, 세 자리, 미래, 평년 2월 29일의 해) 연도만 버리고 월·일은 남긴다
+ */
+export function cleanDate(d: unknown, now: Date = new Date()): DateSpec | null {
+  if (!d || typeof d !== "object") return null;
+  const r = d as Record<string, unknown>;
+  if (typeof r.month !== "number" || typeof r.day !== "number") return null;
+  const thisYear = now.getFullYear();
+  let year: number | null = typeof r.year === "number" && Number.isInteger(r.year) && r.year > 0 ? r.year : null;
+  if (year !== null && year < 100) year += year <= thisYear % 100 ? 2000 : 1900;
+  if (year !== null && (year < SPEC_YEAR_MIN || year > thisYear)) year = null;
+  const base: DateSpec = { calendar: r.calendar === "lunar" ? "lunar" : "solar", month: r.month, day: r.day };
+  const withYear = year !== null ? { ...base, year } : null;
+  if (withYear && isValidSpec(withYear)) return withYear;
+  return isValidSpec(base) ? base : null;
+}
+
 /** 응답에서 항목을 꺼내 모양을 맞춘다 */
-export function parseCapture(body: unknown): CaptureItem[] {
-  const parsed = JSON.parse(outputText(body) || "{}") as { items?: unknown };
+export function parseCapture(body: unknown, now: Date = new Date()): CaptureItem[] {
+  const text = outputText(body);
+  // 길이 한도에 걸려 끊긴 응답은 '이해 못 함'이 아니라 실패다(다시 해 보면 된다)
+  if (!text && (body as { status?: unknown } | null)?.status === "incomplete") throw new Error("ai_incomplete");
+  const parsed = JSON.parse(text || "{}") as { items?: unknown };
   const items = Array.isArray(parsed.items) ? parsed.items : [];
   return items.slice(0, 12).map((raw) => {
     const r = raw as Record<string, unknown>;
     const who = (r.who ?? {}) as Record<string, unknown>;
-    const d = r.date as Record<string, unknown> | null;
-    const date: DateSpec | null =
-      d && typeof d.month === "number" && typeof d.day === "number"
-        ? { calendar: d.calendar === "lunar" ? "lunar" : "solar", month: d.month, day: d.day, ...(typeof d.year === "number" ? { year: d.year } : {}) }
-        : null;
+    const date = cleanDate(r.date, now);
     return {
       who: {
         type: who.type === "me" || who.type === "existing" ? who.type : "new",
         contactId: typeof who.contactId === "string" ? who.contactId : null,
-        name: typeof who.name === "string" ? who.name.slice(0, 40) : null,
+        name: typeof who.name === "string" ? clip(who.name, 40) : null,
       },
       target: (CAPTURE_TARGETS as readonly string[]).includes(String(r.target)) ? (r.target as CaptureItem["target"]) : "memo",
       op: r.op === "replace" || r.op === "remove" ? r.op : "add",
-      text: typeof r.text === "string" ? r.text.slice(0, 200) : null,
+      text: typeof r.text === "string" ? clip(r.text, 200) : null,
       codes: Array.isArray(r.codes) ? r.codes.filter((c): c is string => typeof c === "string") : null,
       number: typeof r.number === "number" ? r.number : null,
       date,
-      label: typeof r.label === "string" ? r.label.slice(0, 40) : null,
+      label: typeof r.label === "string" ? clip(r.label, 40) : null,
     };
   });
 }

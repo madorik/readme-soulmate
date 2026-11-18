@@ -1,11 +1,11 @@
 "use server";
 
 import { track } from "@/lib/track";
-import { captureField, describeCapture, isSection, mergeCapture, sanitizeSection, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
+import { captureField, clip, describeCapture, findByRelation, isSection, mergeCapture, sanitizeSection, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { aiConfigured, classifyCapture } from "@/lib/ai";
 import { reserveAi } from "@/lib/ai-quota";
-import { displayName, listNotes, listPeople, readCard, requireSession, sealNote, writeContactSection, writeSection, type Person } from "@/lib/data";
+import { displayName, listNotes, listPeople, readCard, requireSession, sealNote, writeContactSection, writeSection, type Note, type Person } from "@/lib/data";
 import { resolveMentions } from "@/lib/mention";
 
 /** 화면에 보일 한 줄: "아내 · 요즘 마시는 것 · 바닐라라떼" */
@@ -45,13 +45,16 @@ export interface CaptureState {
 export async function captureNote(raw: string, aboutId?: string, picked?: { id: string; label: string }[]): Promise<CaptureState> {
   const s = await requireSession();
   const { locale } = s.profile;
-  const said = String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, 500);
+  const said = clip(String(raw ?? "").replace(/\s+/g, " ").trim(), 500).trim();
   if (!said) return { lines: [], undo: [], error: "nothing" };
   if (!aiConfigured()) return { lines: [], undo: [], error: "ai_off" };
-  const people = await listPeople(s);
+  // 사람 목록과 하루 한도(사람마다·서비스 전체)는 서로 상관없어 같이 확인한다. 한도에 막히면 OpenAI를 부르지 않는다
+  const [people, gate] = await Promise.all([listPeople(s), reserveAi({ id: s.user.id, demo: s.user.isAnonymous || s.profile.isDemo }, "capture")]);
+  if (gate === "user_limit" || gate === "global_limit") return { lines: [], undo: [], error: "limit" };
+  if (gate !== "ok") return { lines: [], undo: [], error: "failed" };
   const pickedOk = (Array.isArray(picked) ? picked : [])
     .filter((m) => m && typeof m.id === "string" && typeof m.label === "string")
-    .map((m) => ({ id: m.id, label: m.label.slice(0, 40) }));
+    .map((m) => ({ id: m.id, label: clip(m.label, 40) }));
   const { text, ids } = resolveMentions(
     said,
     people.map((p) => ({ id: p.contactId, name: p.name, tag: p.nickname })),
@@ -60,10 +63,6 @@ export async function captureNote(raw: string, aboutId?: string, picked?: { id: 
   const asCapture = (p: Person) => ({ id: p.contactId, name: p.name, nickname: p.nickname });
   const mentioned = ids.map((id) => people.find((p) => p.contactId === id)).filter((p): p is Person => !!p);
   const about = aboutId ? people.find((p) => p.contactId === aboutId) : mentioned.length === 1 ? mentioned[0] : undefined;
-  // 하루 한도(사람마다·서비스 전체). 막히면 OpenAI를 부르지 않는다
-  const gate = await reserveAi({ id: s.user.id, demo: s.user.isAnonymous || s.profile.isDemo }, "capture");
-  if (gate === "user_limit" || gate === "global_limit") return { lines: [], undo: [], error: "limit" };
-  if (gate !== "ok") return { lines: [], undo: [], error: "failed" };
   let items;
   try {
     items = await classifyCapture(text, people.map(asCapture), locale, about ? asCapture(about) : null, mentioned.map(asCapture));
@@ -83,15 +82,28 @@ export async function captureNote(raw: string, aboutId?: string, picked?: { id: 
       const names = new Map<string, string>([["me", me], ...people.map((p) => [p.contactId, displayName(p)] as [string, string])]);
       const created = new Map<string, string>(); // 새 사람 이름 → contactId
       const touched = new Set<string>();
+      // 사람마다 메모는 이 말 안에서 한 번만 읽고, 새로 남긴 것은 목록에 보탠다
+      const notes = new Map<string, Note[]>();
+      const notesOf = async (id: string): Promise<Note[]> => {
+        let list = notes.get(id);
+        if (!list) notes.set(id, (list = await listNotes(q, s.user.id, id)));
+        return list;
+      };
 
       for (const item of items) {
         let who: string;
         if (item.who.type === "me") who = "me";
         else if (item.who.type === "existing" && item.who.contactId && cards.has(item.who.contactId) && item.who.contactId !== "me") who = item.who.contactId;
         else {
-          const name = (item.who.name ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+          const name = clip((item.who.name ?? "").replace(/\s+/g, " ").trim(), 40).trim();
           if (!name) continue;
-          const known = created.get(name) ?? people.find((p) => p.nickname === name || p.name === name)?.contactId;
+          // 같은 이름 → 같은 부름말("와이프" ↔ "아내", "엄마" ↔ "어머니")로 이미 있는 사람을 먼저 찾는다. 이름이 다른 사람끼리는 합치지 않는다
+          const callNames = (p: Person) => [p.nickname, p.name].filter(Boolean);
+          const known =
+            created.get(name) ??
+            people.find((p) => p.nickname === name || p.name === name)?.contactId ??
+            findByRelation([...created], name, ([n]) => [n])?.[1] ??
+            findByRelation(people, name, callNames)?.contactId;
           if (known) who = known;
           else {
             const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname) values ($1, $2) returning id", [s.user.id, name]);
@@ -99,6 +111,7 @@ export async function captureNote(raw: string, aboutId?: string, picked?: { id: 
             who = c!.id;
             created.set(name, who);
             cards.set(who, {});
+            notes.set(who, []);
             names.set(who, name);
             undo.push({ type: "contact", contactId: who });
           }
@@ -108,15 +121,17 @@ export async function captureNote(raw: string, aboutId?: string, picked?: { id: 
 
         if (item.target === "memo") {
           if (item.op !== "add") continue; // 메모를 고치거나 지우는 건 메모 칸에서
-          const body = (item.text ?? "").trim().slice(0, 1000);
+          const body = clip((item.text ?? "").trim(), 1000).trim();
           if (!body || who === "me") continue; // 나에 대한 메모 칸은 없다
           // 같은 말을 또 하면 메모를 두 번 남기지 않는다
-          if ((await listNotes(q, s.user.id, who)).some((n) => n.body.trim() === body)) continue;
+          const kept = await notesOf(who);
+          if (kept.some((n) => n.body.trim() === body)) continue;
           const n = await q.one<{ id: string }>("insert into notes (author_id, contact_id, label, payload) values ($1, $2, '', $3) returning id", [
             s.user.id,
             who,
             JSON.stringify(sealNote(s.user.id, who, body)),
           ]);
+          kept.unshift({ id: n!.id, label: "", body, createdAt: new Date().toISOString() });
           undo.push({ type: "note", contactId: who, id: n!.id });
           lines.push({ who: names.get(who)!, isNew, op: "add", field: translate(locale, "voice.memo"), value: body, href });
           continue;

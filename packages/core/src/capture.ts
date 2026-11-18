@@ -2,7 +2,7 @@
 // 어느 칸에도 안 맞는 말은 그 사람의 메모로 간다(target "memo"). 순수 함수라 서버·테스트가 같이 쓴다.
 import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, PATTERNS, PET_KINDS, SEASONS, SPICY_LEVELS, STYLES, VIBES, type CatalogItem } from "./catalog";
 import { emptySection, sanitizeSection, type CardData, type Pet, type Section } from "./card";
-import type { DateSpec } from "./calendar";
+import { isValidSpec, type DateSpec } from "./calendar";
 import type { Locale } from "./locale";
 
 /**
@@ -112,12 +112,30 @@ export interface CaptureValue {
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 const squash = (a: string) => a.toLowerCase().replace(/\s+/g, "");
-/** 지울 때: 같거나 한쪽이 다른 쪽을 품으면 같은 것으로 본다("수국" ↔ "카네이션보다 수국") */
-const matches = (a: string, b: string) => {
-  const x = squash(a);
-  const y = squash(b);
-  return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
-};
+const glyphs = (a: string) => Array.from(a).length;
+
+/**
+ * 지울 때 가리킨 항목 찾기(칸 안의 위치). 항목마다 이름 여러 개(코드와 그 이름들)를 줄 수 있다.
+ * 띄어쓰기·대소문자만 다른 같은 말이 있으면 그것만. 없으면 한쪽이 다른 쪽을 품은 항목이 딱 하나일 때만("수국" ↔ "카네이션보다 수국"),
+ * 그것도 품은 쪽 글자가 두 글자 이상일 때만 — 그렇지 않으면 "밥"이 "김밥 만들기"·"볶음밥"을, "소"가 소고기·소주를 한꺼번에 지운다
+ */
+function findHits(items: string[][], needle: string): number[] {
+  const y = squash(needle);
+  if (!y) return [];
+  const keys = items.map((names) => names.map(squash).filter(Boolean));
+  const exact = keys.flatMap((ks, i) => (ks.includes(y) ? [i] : []));
+  if (exact.length) return exact;
+  const loose = keys.flatMap((ks, i) => (ks.some((k) => Math.min(glyphs(k), glyphs(y)) >= 2 && (k.includes(y) || y.includes(k))) ? [i] : []));
+  return loose.length === 1 ? loose : [];
+}
+
+/** needles 중 하나라도 가리키는 항목의 위치들. needles가 없으면 전부 */
+function hitSet(items: string[][], needles: string[]): Set<number> {
+  if (!needles.length) return new Set(items.keys());
+  return new Set(needles.flatMap((n) => findHits(items, n)));
+}
+
+const solo = (list: string[]) => list.map((x) => [x]);
 
 /** 합칠 반려동물: 이름이 같은 것, 이름이 없으면 종류가 같은 한 마리, 그것도 없으면 한 마리뿐일 때 그 한 마리 */
 function findPet(list: Pet[], name: string, kind: string | null): Pet | null {
@@ -220,13 +238,14 @@ export function mergeCapture<S extends Section>(field: CaptureField, current: Ca
       break;
     }
     case "date": {
-      if (!value.date) return null;
+      // 없는 날짜(4월 31일, 13월, 평년 2월 29일)를 넣으면 정리 단계에서 생일이 null로 지워지므로 여기서 막는다
+      if (!isValidSpec(value.date)) return null;
       base.birthday = value.date;
       break;
     }
     case "anniversary": {
       const label = (value.label ?? "").trim();
-      if (!value.date || !label) return null;
+      if (!isValidSpec(value.date) || !label) return null;
       const list = ((base.anniversaries as { label: string; spec: DateSpec }[]) ?? []).filter((a) => !same(a.label, label));
       list.push({ label, spec: value.date });
       base.anniversaries = list;
@@ -269,21 +288,23 @@ function removeFrom(field: CaptureField, base: Record<string, unknown>, text: st
       const old = String(getRaw(base, field.key) ?? "").trim();
       if (!old) return false;
       const parts = old.split(/\s*,\s*/);
-      const keep = text ? parts.filter((p) => !matches(p, text)) : [];
+      const drop = hitSet(solo(parts), text ? [text] : []);
+      const keep = parts.filter((_, i) => !drop.has(i));
       if (keep.length === parts.length) return false;
       setRaw(base, field.key, keep.join(", "));
       return true;
     }
     case "list": {
       const items = text.split(/\s*,\s*/).filter(Boolean);
-      const hit = (x: string) => !items.length || items.some((y) => matches(x, y));
       if (field.key === "gifts.wishlist") {
         const list = (base.wishlist as { title: string; url: string }[]) ?? [];
-        base.wishlist = list.filter((w) => !hit(w.title));
+        const drop = hitSet(solo(list.map((w) => w.title)), items);
+        base.wishlist = list.filter((_, i) => !drop.has(i));
         return (base.wishlist as unknown[]).length !== list.length;
       }
       const list = (getRaw(base, field.key) as string[]) ?? [];
-      const keep = list.filter((x) => !hit(x));
+      const drop = hitSet(solo(list), items);
+      const keep = list.filter((_, i) => !drop.has(i));
       setRaw(base, field.key, keep);
       return keep.length !== list.length;
     }
@@ -299,9 +320,13 @@ function removeFrom(field: CaptureField, base: Record<string, unknown>, text: st
       const items = [...codes, ...text.split(/\s*,\s*/).filter(Boolean)];
       if (!items.length && value.codes?.length) return false; // 목록에 없는 코드로만 지워 달라면 지울 것이 없다
       const list = (getRaw(base, field.key) as string[]) ?? [];
-      const name = (x: string) => field.catalog?.find((i) => i.code === x)?.label ?? null;
-      const hit = (x: string) => !items.length || items.some((y) => x === y || matches(x, y) || (!!name(x) && (matches(name(x)!.ko, y) || matches(name(x)!.en, y))));
-      const keep = list.filter((x) => !hit(x));
+      // 코드는 그 이름(한국어·영어)으로도 가리킬 수 있다
+      const names = (x: string) => {
+        const label = field.catalog?.find((i) => i.code === x)?.label;
+        return label ? [x, label.ko, label.en] : [x];
+      };
+      const drop = hitSet(list.map(names), items);
+      const keep = list.filter((_, i) => !drop.has(i));
       setRaw(base, field.key, keep);
       return keep.length !== list.length;
     }
@@ -319,7 +344,8 @@ function removeFrom(field: CaptureField, base: Record<string, unknown>, text: st
       const d = value.date;
       if (!label && !d) return false;
       const list = (base.anniversaries as { label: string; spec: DateSpec }[]) ?? [];
-      base.anniversaries = list.filter((a) => !(label ? matches(a.label, label) : a.spec.month === d!.month && a.spec.day === d!.day));
+      const drop = label ? new Set(findHits(solo(list.map((a) => a.label)), label)) : new Set(list.flatMap((a, i) => (a.spec.month === d!.month && a.spec.day === d!.day ? [i] : [])));
+      base.anniversaries = list.filter((_, i) => !drop.has(i));
       return (base.anniversaries as unknown[]).length !== list.length;
     }
     case "pet": {
@@ -333,7 +359,8 @@ function removeFrom(field: CaptureField, base: Record<string, unknown>, text: st
       }
       if (field.key === "pets.treats") {
         const items = text.split(/\s*,\s*/).filter(Boolean);
-        const keep = items.length ? pet.treats.filter((x) => !items.some((y) => matches(x, y))) : [];
+        const drop = hitSet(solo(pet.treats), items);
+        const keep = pet.treats.filter((_, i) => !drop.has(i));
         if (keep.length === pet.treats.length) return false;
         pet.treats = keep;
       } else {

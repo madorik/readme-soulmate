@@ -4,6 +4,7 @@ import { isSection, josa, sanitizeAvatar, type AvatarConfig, type Section } from
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession, sealNote, writeContactSection } from "@/lib/data";
+import { LIMITS } from "@/lib/data-core";
 import { isFolderColor, isFolderIcon } from "@/lib/folders";
 import { GIFT_CATALOG } from "@/lib/gift-catalog";
 import { track } from "@/lib/track";
@@ -33,10 +34,14 @@ export async function addNote(form: FormData): Promise<void> {
   const label = String(form.get("label") ?? "").trim().slice(0, 40);
   const body = String(form.get("body") ?? "").trim().slice(0, 1000);
   if (body) {
-    await s.tx((q) =>
-      q("insert into notes (author_id, contact_id, label, payload) values ($1, $2, $3, $4)", [s.user.id, contactId, label, JSON.stringify(sealNote(s.user.id, contactId, body))]),
-    );
-    track("note_add", { userId: s.user.id });
+    // 한 사람에게 메모는 LIMITS.notes개까지(넘으면 비었을 때처럼 그냥 넘어간다)
+    const added = await s.tx(async (q) => {
+      const n = await q.one<{ n: number }>("select count(*)::int as n from notes where contact_id = $1", [contactId]);
+      if ((n?.n ?? 0) >= LIMITS.notes) return false;
+      await q("insert into notes (author_id, contact_id, label, payload) values ($1, $2, $3, $4)", [s.user.id, contactId, label, JSON.stringify(sealNote(s.user.id, contactId, body))]);
+      return true;
+    });
+    if (added) track("note_add", { userId: s.user.id });
   }
   revalidatePath(`/people/${contactId}`);
 }
@@ -52,10 +57,15 @@ export async function markGiftDone(contactId: string, rawLabel: string, rawGift:
   const gift = rawGift.replace(/\s+/g, " ").trim().slice(0, 80);
   if (!label || !gift) return { ok: false };
   const body = s.profile.locale === "ko" ? `${josa(gift, "을")} 선물했어요` : `Gave ${gift}`;
-  await s.tx(async (q) => {
+  const saved = await s.tx(async (q) => {
+    // 같은 날 메모는 바꾸는 것이니 그것만 빼고 센다
+    const n = await q.one<{ n: number }>("select count(*)::int as n from notes where contact_id = $1 and label <> $2", [contactId, label]);
+    if ((n?.n ?? 0) >= LIMITS.notes) return false;
     await q("delete from notes where contact_id = $1 and label = $2", [contactId, label]);
     await q("insert into notes (author_id, contact_id, label, payload) values ($1, $2, $3, $4)", [s.user.id, contactId, label, JSON.stringify(sealNote(s.user.id, contactId, body))]);
+    return true;
   });
+  if (!saved) return { ok: false };
   revalidatePath(`/people/${contactId}`);
   revalidatePath(`/people/${contactId}/reminder`);
   // 통계: 추천 목록에서 고른 선물이면 그 id(직접 적은 건 내용 없이)
@@ -129,15 +139,32 @@ export async function createPerson(form: FormData): Promise<void> {
   const s = await requireSession();
   const name = String(form.get("name") ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
   if (!name) redirect("/people/new?error=name");
-  const contactId = await s.tx(async (q) => {
+  const made = await s.tx(async (q) => {
+    // 같은 사람이 동시에 두 번 보내도(두 번 누름) 한 줄씩만 지나가게 사람별로 줄 세운다
+    await q("select pg_advisory_xact_lock(hashtext($1))", [`person:${s.user.id}`]);
+    const cur = await q.one<{ n: number; dup: string | null }>(
+      `select count(*)::int as n,
+              (select id from contacts where user_id = $1 and nickname = $2 and created_at > now() - interval '5 seconds' order by created_at desc limit 1) as dup
+         from contacts where user_id = $1`,
+      [s.user.id, name],
+    );
+    // 방금(5초 안에) 같은 이름으로 만든 사람이 있으면 두 번 누른 것이니 그 사람으로
+    if (cur?.dup) return { id: cur.dup, created: false };
+    if ((cur?.n ?? 0) >= LIMITS.people) return null;
     const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname) values ($1, $2) returning id", [s.user.id, name]);
     await q("insert into contact_cards (contact_id, author_id) values ($1, $2)", [c!.id, s.user.id]);
+    // 생일을 골랐으면 같이 적어 둔다(고르지 않으면 비워 둔다. 값이 틀리면 저장하는 쪽이 걸러 낸다)
+    const birthday = json(form.get("birthday"));
+    if (birthday && typeof birthday === "object") await writeContactSection(q, s.user.id, c!.id, "dates", { birthday, anniversaries: [] });
     // 고른 폴더에 바로 넣는다(내 폴더만, DB가 확인). uuid 모양이 아니면 넣지 않는다
     const folder = String(form.get("folderId") ?? "");
     if (UUID.test(folder)) await q("insert into contact_group_members (group_id, contact_id, user_id) values ($1, $2, $3)", [folder, c!.id, s.user.id]);
-    return c!.id;
+    return { id: c!.id, created: true };
   });
-  track("person_add", { userId: s.user.id });
+  // 사람 수 한도(LIMITS.people)를 넘으면 이름이 비었을 때처럼 입력 화면으로 되돌린다(화면은 error=name일 때만 문구를 보이니 새 문구는 없다)
+  if (!made) redirect("/people/new?error=limit");
+  const contactId = made.id;
+  if (made.created) track("person_add", { userId: s.user.id });
   revalidatePath("/people");
   revalidatePath("/home");
   redirect(`/people/${contactId}`);
@@ -198,7 +225,11 @@ export async function createFolder(input: { name: string; icon: string; color: s
   const color = isFolderColor(input?.color) ? input.color : "lavender";
   const row = await s.tx(async (q) => {
     const same = await q.one<{ id: string }>("select id from contact_groups where user_id = $1 and builtin is null and name = $2", [s.user.id, name]);
-    return same ?? (await q.one<{ id: string }>("insert into contact_groups (user_id, name, icon, color) values ($1, $2, $3, $4) returning id", [s.user.id, name, icon, color]));
+    if (same) return same;
+    // 직접 만든 폴더는 LIMITS.folders개까지
+    const n = await q.one<{ n: number }>("select count(*)::int as n from contact_groups where user_id = $1 and builtin is null", [s.user.id]);
+    if ((n?.n ?? 0) >= LIMITS.folders) return null;
+    return (await q.one<{ id: string }>("insert into contact_groups (user_id, name, icon, color) values ($1, $2, $3, $4) returning id", [s.user.id, name, icon, color]));
   });
   if (row) track("folder_create", { userId: s.user.id });
   revalidatePeople();

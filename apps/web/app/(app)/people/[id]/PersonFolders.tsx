@@ -72,16 +72,22 @@ export function PersonFolders({ contactId, name, folders, mine, labels }: { cont
     <>
       <div className="flex flex-wrap gap-1.5">
         {inFolders.map((f) => (
-          <Link key={f.id} href={`/people/folder/${f.id}`} className="flex h-8 items-center gap-[5px] rounded-full bg-paper pl-2 pr-[11px] text-[13.5px] font-bold shadow-[inset_0_0_0_1px_var(--color-edge)]">
+          <Link
+            key={f.id}
+            href={`/people/folder/${f.id}`}
+            // 보이는 칩은 32px, 누르는 자리는 위아래 6px씩 넓혀 44px(before)
+            className="relative flex h-8 max-w-full items-center gap-[5px] rounded-full bg-paper pl-2 pr-[11px] text-[13.5px] font-bold shadow-[inset_0_0_0_1px_var(--color-edge)] before:absolute before:-inset-y-1.5 before:inset-x-0"
+          >
             <FolderMini color={f.color} />
-            {f.name}
+            <span className="truncate">{f.name}</span>
           </Link>
         ))}
         <button
           type="button"
           aria-label={labels.put}
           onClick={openSheet}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-accent shadow-[inset_0_0_0_1.5px_#f0d27a]"
+          // 보이는 동그라미는 32px, 누르는 자리는 44px(before)
+          className="relative flex h-8 w-8 items-center justify-center rounded-full text-accent shadow-[inset_0_0_0_1.5px_var(--color-mango-edge)] before:absolute before:-inset-1.5"
         >
           <Icon name="plus" size={16} strokeWidth={2.4} />
         </button>
@@ -138,13 +144,13 @@ export function PersonFolders({ contactId, name, folders, mine, labels }: { cont
                     aria-label={labels.namePlaceholder}
                     className="field min-w-0 flex-1"
                   />
-                  <button disabled={busy || !newName.trim()} className="btn-primary !h-12 shrink-0 px-5">
+                  <button disabled={busy || !newName.trim()} className="btn-primary !min-h-12 shrink-0 px-5">
                     {labels.create}
                   </button>
                 </form>
               ) : (
                 <button type="button" onClick={() => setMaking(true)} className="flex min-h-[62px] w-full items-center gap-3.5 text-left text-accent">
-                  <span className="flex h-[31px] w-10 items-center justify-center rounded-[9px] shadow-[inset_0_0_0_2px_#f0d27a]">
+                  <span className="flex h-[31px] w-10 items-center justify-center rounded-[9px] shadow-[inset_0_0_0_2px_var(--color-mango-edge)]">
                     <Icon name="plus" size={18} strokeWidth={2.4} />
                   </span>
                   <span className="text-[16px] font-bold">{labels.newFolder}</span>

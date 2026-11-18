@@ -53,6 +53,17 @@ export function RequestForm({ locale, people, fixed, initialName, defaults }: { 
     setWho({ kind: "new", name: q.slice(0, 40) });
     setTopics(defaults);
   };
+  // 이름 칸에서 엔터: 하나만 걸렸으면 그 사람, 아니면 지금 적은 이름으로 새로(아래 '새로' 칩과 같다). 한글 조합 중 엔터는 글자를 끝내는 것뿐
+  const onNameKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter" || e.nativeEvent.isComposing || e.keyCode === 229) return;
+    e.preventDefault();
+    if (matches.length === 1) choose(matches[0]!);
+    else if (q && !exact) chooseNew();
+    else {
+      const same = matches.find((p) => [p.name, p.tag, p.label].some((x) => x && x.replace(/\s+/g, "") === q.replace(/\s+/g, "")));
+      if (same) choose(same);
+    }
+  };
   const shareText = message.trim() ? `${state.text}\n${message.trim()}` : state.text;
 
   const topicLabel = (x: Section) => t(`request.topic.${x}` as "request.topic.dates");
@@ -135,8 +146,9 @@ export function RequestForm({ locale, people, fixed, initialName, defaults }: { 
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={onNameKey}
                   maxLength={40}
-                  enterKeyHint="search"
+                  enterKeyHint="go"
                   placeholder={t("people.search")}
                   className="field !pl-[42px] [&::-webkit-search-cancel-button]:appearance-none"
                 />
@@ -150,7 +162,7 @@ export function RequestForm({ locale, people, fixed, initialName, defaults }: { 
                     </button>
                   ))}
                   {q && !exact ? (
-                    <button type="button" onClick={chooseNew} className="flex h-11 items-center gap-1.5 rounded-full pl-3 pr-3.5 text-[14.5px] font-bold text-accent shadow-[inset_0_0_0_1.5px_#f0d27a]">
+                    <button type="button" onClick={chooseNew} className="flex h-11 items-center gap-1.5 rounded-full pl-3 pr-3.5 text-[14.5px] font-bold text-accent ring-[1.5px] ring-inset ring-mango-edge">
                       <Icon name="personAdd" size={17} strokeWidth={2} />
                       {q}
                       <TagChip>{t("voice.newPerson")}</TagChip>

@@ -23,7 +23,8 @@ export function FavoriteStar({ contactId, initial, label }: { contactId: string;
           if (!r.ok) setOn(!next);
         });
       }}
-      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_1px_var(--color-edge)] active:scale-95 ${on ? "bg-sky-soft" : "bg-white"}`}
+      // 보이는 동그라미는 40px, 누르는 자리는 44px(before)
+      className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_1px_var(--color-edge)] before:absolute before:-inset-0.5 active:scale-95 ${on ? "bg-sky-soft" : "bg-white"}`}
     >
       <svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" className={on ? "text-accent" : "text-muted"}>
         <path d={STAR} fill={on ? "var(--color-sky)" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />

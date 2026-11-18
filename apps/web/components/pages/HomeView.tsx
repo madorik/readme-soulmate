@@ -80,7 +80,7 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
 
       {/* 오늘은 카드 밖에. 카드 안 날짜는 챙길 날 것만 */}
       <p className="flex items-center gap-2 px-5 pb-2.5 pt-1 text-[13px] font-medium text-muted">
-        <span className="rounded-full bg-ink px-2 py-[2px] text-[11.5px] font-bold text-white">{t("start.today")}</span>
+        <span className="rounded-full bg-ink px-2 py-[2px] text-[12px] font-bold text-white">{t("start.today")}</span>
         <span>
           {formatDayFull(today, locale)}
           {lunarToday ? (locale === "ko" ? ` · 음력 ${lunarToday.m}월 ${lunarToday.d}일` : ` · Lunar ${lunarToday.m}/${lunarToday.d}`) : ""}
@@ -159,16 +159,16 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
       </section>
 
       {/* 누르면 월별 달력(카드 전체가 눌린다) */}
-      <section aria-label={t("home.thisWeek")} className="card relative mx-4 mt-3.5 px-2 pb-3.5 pt-4 transition-transform active:scale-[0.99]">
+      <section aria-label={t("home.thisWeek")} className="card relative mx-4 mt-3.5 px-1 pb-3.5 pt-4 transition-transform active:scale-[0.99]">
         <Link href="/calendar" aria-label={t("home.openCalendar")} className="absolute inset-0 z-10 rounded-[24px]" />
-        <div className="flex items-center justify-between px-2.5 pb-3">
+        <div className="flex items-center justify-between px-3.5 pb-3">
           <h2 className="text-[16px] font-bold">{t("home.thisWeek")}</h2>
           <span className="flex items-center gap-1">
             {weekEvents ? <span className="chip-on rounded-full px-2.5 py-1 text-[12.5px]">{t("home.weekCount", { n: countWord(weekEvents, locale) })}</span> : null}
             <Icon name="chevron" size={18} strokeWidth={1.8} className="text-muted" />
           </span>
         </div>
-        <ol className="grid grid-cols-8">
+        <ol className="grid grid-cols-[repeat(8,minmax(0,1fr))]">
           {days.map((day, i) => {
             const wd = weekday(day);
             const dayEvents = events.filter((e) => sameYmd(e.date, day));
@@ -176,15 +176,15 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
             const isToday = i === 0;
             return (
               <li key={i} className="flex flex-col items-center gap-[5px]">
-                <span className={`text-[11px] ${isToday ? "font-bold text-accent" : wd === 0 ? "text-red" : wd === 6 ? "text-sat" : "text-muted"}`}>{isToday ? t("start.today") : names[wd]}</span>
+                <span className={`whitespace-nowrap text-[12px] ${isToday ? "font-bold text-accent" : wd === 0 ? "text-red" : wd === 6 ? "text-sat" : "text-muted"}`}>{isToday ? t("start.today") : names[wd]}</span>
                 <span
-                  className={`num flex h-9 w-9 items-center justify-center rounded-full text-[16px] ${
+                  className={`num flex h-8 w-8 items-center justify-center rounded-full text-[16px] ${
                     isToday ? "grad !font-bold" : dayEvents.length ? "chip-on !font-bold" : wd === 0 ? "font-semibold text-red" : "font-semibold"
                   }`}
                 >
                   {day.d}
                 </span>
-                <span className="num text-[10px] !font-semibold text-muted">{lunar ? `${lunar.m}.${lunar.d}` : ""}</span>
+                <span className="num whitespace-nowrap text-[12px] !font-semibold text-muted">{lunar ? `${lunar.m}.${lunar.d}` : ""}</span>
                 <span className="flex h-6 items-center justify-center">
                   <FaceStack faces={dayEvents.map((e) => ({ key: `${e.contactId}-${e.kind}-${e.label ?? ""}`, avatar: personOf(e.contactId)?.avatar ?? null, label: eventName(e, t, locale) }))} size={24} />
                 </span>
@@ -261,7 +261,7 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
                 aria-label={t("home.questionOwn")}
                 className="h-11 min-w-0 flex-1 bg-transparent text-[15.5px] font-medium outline-none placeholder:text-muted"
               />
-              <button aria-label={t("common.save")} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-rule)] active:scale-95">
+              <button aria-label={t("common.save")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-rule)] active:scale-95">
                 <Icon name="up" size={18} strokeWidth={2.2} />
               </button>
             </form>
@@ -282,7 +282,7 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
             <span className="num text-[14px] !font-bold text-muted">{people.length}</span>
           </h2>
           {people.length ? (
-            <Link href="/people" className="flex min-h-9 items-center gap-0.5 text-[13px] font-medium text-muted">
+            <Link href="/people" className="-my-1 flex min-h-11 items-center gap-0.5 text-[13px] font-medium text-muted">
               {t("home.seeAll")}
               <Icon name="chevron" size={16} />
             </Link>
@@ -295,14 +295,14 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
                 <span className="relative block">
                   <Avatar config={p.avatar} size={52} label={label} />
                   {badge ? (
-                    <span className="grad num absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-[3px] text-[10.5px] !font-bold shadow-[0_0_0_2px_#fff]">{badge}</span>
+                    <span className="grad num absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-[3px] text-[12px] !font-bold shadow-[0_0_0_2px_#fff]">{badge}</span>
                   ) : null}
                 </span>
                 <span className="w-full truncate text-center text-[12.5px] font-medium">{displayName(p)}</span>
               </Link>
             ))}
             <Link href="/request" className="flex w-[60px] shrink-0 flex-col items-center gap-1.5 text-accent">
-              <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-2 border-dashed border-[#f0d27a]">
+              <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-2 border-dashed border-mango-edge">
                 <Icon name="plus" size={22} strokeWidth={2.2} />
               </span>
               <span className="text-[12.5px] font-bold">{t("home.request")}</span>

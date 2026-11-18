@@ -97,8 +97,9 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
 
       {picksOn ? (
         <section id="picks" aria-labelledby="picks-title" className="relative flex scroll-mt-2 flex-col pt-7">
-          {/* 아래(채워지면) 무엇을 보고 골랐는지 풀어 쓴 한두 문장. 높이는 오른쪽 다시 고르기 단추보다 아래로 */}
-          <div className="min-h-10 pl-6 pr-36">
+          {/* 아래(채워지면) 무엇을 보고 골랐는지 풀어 쓴 한두 문장. 오른쪽 위 다시 고르기 단추 자리는 float라 첫 두 줄만 비켜 가고 아래 줄은 전체 폭을 쓴다 */}
+          <div className="min-h-10 px-6">
+            <span aria-hidden="true" className="float-right h-10 w-28" />
             <h2 id="picks-title" className="text-[17px] font-bold leading-[1.4] tracking-[-0.02em]">
               {t("picks.titleFor", { name })}
             </h2>
@@ -127,6 +128,7 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
             doneOwn: t("picks.doneOwn"),
             doneSave: t("picks.doneSave"),
             doneEdit: t("picks.doneEdit"),
+            copyFailed: t("common.copyFailed"),
             close: t("common.close"),
           }}
         />

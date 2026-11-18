@@ -3,6 +3,7 @@
 import { type GiftsData, type Locale } from "@readme/core";
 import { useState } from "react";
 import { Icon } from "../marks";
+import { useLatest, useUndoToast } from "../UndoToast";
 import { CircleOption, SectionHeading, TextField, joinList, splitList, useT } from "./shared";
 
 /**
@@ -15,6 +16,20 @@ export function GiftsEditor({ value, onChange, locale, forOther = false }: { val
   const [brands, setBrands] = useState(joinList(value.brands ?? []));
   const setWish = (i: number, patch: Partial<GiftsData["wishlist"][number]>) =>
     onChange({ ...value, wishlist: value.wishlist.map((w, j) => (j === i ? { ...w, ...patch } : w)) });
+  const latest = useLatest({ value, onChange });
+  const undo = useUndoToast(locale);
+  // 지우기: 바로 지우고, 5초 안에 되돌리면 그때의 목록 제자리에 다시 넣는다
+  const removeWish = (i: number) => {
+    const gone = value.wishlist[i]!;
+    onChange({ ...value, wishlist: value.wishlist.filter((_, j) => j !== i) });
+    undo.show({
+      onUndo: () => {
+        const cur = latest.current.value;
+        const at = Math.min(i, cur.wishlist.length);
+        latest.current.onChange({ ...cur, wishlist: [...cur.wishlist.slice(0, at), gone, ...cur.wishlist.slice(at)] });
+      },
+    });
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,7 +46,7 @@ export function GiftsEditor({ value, onChange, locale, forOther = false }: { val
           <div key={i} className="flex flex-col gap-2 border-t border-rule pt-3">
             <div className="flex items-center gap-2">
               <input value={w.title} onChange={(e) => setWish(i, { title: e.target.value })} placeholder={forOther ? t("gift.ideaTitle") : t("gift.wishTitle")} aria-label={forOther ? t("gift.ideaTitle") : t("gift.wishTitle")} className="field" />
-              <button type="button" aria-label={t("common.delete")} onClick={() => onChange({ ...value, wishlist: value.wishlist.filter((_, j) => j !== i) })} className="flex h-11 w-11 shrink-0 items-center justify-center text-muted">
+              <button type="button" aria-label={t("common.delete")} onClick={() => removeWish(i)} className="flex h-11 w-11 shrink-0 items-center justify-center text-muted">
                 <Icon name="close" size={20} />
               </button>
             </div>
@@ -63,6 +78,7 @@ export function GiftsEditor({ value, onChange, locale, forOther = false }: { val
         }}
         placeholder={t("gift.brandsPlaceholder")}
       />
+      {undo.toast}
     </div>
   );
 }

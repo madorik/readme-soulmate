@@ -48,10 +48,14 @@ function nativeSpeech(): NativeSpeech | null {
  * 브라우저는 마이크 소리 크기(AnalyserNode)를, 잴 수 없는 곳(앱의 기기 인식)은 듣는 동안 부드럽게 오르내리는 값을 쓴다.
  * 듣는 동안에는 물방울에서 물결 고리가 퍼져 나가고(소리가 클수록 진하게), 밑에 음성 막대가 소리 크기에 맞춰 오르내린다.
  * 소리를 잴 수 없는 앱에서는 받아 적은 글자가 들어올 때마다(beat) 출렁인다.
- * 움직임 줄이기를 켠 사람에게는 멈춘다. 값은 그릴 때마다 DOM에 바로 넣는다(화면을 다시 그리지 않게)
+ * 움직임 줄이기를 켠 사람에게는 멈춘다. 값은 그릴 때마다 DOM에 바로 넣는다(화면을 다시 그리지 않게).
+ * 듣는 동안(active)에만 프레임 루프를 돌리고, 가만히 있을 때는 한 번 그리고 멈춘다. 음성 막대는 높이 대신 scaleY(합성만)로 오르내린다
  */
 const BARS = [0.55, 0.8, 1, 0.8, 0.55];
 const BAR_ROW = 36;
+/** 음성 막대 한 줄의 가장 큰 높이(px). 이보다 작게는 scaleY로 */
+const BAR_MAX = 34;
+const BAR_MIN = 6;
 
 function WaterDrop({ active, measure, beat = 0, size = 210 }: { active: boolean; measure: boolean; beat?: number; size?: number }) {
   const body = useRef<HTMLDivElement>(null);
@@ -80,7 +84,8 @@ function WaterDrop({ active, measure, beat = 0, size = 210 }: { active: boolean;
     let level = 0;
     let phase = 0;
     let last = 0;
-    const draw = (t: number) => {
+    // 한 프레임 그리기(루프는 아래 loop가 돈다)
+    const paint = (t: number) => {
       const dt = last ? Math.min(0.05, (t - last) / 1000) : 0;
       last = t;
       let target = 0;
@@ -112,9 +117,13 @@ function WaterDrop({ active, measure, beat = 0, size = 210 }: { active: boolean;
       bars.current.forEach((bar, i) => {
         if (!bar) return;
         const wave = still ? 0.8 : 0.55 + 0.45 * Math.abs(Math.sin(phase * 1.9 + i * 1.25));
-        bar.style.height = `${active ? 6 + 28 * Math.min(1, (0.25 + level) * wave) * BARS[i]! : 6}px`;
+        const h = active ? BAR_MIN + (BAR_MAX - BAR_MIN) * Math.min(1, (0.25 + level) * wave) * BARS[i]! : BAR_MIN;
+        bar.style.transform = `scaleY(${h / BAR_MAX})`;
       });
-      raf = requestAnimationFrame(draw);
+    };
+    const loop = (t: number) => {
+      paint(t);
+      raf = requestAnimationFrame(loop);
     };
     void (async () => {
       if (active && measure && navigator.mediaDevices?.getUserMedia) {
@@ -130,7 +139,10 @@ function WaterDrop({ active, measure, beat = 0, size = 210 }: { active: boolean;
           analyser = null;
         }
       }
-      if (!stopped) raf = requestAnimationFrame(draw);
+      if (stopped) return;
+      // 듣는 동안만 계속 그린다. 가만히 있을 때는 한 번만 그려 두고 멈춘다(페인트·배터리 아낌)
+      if (active) raf = requestAnimationFrame(loop);
+      else paint(0);
     })();
     return () => {
       stopped = true;
@@ -236,12 +248,22 @@ function WaterDrop({ active, measure, beat = 0, size = 210 }: { active: boolean;
             ref={(el) => {
               bars.current[i] = el;
             }}
-            className="w-1.5 rounded-full"
-            style={{ height: 6, background: "linear-gradient(to top, rgba(70,145,215,0.9), rgba(150,210,250,0.95))" }}
+            className="w-1.5 rounded-full will-change-transform"
+            style={{ height: BAR_MAX, transform: `scaleY(${BAR_MIN / BAR_MAX})`, background: "linear-gradient(to top, rgba(70,145,215,0.9), rgba(150,210,250,0.95))" }}
           />
         ))}
       </div>
     </div>
+  );
+}
+
+/** 기억해 두기 단추 안: 저장하는 동안은 돌아가는 고리(움직임 줄이기를 켜면 멈춘 고리)를 글자 앞에 붙인다 */
+function SaveLabel({ pending, children }: { pending: boolean; children: React.ReactNode }) {
+  return (
+    <>
+      {pending ? <span aria-hidden="true" className="h-4 w-4 shrink-0 rounded-full border-2 border-current border-t-transparent motion-safe:animate-spin" /> : null}
+      {children}
+    </>
   );
 }
 
@@ -579,7 +601,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
                 <Link href={l.href} className="flex min-h-[60px] flex-col justify-center gap-0.5 py-2">
                   <span className="flex items-center gap-1.5 text-[13px] font-bold text-muted">
                     {l.who}
-                    {l.isNew ? <span className="chip-on rounded-full px-2 py-[1px] text-[11.5px]">{labels.isNew}</span> : null}
+                    {l.isNew ? <span className="chip-on rounded-full px-2 py-[1px] text-[12px]">{labels.isNew}</span> : null}
                     <span aria-hidden="true">·</span>
                     {l.field}
                     <CaptureBadge line={l} labels={labels} />
@@ -641,7 +663,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
           role="radio"
           aria-checked={mode === m}
           onClick={() => choose(m)}
-          className={`flex h-10 items-center gap-1.5 rounded-full px-5 text-[14.5px] font-bold transition-colors ${mode === m ? "bg-white text-ink shadow-[0_1px_4px_rgba(31,35,64,0.12)]" : "text-muted"}`}
+          className={`relative flex h-10 items-center gap-1.5 rounded-full px-5 text-[14.5px] font-bold transition-colors before:absolute before:-inset-y-1 before:inset-x-0 ${mode === m ? "bg-white text-ink shadow-[0_1px_4px_rgba(31,35,64,0.12)]" : "text-muted"}`}
         >
           <Icon name={m === "voice" ? "mic" : "pencil"} size={16} strokeWidth={2} />
           {m === "voice" ? labels.modeVoice : labels.modeText}
@@ -679,7 +701,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
             autoFocus={canListen}
             placeholder={labels.placeholderText}
             aria-label={labels.placeholderText}
-            className="card min-h-[168px] w-full resize-none p-5 [html[data-kb]_&]:min-h-[132px] text-[18px] font-medium leading-[1.55] tracking-[-0.01em] outline-none placeholder:text-muted/60 focus:shadow-[inset_0_0_0_2px_var(--color-sky)]"
+            className="card min-h-[168px] w-full resize-none p-5 [html[data-kb]_&]:min-h-[132px] text-[18px] font-medium leading-[1.55] tracking-[-0.01em] outline-none placeholder:text-muted/80 focus:shadow-[inset_0_0_0_2px_var(--color-sky)]"
           />
           <div className="flex min-h-8 items-center justify-center">{errorLine}</div>
         </div>
@@ -723,8 +745,8 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
               })}
             </div>
           ) : null}
-          <button disabled={pending || !text.trim()} className="btn-primary w-full">
-            {pending ? "…" : labels.save}
+          <button disabled={pending || !text.trim()} aria-busy={pending} className="btn-primary w-full">
+            <SaveLabel pending={pending}>{labels.save}</SaveLabel>
           </button>
         </div>
       </form>
@@ -760,14 +782,14 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
           maxLength={500}
           placeholder={labels.placeholder}
           aria-label={labels.placeholder}
-          className="mt-2 max-h-[30vh] min-h-[84px] w-full resize-none overflow-y-auto bg-transparent text-center text-[20px] font-semibold leading-[1.5] tracking-[-0.02em] outline-none placeholder:font-medium placeholder:text-muted/55"
+          className="mt-2 max-h-[30vh] min-h-[84px] w-full resize-none overflow-y-auto bg-transparent text-center text-[20px] font-semibold leading-[1.5] tracking-[-0.02em] outline-none placeholder:font-medium placeholder:text-muted/80"
         />
         {mentionList("box")}
         <div className="flex h-8 items-center">
           {error ? (
             errorLine
           ) : idle ? (
-            <button type="button" onClick={() => setText("")} className="text-[13.5px] font-bold text-muted underline underline-offset-4">
+            <button type="button" onClick={() => setText("")} className="relative text-[13.5px] font-bold text-muted underline underline-offset-4 before:absolute before:-inset-x-3 before:-inset-y-3.5">
               {labels.clear}
             </button>
           ) : null}
@@ -789,8 +811,8 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
             <Icon name="mic" size={24} strokeWidth={2} className="relative" />
           </button>
         ) : null}
-        <button disabled={pending || listening || settling || !text.trim()} className="btn-primary flex-1">
-          {pending ? "…" : labels.save}
+        <button disabled={pending || listening || settling || !text.trim()} aria-busy={pending} className="btn-primary flex-1">
+          <SaveLabel pending={pending}>{labels.save}</SaveLabel>
         </button>
       </div>
     </form>

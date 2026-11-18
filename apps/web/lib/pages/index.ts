@@ -3,7 +3,7 @@ import { loadCalendar } from "./calendar";
 import { loadFolder } from "./folder";
 import { loadHome } from "./home";
 import { loadMe, loadMeAvatar, loadMeEdit, loadMeEditSection } from "./me";
-import { loadOnboardingAvatar, loadOnboardingBirthday, loadOnboardingFood } from "./onboarding";
+import { loadOnboardingAvatar, loadOnboardingBirthday, loadOnboardingFood, loadOnboardingIntro } from "./onboarding";
 import { loadPeople } from "./people";
 import { loadPerson } from "./person";
 import { loadPersonEdit } from "./person-edit";
@@ -45,6 +45,7 @@ const LOADERS: Partial<Record<RoutePattern, (input: PageInput) => Promise<unknow
   "/onboarding/avatar": loadOnboardingAvatar,
   "/onboarding/food": loadOnboardingFood,
   "/onboarding/birthday": loadOnboardingBirthday,
+  "/onboarding/intro": loadOnboardingIntro,
 };
 
 export type PageResult = { pattern: RoutePattern; data: unknown } | { redirect: string } | { notFound: true };

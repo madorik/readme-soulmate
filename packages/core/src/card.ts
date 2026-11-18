@@ -1,4 +1,5 @@
 import { isValidSpec, type DateSpec } from "./calendar";
+import { clip } from "./text";
 import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, VIBES, MUSIC_GENRES, NONE, NONE_LABEL, PATTERNS, PET_KINDS, SEASONS, STYLES, codesOf, type CatalogItem, type Relation } from "./catalog";
 
 // 리드미(카드)는 항목(section) 아홉 개로 나눠 저장한다. 공유도 항목 단위로 허락한다.
@@ -199,7 +200,7 @@ const LIST_MAX = 20;
 
 function text(v: unknown, max = TEXT_MAX): string {
   if (typeof v !== "string") return "";
-  return v.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+  return clip(v.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim(), max).trim();
 }
 
 function textList(v: unknown, maxItems = LIST_MAX): string[] {
@@ -234,7 +235,7 @@ function noneableTags(v: unknown, list: CatalogItem[]): string[] {
   const out: string[] = [];
   for (const raw of v) {
     if (typeof raw !== "string") continue;
-    let s = raw.replace(/\s+/g, " ").trim().slice(0, 30);
+    let s = clip(raw.replace(/\s+/g, " ").trim(), 30).trim();
     if (!s) continue;
     const low = s.toLowerCase();
     if (low === NONE || s === NONE_LABEL.ko || low === NONE_LABEL.en.toLowerCase()) s = NONE;

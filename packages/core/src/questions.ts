@@ -2,6 +2,7 @@ import { diffDays, type YMD } from "./calendar";
 import { METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, NONE_LABEL, PATTERNS, SEASONS, STYLES, type CatalogItem } from "./catalog";
 import { emptySection, type CardData, type CultureData, type FavoritesData } from "./card";
 import type { Label, Locale } from "./locale";
+import { clip } from "./text";
 
 // 오늘의 질문: 하루 한 문항으로 리드미를 조금씩 채운다. 답은 카드의 한 칸에 바로 들어간다.
 
@@ -134,7 +135,7 @@ export function questionFor(today: YMD, card: Partial<CardData>): DailyQuestion 
 
 /** 답을 카드 칸에 넣은 결과(바뀐 항목만) */
 export function applyAnswer(card: Partial<CardData>, id: DailyQuestion["id"], value: string, locale: Locale = "ko"): Partial<CardData> {
-  const v = value.trim().slice(0, 60);
+  const v = clip(value.trim(), 60).trim();
   const text = v === NONE ? NONE_LABEL[locale] : v;
   const add = (list: string[]) => (v === NONE ? [NONE] : list.includes(v) ? list.filter((x) => x !== NONE) : [...list.filter((x) => x !== NONE), v]);
   switch (id) {

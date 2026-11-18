@@ -1,4 +1,4 @@
-import { ALCOHOL_KINDS, ALLERGENS, DIETS, DISLIKES, SPICY_LEVELS, alcoholLabel, groupMemo, judgeMenus, labelOf, mealBrief, orderNote, type MenuReason, type MenuVerdict, type WhoCode } from "@readme/core";
+import { ALCOHOL_KINDS, ALLERGENS, ALLERGY_NOTE_CODE, DIETS, DISLIKES, SPICY_LEVELS, alcoholLabel, groupMemo, judgeMenus, labelOf, mealBrief, orderNote, uncheckedAllergies, type MenuReason, type MenuVerdict, type WhoCode } from "@readme/core";
 import { ShareBar } from "@/app/(app)/plan/ShareBar";
 import { ChiliMeter } from "@/components/Chili";
 import { TopBar } from "@/components/chrome";
@@ -26,6 +26,8 @@ export function PlanMenuView({ locale, diners, back }: PlanMenuData) {
   const t = makeT(locale);
   const brief = mealBrief(diners);
   const verdicts = judgeMenus(diners);
+  // 메뉴 표로는 안전하다고 말할 수 없는 알레르기(복숭아·직접 적은 이름·꼭 알려 둘 말): 메뉴를 내리지 않고 여기서 한 번 알린다
+  const check = uncheckedAllergies(brief);
   const ok = verdicts.filter((v) => v.status === "ok");
   const soft = verdicts.filter((v) => v.status === "soft");
   const avoid = verdicts.filter((v) => v.status === "avoid");
@@ -93,9 +95,22 @@ export function PlanMenuView({ locale, diners, back }: PlanMenuData) {
         <h2 id="avoid" className="section-title mb-1">
           {t("plan.mustAvoid")}
         </h2>
-        {brief.allergens.length || brief.dislikes.length || brief.diets.length || brief.spicy ? (
+        {brief.allergens.length || brief.dislikes.length || brief.diets.length || brief.spicy || check.length ? (
           <>
             {avoidRow(t("plan.allergy"), brief.allergens, ALLERGENS, true)}
+            {check.length ? (
+              <div className="row">
+                <span className="w-[76px] shrink-0 pt-0.5 text-[13px] text-muted">{t("plan.reasonCheckAllergy")}</span>
+                <span className="flex min-w-0 flex-1 flex-wrap gap-x-4 gap-y-2">
+                  {check.map((x) => (
+                    <span key={x.code} className="flex items-baseline gap-2">
+                      <span className="text-[16px] font-bold">{x.code === ALLERGY_NOTE_CODE ? t("safety.note") : labelOf(ALLERGENS, x.code, locale)}</span>
+                      <span className="text-[12px] text-muted">{x.who.join(", ")}</span>
+                    </span>
+                  ))}
+                </span>
+              </div>
+            ) : null}
             {avoidRow(t("plan.dislike"), brief.dislikes, DISLIKES)}
             {avoidRow(t("plan.diet"), brief.diets, DIETS)}
             {brief.spicy ? (

@@ -20,8 +20,13 @@ const FLING = 0.45;
 const EDGE = 24;
 const EASE = "cubic-bezier(0.22, 0.8, 0.24, 1)";
 
+/** 사람을 끌어 폴더에 넣는 중(useDragToFolder가 <html data-dragging>을 단다): 가로로 끌어도 탭이 넘어가면 안 된다 */
+function dragging(): boolean {
+  return document.documentElement.dataset.dragging !== undefined;
+}
+
 function blocked(target: EventTarget | null): boolean {
-  if (document.querySelector('[aria-modal="true"]')) return true;
+  if (dragging() || document.querySelector('[aria-modal="true"]')) return true;
   let el = target instanceof Element ? target : null;
   if (el?.closest('input, textarea, select, [contenteditable="true"], [data-no-swipe]')) return true;
   for (; el && el !== document.body; el = el.parentElement) {
@@ -125,6 +130,13 @@ export function SwipeTabs() {
     const onMove = (e: TouchEvent) => {
       const t = e.touches[0];
       if (!g || !t || g.mode === "scroll") return;
+      // 밀기를 시작한 뒤에 끌기가 시작되면(길게 눌러 집은 경우) 밀기는 접는다
+      if (dragging()) {
+        if (g.mode === "drag" && g.els.length) setX(g.els, 0, g.width);
+        g = null;
+        dx = 0;
+        return;
+      }
       const mx = t.clientX - g.x;
       const my = t.clientY - g.y;
       if (g.mode === "wait") {

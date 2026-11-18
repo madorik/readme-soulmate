@@ -31,6 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Start({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next: rawNext } = await searchParams;
   const next = safeNext(rawNext);
+  // 세션 쿠키가 있고 ?next가 없으면 proxy가 먼저 /home으로 보낸다. 여기는 ?next가 있거나 쿠키가 낡은 때
   const session = await getSession();
   if (session) redirect(session.profile.onboardedAt ? next : `/onboarding/avatar${next !== "/home" ? `?next=${encodeURIComponent(next)}` : ""}`);
 

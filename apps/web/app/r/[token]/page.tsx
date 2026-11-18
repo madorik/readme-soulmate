@@ -1,27 +1,28 @@
-import { hashToken, sanitizeSections, translate } from "@readme/core";
+import { sanitizeSections, translate } from "@readme/core";
 import { Wordmark } from "@/components/chrome";
-import { getSession, openPrefill, readCard } from "@/lib/data";
+import { getSession, readCard } from "@/lib/data";
 import { makeT, requestLocale } from "@/lib/i18n";
-import { asSystem } from "@/lib/db";
+import { readAskOnce } from "@/lib/ask";
 import { ogMetadata, previewLocale } from "@/lib/og";
 import { submitAnswer } from "@/app/actions/request";
 import { AnswerForm } from "@/components/AnswerForm";
 
-type Row = {
-  state: "active" | "expired" | "used" | "canceled" | "not_found";
-  inviter_name: string | null;
-  sections: string[] | null;
-  prefill: unknown;
-  message: string | null;
-};
+/** 주소 조각을 풀어 토큰으로. 깨진 %가 있으면 있는 그대로(없는 링크로 처리된다) */
+function tokenOf(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
 
 /** 링크 미리보기: "○○님이 물어봐요" */
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }) {
-  const token = decodeURIComponent((await params).token);
+  const token = tokenOf((await params).token);
   const locale = await requestLocale((await getSession())?.profile.locale);
-  const hash = await hashToken(token);
-  const row = await asSystem((q) => q.one<{ inviter_name: string | null }>("select inviter_name from request_for_answer($1)", [hash])).catch(() => null);
-  const from = row?.inviter_name?.trim();
+  // 화면과 같은 읽기를 나눠 쓴다(요청 안에서 DB는 한 번만)
+  const ask = await readAskOnce(token).catch(() => null);
+  const from = ask?.row.inviter_name?.trim();
   const lang = previewLocale(locale, from);
   return ogMetadata(lang, from ? translate(lang, "og.requestTitle", { name: from }) : translate(lang, "request.title"));
 }
@@ -29,13 +30,12 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
 // 물어보기에 답하는 화면(로그인 없이 열린다). 답은 물어본 사람의 기록에 들어간다(그 뒤로는 그 사람이 고친다)
 export default async function AnswerPage({ params }: { params: Promise<{ token: string }> }) {
   const { token: raw } = await params;
-  const token = decodeURIComponent(raw);
+  const token = tokenOf(raw);
   const session = await getSession();
   const locale = await requestLocale(session?.profile.locale);
   const t = makeT(locale);
-  const hash = await hashToken(token);
-  // 로그인 없이 여는 화면이라 시스템 권한으로 읽는다. 토큰 해시가 맞는 요청 한 줄만 돌아온다
-  const row = ((await asSystem((q) => q.one<Row>("select * from request_for_answer($1)", [hash]))) ?? { state: "not_found" }) as Row;
+  // 로그인 없이 여는 화면이라 시스템 권한으로 읽는다. 토큰 해시가 맞는 요청 한 줄만 돌아온다(미리 채운 값은 상대에게 보일 것만)
+  const { row, prefill } = await readAskOnce(token);
   const from = row.inviter_name || translate(locale, "app.name");
 
   const header = (
@@ -46,7 +46,6 @@ export default async function AnswerPage({ params }: { params: Promise<{ token: 
   );
 
   if (row.state === "active") {
-    const prefill = openPrefill(hash, row.prefill);
     const mine = session ? (await session.tx((q) => readCard(q, session.user.id))).card : {};
     return (
       <main className="screen !pb-0">

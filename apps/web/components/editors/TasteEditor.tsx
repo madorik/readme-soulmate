@@ -13,7 +13,7 @@ export function SpicyScale({ value, onChange, locale, large = false }: { value: 
     <div className="flex flex-col gap-1.5">
       <SectionHeading>{t("taste.spicy")}</SectionHeading>
       <div className="flex min-h-14 items-center gap-2 pt-1">
-        <div role="radiogroup" aria-label={t("taste.spicy")} className="flex shrink-0 items-center">
+        <div role="radiogroup" aria-label={t("taste.spicy")} className="relative flex shrink-0 items-center">
           {SPICY_LEVELS.map((label, i) => (
             <button
               key={i}
@@ -27,6 +27,12 @@ export function SpicyScale({ value, onChange, locale, large = false }: { value: 
               <ChiliIcon on={value != null && i <= value} size={size} />
             </button>
           ))}
+          {/* 가운데(보통)가 어느 정도인지 기준 하나: 신라면. 고르면 옆 이름에 같은 말이 나오니 그때는 뺀다 */}
+          {value !== 2 ? (
+            <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 whitespace-nowrap text-[12px] font-medium leading-none text-muted">
+              {t("taste.spicyAnchor")}
+            </span>
+          ) : null}
         </div>
         {value != null ? <span className={`min-w-0 font-bold text-accent ${large ? "text-[16.5px]" : "text-[15px]"}`}>{SPICY_LEVELS[value]?.[locale]}</span> : null}
       </div>

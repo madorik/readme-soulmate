@@ -45,14 +45,18 @@ export function avatarBackground(config: AvatarConfig): string {
   return a === b ? a : `linear-gradient(140deg, ${a}, ${b})`;
 }
 
-/** 동그라미 안의 선 캐릭터. 얼굴이 없으면 가는 테두리 동그라미에 첫 글자 */
-export function Avatar({ config, size = 44, label }: { config: AvatarConfig | null; size?: number; label: string }) {
+/**
+ * 동그라미 안의 선 캐릭터. 얼굴이 없으면 가는 테두리 동그라미에 첫 글자.
+ * decorative: 같은 링크·단추 안에 이름이 이미 있어 읽어 줄 필요가 없을 때(스크린리더에서 숨긴다. label은 첫 글자 만들 때만 쓴다)
+ */
+export function Avatar({ config, size = 44, label, decorative = false }: { config: AvatarConfig | null; size?: number; label: string; decorative?: boolean }) {
   if (!config) {
     const initial = label.trim().slice(0, 1) || "?";
     return (
       <span
-        role="img"
-        aria-label={label}
+        role={decorative ? undefined : "img"}
+        aria-label={decorative ? undefined : label}
+        aria-hidden={decorative ? true : undefined}
         className="flex shrink-0 items-center justify-center rounded-full bg-sky-soft font-bold text-accent"
         style={{ width: size, height: size, fontSize: Math.round(size * 0.38) }}
       >
@@ -62,7 +66,7 @@ export function Avatar({ config, size = 44, label }: { config: AvatarConfig | nu
   }
   return (
     <span className="block shrink-0 overflow-hidden rounded-full leading-none" style={{ width: size, height: size, background: avatarBackground(config) }}>
-      <AvatarArt config={config} size={size} label={label} />
+      <AvatarArt config={config} size={size} label={decorative ? undefined : label} />
     </span>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  REMINDER_OFFSETS,
   SPEC_YEAR_MIN,
   yearsAt,
   zodiacOf,
@@ -18,14 +17,18 @@ import {
   type DateSpec,
   type DatesData,
   type Locale,
-  type ReminderOffset,
   type YMD,
 } from "@readme/core";
 import { useMemo, useState } from "react";
 import { Icon, MarkerCircle } from "../marks";
-import { CircleOption, SectionHeading, useT } from "./shared";
+import { useLatest, useUndoToast } from "../UndoToast";
+import { SectionHeading, useT } from "./shared";
 
-const DEFAULT_SPEC: DateSpec = { calendar: "solar", month: 1, day: 1 };
+// 설정·온보딩이 예전 자리에서 가져오던 ReminderPicker는 자기 파일로 옮겼다(그대로 쓸 수 있게 다시 내보낸다)
+export { ReminderPicker } from "./ReminderPicker";
+
+/** 아직 월·일을 다 고르지 않은 날짜(둘 다 골라야 값이 된다) */
+type Draft = Partial<DateSpec>;
 
 function useToday(): YMD {
   // 시간대는 기기 기준(서버와 하루 차이 날 수 있는 자정 근처도 사용자가 보는 날짜로 맞춘다)
@@ -35,6 +38,8 @@ function useToday(): YMD {
 /**
  * 양력/음력 + (연도) + 월·일 + 윤달. 음력이면 올해·내년 양력 날짜를 바로 보여 준다.
  * year를 주면 연도 칸(몰라도 됨)을 보여 준다: birth = 태어난 해(만 나이·띠), since = 시작한 해(N주년)
+ * value가 null이면 '–'로 비어 있고, 월과 일을 둘 다 골라야 onChange(날짜)가 불린다(없던 1월 1일을 만들지 않는다).
+ * 다 고른 값이 불완전해지면(예: 부모가 비우면) onChange(null)
  */
 export function DateSpecPicker({
   value,
@@ -45,28 +50,38 @@ export function DateSpecPicker({
   year,
 }: {
   value: DateSpec | null;
-  onChange: (v: DateSpec) => void;
+  onChange: (v: DateSpec | null) => void;
   locale: Locale;
   preview?: boolean;
   large?: boolean;
   year?: "birth" | "since";
 }) {
   const t = useT(locale);
-  const spec = value ?? DEFAULT_SPEC;
+  // 값이 없는 동안 고르고 있는 것(월만 고른 상태 등). 값이 생기면 값이 기준이다
+  const [draft, setDraft] = useState<Draft>({});
+  const spec: Draft = value ?? draft;
   const today = useToday();
-  const capOf = (s: DateSpec) => (s.calendar === "lunar" ? 30 : daysInMonth(s.year ?? 2024, s.month));
+  const capOf = (s: Draft) => (s.calendar === "lunar" ? 30 : s.month ? daysInMonth(s.year ?? 2024, s.month) : 31);
   const maxDay = capOf(spec);
-  const set = (patch: Partial<DateSpec>) => {
-    const next = { ...spec, ...patch };
+  const set = (patch: Draft) => {
+    const next: Draft = { ...spec, ...patch };
     if (next.year === undefined) delete next.year;
-    const cap = capOf(next);
-    if (next.day > cap) next.day = cap;
     if (next.calendar === "solar") delete next.leap;
-    onChange(next);
+    if (next.day !== undefined) next.day = Math.min(next.day, capOf(next));
+    if (next.month !== undefined && next.day !== undefined) {
+      setDraft({});
+      const done: DateSpec = { calendar: next.calendar ?? "solar", month: next.month, day: next.day };
+      if (next.leap) done.leap = true;
+      if (next.year !== undefined) done.year = next.year;
+      onChange(done);
+      return;
+    }
+    setDraft(next);
+    if (value) onChange(null);
   };
   const yearLabel = year === "birth" ? t("dates.birthYear") : year === "since" ? t("dates.sinceYear") : "";
   const years = Array.from({ length: today.y - SPEC_YEAR_MIN + 1 }, (_, i) => today.y - i);
-  const list = value ? occurrences(spec, today, 3) : [];
+  const list = value ? occurrences(value, today, 3) : [];
   const first = list[0];
   const left = first ? diffDays(today, first) : null;
   const leftText = left == null ? "" : left === 0 ? (locale === "ko" ? "오늘이에요" : "today") : locale === "ko" ? `${left}일 남았어요` : `in ${left} days`;
@@ -80,13 +95,13 @@ export function DateSpecPicker({
             key={c}
             type="button"
             role="radio"
-            aria-checked={spec.calendar === c && !!value}
+            aria-checked={spec.calendar === c}
             onClick={() => set({ calendar: c })}
-            className={`relative flex min-h-11 items-center px-1 text-[22px] font-bold ${spec.calendar === c && value ? "text-accent" : "text-muted"}`}
+            className={`relative flex min-h-11 items-center px-1 text-[22px] font-bold ${spec.calendar === c ? "text-accent" : "text-muted"}`}
           >
             <span className="relative">
               {t(c === "solar" ? "dates.solar" : "dates.lunar")}
-              {spec.calendar === c && value ? <MarkerCircle pad={[12, 9]} width={2.6} /> : null}
+              {spec.calendar === c ? <MarkerCircle pad={[12, 9]} width={2.6} /> : null}
             </span>
           </button>
         ))}
@@ -98,7 +113,7 @@ export function DateSpecPicker({
           <span className="w-[120px] border-b border-ink">
             <select
               aria-label={yearLabel}
-              value={value?.year ?? ""}
+              value={spec.year ?? ""}
               onChange={(e) => set({ year: e.target.value ? Number(e.target.value) : undefined })}
               className="num h-12 w-full appearance-none bg-transparent text-center text-[26px] font-light outline-none"
             >
@@ -118,8 +133,8 @@ export function DateSpecPicker({
       <div className="flex items-end gap-1.5">
         <label className="flex items-end gap-1.5">
           <span className="w-[86px] border-b-2 border-ink">
-            <select aria-label={t("dates.month")} value={value ? spec.month : ""} onChange={(e) => set({ month: Number(e.target.value) })} className={selectClass}>
-              {!value ? <option value="">–</option> : null}
+            <select aria-label={t("dates.month")} value={spec.month ?? ""} onChange={(e) => e.target.value && set({ month: Number(e.target.value) })} className={selectClass}>
+              {spec.month === undefined ? <option value="">–</option> : null}
               {Array.from({ length: 12 }, (_, i) => (
                 <option key={i + 1} value={i + 1}>
                   {i + 1}
@@ -131,8 +146,8 @@ export function DateSpecPicker({
         </label>
         <label className="ml-2.5 flex items-end gap-1.5">
           <span className="w-[86px] border-b-2 border-ink">
-            <select aria-label={t("dates.day")} value={value ? spec.day : ""} onChange={(e) => set({ day: Number(e.target.value) })} className={selectClass}>
-              {!value ? <option value="">–</option> : null}
+            <select aria-label={t("dates.day")} value={spec.day ?? ""} onChange={(e) => e.target.value && set({ day: Number(e.target.value) })} className={selectClass}>
+              {spec.day === undefined ? <option value="">–</option> : null}
               {Array.from({ length: maxDay }, (_, i) => (
                 <option key={i + 1} value={i + 1}>
                   {i + 1}
@@ -142,31 +157,31 @@ export function DateSpecPicker({
           </span>
           {locale === "ko" ? <span className="pb-2 text-[20px] font-bold">일</span> : null}
         </label>
-        {spec.calendar === "lunar" && value ? (
+        {spec.calendar === "lunar" ? (
           <label className="ml-auto flex min-h-11 items-center gap-2 text-[14px] font-bold">
             <input type="checkbox" checked={!!spec.leap} onChange={(e) => set({ leap: e.target.checked })} className="h-5 w-5 accent-[var(--color-ink)]" />
             {t("dates.leap")}
           </label>
         ) : null}
       </div>
-      {spec.leap ? <p className="text-[12.5px] leading-[1.5] text-muted">{t("dates.leapNote", { m: spec.month, d: spec.day })}</p> : null}
+      {value?.leap ? <p className="text-[12.5px] leading-[1.5] text-muted">{t("dates.leapNote", { m: value.month, d: value.day })}</p> : null}
 
       {preview && value && first ? (
         <div className="flex flex-col">
-          {spec.calendar === "lunar" ? <WeekOf day={first} locale={locale} /> : null}
+          {value.calendar === "lunar" ? <WeekOf day={first} locale={locale} /> : null}
           <p className="mb-1.5 mt-3.5 text-[17px] font-bold leading-[1.45] tracking-[-0.02em]">
-            {spec.calendar === "lunar"
+            {value.calendar === "lunar"
               ? t("dates.thisYearLunar", { date: formatDayFull(first, locale), left: leftText })
               : t("dates.nextSolar", { date: formatDateLong(first, locale), left: leftText })}
           </p>
-          {yearLabel && spec.year ? (
+          {yearLabel && value.year ? (
             <p className="-mt-0.5 mb-1.5 text-[13.5px] text-muted">
               {[
                 (() => {
-                  const n = yearsAt(spec, first);
+                  const n = yearsAt(value, first);
                   return n != null && n > 0 ? (year === "birth" ? t("dates.turns", { n }) : t("dates.years", { n })) : "";
                 })(),
-                year === "birth" && zodiacOf(spec) ? t("dates.zodiac", { animal: zodiacOf(spec)![locale] }) : "",
+                year === "birth" && zodiacOf(value) ? t("dates.zodiac", { animal: zodiacOf(value)![locale] }) : "",
               ]
                 .filter(Boolean)
                 .join(" · ")}
@@ -216,30 +231,53 @@ function WeekOf({ day, locale }: { day: YMD; locale: Locale }) {
   );
 }
 
-export function ReminderPicker({ value, onChange, locale }: { value: ReminderOffset[]; onChange: (v: ReminderOffset[]) => void; locale: Locale }) {
-  const t = useT(locale);
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[16px] font-bold">{t("remind.when")}</span>
-      <div className="flex flex-wrap gap-2 pt-1">
-        {REMINDER_OFFSETS.map((o) => (
-          <CircleOption
-            key={o}
-            label={t(`remind.${o}` as "remind.7")}
-            on={value.includes(o)}
-            onToggle={() => onChange(value.includes(o) ? value.filter((x) => x !== o) : REMINDER_OFFSETS.filter((x) => x === o || value.includes(x)))}
-            textClass="whitespace-nowrap"
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
+type Anniversary = DatesData["anniversaries"][number];
 
 /** 생일 + 기념일(내 리드미 편집용) */
 export function DatesEditor({ value, onChange, locale }: { value: DatesData; onChange: (v: DatesData) => void; locale: Locale }) {
   const t = useT(locale);
   const [open, setOpen] = useState<number | null>(null);
+  // 새 기념일은 날짜를 다 고를 때까지 목록(과 저장) 밖에 둔다
+  const [pending, setPending] = useState<{ label: string; spec: DateSpec | null } | null>(null);
+  const latest = useLatest({ value, onChange });
+  const undo = useUndoToast(locale);
+  const list = value.anniversaries;
+  const rows: { label: string; spec: DateSpec | null }[] = pending ? [...list, pending] : list;
+
+  const setLabel = (i: number, label: string) => {
+    if (i < list.length) onChange({ ...value, anniversaries: list.map((x, j) => (j === i ? { ...x, label } : x)) });
+    else setPending((p) => (p ? { ...p, label } : p));
+  };
+  const setSpec = (i: number, spec: DateSpec | null) => {
+    if (!spec) return;
+    if (i < list.length) {
+      onChange({ ...value, anniversaries: list.map((x, j) => (j === i ? { ...x, spec } : x)) });
+      return;
+    }
+    if (!pending) return;
+    // 날짜가 정해졌으니 이제 목록에 들어가 저장된다
+    onChange({ ...value, anniversaries: [...list, { label: pending.label, spec }] });
+    setPending(null);
+    setOpen(i);
+  };
+  const remove = (i: number) => {
+    if (i >= list.length) {
+      setPending(null);
+      return;
+    }
+    const gone: Anniversary = list[i]!;
+    setOpen((o) => (o === i ? null : o != null && o > i ? o - 1 : o));
+    onChange({ ...value, anniversaries: list.filter((_, j) => j !== i) });
+    // 되돌리기: 그사이 고친 것은 두고 지운 것만 제자리에 다시 넣는다
+    undo.show({
+      onUndo: () => {
+        const cur = latest.current.value;
+        const at = Math.min(i, cur.anniversaries.length);
+        latest.current.onChange({ ...cur, anniversaries: [...cur.anniversaries.slice(0, at), gone, ...cur.anniversaries.slice(at)] });
+      },
+    });
+  };
+
   return (
     <div className="flex flex-col gap-7">
       <div className="flex flex-col gap-3">
@@ -250,12 +288,12 @@ export function DatesEditor({ value, onChange, locale }: { value: DatesData; onC
         {/* 기념일 제목 줄 오른쪽에 추가 버튼 */}
         <div className="flex min-h-11 items-center justify-between">
           <SectionHeading>{t("dates.anniversaries")}</SectionHeading>
-          {value.anniversaries.length < 10 ? (
+          {list.length < 10 && !pending ? (
             <button
               type="button"
               onClick={() => {
-                onChange({ ...value, anniversaries: [...value.anniversaries, { label: "", spec: { calendar: "solar", month: 1, day: 1 } }] });
-                setOpen(value.anniversaries.length);
+                setPending({ label: "", spec: null });
+                setOpen(null);
               }}
               className="pill !h-9 !px-3.5 text-[13.5px]"
             >
@@ -264,32 +302,30 @@ export function DatesEditor({ value, onChange, locale }: { value: DatesData; onC
             </button>
           ) : null}
         </div>
-        {value.anniversaries.map((a, i) => (
-          <div key={i} className="flex flex-col gap-3 border-t border-rule pt-3">
-            <div className="flex items-center gap-2">
-              <input
-                value={a.label}
-                onChange={(e) => onChange({ ...value, anniversaries: value.anniversaries.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })}
-                placeholder={t("dates.anniversaryPlaceholder")}
-                aria-label={t("dates.anniversaryLabel")}
-                className="field"
-              />
-              <button type="button" aria-label={t("common.delete")} onClick={() => onChange({ ...value, anniversaries: value.anniversaries.filter((_, j) => j !== i) })} className="flex h-11 w-11 shrink-0 items-center justify-center text-muted">
-                <Icon name="close" size={20} />
-              </button>
+        {rows.map((a, i) => {
+          const isNew = i >= list.length;
+          return (
+            <div key={i} className="flex flex-col gap-3 border-t border-rule pt-3">
+              <div className="flex items-center gap-2">
+                <input value={a.label} onChange={(e) => setLabel(i, e.target.value)} placeholder={t("dates.anniversaryPlaceholder")} aria-label={t("dates.anniversaryLabel")} className="field" />
+                <button type="button" aria-label={t("common.delete")} onClick={() => remove(i)} className="flex h-11 w-11 shrink-0 items-center justify-center text-muted">
+                  <Icon name="close" size={20} />
+                </button>
+              </div>
+              {isNew || open === i ? (
+                <DateSpecPicker value={a.spec} onChange={(spec) => setSpec(i, spec)} locale={locale} preview={false} year="since" />
+              ) : (
+                <button type="button" onClick={() => setOpen(i)} aria-label={`${a.spec!.calendar === "lunar" ? `${t("dates.lunar")} ` : ""}${a.spec!.month}.${a.spec!.day} ${t("common.edit")}`} className="flex min-h-9 items-center gap-1.5 self-start text-[14px] font-bold text-muted">
+                  {a.spec!.calendar === "lunar" ? `${t("dates.lunar")} ` : ""}
+                  {a.spec!.month}.{a.spec!.day}
+                  <Icon name="pencil" size={14} strokeWidth={2} />
+                </button>
+              )}
             </div>
-            {open === i ? (
-              <DateSpecPicker value={a.spec} onChange={(spec) => onChange({ ...value, anniversaries: value.anniversaries.map((x, j) => (j === i ? { ...x, spec } : x)) })} locale={locale} preview={false} year="since" />
-            ) : (
-              <button type="button" onClick={() => setOpen(i)} aria-label={`${a.spec.calendar === "lunar" ? `${t("dates.lunar")} ` : ""}${a.spec.month}.${a.spec.day} ${t("common.edit")}`} className="flex min-h-9 items-center gap-1.5 self-start text-[14px] font-bold text-muted">
-                {a.spec.calendar === "lunar" ? `${t("dates.lunar")} ` : ""}
-                {a.spec.month}.{a.spec.day}
-                <Icon name="pencil" size={14} strokeWidth={2} />
-              </button>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
+      {undo.toast}
     </div>
   );
 }

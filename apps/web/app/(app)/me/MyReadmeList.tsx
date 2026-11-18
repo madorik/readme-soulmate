@@ -1,10 +1,25 @@
 "use client";
 
 import type { Locale, PartialCard, Section } from "@readme/core";
-import { useEffect, useRef, useState } from "react";
-import { SectionForm } from "@/components/editors/SectionForm";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/marks";
 import { SectionIcon } from "@/components/SectionIcon";
+
+// 편집기(여덟 가지)는 항목을 펼칠 때만 쓴다. 따로 받아 오고, 목록이 뜨면 바로 미리 받아 둬서 누를 때 기다리지 않게
+// (next/dynamic 대신 React.lazy: 토스 미니앱 번들도 이 목록을 그려서 Next 전용 모듈을 들이지 않는다)
+const loadForm = () => import("@/components/editors/SectionForm").then((m) => ({ default: m.SectionForm }));
+const SectionForm = lazy(loadForm);
+
+/** 편집기를 받는 동안 자리(펼친 모양과 비슷한 높이, 글자 없음) */
+function FormPlaceholder() {
+  return (
+    <div aria-hidden="true" className="flex min-h-[220px] flex-col gap-3 pt-1">
+      <div className="h-12 rounded-2xl bg-fill" />
+      <div className="h-12 w-2/3 rounded-2xl bg-fill" />
+      <div className="h-12 w-1/2 rounded-2xl bg-fill" />
+    </div>
+  );
+}
 
 export interface MyRow {
   section: Section;
@@ -25,6 +40,7 @@ export function MyReadmeList({
   initialOpen = null,
   contactId,
   stickyTop = "var(--sat)",
+  stickTo,
 }: {
   rows: MyRow[];
   card: PartialCard;
@@ -34,10 +50,18 @@ export function MyReadmeList({
   contactId?: string;
   /** 펼친 항목 머리가 붙을 위치(기본: 상태바 바로 아래) */
   stickyTop?: string;
+  /** 저장 상태 줄이 붙을 아래 위치(기본: 화면 맨 아래. 탭 막대가 있는 화면은 ABOVE_TAB_BAR) */
+  stickTo?: string;
 }) {
   const [open, setOpen] = useState<Section | null>(initialOpen);
   const items = useRef<Partial<Record<Section, HTMLLIElement | null>>>({});
   const first = useRef(true);
+
+  // 편집기 조각을 한가할 때 미리 받아 둔다
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 400));
+    idle(() => void loadForm());
+  }, []);
 
   // 연 항목 머리를 화면 맨 위로(위에 펼쳐 있던 항목이 접힌 뒤 자리에서) + 주소에 적기
   useEffect(() => {
@@ -81,7 +105,9 @@ export function MyReadmeList({
             </button>
             {isOpen ? (
               <div id={`edit-${section}`} className="pt-3">
-                <SectionForm section={section} initial={card[section] ?? null} locale={locale} contactId={contactId} inline autoSave />
+                <Suspense fallback={<FormPlaceholder />}>
+                  <SectionForm section={section} initial={card[section] ?? null} locale={locale} contactId={contactId} inline autoSave stickTo={stickTo} />
+                </Suspense>
               </div>
             ) : null}
           </li>

@@ -53,7 +53,7 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   await expect(page.getByRole("heading", { name: /사랑하는 사람들의/ })).toBeVisible();
   await shot(page, "01-start");
   await signIn(page);
-  await onboard(page, { name: "지수", allergy: "새우", dislike: "오이", lunar: { month: 10, day: 12 } });
+  await onboard(page, { name: "지수", allergy: "새우", dislike: "오이", lunar: { month: 10, day: 12 }, intro: "tour" });
   await expect(page).toHaveURL(/\/home/);
   await expect(page.getByRole("heading", { name: "내 사람들" })).toBeVisible();
 
@@ -139,7 +139,7 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
 
   // 답장이 오면 홈 맨 위에 알림. 누르면 그 사람 화면, 열면 읽은 것으로 사라진다
   await page.goto("/home");
-  const reply = page.getByRole("region", { name: "새 답장" }).getByRole("link", { name: /아빠님이 답장을 보냈어요/ });
+  const reply = page.getByRole("region", { name: "새 답장" }).getByRole("link", { name: /아빠가 답장을 보냈어요/ });
   await expect(reply).toBeVisible();
   await expect(reply).toContainText(/방금|분 전/);
   await shot(page, "07a-home-reply");
@@ -212,7 +212,7 @@ test("아는 사람에게 다시 물어보기: 내 기록 값이 미리 채워�
   await page.waitForURL(/\/people\/[0-9a-f-]{36}$/);
   const personUrl = new URL(page.url()).pathname;
   await page.getByRole("link", { name: "물어보기", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "아빠님에게 물어보기" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "아빠에게 물어보기" })).toBeVisible();
   await expect(page.getByText("누구에게 물어볼까요?")).toHaveCount(0);
   // 아직 안 적힌 항목이 먼저 골라져 있다(생일·알레르기는 적혀 있다)
   await expect(page.getByRole("button", { name: "사이즈", exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -242,7 +242,7 @@ test("아는 사람에게 다시 물어보기: 내 기록 값이 미리 채워�
   await page.goto("/people");
   await expect(page.getByRole("link", { name: /아빠.*답장을 기다리고 있어요/ })).toBeVisible();
   await page.goto("/privacy");
-  await expect(page.getByText("아빠님에게 물어본 것")).toBeVisible();
+  await expect(page.getByText("아빠에게 물어본 것")).toBeVisible();
 
   const dad = await newPage(browser);
   await dad.goto(url);
@@ -368,8 +368,9 @@ test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 
   const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()).split("-").map(Number);
   const in7 = new Date(Date.UTC(y, m - 1, d + 7));
   await jisu.getByRole("link", { name: "적기" }).click();
-  await expect(jisu).toHaveURL(/\/edit$/);
-  await jisu.getByRole("button", { name: /^생일과 기념일/ }).click();
+  // 빈 사람의 '적기'는 생일과 기념일 칸이 열린 채로 간다
+  await expect(jisu).toHaveURL(/\/edit\?open=dates$/);
+  await expect(jisu.getByRole("button", { name: /^생일과 기념일/ })).toHaveAttribute("aria-expanded", "true");
   await jisu.getByLabel("월").first().selectOption(String(in7.getUTCMonth() + 1));
   await jisu.getByLabel("일").first().selectOption(String(in7.getUTCDate()));
   await expect(jisu.getByText("저장했어요.", { exact: true })).toBeVisible();
@@ -791,7 +792,7 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   // 힌트는 접혀 있다가, 앱 아이콘 + 컨닝페이퍼 힐끗 보기를 누르면 오른쪽에서 나온다
   await expect(page.getByText("튤립", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "컨닝페이퍼 힐끗 보기" }).click();
-  const peek = page.getByRole("dialog", { name: "아내님을 위한 힌트" });
+  const peek = page.getByRole("dialog", { name: "아내를 위한 힌트" });
   await expect(peek.getByText("튤립", { exact: true })).toBeVisible();
   await peek.getByRole("button", { name: "닫기" }).click();
   await expect(peek).toHaveCount(0);

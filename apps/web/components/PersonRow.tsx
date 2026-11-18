@@ -27,17 +27,20 @@ export interface PersonRow {
 /** 이름 옆 태그(내가 붙인 부르는 말) */
 export function TagChip({ children, large = false }: { children: React.ReactNode; large?: boolean }) {
   return (
-    <span className={`max-w-[9em] shrink-0 truncate rounded-md bg-fill font-bold text-muted ${large ? "px-2 py-[3px] text-[13px]" : "px-1.5 py-px text-[11.5px]"}`}>
+    <span className={`max-w-[9em] shrink-0 truncate rounded-md bg-fill font-bold text-muted ${large ? "px-2 py-[3px] text-[13px]" : "px-1.5 py-px text-[12px]"}`}>
       {children}
     </span>
   );
 }
 
-/** 한 줄의 가운데·오른쪽(링크와 고르기 칸이 같이 쓴다) */
-export function RowBody({ row, avatarLabel }: { row: PersonRow; avatarLabel: string }) {
+/**
+ * 한 줄의 가운데·오른쪽(링크와 고르기 칸이 같이 쓴다).
+ * 얼굴은 이름이 같은 줄에 있어 스크린리더에서 숨긴다(avatarLabel은 부르는 쪽 호환용으로 받기만 한다)
+ */
+export function RowBody({ row }: { row: PersonRow; avatarLabel?: string }) {
   return (
     <>
-      <Avatar config={row.avatar} size={46} label={avatarLabel} />
+      <Avatar config={row.avatar} size={46} label={row.name} decorative />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-center gap-1.5">
           {row.favorite ? (
@@ -53,7 +56,7 @@ export function RowBody({ row, avatarLabel }: { row: PersonRow; avatarLabel: str
       {row.date ? (
         <span className="flex flex-col items-end gap-px">
           <span className="num text-[16px] !font-semibold">{row.date}</span>
-          <span className={`text-[11.5px] ${row.soon ? "font-bold text-accent" : "text-muted"}`}>{row.dateSub}</span>
+          <span className={`text-[12px] ${row.soon ? "font-bold text-accent" : "text-muted"}`}>{row.dateSub}</span>
         </span>
       ) : null}
     </>

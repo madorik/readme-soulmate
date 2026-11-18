@@ -1,10 +1,11 @@
 import { createPerson } from "@/app/actions/people";
 import { TopBar } from "@/components/chrome";
+import { BirthdayField } from "@/components/editors/BirthdayField";
 import { Icon } from "@/components/marks";
 import type { PersonNewData } from "@/lib/pages/person-new.data";
 import { makeT } from "@/lib/t";
 
-// 직접 적어 두기: 이름(부르는 말)만 받고 빈 카드를 만든다. 내용은 그 사람 화면에서 항목별로 적는다
+// 직접 적어 두기: 이름(부르는 말)과 폴더, 선택으로 생일만 받고 카드를 만든다. 나머지는 그 사람 화면에서 항목별로 적는다
 export function PersonNewView({ locale, folders, error, name }: PersonNewData) {
   const t = makeT(locale);
   return (
@@ -25,9 +26,9 @@ export function PersonNewView({ locale, folders, error, name }: PersonNewData) {
           aria-invalid={error === "name" || undefined}
           className="field"
         />
-        {error === "name" ? (
+        {error === "name" || error === "limit" ? (
           <span role="alert" className="text-[13.5px] text-red">
-            {t("people.newNameError")}
+            {t(error === "limit" ? "people.newLimit" : "people.newNameError")}
           </span>
         ) : null}
       </label>
@@ -46,6 +47,7 @@ export function PersonNewView({ locale, folders, error, name }: PersonNewData) {
           <Icon name="chevron" size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-muted" />
         </span>
       </label>
+      <BirthdayField locale={locale} />
       <div className="bottom-bar mt-auto bg-bg px-6 pt-4">
         <button className="btn-primary w-full">{t("people.create")}</button>
       </div>

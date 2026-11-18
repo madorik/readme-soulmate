@@ -42,7 +42,14 @@ export function useDragToFolder({ enabled, onDrop }: { enabled: boolean; onDrop:
   });
   const cleanupRef = useRef<() => void>(() => {});
 
-  useEffect(() => () => cleanupRef.current(), []);
+  // 화면을 떠나면 끌기 표시(<html data-dragging>)도 치운다
+  useEffect(
+    () => () => {
+      cleanupRef.current();
+      delete document.documentElement.dataset.dragging;
+    },
+    [],
+  );
 
   function placeGhost() {
     if (ghost.current) ghost.current.style.transform = `translate(${pos.current.x - 28}px, ${pos.current.y - 34}px)`;
@@ -72,6 +79,8 @@ export function useDragToFolder({ enabled, onDrop }: { enabled: boolean; onDrop:
 
   function begin(p: Press) {
     p.started = true;
+    // 끄는 동안은 아래 탭 넘기기(SwipeTabs)를 막는다
+    document.documentElement.dataset.dragging = "";
     setDragging({ id: p.id, name: p.name, from: p.from, x: pos.current.x, y: pos.current.y });
     overRef.current = p.from;
     setOver(p.from);
@@ -122,6 +131,7 @@ export function useDragToFolder({ enabled, onDrop }: { enabled: boolean; onDrop:
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", cleanup);
       document.removeEventListener("touchmove", blockScroll);
+      delete document.documentElement.dataset.dragging;
       if (press.current === p) press.current = null;
       overRef.current = null;
       setDragging(null);

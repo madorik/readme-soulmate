@@ -8,7 +8,7 @@ function NumberCell({ label, value, onChange, placeholder, unit, hint }: { label
     <label className="flex flex-col gap-1.5 border-b border-rule py-3.5">
       <span className="text-[12.5px] font-bold text-muted">{label}</span>
       <span className="flex items-baseline gap-1.5">
-        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} inputMode="text" className="num w-full min-w-0 bg-transparent text-[32px] font-light outline-none placeholder:text-rule" />
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} inputMode="text" className="num w-full min-w-0 bg-transparent text-[32px] font-light outline-none placeholder:text-muted/80" />
         <span className="shrink-0 text-[14px] font-bold">{unit}</span>
       </span>
       <span className="min-h-[18px] text-[12.5px] font-semibold text-ink-2">{hint ?? ""}</span>

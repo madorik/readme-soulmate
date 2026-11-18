@@ -24,6 +24,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getAuth } from "./auth";
 import { aad, open, seal, sealSection } from "./crypto";
+import { isLockedPayload } from "./data-core";
 import { asUser, type Q, type Row } from "./db";
 import { detectLocale, type T } from "./i18n";
 import { isFolderColor, isFolderIcon, type FolderColor, type FolderIcon, type FolderView } from "./folders";
@@ -97,7 +98,8 @@ export const getSession = cache(async (): Promise<Session | null> => {
 
 export async function requireSession(opts: { onboarding?: boolean } = {}): Promise<Session> {
   const s = await getSession();
-  if (!s) redirect("/");
+  // ?next를 붙여 보낸다: 낡은 세션 쿠키가 남은 사람이 /로 가면 proxy가 다시 /home으로 보내는데, ?next가 있으면 그러지 않아서 돌고 돌지 않는다
+  if (!s) redirect("/?next=%2Fhome");
   if (!opts.onboarding && !s.profile.onboardedAt) redirect("/onboarding/avatar");
   return s;
 }
@@ -129,7 +131,11 @@ export async function readCard(q: Q, ownerId: string): Promise<{ card: PartialCa
 
 export async function writeSection<S extends Section>(q: Q, ownerId: string, section: S, input: unknown): Promise<CardData[S]> {
   const clean = sanitizeSection(section, input);
-  const payload = sealSection(section, clean, aad.card(ownerId, section));
+  const scope = aad.card(ownerId, section);
+  const payload = sealSection(section, clean, scope);
+  // 이미 있는 값이 지금 키로 안 풀리면(키가 다른 환경) 덮어쓰지 않는다. 진짜 기록이 사라지지 않게
+  const old = await q.one<{ payload: unknown }>("select payload from card_sections where owner_id = $1 and section = $2", [ownerId, section]);
+  if (old && isLockedPayload(old.payload, (p) => open(p, scope))) throw new Error("undecryptable");
   await q(
     `insert into card_sections (owner_id, section, payload) values ($1, $2, $3)
      on conflict (owner_id, section) do update set payload = excluded.payload`,
@@ -162,7 +168,11 @@ export function sealContactSections(authorId: string, contactId: string, card: P
 /** 사람 기록의 항목 하나 저장(다른 항목은 그대로 둔다). 내가 고친 항목은 '답한 때' 표시를 지운다. RLS가 내 주소록 칸인지 확인한다 */
 export async function writeContactSection<S extends Section>(q: Q, authorId: string, contactId: string, section: S, input: unknown): Promise<CardData[S]> {
   const clean = sanitizeSection(section, input);
-  const payload = sealSection(section, clean, aad.contact(authorId, contactId, section));
+  const scope = aad.contact(authorId, contactId, section);
+  const payload = sealSection(section, clean, scope);
+  // 이미 있는 항목이 지금 키로 안 풀리면 덮어쓰지 않는다(RLS가 내 기록만 돌려준다)
+  const old = await q.one<{ payload: unknown }>("select sections -> $2::text as payload from contact_cards where contact_id = $1", [contactId, section]);
+  if (old && isLockedPayload(old.payload, (p) => open(p, scope))) throw new Error("undecryptable");
   const row = await q.one(
     `insert into contact_cards as cc (contact_id, author_id, sections) values ($1, $2, jsonb_build_object($3::text, $4::jsonb))
      on conflict (contact_id) do update set sections = cc.sections || excluded.sections, answered = cc.answered - $3::text
@@ -222,58 +232,72 @@ export interface Person {
   favorite: boolean;
 }
 
+/** 사람 한 줄(주소록 + 이어진 사람 프로필 + 내 기록 + 가장 최근 물어보기 + 든 폴더) */
+type PersonRow = {
+  id: string;
+  person_id: string | null;
+  nickname: string;
+  favorite: boolean;
+  avatar: unknown;
+  p_id: string | null;
+  p_display_name: string | null;
+  p_avatar: unknown;
+  cc_sections: unknown;
+  cc_answered: unknown;
+  cc_updated_at: Date | null;
+  a_id: string | null;
+  a_sections: unknown;
+  a_expires_at: Date | null;
+  a_used_at: Date | null;
+  a_canceled_at: Date | null;
+  folder_ids: string[] | null;
+};
+
 async function loadPeople(q: Q, me: string): Promise<Person[]> {
-  const contacts = await q<{ id: string; person_id: string | null; nickname: string; favorite: boolean; avatar: unknown }>(
-    "select id, person_id, nickname, favorite, avatar from contacts where user_id = $1 order by created_at",
+  // 한 클라이언트(트랜잭션)에서 Promise.all로 여러 쿼리를 보내도 pg가 줄 세워 하나씩 보내므로, 왕복 한 번짜리 쿼리 하나로 모은다.
+  // 물어보기는 사람마다 가장 최근 한 줄, 폴더는 들어간 순서대로. RLS는 조인한 표마다 그대로 적용된다
+  const rows = await q<PersonRow>(
+    `select c.id, c.person_id, c.nickname, c.favorite, c.avatar,
+            p.id as p_id, p.display_name as p_display_name, p.avatar as p_avatar,
+            cc.sections as cc_sections, cc.answered as cc_answered, cc.updated_at as cc_updated_at,
+            a.id as a_id, a.sections as a_sections, a.expires_at as a_expires_at, a.used_at as a_used_at, a.canceled_at as a_canceled_at,
+            (select array_agg(m.group_id::text order by m.created_at) from contact_group_members m where m.contact_id = c.id and m.user_id = $1) as folder_ids
+       from contacts c
+       left join profiles p on p.id = c.person_id
+       left join contact_cards cc on cc.contact_id = c.id
+       left join lateral (
+         select i.id, i.sections, i.expires_at, i.used_at, i.canceled_at from invites i where i.contact_id = c.id order by i.created_at desc limit 1
+       ) a on true
+      where c.user_id = $1
+      order by c.created_at`,
     [me],
   );
-  if (!contacts.length) return [];
-  const ids = contacts.map((c) => c.id);
-  const personIds = contacts.map((c) => c.person_id).filter((v): v is string => !!v);
-  const [profiles, records, asks, members] = await Promise.all([
-    personIds.length ? q("select id, display_name, avatar from profiles where id = any($1)", [personIds]) : Promise.resolve([]),
-    q("select contact_id, sections, answered, updated_at from contact_cards where contact_id = any($1)", [ids]),
-    q(
-      `select distinct on (contact_id) id, contact_id, sections, expires_at, used_at, canceled_at
-         from invites where contact_id = any($1) order by contact_id, created_at desc`,
-      [ids],
-    ),
-    q("select group_id, contact_id from contact_group_members where user_id = $1 order by created_at", [me]),
-  ]);
-  const foldersByContact = new Map<string, string[]>();
-  for (const m of members) foldersByContact.set(String(m.contact_id), [...(foldersByContact.get(String(m.contact_id)) ?? []), String(m.group_id)]);
-  const profileById = new Map(profiles.map((p) => [String(p.id), p]));
-  const recordByContact = new Map(records.map((r) => [String(r.contact_id), r]));
-  const askByContact = new Map(asks.map((a) => [String(a.contact_id), a]));
 
-  return contacts.map((c) => {
+  return rows.map((c) => {
     const nickname = String(c.nickname ?? "");
-    const p = c.person_id ? profileById.get(c.person_id) : undefined;
-    const r = recordByContact.get(c.id);
-    const a = askByContact.get(c.id);
     const answered: Partial<Record<Section, string>> = {};
-    if (r?.answered && typeof r.answered === "object") {
-      for (const [k, v] of Object.entries(r.answered as Record<string, unknown>)) if (isSection(k) && typeof v === "string") answered[k] = v;
+    if (c.cc_answered && typeof c.cc_answered === "object") {
+      for (const [k, v] of Object.entries(c.cc_answered as Record<string, unknown>)) if (isSection(k) && typeof v === "string") answered[k] = v;
     }
     return {
       contactId: c.id,
       personId: c.person_id,
-      name: String(p?.display_name || nickname),
+      name: String(c.p_display_name || nickname),
       nickname,
       // 내가 꾸민 얼굴이 먼저, 없으면 이어진 사람이 정한 얼굴
-      avatar: c.avatar ? sanitizeAvatar(c.avatar) : p ? sanitizeAvatar(p.avatar) : null,
-      card: r ? openContactSections(me, c.id, r.sections) : {},
+      avatar: c.avatar ? sanitizeAvatar(c.avatar) : c.p_id !== null ? sanitizeAvatar(c.p_avatar) : null,
+      card: c.cc_sections ? openContactSections(me, c.id, c.cc_sections) : {},
       answered,
-      updatedAt: iso(r?.updated_at),
-      asking: a
+      updatedAt: iso(c.cc_updated_at),
+      asking: c.a_id
         ? {
-            inviteId: String(a.id),
-            state: inviteStatus({ expires_at: iso(a.expires_at)!, used_at: iso(a.used_at), canceled_at: iso(a.canceled_at) }),
-            expiresAt: iso(a.expires_at)!,
-            sections: sanitizeSections(a.sections),
+            inviteId: String(c.a_id),
+            state: inviteStatus({ expires_at: iso(c.a_expires_at)!, used_at: iso(c.a_used_at), canceled_at: iso(c.a_canceled_at) }),
+            expiresAt: iso(c.a_expires_at)!,
+            sections: sanitizeSections(c.a_sections),
           }
         : null,
-      folderIds: foldersByContact.get(c.id) ?? [],
+      folderIds: c.folder_ids ?? [],
       favorite: c.favorite === true,
     };
   });
@@ -345,25 +369,36 @@ export interface Folder {
   color: FolderColor;
 }
 
-/** 기본 폴더 네 개가 없으면 만든다(가족 집·망고, 회사 가방·하늘, 연인 하트·분홍, 친구들 별·민트) */
-export async function ensureBuiltinFolders(q: Q, me: string): Promise<void> {
-  await q(
+type FolderRow = { id: string; builtin: string | null; name: string; icon: string; color: string };
+
+const selectFolders = (q: Q, me: string) =>
+  q<FolderRow>("select id, builtin, name, icon, color from contact_groups where user_id = $1 order by array_position($2::text[], builtin) nulls last, created_at", [me, [...BUILTIN_GROUPS]]);
+
+const hasAllBuiltins = (rows: { builtin: string | null }[]) => BUILTIN_GROUPS.every((b) => rows.some((r) => r.builtin === b));
+
+const insertBuiltinFolders = (q: Q, me: string) =>
+  q(
     `insert into contact_groups (user_id, builtin, icon, color)
      select $1, b, case b when 'family' then 'home' when 'work' then 'work' when 'partner' then 'heart' else 'star' end,
             case b when 'family' then 'mango' when 'work' then 'sky' when 'partner' then 'pink' else 'mint' end
      from unnest($2::text[]) b on conflict (user_id, builtin) do nothing`,
     [me, [...BUILTIN_GROUPS]],
   );
+
+/** 기본 폴더 네 개가 없으면 만든다(가족 집·망고, 회사 가방·하늘, 연인 하트·분홍, 친구들 별·민트). 이미 다 있으면 읽기만 한다 */
+export async function ensureBuiltinFolders(q: Q, me: string): Promise<void> {
+  const have = await q<{ builtin: string }>("select builtin from contact_groups where user_id = $1 and builtin is not null", [me]);
+  if (!hasAllBuiltins(have)) await insertBuiltinFolders(q, me);
 }
 
 /** 내 폴더. 기본 폴더는 처음 부를 때 만든다. 순서: 기본 폴더 → 만든 순서 */
 export async function listFolders(q: Q, me: string): Promise<Folder[]> {
-  const builtins = [...BUILTIN_GROUPS];
-  await ensureBuiltinFolders(q, me);
-  const rows = await q<{ id: string; builtin: string | null; name: string; icon: string; color: string }>(
-    "select id, builtin, name, icon, color from contact_groups where user_id = $1 order by array_position($2::text[], builtin) nulls last, created_at",
-    [me, builtins],
-  );
+  let rows = await selectFolders(q, me);
+  // 기본 폴더가 다 있으면(거의 항상) 읽기 한 번으로 끝. 없을 때만 만들고 다시 읽는다
+  if (!hasAllBuiltins(rows)) {
+    await insertBuiltinFolders(q, me);
+    rows = await selectFolders(q, me);
+  }
   return rows.map((r) => ({
     id: String(r.id),
     builtin: (BUILTIN_GROUPS as readonly string[]).includes(r.builtin ?? "") ? (r.builtin as BuiltinGroup) : null,

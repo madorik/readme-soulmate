@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { cancelInvite } from "@/app/actions/request";
-import { AppLockSetting, PushSetting, ReminderSetting } from "@/app/(app)/privacy/Settings";
+import { AppLockSetting, PendingButton, PushSetting, ReminderSetting } from "@/app/(app)/privacy/Settings";
 import { TabBar } from "@/components/chrome";
 import { DeleteAccount } from "@/components/DeleteAccount";
 import { LanguageSetting } from "@/components/LanguageSetting";
+import { Icon } from "@/components/marks";
 import { TossLegalRows, TossReminderSwitch } from "@/components/shell/TossSettings";
 import type { PrivacyData } from "@/lib/pages/types";
 import { SHELL } from "@/lib/shell";
@@ -34,7 +36,7 @@ export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLoc
                 <form action={cancelInvite}>
                   <input type="hidden" name="id" value={i.id} />
                   <input type="hidden" name="back" value="/privacy" />
-                  <button className="flex min-h-11 items-center pl-3 pr-1 text-[14px] font-bold text-red">{t("privacy.linkCancel")}</button>
+                  <PendingButton className="flex min-h-11 items-center pl-3 pr-1 text-[14px] font-bold text-red">{t("privacy.linkCancel")}</PendingButton>
                 </form>
               </li>
             ))}
@@ -55,6 +57,13 @@ export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLoc
             <ReminderSetting locale={locale} offsets={reminderOffsets} />
           </div>
         ) : null}
+        {/* 소개 화면은 앱(웹) 것이라 토스 미니앱에는 없다 */}
+        {SHELL === "toss" ? null : (
+          <Link href="/onboarding/intro?next=/privacy" className="flex min-h-16 items-center gap-3 border-t border-rule">
+            <span className="flex-1 text-[15.5px] font-bold">{t("privacy.replayIntro")}</span>
+            <Icon name="chevron" size={18} className="shrink-0 text-muted" />
+          </Link>
+        )}
       </div>
 
       <TossLegalRows locale={locale} />
@@ -63,6 +72,13 @@ export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLoc
       <h2 className="section-title px-6 pt-8">{t("profile.account")}</h2>
       {/* 토스 미니앱 출시를 멈춰서(2026-11-18) '토스에서 쓰기'(TossLinkCode)는 숨겨 둔다. 다시 하면 이 자리에 넣는다 */}
       <div className="mx-6 mt-2 border-y border-rule py-1.5">
+        {/* 내 기록 내려받기는 우리 서버 세션이 필요해 토스 미니앱에는 없다 */}
+        {SHELL === "toss" ? null : (
+          <a href="/api/export" download="remember-you.json" className="flex min-h-12 items-center gap-3 border-b border-rule text-[15.5px] font-bold">
+            <span className="flex-1">{t("privacy.exportData")}</span>
+            <Icon name="up" size={18} className="shrink-0 rotate-180 text-muted" />
+          </a>
+        )}
         <DeleteAccount locale={locale} />
       </div>
 

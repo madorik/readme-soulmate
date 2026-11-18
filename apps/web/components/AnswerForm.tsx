@@ -1,8 +1,8 @@
 "use client";
 
-import { emptySection, type CardData, type GiftsData, type Locale, type PartialCard, type Section } from "@readme/core";
+import { emptySection, sanitizeSection, type CardData, type GiftsData, type Locale, type PartialCard, type Section } from "@readme/core";
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import type { AnswerState } from "@/app/actions/request";
 import { useIsNative } from "@/components/native";
 import { DateSpecPicker } from "@/components/editors/DatesEditor";
@@ -83,6 +83,37 @@ export function AnswerForm({
   const [step, setStep] = useState(0);
   const [state, action, pending] = useActionState(submit, INITIAL);
   const inApp = useIsNative();
+
+  // 새로고침·뒤로 가기에도 쓰던 답이 남게 이 탭에만 임시로 둔다(보내면 지운다). 하이드레이션이 어긋나지 않게 마운트 뒤에 되살린다
+  const draftKey = `readme:answer:${token}`;
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    try {
+      const raw = sessionStorage.getItem(draftKey);
+      if (!raw) return;
+      const d = JSON.parse(raw) as { answers?: Record<string, unknown>; modes?: Record<string, unknown>; step?: unknown; saveMine?: unknown };
+      const back: PartialCard = {};
+      for (const x of sections) if (d.answers?.[x] != null) (back as Record<string, unknown>)[x] = sanitizeSection(x, d.answers[x]);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAnswers((a) => ({ ...a, ...back }));
+      const m = Object.fromEntries(sections.filter((x) => d.modes && x in d.modes && (d.modes[x] === null || ["ok", "fix", "new", "none"].includes(String(d.modes[x])))).map((x) => [x, d.modes![x] as Mode | null]));
+      setModes((cur) => ({ ...cur, ...m }));
+      if (typeof d.step === "number" && sections.length > 1) setStep(Math.max(0, Math.min(sections.length, Math.round(d.step))));
+      if (typeof d.saveMine === "boolean") setSaveMine(d.saveMine);
+    } catch {
+      /* 저장소를 못 쓰면 그냥 처음부터 */
+    }
+  }, [draftKey, sections]);
+  useEffect(() => {
+    try {
+      if (state.sent) sessionStorage.removeItem(draftKey);
+      else if (restored.current) sessionStorage.setItem(draftKey, JSON.stringify({ answers, modes, step, saveMine }));
+    } catch {
+      /* 저장소를 못 쓰면 넘어간다 */
+    }
+  }, [answers, modes, step, saveMine, state.sent, draftKey]);
 
   if (state.sent) {
     const sent = sections.filter((x) => modes[x] != null);

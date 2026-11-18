@@ -184,7 +184,8 @@ export const SEASONS: CatalogItem[] = [
 export const SPICY_LEVELS: Label[] = [
   { ko: "안 매운 것만", en: "No spice" },
   { ko: "살짝 매운 정도", en: "A little" },
-  { ko: "보통 매운맛", en: "Medium" },
+  // 가운데 단계는 신라면 정도(기준을 알려 준다)
+  { ko: "보통 매운맛 (신라면 정도)", en: "Medium (about Shin Ramyun)" },
   { ko: "매운 거 좋아요", en: "Loves it hot" },
   { ko: "아주 매워도 좋아요", en: "The hotter the better" },
 ];

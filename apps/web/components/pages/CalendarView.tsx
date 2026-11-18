@@ -47,7 +47,7 @@ export function CalendarView({ locale, today, cur, people, ai }: CalendarData) {
         {isThisMonth ? (
           <span className="w-11" />
         ) : (
-          <Link href="/calendar" className="pill !h-9 !px-3.5 text-[13.5px]">
+          <Link href="/calendar" className="pill relative !h-9 !px-3.5 text-[13.5px] before:absolute before:-inset-y-1 before:inset-x-0">
             {t("cal.thisMonth")}
           </Link>
         )}
@@ -67,14 +67,14 @@ export function CalendarView({ locale, today, cur, people, ai }: CalendarData) {
       </div>
 
       <section aria-label={title} className="card mx-4 mt-4 px-1.5 pb-2 pt-3.5">
-        <div className="grid grid-cols-7 pb-1.5 text-center text-[11.5px] font-bold">
+        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] pb-1.5 text-center text-[12px] font-bold">
           {names.map((n, i) => (
             <span key={n} className={i === 0 ? "text-red" : i === 6 ? "text-sat" : "text-muted"}>
               {n}
             </span>
           ))}
         </div>
-        <ol className="grid grid-cols-7">
+        <ol className="grid grid-cols-[repeat(7,minmax(0,1fr))]">
           {cells.map((day) => {
             const inMonth = day.m === cur.m;
             const wd = weekday(day);
@@ -90,7 +90,7 @@ export function CalendarView({ locale, today, cur, people, ai }: CalendarData) {
                 >
                   {day.d}
                 </span>
-                <span className={`num text-[9.5px] !font-semibold text-muted ${inMonth ? "" : "opacity-35"}`}>{lunar ? `${lunar.leap ? "윤" : ""}${lunar.m}.${lunar.d}` : ""}</span>
+                <span className={`num whitespace-nowrap text-[12px] !font-semibold text-muted ${lunar?.leap ? "tracking-[-0.05em]" : ""} ${inMonth ? "" : "opacity-35"}`}>{lunar ? `${lunar.leap ? "윤" : ""}${lunar.m}.${lunar.d}` : ""}</span>
                 <FaceStack faces={dayEvents.map((e) => ({ key: `${e.contactId}-${e.kind}-${e.label ?? ""}`, avatar: who(e)?.avatar ?? null, label: eventName(e, t, locale) }))} size={20} />
               </li>
             );

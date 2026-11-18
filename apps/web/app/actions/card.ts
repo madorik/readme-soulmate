@@ -55,16 +55,18 @@ export async function saveFood(form: FormData): Promise<void> {
   redirect(withNext("/onboarding/birthday", safeNext(String(form.get("next") ?? ""))));
 }
 
-/** 온보딩 3단계: 생일 + 알림 시점, 그리고 온보딩 끝 */
+/** 온보딩 3단계: 생일 + 알림 시점, 그리고 온보딩 끝(그 뒤 소개 네 장으로). '나중에'면 생일은 건드리지 않는다 */
 export async function finishOnboarding(form: FormData): Promise<void> {
   const s = await requireSession({ onboarding: true });
+  const later = form.get("later") === "1";
   await s.tx(async (q) => {
     const { card } = await readCard(q, s.user.id);
-    await writeSection(q, s.user.id, "dates", { ...(card.dates ?? emptySection("dates")), birthday: json(form.get("birthday")) });
+    const base = card.dates ?? emptySection("dates");
+    await writeSection(q, s.user.id, "dates", { ...base, birthday: later ? base.birthday : json(form.get("birthday")) });
     await q("update profiles set reminder_offsets = $2, onboarded_at = coalesce(onboarded_at, now()) where id = $1", [s.user.id, sanitizeOffsets(json(form.get("offsets")))]);
   });
   track("onboarding_done", { userId: s.user.id });
-  redirect(safeNext(String(form.get("next") ?? "")));
+  redirect(withNext("/onboarding/intro", safeNext(String(form.get("next") ?? ""))));
 }
 
 export interface SaveState {

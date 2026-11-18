@@ -50,7 +50,7 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
         // 탭 화면은 데이터까지 미리 받아 둔다(누르거나 좌우로 밀 때 빈 화면 없이 바로)
         prefetch={true}
         aria-current={on ? "page" : undefined}
-        className={`flex flex-col items-center justify-center gap-[3px] whitespace-nowrap text-[11.5px] ${on ? "font-bold text-accent" : "font-medium text-muted"}`}
+        className={`flex flex-col items-center justify-center gap-[3px] whitespace-nowrap text-[12px] ${on ? "font-bold text-accent" : "font-medium text-muted"}`}
       >
         <Icon name={item.icon} strokeWidth={on ? 2.1 : 1.7} />
         {item.label}
@@ -59,7 +59,7 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
   };
   return (
     <nav
-      aria-label="menu"
+      aria-label={t("nav.menu")}
       data-tabbar=""
       className="sticky bottom-0 z-30 mt-auto px-4 pt-3"
       style={{ paddingBottom: "var(--pb-tab)", background: "linear-gradient(to top, var(--color-bg) 60%, rgb(246 247 251 / 0))" }}
@@ -85,15 +85,15 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
 export function LegalLinks({ locale, t }: { locale: Locale; t: T }) {
   return (
     <p className="flex justify-center gap-x-4 pt-1 text-[12px] text-muted">
-      <a href={`/terms?lang=${locale}`} className="flex min-h-10 items-center underline underline-offset-2">
+      <a href={`/terms?lang=${locale}`} className="flex min-h-11 items-center underline underline-offset-2">
         {t("legal.terms")}
       </a>
-      <a href={`/privacy-policy?lang=${locale}`} className="flex min-h-10 items-center underline underline-offset-2">
+      <a href={`/privacy-policy?lang=${locale}`} className="flex min-h-11 items-center underline underline-offset-2">
         {t("legal.privacy")}
       </a>
       {/* 선물 가이드는 우리 사이트 글이라 토스 미니앱에서는 빼 둔다 */}
       {locale === "ko" && SHELL === "web" ? (
-        <Link href="/gifts" className="flex min-h-10 items-center underline underline-offset-2">
+        <Link href="/gifts" className="flex min-h-11 items-center underline underline-offset-2">
           선물 가이드
         </Link>
       ) : null}

@@ -10,6 +10,7 @@ export function PeopleView({ locale, rows, folders, meAvatar, initialPick, initi
   return (
     <>
       <PeopleBoard
+        locale={locale}
         rows={rows}
         folders={folders}
         meAvatar={meAvatar}
@@ -42,6 +43,14 @@ export function PeopleView({ locale, rows, folders, meAvatar, initialPick, initi
           newFolder: t("folder.new"),
           count: t("folder.count", { n: "{n}" }),
           pickFolder: t("people.pickGroup", { name: "{name}" }),
+          addNamed: t("people.addNamed", { name: "{name}" }),
+          sort: t("people.sort"),
+          sortName: t("folder.sortName"),
+          sortSoon: t("folder.sortSoon"),
+          sortRecent: t("people.sortRecent"),
+          put: t("folder.put"),
+          putDone: t("people.putDone", { n: "{n}", name: "{name}" }),
+          error: t("common.error"),
         }}
       />
       <TabBar active="people" t={t} voice={ai} />

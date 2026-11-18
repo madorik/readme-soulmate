@@ -1,0 +1,36 @@
+import type { GiftsData, PartialCard, WishItem } from "@readme/core";
+
+// 물어보기에서 서버 전용 모듈 없이 시험할 수 있는 순수 함수
+
+/**
+ * 상대 화면에 미리 채워 보여 줄 값에서 '내가 해주고 싶은 선물'(gifts.wishlist)을 뺀다.
+ * 내 기록의 wishlist는 내가 나중에 사 줄 선물이라 상대에게 보이면 깜짝 선물이 새고, 상대 화면에서는 '받고 싶은 것'으로 잘못 읽힌다.
+ * 선물 칸에서 상대가 맞는지 확인할 수 있는 건 상품권·피하고 싶은 것·좋아하는 브랜드뿐. 그것도 없으면 칸을 통째로 뺀다(빈 칸을 '맞아요?'로 묻지 않게)
+ */
+export function prefillForRecipient(card: PartialCard): PartialCard {
+  const g = card.gifts;
+  if (!g) return card;
+  const rest = { ...card };
+  delete rest.gifts;
+  if (g.giftCard == null && !g.skip.length && !g.brands.length) return rest;
+  return { ...rest, gifts: { ...g, wishlist: [] } };
+}
+
+const wishKey = (w: WishItem) => `${w.title}\n${w.url}`;
+
+/**
+ * 상대가 선물 칸에 답하면 칸 전체가 새 값으로 바뀌는데, 상대는 내 wishlist를 보지 못했으니(prefillForRecipient) 그냥 두면 내가 적어 둔 선물이 사라진다.
+ * 내가 적어 둔 것을 앞에 그대로 두고, 상대가 적은 것을 뒤에 더한다(같은 것은 한 번만). 개수 제한은 sanitizeSection이 다시 건다
+ */
+export function keepAskerWishes(answer: GiftsData, existing: GiftsData | null | undefined): GiftsData {
+  if (!existing?.wishlist.length) return answer;
+  const seen = new Set<string>();
+  const wishlist: WishItem[] = [];
+  for (const w of [...existing.wishlist, ...answer.wishlist]) {
+    const k = wishKey(w);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    wishlist.push(w);
+  }
+  return { ...answer, wishlist };
+}

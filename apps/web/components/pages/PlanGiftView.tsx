@@ -86,15 +86,15 @@ export function PlanGiftView({ locale, today, people, back, picksOn, picks }: Pl
               </div>
               {rows.length ? (
                 rows.map((r) => (
-                  <div key={r.label} className="flex gap-3 border-t border-[#e6e6e3] py-2.5">
+                  <div key={r.label} className="flex gap-3 border-t border-rule py-2.5">
                     <span className="w-[84px] shrink-0 text-[12.5px] text-muted">{r.label}</span>
                     <span className={`min-w-0 flex-1 text-[14.5px] font-medium leading-[1.45] ${r.strike ? "text-muted line-through decoration-red" : ""}`}>{r.value}</span>
                   </div>
                 ))
               ) : (
-                <p className="border-t border-[#e6e6e3] py-3 text-[13.5px] text-muted">{t("plan.giftNone")}</p>
+                <p className="border-t border-rule py-3 text-[13.5px] text-muted">{t("plan.giftNone")}</p>
               )}
-              {picksOn && picks ? <div className="-mx-5 border-t border-[#e6e6e3] pb-2">{picks.row(p, name, next)}</div> : null}
+              {picksOn && picks ? <div className="-mx-5 border-t border-rule pb-2">{picks.row(p, name, next)}</div> : null}
             </section>
           );
         })}

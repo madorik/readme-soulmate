@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import { BRAND } from "@readme/core";
 import { KeyboardInset } from "@/components/KeyboardInset";
 import { LocaleSync } from "@/components/LocaleSync";
+import { SplashHide } from "@/components/SplashHide";
 import { Tags } from "@/components/Tags";
 import { UsageTracker } from "@/components/UsageTracker";
 import { WebAnalytics } from "@/components/WebAnalytics";
@@ -38,6 +39,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: "#f6f7fb",
+  // 안드로이드 자동 다크·삼성 인터넷 다크 모드가 화면을 뒤집지 않게(앱은 밝은 화면 하나만)
+  colorScheme: "light",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -52,6 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {children}
         <div aria-hidden="true" className="bar-mask-bottom" />
         <KeyboardInset />
+        <SplashHide />
         <LocaleSync rendered={locale} chosen={chosen} signedIn={!!session} stored={session?.profile.systemLocale ?? null} />
         <WebAnalytics />
         <UsageTracker />

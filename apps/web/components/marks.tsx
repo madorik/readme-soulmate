@@ -36,7 +36,7 @@ export function Circled({ on, color = "red", pad, width, children, className = "
 export function DrawnCheck({ on }: { on: boolean }) {
   return (
     <span
-      className={`flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[8px] transition-colors ${on ? "bg-accent text-white" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
+      className={`flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[8px] transition-colors ${on ? "bg-accent text-white" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge-strong)]"}`}
     >
       {on ? (
         <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -47,10 +47,10 @@ export function DrawnCheck({ on }: { on: boolean }) {
   );
 }
 
-/** 켜고 끄는 스위치의 모양(누르는 건 감싼 button이 한다) */
+/** 켜고 끄는 스위치의 모양(누르는 건 감싼 button이 한다). 꺼진 바탕은 흰 바탕과 3:1 이상 */
 export function SwitchLook({ on }: { on: boolean }) {
   return (
-    <span className={`flex h-7 w-[46px] items-center rounded-full p-[3px] transition-colors ${on ? "justify-end bg-accent" : "justify-start bg-[#d5d8e3]"}`}>
+    <span className={`flex h-7 w-[46px] items-center rounded-full p-[3px] transition-colors ${on ? "justify-end bg-accent" : "justify-start bg-edge-strong"}`}>
       <span className="h-[22px] w-[22px] rounded-full bg-white shadow-[0_1px_3px_rgba(31,35,64,0.18)]" />
     </span>
   );

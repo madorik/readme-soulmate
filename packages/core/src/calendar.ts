@@ -23,7 +23,9 @@ export interface YMD {
   d: number;
 }
 
-// 음력 변환 라이브러리(한국천문연구원 자료)가 다루는 범위
+// 음력 변환 라이브러리(한국천문연구원 자료)가 다루는 범위.
+// 2050년까지라서 그 뒤로는 음력 날짜가 돌아오는 날을 알 수 없다: lunarToSolar·solarToLunar는 null, 음력 occurrences는 빈 목록, nextOccurrence는 null.
+// 부르는 쪽은 모두 null을 받아 그 일정을 건너뛰게 되어 있다. SPEC_YEAR_MAX(2100)는 저장해 둔 태어난 해·시작한 해의 범위라 일부러 줄이지 않았다(이미 저장된 값을 읽을 때 지우지 않으려고).
 export const LUNAR_MIN_YEAR = 1000;
 export const LUNAR_MAX_YEAR = 2050;
 

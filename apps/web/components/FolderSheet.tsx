@@ -121,7 +121,8 @@ export function FolderSheet({ folder, labels, onClose }: { folder?: FolderView |
               aria-label={labels.colors[c]}
               aria-pressed={color === c}
               onClick={() => setColor(c)}
-              className="h-10 w-10 rounded-full"
+              // 보이는 동그라미는 40px, 누르는 자리는 44px(before)
+              className="relative h-10 w-10 rounded-full before:absolute before:-inset-0.5"
               style={{
                 background: COLOR_FILL[c].front,
                 boxShadow: color === c ? "0 0 0 3px #fff, 0 0 0 5px var(--color-ink)" : "inset 0 0 0 1.5px rgb(31 35 64 / 0.16)",

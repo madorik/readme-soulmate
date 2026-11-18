@@ -71,7 +71,7 @@ export function TagEditor({
             aria-label={labels.tag}
             className="field !h-10 min-w-0 flex-1 !px-3 text-[15px]"
           />
-          <button disabled={pending || (nameIsTag && !clean)} className="btn-primary !h-10 shrink-0 !rounded-[14px] px-3.5 text-[14px]">
+          <button disabled={pending || (nameIsTag && !clean)} className="btn-primary !min-h-11 shrink-0 !rounded-[14px] px-3.5 text-[14px]">
             {labels.save}
           </button>
           <button
@@ -81,7 +81,8 @@ export function TagEditor({
               setDraft(value);
               setEditing(false);
             }}
-            className="flex h-10 w-8 shrink-0 items-center justify-center text-muted"
+            // 보이는 폭은 32px, 누르는 자리는 좌우 6px씩 넓혀 44px(before)
+            className="relative flex h-11 w-8 shrink-0 items-center justify-center text-muted before:absolute before:-inset-x-1.5 before:inset-y-0"
           >
             <Icon name="close" size={18} />
           </button>
@@ -99,7 +100,7 @@ export function TagEditor({
   return (
     <span className="flex">
       {nameIsTag ? (
-        <button type="button" onClick={() => setEditing(true)} className="flex min-h-8 items-center gap-1 text-[13px] font-bold text-muted">
+        <button type="button" onClick={() => setEditing(true)} className="relative flex min-h-8 items-center gap-1 text-[13px] font-bold text-muted before:absolute before:-inset-x-1.5 before:-inset-y-1.5">
           <Icon name="pencil" size={14} strokeWidth={2} />
           {labels.rename}
         </button>
@@ -108,13 +109,13 @@ export function TagEditor({
           type="button"
           onClick={() => setEditing(true)}
           aria-label={`${labels.tag} ${value} ${labels.edit}`}
-          className="flex max-w-full items-center gap-1 rounded-md bg-fill px-2 py-[3px] text-[13px] font-bold text-muted"
+          className="relative flex max-w-full items-center gap-1 rounded-md bg-fill px-2 py-[3px] text-[13px] font-bold text-muted before:absolute before:-inset-x-1.5 before:-inset-y-2.5"
         >
           <span className="truncate">{value}</span>
           <Icon name="pencil" size={12} strokeWidth={2} className="shrink-0" />
         </button>
       ) : (
-        <button type="button" onClick={() => setEditing(true)} className="flex items-center gap-0.5 rounded-md px-2 py-[3px] text-[13px] font-bold text-muted shadow-[inset_0_0_0_1px_var(--color-edge)]">
+        <button type="button" onClick={() => setEditing(true)} className="relative flex items-center gap-0.5 rounded-md px-2 py-[3px] text-[13px] font-bold text-muted shadow-[inset_0_0_0_1px_var(--color-edge)] before:absolute before:-inset-x-1.5 before:-inset-y-2.5">
           <Icon name="plus" size={13} strokeWidth={2.2} />
           {labels.add}
         </button>

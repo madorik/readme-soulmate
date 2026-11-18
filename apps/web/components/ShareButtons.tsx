@@ -1,7 +1,7 @@
 "use client";
 
 import { translate, type Locale } from "@readme/core";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "./marks";
 
 type CapShare = { share: (o: { title?: string; text?: string; url?: string; dialogTitle?: string }) => Promise<unknown> };
@@ -25,6 +25,42 @@ export async function nativeShare(text: string, url?: string): Promise<boolean> 
   return false;
 }
 
+/** 글을 복사한다. 클립보드가 막혀 있으면 옛 방식으로 한 번 더. 복사했으면 true */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      area.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/** 잠깐(2초) 보이는 상태: 값을 넣으면 2초 뒤 null로 돌아온다 */
+function useFlash<T>(): [T | null, (v: T) => void] {
+  const [value, setValue] = useState<T | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const flash = (v: T) => {
+    setValue(v);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setValue(null), 2000);
+  };
+  return [value, flash];
+}
+
 /** 보낼 링크(읽기 전용). 눌러서 고를 수 있다 */
 export function LinkField({ url, label }: { url: string; label: string }) {
   return (
@@ -42,21 +78,10 @@ export function LinkField({ url, label }: { url: string; label: string }) {
 /** 링크 보내기: 휴대폰 공유창(카카오톡·문자·메일 등 어떤 앱이든) · 링크 복사. 공유창이 없으면 복사한다 */
 export function ShareButtons({ locale, url, text, sendLabel }: { locale: Locale; url: string; text: string; sendLabel?: string }) {
   const t = (k: Parameters<typeof translate>[1]) => translate(locale, k);
-  const [copied, setCopied] = useState(false);
+  // 복사했어요/복사하지 못했어요는 2초만 보이고 처음 글자로 돌아온다
+  const [copied, flash] = useFlash<"ok" | "failed">();
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-    } catch {
-      const area = document.createElement("textarea");
-      area.value = `${text}\n${url}`;
-      document.body.appendChild(area);
-      area.select();
-      document.execCommand("copy");
-      area.remove();
-    }
-    setCopied(true);
-  };
+  const copy = async () => flash((await copyText(`${text}\n${url}`)) ? "ok" : "failed");
 
   return (
     <div className="flex flex-col gap-2">
@@ -71,32 +96,35 @@ export function ShareButtons({ locale, url, text, sendLabel }: { locale: Locale;
         {sendLabel ?? t("common.send")}
       </button>
       <button type="button" onClick={copy} className="btn-soft !h-12 w-full gap-1.5">
-        <Icon name={copied ? "check" : "link"} size={17} />
-        {copied ? t("common.copied") : t("common.copyLink")}
+        <Icon name={copied === "ok" ? "check" : "link"} size={17} />
+        {copied === "ok" ? t("common.copied") : copied === "failed" ? t("common.copyFailed") : t("common.copyLink")}
       </button>
+      <span role="status" className="sr-only">
+        {copied === "ok" ? t("common.copied") : copied === "failed" ? t("common.copyFailed") : ""}
+      </span>
     </div>
   );
 }
 
-/** 글만 나누기(예: 생일 준비를 가족에게) */
-export function ShareTextButton({ text, label, doneLabel, className = "" }: { text: string; label: string; doneLabel: string; className?: string }) {
-  const [done, setDone] = useState(false);
+/** 글만 나누기(예: 생일 준비를 가족에게). 보냈거나 복사했으면 doneLabel, 복사도 못 했으면 failedLabel(없으면 앱 언어의 '복사하지 못했어요')을 2초 보인다 */
+export function ShareTextButton({ text, label, doneLabel, failedLabel, className = "" }: { text: string; label: string; doneLabel: string; failedLabel?: string; className?: string }) {
+  const [res, flash] = useFlash<string>();
   return (
-    <button
-      type="button"
-      className={className}
-      onClick={async () => {
-        if (!(await nativeShare(text))) {
-          try {
-            await navigator.clipboard.writeText(text);
-          } catch {
-            /* 복사도 안 되면 그대로 둔다 */
-          }
-        }
-        setDone(true);
-      }}
-    >
-      {done ? doneLabel : label}
-    </button>
+    <>
+      <button
+        type="button"
+        className={className}
+        onClick={async () => {
+          // 공유창이 없으면 복사한다. 복사도 안 되면 보냈다고 하지 않는다
+          if ((await nativeShare(text)) || (await copyText(text))) return flash(doneLabel);
+          flash(failedLabel ?? translate(document.documentElement.lang === "en" ? "en" : "ko", "common.copyFailed"));
+        }}
+      >
+        {res ?? label}
+      </button>
+      <span role="status" className="sr-only">
+        {res ?? ""}
+      </span>
+    </>
   );
 }

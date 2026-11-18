@@ -1,7 +1,11 @@
 import "server-only";
 import { hashToken, isSection, sanitizeSection, sanitizeSections, type PartialCard, type Section } from "@readme/core";
+import { cache } from "react";
+import { keepAskerWishes, prefillForRecipient } from "./ask-core";
+import { aad, open } from "./crypto";
+import { isLockedPayload, LIMITS } from "./data-core";
 import { openContactSections, openPrefill, sealContactSections, sealPrefill, type Session } from "./data";
-import { asSystem, dbReason } from "./db";
+import { asSystem, dbReason, systemOne } from "./db";
 import { insertInvite } from "./invites";
 
 // 물어보기 만들기·읽기·답하기의 공통 부분. 웹·앱(서버 액션 app/actions/request.ts)과 토스 미니앱(/api/t)이 같이 쓴다
@@ -31,8 +35,12 @@ export async function createAsk(s: Session, input: { to?: string; name?: string;
       contactId = c.id;
       const r = await q.one<{ sections: unknown }>("select sections from contact_cards where contact_id = $1", [contactId]);
       const mine = openContactSections(s.user.id, contactId, r?.sections);
-      prefill = Object.fromEntries(Object.entries(mine).filter(([k]) => sections.includes(k as Section))) as PartialCard;
+      // 선물 칸의 '해주고 싶은 선물'(wishlist)은 상대에게 새면 안 되니 뺀다
+      prefill = prefillForRecipient(Object.fromEntries(Object.entries(mine).filter(([k]) => sections.includes(k as Section))) as PartialCard);
     } else {
+      // 새 사람도 사람 수 한도(LIMITS.people)를 지킨다
+      const n = await q.one<{ n: number }>("select count(*)::int as n from contacts where user_id = $1", [s.user.id]);
+      if ((n?.n ?? 0) >= LIMITS.people) throw new Error("limit");
       const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname) values ($1, $2) returning id", [s.user.id, name]);
       contactId = c!.id;
       await q("insert into contact_cards (contact_id, author_id) values ($1, $2)", [contactId, s.user.id]);
@@ -57,12 +65,18 @@ export type AskRow = {
   message: string | null;
 };
 
-/** 링크 토큰으로 물어보기 한 줄(로그인 없이 연다. 토큰 해시가 맞는 한 줄만). 미리 채운 값은 풀어서 돌려준다 */
+/**
+ * 링크 토큰으로 물어보기 한 줄(로그인 없이 연다. 토큰 해시가 맞는 한 줄만). 미리 채운 값은 풀어서 돌려준다.
+ * request_for_answer는 읽기만 하는 함수라 트랜잭션 없이 한 번에 부른다. 예전에 보낸 물어보기에 든 wishlist도 여기서 뺀다
+ */
 export async function readAsk(token: string): Promise<{ row: AskRow; prefill: PartialCard }> {
   const hash = await hashToken(token);
-  const row = ((await asSystem((q) => q.one<AskRow>("select * from request_for_answer($1)", [hash]))) ?? { state: "not_found" }) as AskRow;
-  return { row, prefill: row.state === "active" ? openPrefill(hash, row.prefill) : {} };
+  const row = ((await systemOne<AskRow>("select * from request_for_answer($1)", [hash])) ?? { state: "not_found" }) as AskRow;
+  return { row, prefill: row.state === "active" ? prefillForRecipient(openPrefill(hash, row.prefill)) : {} };
 }
+
+/** 한 요청 안에서는 한 번만 읽는다(링크 미리보기 generateMetadata와 화면이 같이 쓴다) */
+export const readAskOnce = cache(readAsk);
 
 export type AnswerError = "consent" | "closed" | "self" | "common";
 
@@ -84,7 +98,18 @@ export async function answerAsk(
       const answer = cleanCard(data, sanitizeSections(row.sections));
       if (!Object.keys(answer).length) throw new Error("empty");
       if (answer.safety && !consent) throw new Error("consent_required");
-      await q("select submit_request_answer($1, $2, $3, $4)", [hash, JSON.stringify(sealContactSections(row.inviter_id!, row.contact_id!, answer)), consent, answererId]);
+      // 물어본 사람의 기록에 이미 있는 항목: 키가 다른 환경에서 못 푸는 값은 덮어쓰지 않고(진짜 기록 보호), 선물 칸은 내가 적어 둔 wishlist를 지킨다
+      const mine = await q.one<{ sections: Record<string, unknown> | null }>("select sections from contact_cards where contact_id = $1 and author_id = $2", [row.contact_id, row.inviter_id]);
+      for (const section of Object.keys(answer)) {
+        if (isLockedPayload(mine?.sections?.[section], (p) => open(p, aad.contact(row.inviter_id!, row.contact_id!, section)))) throw new Error("undecryptable");
+      }
+      // 저장하는 값에만 합친다. 돌려주는 answer는 상대가 쓴 그대로(상대가 '내 리드미에도'를 고르면 그 값이 상대 기록에 들어가니, 내 wishlist가 섞이면 안 된다)
+      const stored: PartialCard = { ...answer };
+      if (answer.gifts) {
+        const existing = openContactSections(row.inviter_id!, row.contact_id!, { gifts: mine?.sections?.gifts }).gifts;
+        stored.gifts = sanitizeSection("gifts", keepAskerWishes(answer.gifts, existing));
+      }
+      await q("select submit_request_answer($1, $2, $3, $4)", [hash, JSON.stringify(sealContactSections(row.inviter_id!, row.contact_id!, stored)), consent, answererId]);
       return { ok: true as const, answer, inviter: row.inviter_id!, name: (row.recipient_name ?? "").trim(), contactId: row.contact_id! };
     });
   } catch (e) {

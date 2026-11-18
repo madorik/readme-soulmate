@@ -1,12 +1,16 @@
 import "server-only";
 import { createSign } from "node:crypto";
 import { isLocale, type Locale } from "@readme/core";
-import { asSystem } from "@/lib/db";
+import { systemOne, systemQuery } from "@/lib/db";
+import { fcmTokenGone } from "@/lib/push-core";
 
 // Firebase Cloud Messaging(HTTP v1). 서비스 계정 세 값이 있을 때만 보낸다. 없으면 앱의 기기 로컬 알림만 쓴다.
 //   FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY(줄바꿈은 \n)
 
 let cached: { token: string; exp: number } | null = null;
+
+// 구글 서버가 느려도 크론·답하기가 끌려가지 않게 호출마다 5초까지만 기다린다
+const TIMEOUT_MS = 5000;
 
 export function pushConfigured(): boolean {
   return !!(process.env.FCM_PROJECT_ID && process.env.FCM_CLIENT_EMAIL && process.env.FCM_PRIVATE_KEY);
@@ -30,6 +34,7 @@ async function accessToken(): Promise<string> {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${header}.${claims}.${signature}` }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   const json = (await res.json()) as { access_token?: string; expires_in?: number };
   if (!json.access_token) throw new Error("fcm auth failed");
@@ -37,30 +42,39 @@ async function accessToken(): Promise<string> {
   return cached.token;
 }
 
-/** 보냈으면 true. 토큰이 더는 쓸 수 없으면 "gone" */
+/** 보냈으면 true. FCM이 이 토큰은 더 못 쓴다고 한 때만 "gone"(그 밖의 실패·시간 초과·인증 실패는 false) */
 export async function sendPush(token: string, title: string, body: string, path: string): Promise<true | false | "gone"> {
   if (!pushConfigured()) return false;
-  const res = await fetch(`https://fcm.googleapis.com/v1/projects/${process.env.FCM_PROJECT_ID}/messages:send`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${await accessToken()}`, "content-type": "application/json" },
-    body: JSON.stringify({ message: { token, notification: { title, body }, data: { path }, apns: { payload: { aps: { sound: "default" } } } } }),
-  });
-  if (res.ok) return true;
-  return res.status === 404 || res.status === 400 ? "gone" : false;
+  try {
+    const res = await fetch(`https://fcm.googleapis.com/v1/projects/${process.env.FCM_PROJECT_ID}/messages:send`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${await accessToken()}`, "content-type": "application/json" },
+      body: JSON.stringify({ message: { token, notification: { title, body }, data: { path }, apns: { payload: { aps: { sound: "default" } } } } }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (res.ok) return true;
+    if (res.status === 401) cached = null; // 받아 둔 접근 토큰이 거부되면 다음 번에 새로 받는다
+    const error = res.status === 404 || res.status === 400 ? await res.json().catch(() => null) : null;
+    return fcmTokenGone(res.status, error) ? "gone" : false;
+  } catch (e) {
+    console.warn("push failed", e instanceof Error ? e.message : e);
+    return false;
+  }
 }
 
 /** 한 사람의 모든 기기에 보낸다. 알림을 끈 사람이면 보내지 않는다. 실패는 조용히 넘긴다(본 동작을 막지 않게) */
 export async function notifyUser(userId: string, title: string, body: string, path: string): Promise<boolean> {
   if (!pushConfigured()) return false;
   try {
-    const tokens = await asSystem((q) => q<{ token: string }>("select t.token from push_tokens t join profiles p on p.id = t.user_id where t.user_id = $1 and p.push_enabled", [userId]));
-    let sent = false;
-    for (const tk of tokens) {
-      const r = await sendPush(tk.token, title, body, path);
-      if (r === true) sent = true;
-      if (r === "gone") await asSystem((q) => q("delete from push_tokens where user_id = $1 and token = $2", [userId, tk.token]));
-    }
-    return sent;
+    const tokens = await systemQuery<{ token: string }>("select t.token from push_tokens t join profiles p on p.id = t.user_id where t.user_id = $1 and p.push_enabled", [userId]);
+    const results = await Promise.all(
+      tokens.map(async (tk) => {
+        const r = await sendPush(tk.token, title, body, path);
+        if (r === "gone") await systemQuery("delete from push_tokens where user_id = $1 and token = $2", [userId, tk.token]).catch(() => {});
+        return r === true;
+      }),
+    );
+    return results.some(Boolean);
   } catch {
     return false;
   }
@@ -70,7 +84,7 @@ export async function notifyUser(userId: string, title: string, body: string, pa
 export async function notifyUserT(userId: string, make: (locale: Locale) => { title: string; body: string; path: string }): Promise<void> {
   if (!pushConfigured()) return;
   try {
-    const p = await asSystem((q) => q.one<{ locale: string | null; system_locale: string | null }>("select locale, system_locale from profiles where id = $1", [userId]));
+    const p = await systemOne<{ locale: string | null; system_locale: string | null }>("select locale, system_locale from profiles where id = $1", [userId]);
     const locale: Locale = isLocale(p?.locale) ? p!.locale : isLocale(p?.system_locale) ? p!.system_locale : "ko";
     const m = make(locale);
     await notifyUser(userId, m.title, m.body, m.path);

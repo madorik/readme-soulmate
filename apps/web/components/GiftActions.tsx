@@ -1,12 +1,35 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { markGiftDone } from "@/app/actions/people";
 import { beacon } from "@/components/beacon";
 import { useGiftShare } from "@/components/giftShare";
 import { CheckGlyph } from "@/components/marks";
 import { Sheet } from "@/components/Sheet";
 import { nativeShare } from "@/components/ShareButtons";
+
+/** 글을 클립보드에 복사한다(막혀 있으면 옛 방식으로 한 번 더). 복사했으면 true. 토스 번들의 ShareButtons 대체 파일에는 없어 여기에 둔다 */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      area.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
 
 // 선물 힌트 화면 아래 단추 줄
 // - 가족과 같이 준비: 위에서 고른 선물 카드(가격대별 상품·링크) 주소를 보낸다. 아직 고르는 중이면 날짜 한 줄만
@@ -25,10 +48,18 @@ export function GiftActions({
   /** 이미 남긴 선물 메모(없으면 null) */
   done: string | null;
   fallbackText: string;
-  labels: { together: string; shared: string; done: string; doneTitle: string; doneOwn: string; doneSave: string; doneEdit: string; close: string };
+  labels: { together: string; shared: string; done: string; doneTitle: string; doneOwn: string; doneSave: string; doneEdit: string; copyFailed?: string; close: string };
 }) {
   const share = useGiftShare();
-  const [sent, setSent] = useState(false);
+  // 보냈어요/복사 못 했어요는 2초만 보이고 처음 글자로 돌아온다
+  const [state, setState] = useState<"idle" | "sent" | "failed">("idle");
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const flash = (next: "sent" | "failed") => {
+    setState(next);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setState("idle"), 2000);
+  };
   // 남긴 것은 바로 보인다(화면 다시 그리기는 메모가 바뀌어 선물을 새로 고르느라 늦을 수 있다)
   const [saved, setSaved] = useState<string | null>(null);
   const shown = saved ?? done;
@@ -40,14 +71,9 @@ export function GiftActions({
     const url = share.url ? `${share.url}${share.band ? `?b=${share.band}` : ""}` : undefined;
     const text = url ? share.text : fallbackText;
     if (url) beacon("card_share", { b: share.band ?? undefined, s: "reminder" });
-    if (!(await nativeShare(text, url))) {
-      try {
-        await navigator.clipboard.writeText(url ? `${text}\n${url}` : text);
-      } catch {
-        /* 복사도 안 되면 그대로 둔다 */
-      }
-    }
-    setSent(true);
+    // 공유창이 없으면 복사한다. 복사도 안 되면 보냈다고 하지 않는다
+    if (!(await nativeShare(text, url)) && !(await copyText(url ? `${text}\n${url}` : text))) return flash("failed");
+    flash("sent");
   };
 
   const save = () =>
@@ -64,8 +90,11 @@ export function GiftActions({
     <>
       <div className="grid grid-cols-2 gap-2.5">
         <button type="button" onClick={send} className="btn-outline">
-          {sent ? labels.shared : labels.together}
+          {state === "sent" ? labels.shared : state === "failed" ? (labels.copyFailed ?? labels.together) : labels.together}
         </button>
+        <span role="status" className="sr-only">
+          {state === "sent" ? labels.shared : state === "failed" ? labels.copyFailed : ""}
+        </span>
         {shown ? (
           <button type="button" onClick={() => setOpen(true)} aria-label={`${labels.done} · ${shown} · ${labels.doneEdit}`} className="btn-soft min-w-0 gap-1.5 !px-3">
             <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-sky text-ink">

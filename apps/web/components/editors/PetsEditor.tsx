@@ -3,6 +3,7 @@
 import { PETS_MAX, PET_KINDS, type Locale, type Pet, type PetsData } from "@readme/core";
 import { useState } from "react";
 import { Icon } from "../marks";
+import { useLatest, useUndoToast } from "../UndoToast";
 import { CircleOption, SectionHeading, TextField, joinList, splitList, useT } from "./shared";
 
 const blank = (): Pet => ({ name: "", kind: null, breed: "", treats: [], note: "" });
@@ -14,6 +15,23 @@ export function PetsEditor({ value, onChange, locale }: { value: PetsData; onCha
   // 간식 칸은 쉼표를 치는 동안 글 그대로 둔다(나눈 목록은 따로 저장)
   const [treats, setTreats] = useState<string[]>(() => pets.map((p) => joinList(p.treats)));
   const set = (i: number, patch: Partial<Pet>) => onChange({ pets: pets.map((p, j) => (j === i ? { ...p, ...patch } : p)), none: false });
+  const latest = useLatest({ value, onChange });
+  const undo = useUndoToast(locale);
+  // 지우기: 바로 지우고, 5초 안에 되돌리면 그때의 목록 제자리에 다시 넣는다
+  const remove = (i: number) => {
+    const gone = pets[i]!;
+    const goneTreats = treats[i] ?? "";
+    onChange({ pets: pets.filter((_, j) => j !== i), none: false });
+    setTreats((x) => x.filter((_, j) => j !== i));
+    undo.show({
+      onUndo: () => {
+        const cur = latest.current.value.pets ?? [];
+        const at = Math.min(i, cur.length);
+        latest.current.onChange({ pets: [...cur.slice(0, at), gone, ...cur.slice(at)], none: false });
+        setTreats((x) => [...x.slice(0, at), goneTreats, ...x.slice(at)]);
+      },
+    });
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,10 +49,7 @@ export function PetsEditor({ value, onChange, locale }: { value: PetsData; onCha
             <button
               type="button"
               aria-label={t("common.delete")}
-              onClick={() => {
-                onChange({ pets: pets.filter((_, j) => j !== i), none: false });
-                setTreats((x) => x.filter((_, j) => j !== i));
-              }}
+              onClick={() => remove(i)}
               className="flex h-12 w-11 shrink-0 items-center justify-center text-muted"
             >
               <Icon name="close" size={20} />
@@ -74,6 +89,7 @@ export function PetsEditor({ value, onChange, locale }: { value: PetsData; onCha
           {t("pets.add")}
         </button>
       ) : null}
+      {undo.toast}
     </div>
   );
 }

@@ -19,6 +19,16 @@ export function Submit({ children, disabled, className = "w-full" }: { children:
   );
 }
 
+/** 글자만 있는 보조 단추(이 단계는 건너뛰기): 같은 폼을 later=1로 보낸다 */
+function Later({ children }: { children: React.ReactNode }) {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" name="later" value="1" disabled={pending} className="mt-1 flex min-h-11 w-full items-center justify-center text-[14px] font-bold text-muted">
+      {children}
+    </button>
+  );
+}
+
 /** 온보딩 단계의 흰 시트: 그라데이션 머리 위로 살짝 겹쳐 올라온다 */
 const SHEET = "relative z-10 -mt-6 flex flex-1 flex-col rounded-t-[28px] bg-paper";
 
@@ -119,7 +129,7 @@ export function FoodStep({ locale, safety, spicy, next }: { locale: Locale; safe
         <SafetyEditor value={value} onChange={setValue} locale={locale} showNote={false} />
         <SpicyScale value={level} onChange={setLevel} locale={locale} />
       </div>
-      <div className="mt-auto px-6 pt-8">
+      <div className="bottom-bar mt-auto bg-paper px-4 pt-4">
         <Submit>{t("common.next")}</Submit>
       </div>
     </form>
@@ -128,7 +138,8 @@ export function FoodStep({ locale, safety, spicy, next }: { locale: Locale; safe
 
 export function BirthdayStep({ locale, birthday, offsets, next }: { locale: Locale; birthday: DateSpec | null; offsets: ReminderOffset[]; next: string }) {
   const t = useT(locale);
-  const [spec, setSpec] = useState<DateSpec | null>(birthday ?? { calendar: "solar", month: 1, day: 1 });
+  // 가짜 생일을 넣지 않는다: 고르기 전에는 비워 두고, 나중에 해도 된다
+  const [spec, setSpec] = useState<DateSpec | null>(birthday);
   const [when, setWhen] = useState<ReminderOffset[]>(offsets);
   return (
     <form action={finishOnboarding} className={SHEET}>
@@ -139,8 +150,9 @@ export function BirthdayStep({ locale, birthday, offsets, next }: { locale: Loca
         <DateSpecPicker value={spec} onChange={setSpec} locale={locale} year="birth" />
         <ReminderPicker value={when} onChange={setWhen} locale={locale} />
       </div>
-      <div className="mt-auto px-6 pt-8">
+      <div className="bottom-bar mt-auto bg-paper px-4 pt-4">
         <Submit>{t("onb.finish")}</Submit>
+        <Later>{t("onb.birthday.later")}</Later>
       </div>
     </form>
   );

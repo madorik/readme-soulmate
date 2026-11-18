@@ -43,7 +43,16 @@ export function proxy(request: NextRequest) {
   const moved = legacyRedirect(request);
   if (moved) return moved;
   const { pathname, search } = request.nextUrl;
-  if (PUBLIC.some((p) => p.test(pathname)) || getSessionCookie(request)) return NextResponse.next();
+  const hasSession = !!getSessionCookie(request);
+  if (hasSession && pathname === "/" && !request.nextUrl.searchParams.has("next")) {
+    // 로그인한 채로 앱을 열면 시작 화면을 그리지(세션 확인 DB 왕복) 않고 바로 홈으로. 온보딩 전이면 홈이 온보딩으로 보낸다.
+    // 쿠키가 낡았으면 홈이 /?next=…로 돌려보내고, ?next가 있으면 여기서 다시 튕기지 않으니 돌고 돌지 않는다
+    const home = request.nextUrl.clone();
+    home.pathname = "/home";
+    home.search = "";
+    return NextResponse.redirect(home);
+  }
+  if (PUBLIC.some((p) => p.test(pathname)) || hasSession) return NextResponse.next();
   const url = request.nextUrl.clone();
   url.pathname = "/";
   url.search = `?next=${encodeURIComponent(pathname + search)}`;

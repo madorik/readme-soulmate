@@ -22,8 +22,8 @@ export async function signIn(page: Page) {
   await page.waitForURL((u) => !u.searchParams.has("demo"));
 }
 
-/** 온보딩 세 단계 */
-export async function onboard(page: Page, opts: { name: string; allergy?: string; dislike?: string; lunar?: { month: number; day: number }; solar?: { month: number; day: number } }) {
+/** 온보딩 세 단계와 소개 네 장(기본은 건너뛰기, intro: "tour"면 네 장을 끝까지 넘긴다) */
+export async function onboard(page: Page, opts: { name: string; allergy?: string; dislike?: string; lunar?: { month: number; day: number }; solar?: { month: number; day: number }; intro?: "skip" | "tour" }) {
   await expect(page).toHaveURL(/\/onboarding\/avatar/);
   await page.getByLabel("부를 이름").fill(opts.name);
   await page.getByRole("button", { name: "단발" }).click();
@@ -42,4 +42,20 @@ export async function onboard(page: Page, opts: { name: string; allergy?: string
   if (opts.lunar) await expect(page.getByText(/올해는 양력/)).toBeVisible();
   if (process.env.SHOTS && opts.lunar) await page.screenshot({ path: `${process.env.SHOTS}/00-birthday.png`, fullPage: true });
   await page.getByRole("button", { name: "이제 시작해요" }).click();
+
+  await expect(page).toHaveURL(/\/onboarding\/intro/);
+  if (opts.intro === "tour") {
+    await expect(page.getByRole("heading", { level: 1, name: /가운데 버튼 하나로/ })).toBeVisible();
+    await expect(page.getByText("와이프는 바닐라라떼를 좋아해")).toBeVisible();
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/00-intro-1.png`, fullPage: true });
+    for (const heading of [/모르는 건/, /선물은 AI가/, /같이 골라요/]) {
+      await page.getByRole("button", { name: "다음" }).click();
+      await expect(page.getByRole("heading", { name: heading })).toBeInViewport();
+      if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/00-intro-${String(heading).replace(/\W/g, "")}.png`, fullPage: true });
+    }
+    await page.getByRole("link", { name: "시작하기" }).click();
+  } else {
+    await page.getByRole("link", { name: "건너뛰기" }).click();
+  }
+  await expect(page).not.toHaveURL(/\/onboarding/);
 }

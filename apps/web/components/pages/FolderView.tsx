@@ -16,8 +16,9 @@ export function FolderView({ locale, folder, rows, byName, memberIds, people, op
   const withParam = (key: string) => `${here}${byName ? "&" : "?"}${key}=1`;
   const faces = rows.map((r) => ({ key: r.contactId, avatar: r.avatar, label: r.name }));
   const picked = `?with=${memberIds.join(",")}&me=1`;
+  // 보이는 칩은 40px, 누르는 자리는 위아래 2px씩 넓혀 44px(before)
   const chip = (on: boolean) =>
-    `flex h-10 items-center rounded-full px-[15px] text-[14.5px] ${on ? "chip-on" : "bg-fill font-medium"}`;
+    `relative flex h-10 items-center rounded-full px-[15px] text-[14.5px] before:absolute before:-inset-y-0.5 before:inset-x-0 ${on ? "chip-on" : "bg-fill font-medium"}`;
 
   return (
     <>
@@ -34,7 +35,7 @@ export function FolderView({ locale, folder, rows, byName, memberIds, people, op
       <div className="flex items-center gap-[18px] px-6 pt-2.5">
         <FolderArt icon={folder.icon} color={folder.color} size={116} faces={faces} />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h1 className="truncate text-[32px] font-bold leading-[1.15] tracking-[-0.03em]">{folder.name}</h1>
+          <h1 className="line-clamp-2 break-words text-[28px] font-bold leading-[1.2] tracking-[-0.03em] min-[390px]:text-[32px]">{folder.name}</h1>
           <span className="text-[14px] text-muted">{t("folder.count", { n: memberIds.length })}</span>
         </div>
       </div>
@@ -62,7 +63,7 @@ export function FolderView({ locale, folder, rows, byName, memberIds, people, op
         ))}
         <li className="border-t border-rule first:border-t-0">
           <Link href={withParam("add")} scroll={false} className="flex min-h-[70px] items-center gap-3 text-accent">
-            <span className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_2px_#f0d27a]">
+            <span className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_2px_var(--color-mango-edge)]">
               <Icon name="plus" size={20} strokeWidth={2.2} />
             </span>
             <span className="text-[16px] font-bold">{t("folder.addPeople")}</span>
