@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Manrope } from "next/font/google";
+import { preload } from "react-dom";
 import { BRAND } from "@readme/core";
 import { KeyboardInset } from "@/components/KeyboardInset";
 import { LocaleSync } from "@/components/LocaleSync";
@@ -11,11 +11,12 @@ import { getSession } from "@/lib/data";
 import { chosenLocale, requestLocale } from "@/lib/i18n";
 import { ogMetadata } from "@/lib/og";
 import { SITE_URL } from "@/lib/site";
-// 한글 본문(Noto Sans KR)은 조각을 직접 호스팅한다(scripts/fetch-fonts.mjs). 숫자·로고는 Manrope
+import { WORDMARK_FONT_URL } from "@/lib/wordmark-font";
+// 앱 전체 글꼴(손글씨체 Poor Story)은 조각을 직접 호스팅한다(scripts/fetch-fonts.mjs)
 import "./fonts.css";
+// 로고 글자 손글씨체(scripts/fetch-wordmark-font.mjs): 로고에 쓰는 글자만 담은 3KB짜리 파일
+import "./wordmark.css";
 import "./globals.css";
-
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope", display: "swap" });
 
 export async function generateMetadata(): Promise<Metadata> {
   const session = await getSession();
@@ -44,12 +45,14 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // 로고는 첫 화면에 바로 보이니 글꼴을 미리 받아 둔다(없으면 잠깐 다른 글꼴로 보였다가 바뀐다)
+  preload(WORDMARK_FONT_URL, { as: "font", type: "font/woff2", crossOrigin: "anonymous" });
   const session = await getSession();
   const locale = await requestLocale(session?.profile.locale);
   const chosen = !!(session?.profile.localeChoice ?? (await chosenLocale()));
   return (
     // 앱 웹뷰(Capacitor)가 화면 여백 값을 <html style>에 넣어서 서버가 그린 것과 다를 수 있다
-    <html lang={locale} className={manrope.variable} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body>
         <div aria-hidden="true" className="bar-mask-top" />
         {children}

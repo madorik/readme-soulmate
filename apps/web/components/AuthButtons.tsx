@@ -76,7 +76,7 @@ export function AuthButtons({ locale, next, google, apple, demo: showDemo = true
         </button>
       ) : null}
       {apple ? (
-        <button type="button" disabled={!!busy} onClick={() => void social("apple")} className="btn-primary">
+        <button type="button" disabled={!!busy} onClick={() => void social("apple")} className="btn-soft !h-[52px] gap-2 !text-[15px] !font-medium">
           <AppleGlyph />
           {t("start.apple")}
         </button>

@@ -1,0 +1,8 @@
+/* scripts/fetch-wordmark-font.mjs가 만든다(직접 고치지 않는다). 로고 글자(기억해유 / Remember You)만 담은 Poor Story */
+@font-face {
+  font-family: "Wordmark Hand";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/wordmark/poor-story-6358b45d.woff2) format("woff2");
+}

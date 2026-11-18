@@ -1,13 +1,13 @@
-// 한글 본문 글꼴(Noto Sans KR, OFL)을 직접 호스팅한다: 구글 폰트의 한글 조각(unicode-range) 파일을 public/fonts에 받아 두고 CSS를 만든다.
-// 가변 글꼴이라 굵기 범위(400..700)를 한 벌로 받는다. 브라우저는 화면에 나온 글자의 조각만 받는다.
+// 앱 전체 글꼴(Poor Story 손글씨체, OFL)을 직접 호스팅한다: 구글 폰트의 한글 조각(unicode-range) 파일을 public/fonts에 받아 두고 CSS를 만든다.
+// 굵기는 400 한 벌뿐이라 굵은 글씨는 브라우저가 두껍게 만든다. 브라우저는 화면에 나온 글자의 조각만 받는다.
 // 빌드·개발 서버가 구글 폰트를 부르지 않고, 사용자 IP도 구글로 가지 않는다.
-//   node scripts/fetch-fonts.mjs   (글꼴을 바꿀 때만 다시 돌린다)
+//   node scripts/fetch-fonts.mjs   (글꼴을 바꿀 때만 다시 돌린다. 로고 글자만 담은 작은 파일은 scripts/fetch-wordmark-font.mjs)
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const FAMILY = "Noto Sans KR";
-const WEIGHTS = "400..700";
-const DIR = "noto-sans-kr";
+const FAMILY = "Poor Story";
+const WEIGHTS = "400";
+const DIR = "poor-story";
 const outDir = resolve(import.meta.dirname, `../apps/web/public/fonts/${DIR}`);
 const cssPath = resolve(import.meta.dirname, "../apps/web/app/fonts.css");
 // woff2 + unicode-range를 주는 최신 브라우저로 보이게

@@ -26,7 +26,8 @@ export function TopBar({ back, close, label, center, right }: { back?: string; c
 /** 로고: 이름 그대로 글자만(한국어 '기억해유', 영어 'Remember You'). 글자에 알약·강조를 씌우지 않는다 */
 export function Wordmark({ size = 22, locale = "ko" }: { size?: number; locale?: Locale }) {
   return (
-    <span className="wordmark inline-flex items-center leading-[44px]" style={{ fontSize: size }}>
+    // 손글씨체는 같은 크기에서 작게 보여 글자 크기를 조금 키운다
+    <span className="wordmark inline-flex items-center leading-[44px]" style={{ fontSize: Math.round(size * 1.25) }}>
       {BRAND[locale].name}
     </span>
   );

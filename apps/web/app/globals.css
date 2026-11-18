@@ -32,9 +32,10 @@
   --color-sticky: #f1f2f7;
   --color-ok: #1e7d55;
 
-  --font-sans: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-  /* 숫자·로고는 Manrope. Manrope에 없는 한글(로고 '기억해유', '오늘' 배지)은 한글 글꼴로(아이폰 웹뷰는 system-ui에서 한글로 못 넘어가 물음표 네모가 된다) */
-  --font-num: var(--font-manrope), "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  /* 앱 전체 글꼴: 손글씨체 Poor Story(app/fonts.css, scripts/fetch-fonts.mjs). 글꼴에 없는 드문 글자는 시스템 한글 글꼴로(아이폰 웹뷰는 system-ui에서 한글로 못 넘어가 물음표 네모가 된다) */
+  --font-sans: "Poor Story", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  /* 숫자도 같은 글꼴(예전엔 Manrope) */
+  --font-num: var(--font-sans);
 }
 
 @layer base {
@@ -100,10 +101,13 @@
     letter-spacing: -0.01em;
     font-variant-numeric: tabular-nums;
   }
+  /* 로고 글자(기억해유 / Remember You)는 손글씨체(Poor Story, app/wordmark.css). 굵기는 한 벌뿐이라 400 */
   .wordmark {
-    font-family: var(--font-num);
-    font-weight: 800;
-    letter-spacing: 0.02em;
+    font-family: "Wordmark Hand", var(--font-num);
+    font-weight: 400;
+    letter-spacing: 0;
+    /* 손글씨체는 같은 크기에서 가늘어 보여 획을 살짝 보탠다 */
+    -webkit-text-stroke: 0.6px currentColor;
   }
   .headline {
     font-weight: 700;
