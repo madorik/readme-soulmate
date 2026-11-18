@@ -104,7 +104,7 @@ export function RequestForm({ locale, people, fixed, initialName, defaults }: { 
       <input type="hidden" name="name" value={name} />
 
       {fixed ? null : (
-        <section className="card mx-4 mt-4 flex flex-col gap-3 px-5 py-5">
+        <section data-tour="ask" className="card mx-4 mt-4 flex flex-col gap-3 px-5 py-5">
           <label htmlFor="request-who" className="text-[15px] font-bold">
             {t("request.who")}
           </label>
@@ -175,7 +175,7 @@ export function RequestForm({ locale, people, fixed, initialName, defaults }: { 
         </section>
       )}
 
-      <section className={`card mx-4 flex flex-col gap-3 px-4 py-5 ${fixed ? "mt-4" : "mt-3"}`}>
+      <section data-tour={fixed ? "ask" : undefined} className={`card mx-4 flex flex-col gap-3 px-4 py-5 ${fixed ? "mt-4" : "mt-3"}`}>
         <div className="flex items-baseline justify-between px-1">
           <h2 className="text-[15px] font-bold">{t("request.topics")}</h2>
           <span className="num text-[13px] !font-bold text-muted">{topics.length}</span>

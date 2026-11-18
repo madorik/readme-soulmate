@@ -2,6 +2,7 @@ import { translate } from "@readme/core";
 import { headers } from "next/headers";
 import { Suspense } from "react";
 import { GuidedTour } from "@/components/GuidedTour";
+import { tourSteps } from "@/lib/tour";
 import { NativeBridge } from "@/components/native";
 import { ResumeRefresh } from "@/components/ResumeRefresh";
 import { SwipeTabs } from "@/components/SwipeTabs";
@@ -23,15 +24,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {children}
       <SwipeTabs />
       <ResumeRefresh />
-      {/* 가입하고 온보딩을 마치면 홈(?tour=1)에서 실제 화면을 순서대로 짚어 준다. 설정의 '소개 다시 보기'도 같은 주소 */}
+      {/* 가입하고 온보딩을 마치면 단계마다 그 기능의 실제 페이지(?tour=N)로 옮겨 가며 짚어 준다. 말로 적기는 AI가 켜졌을 때만. 설정의 '소개 다시 보기'도 같은 주소 */}
       <Suspense fallback={null}>
         <GuidedTour
-          steps={[
-            { target: "orb", title: translate(locale, "tour.orb.title"), body: translate(locale, "tour.orb.body") },
-            { target: "ask", title: translate(locale, "tour.ask.title"), body: translate(locale, "tour.ask.body") },
-            { target: "people", title: translate(locale, "tour.gift.title"), body: translate(locale, "tour.gift.body") },
-            { target: "people", title: translate(locale, "tour.share.title"), body: translate(locale, "tour.share.body") },
-          ]}
+          steps={tourSteps(locale)}
           labels={{ next: translate(locale, "common.next"), start: translate(locale, "tour.start"), skip: translate(locale, "common.skip"), page: translate(locale, "tour.page") }}
         />
       </Suspense>

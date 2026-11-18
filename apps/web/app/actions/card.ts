@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { readCard, requireSession, writeSection } from "@/lib/data";
 import { safeNext } from "@/lib/site";
+import { tourStart } from "@/lib/tour";
 
 function json(v: FormDataEntryValue | null): unknown {
   try {
@@ -55,7 +56,7 @@ export async function saveFood(form: FormData): Promise<void> {
   redirect(withNext("/onboarding/birthday", safeNext(String(form.get("next") ?? ""))));
 }
 
-/** 온보딩 3단계: 생일 + 알림 시점, 그리고 온보딩 끝(그 뒤 홈에서 실제 화면을 짚어 주는 안내로). '나중에'면 생일은 건드리지 않는다 */
+/** 온보딩 3단계: 생일 + 알림 시점, 그리고 온보딩 끝(그 뒤 말로 적기·물어보기 페이지로 옮겨 가며 설명하는 안내로). '나중에'면 생일은 건드리지 않는다 */
 export async function finishOnboarding(form: FormData): Promise<void> {
   const s = await requireSession({ onboarding: true });
   const later = form.get("later") === "1";
@@ -67,8 +68,8 @@ export async function finishOnboarding(form: FormData): Promise<void> {
   });
   track("onboarding_done", { userId: s.user.id });
   const next = safeNext(String(form.get("next") ?? ""));
-  // 홈으로 가는 가입이면 안내(?tour=1)를 붙인다. 초대 링크 등 다른 곳으로 가던 중이면 그곳으로 먼저 보낸다
-  redirect(next === "/home" ? "/home?tour=1" : next);
+  // 홈으로 가는 가입이면 안내의 첫 페이지(말로 적기)로 보낸다. 초대 링크 등 다른 곳으로 가던 중이면 그곳으로 먼저 보낸다
+  redirect(next === "/home" ? tourStart() : next);
 }
 
 export interface SaveState {

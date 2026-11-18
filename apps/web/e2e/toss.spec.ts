@@ -105,7 +105,7 @@ test("토스 앱 화면: 처음엔 시작 화면, 시작하면 온보딩, 앱과
   expect(await page("/me", token)).toEqual({ redirect: "/onboarding/avatar" });
   expect((await page("/onboarding/avatar", token)).pattern).toBe("/onboarding/avatar");
   expect(await (await post("action/card/saveAvatar", { args: [form([["name", "토스민지"], ["avatar", "{}"], ["next", "/home"]])] }, token)).json()).toEqual({ ok: false, redirect: "/onboarding/food" });
-  expect(await (await post("action/card/finishOnboarding", { args: [form([["birthday", "null"], ["offsets", "[7,1]"], ["next", "/home"]])] }, token)).json()).toEqual({ ok: false, redirect: "/home?tour=1" });
+  expect(await (await post("action/card/finishOnboarding", { args: [form([["birthday", "null"], ["offsets", "[7,1]"], ["next", "/home"]])] }, token)).json()).toEqual({ ok: false, redirect: expect.stringMatching(/^\/(voice|request)\?tour=1$/) });
 
   const me = await page("/me", token);
   expect(me.pattern).toBe("/me");

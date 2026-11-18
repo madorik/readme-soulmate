@@ -59,7 +59,7 @@ export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLoc
         ) : null}
         {/* 소개 화면은 앱(웹) 것이라 토스 미니앱에는 없다 */}
         {SHELL === "toss" ? null : (
-          <Link href="/home?tour=1" className="flex min-h-16 items-center gap-3 border-t border-rule">
+          <Link href={ai ? "/voice?tour=1" : "/request?tour=1"} className="flex min-h-16 items-center gap-3 border-t border-rule">
             <span className="flex-1 text-[15.5px] font-bold">{t("privacy.replayIntro")}</span>
             <Icon name="chevron" size={18} className="shrink-0 text-muted" />
           </Link>

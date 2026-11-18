@@ -50,8 +50,6 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
         // 탭 화면은 데이터까지 미리 받아 둔다(누르거나 좌우로 밀 때 빈 화면 없이 바로)
         prefetch={true}
         aria-current={on ? "page" : undefined}
-        // 처음 안내(GuidedTour)가 짚는 곳
-        data-tour={item.key === "people" ? "people" : undefined}
         className={`flex flex-col items-center justify-center gap-[3px] whitespace-nowrap text-[12px] ${on ? "font-bold text-accent" : "font-medium text-muted"}`}
       >
         <Icon name={item.icon} strokeWidth={on ? 2.1 : 1.7} />
@@ -72,7 +70,7 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
         {voice ? (
           <div className="flex items-center justify-center">
             {/* 가운데 물방울(막대 한가운데): 누르면 말로 또는 글로 기억해 두기 */}
-            <Link href="/voice" data-tour="orb" aria-label={t("voice.title")} className="flex h-[56px] w-[56px] items-center justify-center rounded-full transition-transform active:scale-95">
+            <Link href="/voice" aria-label={t("voice.title")} className="flex h-[56px] w-[56px] items-center justify-center rounded-full transition-transform active:scale-95">
               <DropOrb size={52} />
             </Link>
           </div>

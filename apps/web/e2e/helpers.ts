@@ -43,19 +43,17 @@ export async function onboard(page: Page, opts: { name: string; allergy?: string
   if (process.env.SHOTS && opts.lunar) await page.screenshot({ path: `${process.env.SHOTS}/00-birthday.png`, fullPage: true });
   await page.getByRole("button", { name: "이제 시작해요" }).click();
 
-  // 온보딩을 마치면 홈에서 안내가 시작된다(실제 화면을 비추고 순서대로 짚어 준다)
-  await expect(page).toHaveURL(/\/home\?tour=1/);
+  // 온보딩을 마치면 안내가 시작된다: 단계마다 그 기능의 실제 페이지로 옮겨 가서 설명한다(말로 적기 → 물어보기 → 홈)
+  await expect(page).toHaveURL(/\/voice\?tour=1/);
   const tour = page.getByRole("dialog");
-  await expect(tour).toBeVisible();
+  await expect(tour.getByRole("heading", { name: "말하거나 적으면 알아서 기억해요" })).toBeVisible();
   if (opts.intro === "tour") {
-    await expect(tour.getByRole("heading", { name: "가운데 버튼 하나로 적어요" })).toBeVisible();
     await expect(tour.getByText(/와이프는 바닐라라떼를 좋아해/)).toBeVisible();
-    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/00-tour-1.png` });
-    for (const heading of ["모르는 건 물어보세요", "선물은 AI가 골라 줘요", "가족·친구와 같이 골라요"]) {
-      await tour.getByRole("button", { name: "다음" }).click();
-      await expect(tour.getByRole("heading", { name: heading })).toBeVisible();
-      if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/00-tour-${heading.length}.png` });
-    }
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/00-tour-voice.png` });
+    await tour.getByRole("button", { name: "다음" }).click();
+    await expect(page).toHaveURL(/\/request\?tour=2/);
+    await expect(tour.getByRole("heading", { name: "모르는 건 물어보세요" })).toBeVisible();
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/00-tour-ask.png` });
     await tour.getByRole("button", { name: "시작하기" }).click();
   } else {
     await tour.getByRole("button", { name: "건너뛰기" }).click();

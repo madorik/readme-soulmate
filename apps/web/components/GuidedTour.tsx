@@ -4,12 +4,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { useDialog } from "./Sheet";
 
-// 가입하고 온보딩을 마치면 홈(/home?tour=1)에서 시작하는 안내: 실제 화면의 해당 부분만 밝게 비추고, 말풍선과 '다음'으로 순서대로 짚어 준다.
-// 짚을 곳은 화면 요소의 data-tour 값으로 찾는다(orb: 가운데 버튼, ask: 물어보기, people: 사람들 탭). 화면에 없는 곳(예: AI가 꺼져 가운데 버튼이 없을 때)은 건너뛴다.
+// 가입하고 온보딩을 마치면 시작하는 안내: 단계마다 그 기능의 실제 페이지로 옮겨 가서 그 자리에서 짚어 준다(말로 적기 → 물어보기, 끝나면 홈).
+// 어느 단계인지는 주소의 ?tour=N(1부터)이 가진다. 페이지에서 해당 부분만 밝게 비추고 말풍선·'다음'으로 넘긴다.
+// 짚을 곳은 화면 요소의 data-tour 값으로 찾는다(voice: 말로 적기의 마이크·적는 칸, ask: 물어보기의 사람·항목 고르는 곳).
 // 문구는 서버가 번역해 prop으로 준다(사전을 클라이언트로 끌어오지 않는다)
 
-export type TourTarget = "orb" | "ask" | "people";
+export type TourTarget = "voice" | "ask";
 export interface TourStep {
+  /** 이 단계를 보여 줄 페이지 */
+  path: string;
   target: TourTarget;
   title: string;
   body: string;
@@ -23,6 +26,8 @@ export interface TourLabels {
 }
 
 const PAD = 8;
+/** 말풍선이 들어가려면 필요한 높이(대략) */
+const NEED = 220;
 
 interface Box {
   top: number;
@@ -33,31 +38,38 @@ interface Box {
 
 const find = (target: TourTarget) => document.querySelector<HTMLElement>(`[data-tour="${target}"]`);
 
-/** 주소가 /home?tour=1일 때만 안내를 켠다. 끝내거나 건너뛰면 ?tour를 지운다 */
+/** 주소의 ?tour=N이 지금 페이지의 N번째 단계일 때만 안내를 켠다. 끝내거나 건너뛰면 홈으로 */
 export function GuidedTour({ steps, labels }: { steps: TourStep[]; labels: TourLabels }) {
   const pathname = usePathname();
-  const params = useSearchParams();
-  if (pathname !== "/home" || params.get("tour") !== "1") return null;
-  return <Tour steps={steps} labels={labels} />;
+  const n = Number(useSearchParams().get("tour"));
+  const step = Number.isInteger(n) && n >= 1 ? steps[n - 1] : undefined;
+  if (!step || pathname !== step.path) return null;
+  return <Tour key={n} n={n} steps={steps} labels={labels} />;
 }
 
-function Tour({ steps, labels }: { steps: TourStep[]; labels: TourLabels }) {
+function Tour({ n, steps, labels }: { n: number; steps: TourStep[]; labels: TourLabels }) {
   const router = useRouter();
+  const step = steps[n - 1]!;
   const finish = useCallback(() => router.replace("/home"), [router]);
-  // 화면에 실제로 있는 곳만. 홈으로 넘어오는 동안은 뼈대(loading)가 먼저 그려지니, 짚을 곳이 나타날 때까지 기다린다(끝내 안 나타나면 접는다)
-  const [list, setList] = useState<TourStep[] | null>(null);
+  // 다음 단계는 그 기능의 실제 페이지로 옮겨 간다(?tour=N+1)
+  const next = useCallback(() => {
+    const to = steps[n];
+    if (to) router.push(`${to.path}?tour=${n + 1}`);
+    else finish();
+  }, [router, steps, n, finish]);
+  // 페이지가 그려지는 동안은 뼈대(loading)가 먼저 보이니, 짚을 곳이 나타날 때까지 기다린다(끝내 안 나타나면 접는다)
+  const [ready, setReady] = useState(false);
   useEffect(() => {
-    const pick = () => {
-      const present = steps.filter((s) => find(s.target));
-      if (!present.length) return false;
-      setList(present);
-      return true;
-    };
-    if (pick()) return;
+    if (find(step.target)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setReady(true);
+      return;
+    }
     const watch = new MutationObserver(() => {
-      if (pick()) {
+      if (find(step.target)) {
         watch.disconnect();
         clearTimeout(giveUp);
+        setReady(true);
       }
     });
     watch.observe(document.body, { childList: true, subtree: true });
@@ -69,17 +81,15 @@ function Tour({ steps, labels }: { steps: TourStep[]; labels: TourLabels }) {
       watch.disconnect();
       clearTimeout(giveUp);
     };
-  }, [steps, finish]);
-  if (!list?.length) return null;
-  return <Dialog list={list} labels={labels} finish={finish} />;
+  }, [step, finish]);
+  if (!ready) return null;
+  return <Dialog step={step} n={n} total={steps.length} labels={labels} next={next} finish={finish} />;
 }
 
-function Dialog({ list, labels, finish }: { list: TourStep[]; labels: TourLabels; finish: () => void }) {
+function Dialog({ step, n, total, labels, next, finish }: { step: TourStep; n: number; total: number; labels: TourLabels; next: () => void; finish: () => void }) {
   const ref = useDialog(finish);
-  const [i, setI] = useState(0);
   const [box, setBox] = useState<Box | null>(null);
-  const step = list[i]!;
-  const last = i === list.length - 1;
+  const last = n === total;
 
   const measure = useCallback(() => {
     const el = find(step.target);
@@ -105,23 +115,31 @@ function Dialog({ list, labels, finish }: { list: TourStep[]; labels: TourLabels
     };
   }, [step, measure]);
 
-  // 말풍선 자리: 짚은 곳이 위쪽 절반이면 그 아래, 아래쪽 절반이면 그 위. 아래 막대 가림 띠 안으로는 들어가지 않는다
+  // 말풍선 자리: 비춘 곳의 위·아래 중 말풍선이 들어갈 만큼 자리가 있는 쪽(둘 다 되면 더 넓은 쪽, 같으면 아래).
+  // 어느 쪽도 모자란 작은 화면이면 비춘 곳 반대편 화면 끝에 붙이고 화살표는 뺀다. 어느 경우에도 위·아래 가림 띠(노치·아래 막대) 안으로는 들어가지 않는다
   const place = () => {
     if (!box) return null;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const maskH = document.querySelector(".bar-mask-bottom")?.getBoundingClientRect().height ?? 0;
+    const band = (cls: string) => document.querySelector(cls)?.getBoundingClientRect().height ?? 0;
+    const maskTop = band(".bar-mask-top");
+    const maskBottom = band(".bar-mask-bottom");
     const w = Math.min(vw - 32, 360);
     const left = (vw - w) / 2;
     const cx = box.left + box.width / 2;
     const arrow = Math.min(Math.max(cx - left, 28), w - 28);
-    const below = box.top + box.height / 2 < vh / 2;
     const gap = PAD + 14;
-    const top = box.top + box.height + gap;
-    const style: React.CSSProperties = below
-      ? { top, maxHeight: Math.max(160, vh - top - maskH - 8) }
-      : { bottom: vh - box.top + gap, maxHeight: Math.max(160, box.top - gap - 8) };
-    return { w, left, arrow, below, style };
+    const spaceBelow = vh - (box.top + box.height) - gap - maskBottom - 8;
+    const spaceAbove = box.top - gap - maskTop - 8;
+    const pinMax = Math.max(160, vh - maskTop - maskBottom - 24);
+    if (spaceBelow >= NEED || spaceAbove >= NEED) {
+      const below = spaceBelow >= spaceAbove;
+      const style: React.CSSProperties = below ? { top: box.top + box.height + gap, maxHeight: spaceBelow } : { bottom: vh - box.top + gap, maxHeight: spaceAbove };
+      return { w, left, arrow, below, pinned: false, style };
+    }
+    const bottomPin = box.top + box.height / 2 < vh / 2;
+    const style: React.CSSProperties = bottomPin ? { bottom: maskBottom + 12, maxHeight: pinMax } : { top: maskTop + 12, maxHeight: pinMax };
+    return { w, left, arrow, below: false, pinned: true, style };
   };
   const p = place();
 
@@ -140,20 +158,23 @@ function Dialog({ list, labels, finish }: { list: TourStep[]; labels: TourLabels
               left: box.left - PAD,
               width: box.width + PAD * 2,
               height: box.height + PAD * 2,
-              borderRadius: Math.min(24, (box.height + PAD * 2) / 2),
+              // 동그라미(마이크 방울)면 동그랗게, 아니면 둥근 네모
+              borderRadius: Math.abs(box.width - box.height) < 6 ? 9999 : Math.min(24, (box.height + PAD * 2) / 2),
               boxShadow: "0 0 0 3px #FFC23D, 0 0 0 100vmax rgba(31, 35, 64, 0.62)",
             }}
           />
           {/* 바깥 틀(화살표가 잘리지 않게 스크롤은 안쪽 상자에서) */}
           <div className="absolute flex flex-col" style={{ left: p.left, width: p.w, ...p.style }}>
-            <span
-              aria-hidden="true"
-              className="absolute h-3.5 w-3.5 rotate-45 bg-white"
-              style={p.below ? { top: -7, left: p.arrow - 7 } : { bottom: -7, left: p.arrow - 7 }}
-            />
+            {p.pinned ? null : (
+              <span
+                aria-hidden="true"
+                className="absolute h-3.5 w-3.5 rotate-45 bg-white"
+                style={p.below ? { top: -7, left: p.arrow - 7 } : { bottom: -7, left: p.arrow - 7 }}
+              />
+            )}
             <div className="relative flex min-h-0 flex-col overflow-y-auto rounded-[22px] bg-white px-5 pb-4 pt-[18px] shadow-[0_12px_32px_rgba(31,35,64,0.28)]">
               <span className="num text-[12px] font-bold text-accent" aria-live="polite">
-                {labels.page.replace("{n}", String(i + 1)).replace("{total}", String(list.length))}
+                {labels.page.replace("{n}", String(n)).replace("{total}", String(total))}
               </span>
               <h2 className="headline pt-1 text-[19px]">{step.title}</h2>
               <p className="pt-1.5 text-[14.5px] leading-[1.6] text-ink-2">{step.body}</p>
@@ -165,7 +186,7 @@ function Dialog({ list, labels, finish }: { list: TourStep[]; labels: TourLabels
                     {labels.skip}
                   </button>
                 )}
-                <button type="button" autoFocus onClick={() => (last ? finish() : setI(i + 1))} className="btn-primary min-w-[112px] px-5 !text-[15px]">
+                <button type="button" autoFocus onClick={next} className="btn-primary min-w-[112px] px-5 !text-[15px]">
                   {last ? labels.start : labels.next}
                 </button>
               </div>

@@ -690,7 +690,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
         }}
       >
         {toggle}
-        <div className="flex flex-col gap-2 px-4 pt-5">
+        <div data-tour="voice" className="flex flex-col gap-2 px-4 pt-5">
           <textarea
             ref={field}
             value={text}
@@ -769,6 +769,8 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
           aria-pressed={listening}
           aria-label={listening ? labels.listening : labels.speak}
           disabled={pending || settling || !canListen}
+          // 처음 안내(GuidedTour)가 짚는 곳
+          data-tour="voice"
           className="shrink-0 rounded-full transition-transform active:scale-95 disabled:active:scale-100"
         >
           <WaterDrop active={listening || settling} measure={!nativeSpeech() && !shellDictation} beat={shown.length} />
