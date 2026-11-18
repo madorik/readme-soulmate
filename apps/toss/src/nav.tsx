@@ -1,44 +1,45 @@
-import type { Section } from "@readme/core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { closeApp, onBack, openedParam } from "./bridge";
+import { closeApp, onBack, openExternal } from "./bridge";
 
-// 화면 이동: 주소(히스토리)를 바꾸지 않고 앱 안에서 화면을 쌓는다(토스 정책상 히스토리 조작을 피한다).
-// 토스 네비게이션 바 뒤로가기·안드로이드 백버튼이 맨 위 화면을 내리고, 맨 처음 화면이면 미니앱을 닫는다.
-// 물어보기 공유 링크(?ask=)로 열리면 답하기 화면 하나로 시작한다
+// 화면 이동: 앱(웹)과 같은 주소(/home, /people/123 …)를 쌓는다. 브라우저 주소·히스토리는 바꾸지 않는다(토스 정책).
+// 탭 주소로 가면 쌓인 것을 비우고, 바로 아래 화면 주소로 가면 내려간다(앱 화면의 닫기·뒤로 링크가 그대로 맞게).
+// 토스 네비게이션 바 뒤로가기·안드로이드 백버튼은 맨 위 화면을 내리고, 맨 처음 화면이면 미니앱을 닫는다
 
-export type Tab = "home" | "people" | "settings";
+export const TAB_PATHS = ["/home", "/people", "/me", "/privacy"];
 
-export type Route =
-  | { name: "home" }
-  | { name: "people" }
-  | { name: "settings" }
-  | { name: "person"; id: string }
-  | { name: "edit"; id: string; section: Section }
-  | { name: "newPerson" }
-  | { name: "voice"; about?: string }
-  | { name: "gifts"; id: string }
-  | { name: "legal"; doc: "privacy" | "terms" }
-  | { name: "ask"; id: string }
-  | { name: "answer"; token: string };
+/** 우리 사이트 주소 → 미니앱 안 주소. 약관·처리방침은 토스 화면 안에서 */
+export function localPath(href: string): string | null {
+  // 화면 안 위치(#)는 쓰지 않는다
+  let path = href.split("#")[0];
+  const m = path.match(/^https?:\/\/remember-you\.watalabs\.com(\/.*)?$/);
+  if (m) path = m[1] || "/";
+  else if (/^[a-z]+:/i.test(path)) return null;
+  if (!path.startsWith("/")) return null;
+  if (path.startsWith("/privacy-policy")) return "/legal/privacy";
+  if (path.startsWith("/terms")) return "/legal/terms";
+  if (path === "/" || path.startsWith("/?")) return "/home";
+  return path;
+}
 
 interface Nav {
-  route: Route;
+  /** 맨 위 화면 주소(쿼리 포함) */
+  path: string;
   depth: number;
-  tab: Tab;
-  push: (r: Route) => void;
-  /** 맨 위 화면을 바꾼다(뒤로 가면 그 아래로) */
-  replace: (r: Route) => void;
+  /** 앱 화면 링크·router.push처럼: 탭이면 비우고, 바로 아래 화면이면 내려가고, 아니면 쌓는다 */
+  navigate: (href: string, opts?: { replace?: boolean }) => void;
+  push: (path: string) => void;
+  replace: (path: string) => void;
   back: () => void;
-  /** 탭으로 바꾸며 쌓인 화면을 비운다 */
-  go: (tab: Tab) => void;
-  /** 쌓인 화면을 통째로 바꾼다 */
-  reset: (stack: Route[]) => void;
-  /** 저장 뒤 다른 화면이 새로 읽게 하는 숫자 */
+  reset: (paths: string[]) => void;
+  /** 저장(서버 액션) 뒤 지금 화면을 다시 읽게 하는 숫자 */
   version: number;
   bump: () => void;
 }
 
 const NavContext = createContext<Nav | null>(null);
+
+/** React 밖(서버 액션 부르기)에서 쓰는 지금 Nav */
+export const navRef: { current: Nav | null } = { current: null };
 
 export function useNav(): Nav {
   const v = useContext(NavContext);
@@ -46,11 +47,8 @@ export function useNav(): Nav {
   return v;
 }
 
-export function NavProvider({ children }: { children: React.ReactNode }) {
-  const [stack, setStack] = useState<Route[]>(() => {
-    const ask = openedParam("ask");
-    return ask && /^[\w-]{8,128}$/.test(ask) ? [{ name: "answer", token: ask }] : [{ name: "home" }];
-  });
+export function NavProvider({ initial, children }: { initial: string[]; children: React.ReactNode }) {
+  const [stack, setStack] = useState<string[]>(initial);
   const [version, setVersion] = useState(0);
   const stackRef = useRef(stack);
   stackRef.current = stack;
@@ -58,8 +56,22 @@ export function NavProvider({ children }: { children: React.ReactNode }) {
   const back = useCallback(() => {
     const s = stackRef.current;
     if (s.length > 1) setStack(s.slice(0, -1));
-    else if (s[0].name !== "home" && s[0].name !== "answer") setStack([{ name: "home" }]);
+    else if (s[0] !== "/home" && TAB_PATHS.includes(s[0].split("?")[0])) setStack(["/home"]);
     else void closeApp();
+  }, []);
+
+  const navigate = useCallback((href: string, opts?: { replace?: boolean }) => {
+    const path = localPath(href);
+    if (!path) {
+      if (/^(https?|mailto|tel):/i.test(href)) void openExternal(href);
+      return;
+    }
+    const s = stackRef.current;
+    const pathname = path.split("?")[0];
+    if (TAB_PATHS.includes(pathname)) setStack([path]);
+    else if (s.length > 1 && s[s.length - 2] === path) setStack(s.slice(0, -1));
+    else if (opts?.replace) setStack([...s.slice(0, -1), path]);
+    else if (s[s.length - 1] !== path) setStack([...s, path]);
   }, []);
 
   useEffect(() => {
@@ -74,27 +86,27 @@ export function NavProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("keydown", key);
   }, [back]);
 
-  const value = useMemo<Nav>(() => {
-    const route = stack[stack.length - 1];
-    const root = stack[0].name;
-    return {
-      route,
+  const value = useMemo<Nav>(
+    () => ({
+      path: stack[stack.length - 1] ?? "/home",
       depth: stack.length,
-      tab: root === "people" || root === "settings" ? root : "home",
-      push: (r) => setStack((s) => [...s, r]),
-      replace: (r) => setStack((s) => [...s.slice(0, -1), r]),
+      navigate,
+      push: (p) => setStack((s) => [...s, p]),
+      replace: (p) => setStack((s) => [...s.slice(0, -1), p]),
       back,
-      go: (tab) => setStack([{ name: tab }]),
-      reset: (next) => setStack(next.length ? next : [{ name: "home" }]),
+      reset: (paths) => setStack(paths.length ? paths : ["/home"]),
       version,
       bump: () => setVersion((v) => v + 1),
-    };
-  }, [stack, back, version]);
+    }),
+    [stack, navigate, back, version],
+  );
+  navRef.current = value;
 
   // 화면이 바뀌면 맨 위부터
+  const top = stack[stack.length - 1];
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [stack.length, stack[stack.length - 1]]);
+  }, [stack.length, top]);
 
   return <NavContext.Provider value={value}>{children}</NavContext.Provider>;
 }

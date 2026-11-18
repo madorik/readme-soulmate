@@ -1,10 +1,13 @@
 /* 웹과 같은 색·글자·버튼(apps/web/app/globals.css). 토스판은 라이트 모드만 */
 @import "../../web/app/globals.css";
 
-/* 웹 화면 조각에 쓰인 클래스도 만들어지게 */
+/* 웹 화면 조각(components, app 아래 화면·클라이언트 조각)에 쓰인 클래스도 만들어지게 */
 @source "../../web/components";
+@source "../../web/app";
 @source "./";
 
 :root {
   color-scheme: light;
+  /* 숫자·로고 글꼴: 웹은 next/font가 넣는 Manrope, 토스판은 같은 글꼴 묶음(@fontsource-variable/manrope) */
+  --font-manrope: "Manrope Variable";
 }

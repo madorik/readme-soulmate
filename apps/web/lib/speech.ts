@@ -21,20 +21,19 @@ export interface Dictation {
   cancel: () => void;
 }
 
-export async function startDictation(
-  plugin: NativeSpeech,
-  o: {
-    language: string;
-    /** 받아 적는 중인 글(바뀔 때마다) */
-    onText: (text: string) => void;
-    /** 멈춤을 들었다(이제 최종 결과를 기다리는 중) */
-    onSettling?: () => void;
-    /** 끝(한 번만): 받아 적은 글 전부 */
-    onDone: (text: string) => void;
-    quietMs?: number;
-    maxMs?: number;
-  },
-): Promise<Dictation> {
+export interface DictationOptions {
+  language: string;
+  /** 받아 적는 중인 글(바뀔 때마다) */
+  onText: (text: string) => void;
+  /** 멈춤을 들었다(이제 최종 결과를 기다리는 중) */
+  onSettling?: () => void;
+  /** 끝(한 번만): 받아 적은 글 전부 */
+  onDone: (text: string) => void;
+  quietMs?: number;
+  maxMs?: number;
+}
+
+export async function startDictation(plugin: NativeSpeech, o: DictationOptions): Promise<Dictation> {
   const quietMs = o.quietMs ?? SETTLE_QUIET_MS;
   const maxMs = o.maxMs ?? SETTLE_MAX_MS;
   let text = "";

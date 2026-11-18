@@ -1,6 +1,8 @@
+// 챙길 날(서버·화면이 같이 쓴다. 서버 전용 모듈을 들이지 않는다)
 import { eventTitle, upcomingEvents, type Locale, type PersonDates, type UpcomingEvent, type YMD } from "@readme/core";
-import type { T } from "./i18n";
-import { displayName, type Person } from "./data";
+import type { Person } from "./data";
+import { displayName } from "./person";
+import type { T } from "./t";
 
 /** 내 기록에 적힌 생일·기념일 */
 export function peopleDates(people: Person[]): PersonDates[] {

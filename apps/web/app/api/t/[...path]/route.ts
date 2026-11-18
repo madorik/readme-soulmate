@@ -9,8 +9,10 @@ import { eventName, eventsFor } from "@/lib/events";
 import { isGenericBasis } from "@/lib/gift-core";
 import { giftContext, giftLinkPicks, giftNotes, giftPicks, giftPicksConfigured } from "@/lib/gifts";
 import { makeT } from "@/lib/i18n";
-import { corsHeaders, exchangeAnonCode, tossDevLogin, tossLoginConfigured, tossReminderTemplate, tossSignIn } from "@/lib/toss";
+import { corsHeaders, exchangeAnonCode, linkTossAccount, tossDevLogin, tossLoginConfigured, tossReminderTemplate, tossSignIn } from "@/lib/toss";
+import { loadPage } from "@/lib/pages";
 import { notifyUserT } from "@/lib/push";
+import { runAction } from "@/lib/toss-actions";
 import type { TAskCreated, TAskOpen, TGifts, THome, TPerson, TPersonDetail } from "@/lib/toss-api";
 import { track } from "@/lib/track";
 
@@ -54,14 +56,34 @@ async function findPerson(s: Session, id: string): Promise<Person | null> {
 
 // ── 로그인 ─────────────────────────────────────
 
-async function signIn(req: NextRequest): Promise<NextResponse> {
-  const b = await body(req);
+async function anonKeyFrom(b: Record<string, unknown>): Promise<string | null> {
   let anonKey: string | null = null;
   if (typeof b.code === "string" && tossLoginConfigured()) anonKey = await exchangeAnonCode(b.code).catch(() => null);
   // 개발: 인증서 없이 브라우저·샌드박스에서 들어온다(기기마다 다른 키를 보낸다)
   else if (typeof b.dev === "string" && /^[\w-]{8,64}$/.test(b.dev) && tossDevLogin()) anonKey = `dev-${b.dev}`;
+  return anonKey;
+}
+
+async function signIn(req: NextRequest): Promise<NextResponse> {
+  const b = await body(req);
+  const anonKey = await anonKeyFrom(b);
   if (!anonKey) return reply(req, { error: "login" }, 401);
-  return reply(req, { token: await tossSignIn(anonKey) });
+  // create가 false면 이미 있는 계정만(미니앱이 처음 열릴 때). 예전 번들은 create 없이 부르므로 그때는 만든다
+  const token = await tossSignIn(anonKey, b.create !== false);
+  return reply(req, token ? { token } : { new: true });
+}
+
+/** 기존 계정 연결: 앱 설정 > 토스에서 쓰기 코드로 이 토스 계정을 그 계정에 잇는다 */
+async function link(req: NextRequest): Promise<NextResponse> {
+  const b = await body(req);
+  const code = typeof b.linkCode === "string" ? b.linkCode : "";
+  if (!/^[A-Za-z0-9-]{8,12}$/.test(code)) return reply(req, { error: "code" }, 400);
+  const anonKey = await anonKeyFrom(b);
+  if (!anonKey) return reply(req, { error: "login" }, 401);
+  const r = await linkTossAccount(anonKey, code);
+  if ("error" in r) return reply(req, r, 400);
+  track("account_link", { source: "toss" });
+  return reply(req, r);
 }
 
 // ── 읽기 ───────────────────────────────────────
@@ -279,6 +301,23 @@ async function deleteAccount(req: NextRequest, s: Session): Promise<NextResponse
   return reply(req, { ok: true });
 }
 
+// ── 앱 화면 그대로(화면 데이터·서버 액션) ─────────────
+
+/** 앱 화면 하나의 데이터(웹 페이지와 같은 loader). redirect·notFound는 값으로 */
+async function page(req: NextRequest): Promise<NextResponse> {
+  const path = req.nextUrl.searchParams.get("path") ?? "";
+  if (!path.startsWith("/") || path.length > 600) return reply(req, { notFound: true }, 400);
+  return reply(req, await loadPage(path));
+}
+
+/** 앱 화면 조각이 부르는 서버 액션. 인자·돌려주는 값은 JSON(FormData는 {"$form": …}) */
+async function action(req: NextRequest, moduleName: string, name: string): Promise<NextResponse> {
+  const b = await body(req);
+  const args = Array.isArray(b.args) ? b.args : [];
+  const out = await runAction(moduleName, name, args);
+  return reply(req, out, out.ok || !("error" in out) ? 200 : 404);
+}
+
 // ── 길 나누기 ───────────────────────────────────
 
 async function route(req: NextRequest, ctx: Ctx): Promise<NextResponse> {
@@ -286,11 +325,14 @@ async function route(req: NextRequest, ctx: Ctx): Promise<NextResponse> {
   const m = req.method;
   const at = (...p: string[]) => path.length === p.length && p.every((x, i) => x === "*" || x === path[i]);
   if (m === "POST" && at("session")) return signIn(req);
+  if (m === "POST" && at("link")) return link(req);
   // 물어보기 답하기는 로그인 없이(받은 사람은 아직 계정이 없을 수 있다)
   if (m === "GET" && at("r", "*")) return askOpen(req, path[1]);
   if (m === "POST" && at("r", "*")) return askAnswer(req, path[1]);
   const s = await getSession();
   if (!s) return reply(req, { error: "login" }, 401);
+  if (m === "GET" && at("page")) return page(req);
+  if (m === "POST" && at("action", "*", "*")) return action(req, path[1], path[2]);
   if (m === "GET" && at("home")) return home(req, s);
   if (m === "POST" && at("people")) return addPerson(req, s);
   if (m === "GET" && at("people", "*")) return person(req, s, path[1]);

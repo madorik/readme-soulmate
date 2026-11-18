@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/marks";
+import { APP_ICON } from "@/lib/shell";
 
 // 선물 힌트 화면: 힌트는 접어 두고, 앱 아이콘(컨닝페이퍼를 힐끗 보는 눈) + '컨닝페이퍼 힐끗 보기'를 누르면
 // 컨닝페이퍼가 오른쪽에서 밀려 나온다. 바깥을 누르거나 Esc·닫기로 들어간다
@@ -32,7 +33,7 @@ export function HintsPeek({ label, title, closeLabel, children }: { label: strin
         className="flex h-11 items-center gap-2 self-start rounded-full bg-white pl-1.5 pr-4 text-[14px] font-bold text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:bg-fill"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon.png" alt="" width={32} height={32} className="h-8 w-8 rounded-[9px]" />
+        <img src={APP_ICON} alt="" width={32} height={32} className="h-8 w-8 rounded-[9px]" />
         {label}
       </button>
       {open ? (
@@ -51,7 +52,7 @@ export function HintsPeek({ label, title, closeLabel, children }: { label: strin
           >
             <div className="flex items-center gap-2.5 pb-1 pl-5 pr-2 pt-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon.png" alt="" width={28} height={28} className="h-7 w-7 shrink-0 rounded-[8px]" />
+              <img src={APP_ICON} alt="" width={28} height={28} className="h-7 w-7 shrink-0 rounded-[8px]" />
               <h2 id="hints-peek" className="min-w-0 flex-1 truncate text-[17px] font-bold tracking-[-0.02em]">
                 {title}
               </h2>

@@ -1,0 +1,19 @@
+import type { AvatarConfig, Locale } from "@readme/core";
+import type { PersonRow } from "@/components/PersonRow";
+import type { FolderView } from "@/lib/folders";
+
+// 사람들 화면 데이터(lib/pages/people.ts가 만들고 components/pages/PeopleView가 그린다). 타입만 둔다
+
+export interface PeopleData {
+  locale: Locale;
+  rows: PersonRow[];
+  folders: FolderView[];
+  meAvatar: AvatarConfig;
+  /** 주소 ?pick=1: 고르기로 연다 */
+  initialPick: boolean;
+  /** 주소 ?with=a,b: 처음 골라 둘 사람 */
+  initial: string[];
+  /** 주소 ?me=0이 아니면 나도 같이 */
+  initialMe: boolean;
+  ai: boolean;
+}

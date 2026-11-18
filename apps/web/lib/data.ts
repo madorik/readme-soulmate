@@ -282,10 +282,8 @@ async function loadPeople(q: Q, me: string): Promise<Person[]> {
 /** 요청 하나 안에서는 한 번만 읽는다(레이아웃의 알림 예약과 화면이 같이 쓴다) */
 export const listPeople = cache((s: Session) => s.tx((q) => loadPeople(q, s.user.id)));
 
-/** 부를 이름: 내가 정한 부르는 말이 있으면 그것, 없으면 그 사람 이름 */
-export function displayName(p: Pick<Person, "name" | "nickname">): string {
-  return p.nickname || p.name;
-}
+// 부를 이름은 화면(토스 번들)도 쓰므로 lib/person에 둔다
+export { displayName } from "./person";
 
 // ── 메모 ─────────────────────────────────────────
 

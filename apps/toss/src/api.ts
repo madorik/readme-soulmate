@@ -31,25 +31,43 @@ async function devId(): Promise<string> {
   return id;
 }
 
-async function signIn(): Promise<string | null> {
+/** 토스(또는 개발용 키)로 세션 받기. create면 계정이 없을 때 새로 만든다. 계정이 없고 create가 아니면 null */
+async function signIn(create: boolean, extra: Record<string, unknown> = {}, path = "session"): Promise<{ token: string | null; error?: string }> {
   const code = inToss() ? await authCode() : null;
   const body = code ? { code } : import.meta.env.DEV ? { dev: await devId() } : null;
-  if (!body) return null;
-  const res = await fetch(`${API_BASE}/api/t/session`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  if (!res.ok) return null;
-  const j = (await res.json()) as { token?: string };
-  if (!j.token) return null;
+  if (!body) return { token: null, error: "login" };
+  const res = await fetch(`${API_BASE}/api/t/${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, create, ...extra }) });
+  const j = (await res.json().catch(() => ({}))) as { token?: string; error?: string };
+  if (!res.ok || !j.token) return { token: null, error: j.error ?? (res.ok ? undefined : "login") };
   token = j.token;
   await saveValue(TOKEN_KEY, token);
-  return token;
+  return { token };
 }
 
 async function currentToken(): Promise<string | null> {
   if (token) return token;
   token = await loadValue(TOKEN_KEY);
   if (token) return token;
-  signing ??= signIn().finally(() => (signing = null));
+  signing ??= signIn(false)
+    .then((r) => r.token)
+    .finally(() => (signing = null));
   return signing;
+}
+
+/** 이 토스 계정으로 이미 쓰던 기억해유가 있는지(있으면 들어간다) */
+export async function resumeSession(): Promise<boolean> {
+  return !!(await currentToken());
+}
+
+/** 시작하기: 이 토스 계정으로 새로 시작(이미 있으면 그 계정으로) */
+export async function startAccount(): Promise<boolean> {
+  return !!(await signIn(true)).token;
+}
+
+/** 기존 계정 연결: 앱 설정 > 토스에서 쓰기에서 받은 코드로 그 계정에 잇는다 */
+export async function linkAccount(linkCode: string): Promise<{ ok: boolean; error?: string }> {
+  const r = await signIn(false, { linkCode }, "link");
+  return r.token ? { ok: true } : { ok: false, error: r.error ?? "failed" };
 }
 
 /** 로그아웃(기록을 지운 뒤): 다음 부를 때 새로 로그인한다 */

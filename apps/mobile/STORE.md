@@ -120,7 +120,12 @@ Vercel 운영에 `FCM_PROJECT_ID`·`FCM_CLIENT_EMAIL`·`FCM_PRIVATE_KEY`(줄바�
 ## 앱인토스(토스 미니앱, 2026-11-18 시작)
 
 - 콘솔: watalabs 워크스페이스(107523, 사업자 미등록 = 개인, 맹고와 같은 곳). 앱 이름 기억해유, `intoss://remember-you`(바꿀 수 없음), 비게임. 만들 때 AI 정책 확인 통과.
-- 앱: `apps/toss`(Vite 정적 번들, SDK `@apps-in-toss/web-framework` 3.9.0). 웹의 화면 조각(기록 칸·편집기·얼굴·아이콘, `@/` → apps/web)을 그대로 쓰고 next/link만 `<a>`로 바꿔 끼운다. 화면 이동은 주소를 바꾸지 않는 화면 쌓기(src/nav.tsx), 뒤로가기는 토스 네비게이션 바·안드로이드 백버튼(graniteEvent backEvent), 라이트 모드만.
+- 앱: `apps/toss`(Vite 정적 번들, SDK `@apps-in-toss/web-framework` 3.9.0). **앱(웹)과 같은 화면 코드를 그대로 그린다**(2026-11-18부터, 사용자 요청 "디자인과 기능은 기존 앱이랑 똑같이"):
+  - 웹 페이지마다 서버 loader(`apps/web/lib/pages/*.ts`)와 화면(`apps/web/components/pages/*View.tsx`)으로 나눴다. 웹 page.tsx는 둘을 잇기만 하고, 토스는 `/api/t/page?path=` → 같은 loader → 같은 View. 주소 표는 `lib/pages/routes.ts`, 서버 표는 `lib/pages/index.ts`, 토스 표는 `apps/toss/src/views.ts`. **새 화면을 만들면 세 곳에 등록**.
+  - 서버 액션은 토스 번들에서 `/api/t/action/<모듈>/<이름>`을 부르는 함수로 바뀐다(vite 플러그인, 서버 쪽 `lib/toss-actions.ts`). next/link·next/navigation은 주소를 쌓는 라우터(`apps/toss/src/nav.tsx`), 뒤로가기는 토스 네비게이션 바.
+  - 토스에서만 다른 것은 `@/lib/shell`(SHELL), `components/shell/*`(웹은 빈 자리, 토스가 바꿔 끼움), `lib/dictation`(녹음→서버 받아쓰기), `components/ShareButtons`(토스 공유 시트)로 가른다. 쿠팡 파트너스 링크는 토스 요청이면 서버가 일반 검색으로 바꾼다(`lib/pages/gift-picks.ts`).
+  - 로그인: 시작 화면(시작하기 = 이 토스 계정으로 새로·앱처럼 온보딩, 기존 계정 연결 = 앱 설정 > 토스에서 쓰기 10분 코드, `toss_link_codes`). 토스 로그아웃은 앱 계정에 이어 쓰던 것이면 연결을 끊는다.
+  - 예전 번들(20261118-1~3)이 부르는 `/api/t/home` 같은 길은 남겨 둔다.
 - 첫 버전 범위: 홈(60일 안 챙길 날), 사람들, 사람 기록 보기·항목 고치기, 말로 적기(녹음 → 서버 받아쓰기 → AI 정리, 되돌리기), 선물 고르기(가격대별), 설정(문의 메일, 기록 모두 지우기). 기존 계정 연결은 다음 버전.
 - 물어보기(20261118-2부터): 사람 화면 > 물어보기 → `POST /api/t/people/:id/ask`(처음엔 보내는 사람 이름을 받아 프로필에 둠) → `Share.createLink(intoss://remember-you/r?ask=<토큰>)` + `Share.sendMessage`. 받은 사람은 토스에서 열면 답하기 화면 하나로 시작(`Environment.initialURL`·테스트 스킴 queryParams·화면 주소에서 `ask`를 찾음), 로그인 없이 `GET/POST /api/t/r/:token`. 답하기 화면은 웹과 같은 `components/AnswerForm`(보내기만 바꿔 끼움), 공통 로직은 `lib/ask.ts`.
 - 약관·처리방침(20261118-2부터): 본문을 `components/legal/*Body.tsx`로 빼서 미니앱 화면 안에서 보여 줌(자사 사이트로 내보내지 않음). 처리방침에 토스 사용자 식별값·비바리퍼블리카(로그인 확인·알림)·토스판 녹음 받아쓰기 추가(시행일 2026-11-18).

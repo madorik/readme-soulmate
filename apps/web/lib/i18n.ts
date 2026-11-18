@@ -1,5 +1,5 @@
 import "server-only";
-import { isLocale, pickLocale, translate, type Locale, type MessageKey, type Vars } from "@readme/core";
+import { isLocale, pickLocale, type Locale } from "@readme/core";
 import { cookies, headers } from "next/headers";
 
 /** 사람이 직접 고른 언어(로그인 전에도 남는다) */
@@ -29,8 +29,4 @@ export async function requestLocale(profileLocale?: string | null): Promise<Loca
   return detectLocale();
 }
 
-export type T = (key: MessageKey, vars?: Vars) => string;
-
-export function makeT(locale: Locale): T {
-  return (key, vars) => translate(locale, key, vars);
-}
+export { makeT, type T } from "./t";

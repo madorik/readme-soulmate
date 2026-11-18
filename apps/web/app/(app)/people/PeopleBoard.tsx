@@ -13,6 +13,7 @@ import { RowBody, type PersonRow } from "@/components/PersonRow";
 import type { FolderSheetLabels, FolderView } from "@/lib/folders";
 import { matchesPerson } from "@/lib/search";
 import { useDragToFolder } from "./useDragToFolder";
+import { SHELL } from "@/lib/shell";
 
 interface Labels {
   title: string;
@@ -75,7 +76,7 @@ export function PeopleBoard({
   const canPick = rows.length > 0;
   // 처음 상태: 주소에서 읽는다. 기기 뒤로가기로 돌아오면 Next가 예전 화면을 다시 쓰는데, 그때도 주소(고르던 체크)는 맞으므로
   const [start] = useState(() => {
-    if (typeof window !== "undefined" && window.location.pathname === "/people") {
+    if (typeof window !== "undefined" && SHELL === "web" && window.location.pathname === "/people") {
       const q = new URLSearchParams(window.location.search);
       return { pick: q.get("pick") === "1", ids: (q.get("with") ?? "").split(",").filter(Boolean), me: q.get("me") !== "0" };
     }
@@ -94,7 +95,9 @@ export function PeopleBoard({
   const query = `?${q.toString()}`;
   // 지금 상태를 주소에 적어 둔다: 상세로 갔다가 뒤로(버튼·기기 뒤로가기) 와도 고르던 체크가 그대로다
   const here = picking ? `/people${query}&pick=1` : "/people";
+  // 토스 미니앱은 웹뷰 주소를 바꾸지 않는다(토스 정책). 그 대신 뒤로 오면 고르던 것은 처음으로
   useEffect(() => {
+    if (SHELL !== "web") return;
     if (window.location.pathname + window.location.search !== here) window.history.replaceState(window.history.state, "", here);
   }, [here]);
   const [making, setMaking] = useState(false);

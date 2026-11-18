@@ -142,14 +142,15 @@ export function openedParam(name: string): string | null {
 export async function shareDeepLink(path: string, text: string): Promise<"shared" | "copied" | "failed"> {
   if (inToss()) {
     try {
-      const link = await Share.createLink({ path });
-      await Share.sendMessage({ message: `${text}\n${link}` });
+      // intoss:// 딥링크는 토스 공유 링크로 감싼다. 그 밖의 주소·글은 그대로
+      const link = path.startsWith("intoss://") ? await Share.createLink({ path }) : path;
+      await Share.sendMessage({ message: link ? `${text}\n${link}` : text });
       return "shared";
     } catch {
       return "failed";
     }
   }
-  const message = `${text}\n${path}`;
+  const message = path ? `${text}\n${path}` : text;
   try {
     if (navigator.share) {
       await navigator.share({ text: message });

@@ -10,12 +10,13 @@ import { Page } from "../ui";
 export type LegalDoc = "privacy" | "terms";
 
 export function Legal({ doc }: { doc: LegalDoc }) {
-  const { push, go } = useNav();
+  const { navigate } = useNav();
   const onClick = (e: React.MouseEvent) => {
     const href = (e.target as Element).closest?.("a[href]")?.getAttribute("href") ?? "";
-    if (href.startsWith("/privacy-policy")) push({ name: "legal", doc: "privacy" });
-    else if (href.startsWith("/terms")) push({ name: "legal", doc: "terms" });
-    else if (href.startsWith("/delete-account")) go("settings");
+    if (href.startsWith("/delete-account")) {
+      e.preventDefault();
+      navigate("/privacy");
+    }
   };
   return (
     <Page>

@@ -15,6 +15,11 @@
     "baseUrl": ".",
     "paths": {
       "@/components/native": ["./src/shims/native.ts"],
+      "@/lib/shell": ["./src/shims/shell.ts"],
+      "@/lib/dictation": ["./src/shims/dictation.ts"],
+      "@/components/ShareButtons": ["./src/shims/share.tsx"],
+      "@/components/shell/*": ["./src/shell/*"],
+      "next/navigation": ["./src/shims/navigation.ts"],
       "@/*": ["../web/*"],
       "next/link": ["./src/shims/link.tsx"]
     }

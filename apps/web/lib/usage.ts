@@ -23,6 +23,7 @@ export const SERVER_EVENTS = [
   "demo_start",
   "logout",
   "account_delete",
+  "account_link",
   "app_get",
 ] as const;
 

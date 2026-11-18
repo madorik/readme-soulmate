@@ -10,6 +10,7 @@ import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/Capt
 import { TagChip } from "@/components/PersonRow";
 import { insertMention, mentionAt, mentionLabel, resolveMentions, type MentionPerson } from "@/lib/mention";
 import { matchesPerson } from "@/lib/search";
+import { shellDictation } from "@/lib/dictation";
 import { commonPrefix, nextTyped, startDictation, type Dictation, type NativeSpeech } from "@/lib/speech";
 
 /** @로 부를 수 있는 사람(즐겨찾기가 먼저) */
@@ -301,7 +302,7 @@ type Labels = CaptureBadgeLabels & {
 export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; labels: Labels; people?: MentionOption[] }) {
   const canListen = useSyncExternalStore(
     () => () => {},
-    () => !!webCtor() || !!nativeSpeech(),
+    () => !!webCtor() || !!nativeSpeech() || !!shellDictation,
     () => false,
   );
   const [text, setText] = useState("");
@@ -499,15 +500,18 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
     setTagged([]);
     const lang = locale === "ko" ? "ko-KR" : "en-US";
     const plugin = nativeSpeech();
-    if (plugin) {
+    if (plugin || shellDictation) {
       try {
-        const perm = await plugin.requestPermissions();
-        if (perm.speechRecognition !== "granted") throw new Error("denied");
+        if (plugin) {
+          const perm = await plugin.requestPermissions();
+          if (perm.speechRecognition !== "granted") throw new Error("denied");
+        }
         setListening(true);
-        // 말이 끝나 기기가 스스로 멈추거나 멈춤을 누르면, 마지막 말까지 받은 뒤 받아 적은 말로 나눠 적는다
-        native.current = await startDictation(plugin, {
+        // 말이 끝나 기기가 스스로 멈추거나 멈춤을 누르면, 마지막 말까지 받은 뒤 받아 적은 말로 나눠 적는다.
+        // 토스 미니앱은 녹음했다가 멈추면 서버가 글로 바꾼다(lib/dictation)
+        const options = {
           language: lang,
-          onText: (t) => {
+          onText: (t: string) => {
             heard.current = t;
             setText(t);
           },
@@ -515,7 +519,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
             setListening(false);
             setSettling(true);
           },
-          onDone: (t) => {
+          onDone: (t: string) => {
             native.current = null;
             if (!alive.current) return;
             setSettling(false);
@@ -523,7 +527,8 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
             setText(heard.current);
             if (heard.current.trim()) submit(heard.current);
           },
-        });
+        };
+        native.current = plugin ? await startDictation(plugin, options) : await shellDictation!(options);
       } catch {
         native.current = null;
         setListening(false);
@@ -744,7 +749,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
           disabled={pending || settling || !canListen}
           className="shrink-0 rounded-full transition-transform active:scale-95 disabled:active:scale-100"
         >
-          <WaterDrop active={listening || settling} measure={!nativeSpeech()} beat={shown.length} />
+          <WaterDrop active={listening || settling} measure={!nativeSpeech() && !shellDictation} beat={shown.length} />
         </button>
         <textarea
           ref={box}

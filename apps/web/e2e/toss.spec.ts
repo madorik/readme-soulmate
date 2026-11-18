@@ -88,3 +88,46 @@ test("토스 API: 물어보기 만들고, 로그인 없이 답하면 그 사람 
 
   expect((await request.delete("/api/t/account", { headers })).ok()).toBeTruthy();
 });
+
+test("토스 앱 화면: 처음엔 시작 화면, 시작하면 온보딩, 앱과 같은 화면 데이터·서버 액션, 기존 계정 연결", async ({ request, playwright, baseURL }) => {
+  const stamp = Date.now().toString(36);
+  const post = (path: string, data: unknown, token?: string) =>
+    request.post(`/api/t/${path}`, { headers: { origin: ORIGIN, ...(token ? { authorization: `Bearer ${token}` } : {}) }, data });
+  const page = async (path: string, token: string) =>
+    (await (await request.get(`/api/t/page?path=${encodeURIComponent(path)}`, { headers: { origin: ORIGIN, authorization: `Bearer ${token}` } })).json()) as Record<string, unknown>;
+  const form = (pairs: [string, string][]) => ({ $form: pairs });
+
+  // 이 토스 계정으로 쓰던 게 없으면 만들지 않는다(시작 화면)
+  expect(await (await post("session", { dev: `e2e-app-${stamp}`, create: false })).json()).toEqual({ new: true });
+  const { token } = (await (await post("session", { dev: `e2e-app-${stamp}`, create: true })).json()) as { token: string };
+
+  // 새 계정은 앱처럼 처음 화면부터
+  expect(await page("/me", token)).toEqual({ redirect: "/onboarding/avatar" });
+  expect((await page("/onboarding/avatar", token)).pattern).toBe("/onboarding/avatar");
+  expect(await (await post("action/card/saveAvatar", { args: [form([["name", "토스민지"], ["avatar", "{}"], ["next", "/home"]])] }, token)).json()).toEqual({ ok: false, redirect: "/onboarding/food" });
+  expect(await (await post("action/card/finishOnboarding", { args: [form([["birthday", "null"], ["offsets", "[7,1]"], ["next", "/home"]])] }, token)).json()).toEqual({ ok: false, redirect: "/home" });
+
+  const me = await page("/me", token);
+  expect(me.pattern).toBe("/me");
+  expect((me.data as { name: string }).name).toBe("토스민지");
+  expect(await page("/no/such/page", token)).toEqual({ notFound: true });
+  // 웹 로그인용 데모 만들기는 못 부른다
+  expect((await post("action/auth/prepareDemo", { args: [] }, token)).status()).toBe(404);
+
+  // 기존 계정 연결: 코드(한 번만) → 다른 토스 키가 같은 계정으로
+  const code = ((await (await post("action/account/createTossLinkCode", { args: [] }, token)).json()) as { value: { code: string } }).value.code;
+  expect(code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  const linked = (await (await post("link", { dev: `e2e-app2-${stamp}`, linkCode: code })).json()) as { token: string };
+  expect(((await page("/me", linked.token)).data as { name: string }).name).toBe("토스민지");
+  expect(await (await post("link", { dev: `e2e-app3-${stamp}`, linkCode: code })).json()).toEqual({ error: "code" });
+
+  // 로그아웃: 토스에서만 쓰는 계정이면 연결은 그대로(다시 들어오면 같은 계정)
+  expect(await (await post("action/auth/signOut", { args: [] }, linked.token)).json()).toEqual({ ok: false, redirect: "/start" });
+  // 토스 웹뷰는 우리 쿠키를 보내지 않는다(쿠키 없는 요청으로 본다)
+  const bare = await playwright.request.newContext({ baseURL });
+  expect((await bare.get("/api/t/home", { headers: { origin: ORIGIN, authorization: `Bearer ${linked.token}` } })).status()).toBe(401);
+  await bare.dispose();
+  expect(((await (await post("session", { dev: `e2e-app2-${stamp}`, create: false })).json()) as { token?: string }).token).toBeTruthy();
+
+  expect((await request.delete("/api/t/account", { headers: { origin: ORIGIN, authorization: `Bearer ${token}` } })).ok()).toBeTruthy();
+});

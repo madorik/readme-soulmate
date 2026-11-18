@@ -13,7 +13,7 @@ import { Failed, Loading, Page } from "../ui";
 // 답하는 화면은 웹과 같은 것(components/AnswerForm)을 쓰고, 보내기와 보낸 뒤 화면만 토스판 것으로 바꾼다
 
 export function Answer({ token }: { token: string }) {
-  const { reset, go } = useNav();
+  const { reset, navigate } = useNav();
   const t = useT("ko");
   const [data, setData] = useState<TAskOpen | null>(null);
   const [error, setError] = useState(false);
@@ -55,9 +55,9 @@ export function Answer({ token }: { token: string }) {
     setBusy(true);
     try {
       const { id } = await api<{ id: string }>("people", { json: { name: data.from } });
-      reset([{ name: "home" }, { name: "person", id }, { name: "ask", id }]);
+      reset(["/home", `/people/${id}`, `/request?to=${id}`]);
     } catch {
-      go("home");
+      reset(["/home"]);
     }
   };
 
@@ -67,7 +67,7 @@ export function Answer({ token }: { token: string }) {
       <Page>
         <p className="headline px-6 pt-8 text-[24px]">{t(key)}</p>
         <div className="px-4 pt-8">
-          <button type="button" onClick={() => go("home")} className="btn-outline w-full">
+          <button type="button" onClick={() => navigate("/home")} className="btn-outline w-full">
             기억해유 시작하기
           </button>
         </div>
