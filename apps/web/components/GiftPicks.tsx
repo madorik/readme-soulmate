@@ -1,12 +1,13 @@
 import type { YMD } from "@readme/core";
-import { GiftPicksBody, GiftPicksSkeleton as PicksSkeleton } from "@/components/GiftPicksView";
+import { GiftPicksBody } from "@/components/GiftPicksView";
+import { PicksContent } from "@/components/PicksContent";
 import type { Person, Session } from "@/lib/data";
 import type { GiftContext } from "@/lib/gift-core";
-import { giftPicksConfigured } from "@/lib/gifts";
 import { loadGiftPicks } from "@/lib/pages/gift-picks";
 
 // 이런 선물은 어때요(서버에서 고르고 바로 그리기). 고르기는 lib/pages/gift-picks, 그리기는 components/GiftPicksView(토스 미니앱도 같이 쓴다).
-// 화면은 Suspense로 감싸 먼저 그리고, 이 부분만 나중에 채운다(처음엔 AI·쿠팡을 부르느라 몇 초 걸린다)
+// 화면은 Suspense로 감싸 먼저 그리고, 이 부분만 나중에 채운다(처음엔 AI·쿠팡을 부르느라 몇 초 걸린다).
+// 고르는 동안엔 PicksStage가 꼬마 마법사 장면을 보이고, 다 고르면 번쩍임 뒤에 PicksContent가 드러난다
 
 export { parseSkip, PicksDisclosure } from "@/components/GiftPicksView";
 
@@ -18,10 +19,9 @@ export { parseSkip, PicksDisclosure } from "@/components/GiftPicksView";
  */
 export async function GiftPicks({ s, person, occasion, today, max, pad = "px-6", title = true, skip = [], again, card, peek }: { s: Session; person: Person; occasion: GiftContext["occasion"]; today: YMD; max?: number; pad?: string; title?: boolean; skip?: string[]; again?: string; card?: { name: string; event: string }; peek?: React.ReactNode }) {
   const picks = await loadGiftPicks(s, person, { occasion, today, max, skip, card });
-  return <GiftPicksBody picks={picks} locale={s.profile.locale} pad={pad} title={title} again={again} peek={peek} />;
-}
-
-/** 채우는 동안: 같은 모양의 빈 자리(목록 방식이면 고르는 중 문구 + 가격대 칩 + 세 칸). loading = 차례로 바꿔 보일 문구. peek: 고르는 동안에도 힌트는 볼 수 있게 */
-export function GiftPicksSkeleton(props: { rows?: number; pad?: string; loading?: string[]; peek?: React.ReactNode }) {
-  return <PicksSkeleton configured={giftPicksConfigured()} {...props} />;
+  return (
+    <PicksContent>
+      <GiftPicksBody picks={picks} locale={s.profile.locale} pad={pad} title={title} again={again} peek={peek} />
+    </PicksContent>
+  );
 }

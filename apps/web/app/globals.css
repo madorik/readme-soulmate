@@ -562,6 +562,41 @@
     transform: none;
   }
 }
+/* 선물 고르는 장면(PicksStage): 장면이 보이는 동안엔 고른 선물을 숨겼다가 번쩍임이 가장 환할 때 드러낸다.
+   init(서버가 그린 그대로)일 땐 아직 고르는 중일 때만 장면 자리가 보이고, plain(장면 없이)이면 자리를 없앤다.
+   done: 장면 자리는 선물 위에 겹쳐 흐려지고, 선물은 같은 자리에서 떠오른다 */
+.picks-stage[data-phase="loading"] [data-picks-content],
+.picks-stage[data-phase="finale"] [data-picks-content] {
+  display: none;
+}
+.picks-stage[data-phase="init"]:not(:has([data-picks-pending])) > .picks-scene,
+.picks-stage[data-phase="plain"] > .picks-scene {
+  display: none;
+}
+.picks-stage[data-phase="done"] > .picks-scene {
+  position: absolute;
+  inset: 12px 16px auto 16px;
+  margin: 0;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 500ms ease-out;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .picks-stage[data-phase="done"] [data-picks-content] {
+    animation: picks-reveal 520ms ease-out both;
+  }
+}
+@keyframes picks-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 /* 컨닝페이퍼 힐끗 보기: 오른쪽에서 밀려 나온다 */
 @keyframes peek-in {
   from {

@@ -1,7 +1,7 @@
 import type { Locale } from "@readme/core";
 import Link from "next/link";
 import { use } from "react";
-import { BasisTags, GiftLinkTabs, PicksLoading } from "@/components/GiftLinkTabs";
+import { BasisTags, GiftLinkTabs } from "@/components/GiftLinkTabs";
 import { Icon } from "@/components/marks";
 import type { GiftPickData, GiftPicksData } from "@/lib/pages/gift-picks.data";
 import { makeT, type T } from "@/lib/t";
@@ -131,60 +131,6 @@ export function GiftPicksBody({ picks, locale, pad = "px-6", title = true, again
         <Row key={pick.keyword} pick={pick} pad={pad} t={t} priceOf={priceOf} />
       ))}
       {title && SHELL === "web" ? <PicksDisclosure text={t("picks.disclosure")} pad={pad} /> : null}
-    </>
-  );
-}
-
-/** 채우는 동안: 같은 모양의 빈 자리(목록 방식이면 고르는 중 문구 + 가격대 칩 + 세 칸). configured: 상품 방식(쿠팡 API 키가 있다). loading = 차례로 바꿔 보일 문구. peek: 고르는 동안에도 힌트는 볼 수 있게 */
-export function GiftPicksSkeleton({ configured, rows = 2, pad = "px-6", loading, peek }: { configured: boolean; rows?: number; pad?: string; loading?: string[]; peek?: React.ReactNode }) {
-  if (!configured) {
-    return (
-      <div className="flex flex-col">
-        {loading?.length ? <PicksLoading lines={loading} pad={pad} /> : null}
-        {peek ? <PeekRow pad={pad}>{peek}</PeekRow> : null}
-        <div aria-hidden="true" className="flex flex-col motion-safe:animate-pulse">
-          <div className={`flex gap-1.5 pb-1 pt-3 ${pad}`}>
-            {[64, 64, 64, 84].map((w, i) => (
-              <span key={i} style={{ width: w }} className={`h-10 rounded-full ${i ? "bg-fill" : "bg-sky-soft"}`} />
-            ))}
-          </div>
-          <div className={`flex flex-col gap-2 pt-2.5 ${pad}`}>
-            {[0, 1, 2].map((i) => (
-              <span key={i} className="flex gap-3 rounded-2xl bg-white p-3 ring-1 ring-rule">
-                <span className="h-[76px] w-[76px] shrink-0 rounded-xl bg-fill" />
-                <span className="flex flex-1 flex-col gap-2 pt-1">
-                  <span className="h-4 w-1/2 rounded bg-fill" />
-                  <span className="h-3 w-full rounded bg-fill" />
-                  <span className="h-3 w-4/5 rounded bg-fill" />
-                </span>
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <>
-      {peek ? <PeekRow pad={pad}>{peek}</PeekRow> : null}
-      <div aria-hidden="true" className="flex flex-col motion-safe:animate-pulse">
-      {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="flex flex-col pt-3.5">
-          <div className={`flex min-h-11 items-center ${pad}`}>
-            <span className="h-[27px] w-28 rounded-full bg-sky-soft" />
-          </div>
-          <div className={`flex gap-2.5 overflow-hidden pb-1 ${pad}`}>
-            {Array.from({ length: 4 }, (_, j) => (
-              <span key={j} className="flex w-[124px] shrink-0 flex-col">
-                <span className="aspect-square rounded-2xl bg-fill" />
-                <span className="mt-2 h-3 w-[90%] rounded bg-fill" />
-                <span className="mt-1.5 h-3 w-1/2 rounded bg-fill" />
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
-      </div>
     </>
   );
 }

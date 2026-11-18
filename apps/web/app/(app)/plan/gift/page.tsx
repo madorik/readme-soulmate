@@ -1,5 +1,7 @@
 import { Suspense } from "react";
-import { GiftPicks, GiftPicksSkeleton, PicksDisclosure } from "@/components/GiftPicks";
+import { GiftPicks, PicksDisclosure } from "@/components/GiftPicks";
+import { PicksPending } from "@/components/PicksContent";
+import { PicksStage } from "@/components/PicksStage";
 import { PlanGiftView } from "@/components/pages/PlanGiftView";
 import { requireSession } from "@/lib/data";
 import { loadPlanGift } from "@/lib/pages/plan-gift";
@@ -16,9 +18,11 @@ export default async function PlanGift({ searchParams }: { searchParams: Promise
       {...data}
       picks={{
         row: (p, name, next) => (
-          <Suspense fallback={<GiftPicksSkeleton rows={1} pad="px-5" loading={[1, 2, 3, 4].map((n) => t(`picks.loading.${n}` as "picks.loading.1", { name }))} />}>
-            <GiftPicks s={s} person={p} occasion={next ? { kind: next.kind, label: next.label ?? "" } : null} today={data.today} max={2} pad="px-5" title={false} />
-          </Suspense>
+          <PicksStage compact label={t("picks.loading.1", { name })}>
+            <Suspense fallback={<PicksPending pad="px-5" />}>
+              <GiftPicks s={s} person={p} occasion={next ? { kind: next.kind, label: next.label ?? "" } : null} today={data.today} max={2} pad="px-5" title={false} />
+            </Suspense>
+          </PicksStage>
         ),
         disclosure: <PicksDisclosure text={t("picks.disclosure")} />,
       }}

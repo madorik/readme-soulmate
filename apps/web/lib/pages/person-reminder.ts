@@ -3,7 +3,7 @@ import { eventTitle, formatDayFull, formatSpec, nextOccurrence, type DateSpec } 
 import { notFound } from "next/navigation";
 import { parseSkip } from "@/components/GiftPicksView";
 import { displayName, listNotes, listPeople, requireSession, todayFor } from "@/lib/data";
-import { giftPicksConfigured, giftPicksOn } from "@/lib/gifts";
+import { giftPicksOn } from "@/lib/gifts";
 import { makeT } from "@/lib/t";
 import type { GiftPicksData } from "./gift-picks.data";
 import { loadGiftPicks } from "./gift-picks";
@@ -63,7 +63,6 @@ export async function startPersonReminder({ params, searchParams: sp }: PageInpu
     event,
     notes: notes.map((n) => ({ label: n.label, body: n.body })),
     picksOn,
-    picksConfigured: giftPicksConfigured(),
     skip,
     again,
     shareText,

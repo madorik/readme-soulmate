@@ -20,8 +20,6 @@ export interface PersonReminderData {
   notes: { label: string; body: string }[];
   /** 선물 추천을 보일지(GIFT_PICKS=off면 숨긴다) */
   picksOn: boolean;
-  /** 쿠팡 API 키가 있으면 상품 방식(빈 자리 모양이 다르다) */
-  picksConfigured: boolean;
   /** 다시 고르기로 넘어온 '지난번에 보인 것' */
   skip: string[];
   /** 다시 고르기 주소의 앞부분(지금 화면 주소) */

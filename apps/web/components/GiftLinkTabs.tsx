@@ -148,25 +148,3 @@ export function BasisTags({ words }: { words: string[] }) {
     </span>
   );
 }
-
-/** 고르는 동안: 차례로 바뀌는 한 줄(마지막 줄에서 멈춘다) */
-export function PicksLoading({ lines, pad = "px-6" }: { lines: string[]; pad?: string }) {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    if (i >= lines.length - 1) return;
-    const t = setTimeout(() => setI(i + 1), 1900);
-    return () => clearTimeout(t);
-  }, [i, lines.length]);
-  return (
-    <p aria-live="polite" className={`flex min-h-6 items-center gap-2 pt-3 text-[14px] font-semibold text-accent ${pad}`}>
-      <span aria-hidden="true" className="flex gap-[3px]">
-        {[0, 1, 2].map((d) => (
-          <span key={d} style={{ animationDelay: `${d * 160}ms` }} className="h-[5px] w-[5px] rounded-full bg-sky motion-safe:animate-bounce" />
-        ))}
-      </span>
-      <span key={i} className="motion-safe:animate-[picks-fade_320ms_ease-out]">
-        {lines[i]}
-      </span>
-    </p>
-  );
-}

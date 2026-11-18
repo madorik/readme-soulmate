@@ -4,9 +4,11 @@ import { Suspense } from "react";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
 import { GiftActions } from "@/components/GiftActions";
-import { GiftPicksBody, GiftPicksSkeleton } from "@/components/GiftPicksView";
+import { GiftPicksBody } from "@/components/GiftPicksView";
 import { HintsPeek } from "@/components/HintsPeek";
 import { Icon, MarkerCircle } from "@/components/marks";
+import { PicksContent, PicksPending } from "@/components/PicksContent";
+import { PicksStage } from "@/components/PicksStage";
 import type { PersonReminderProps } from "@/lib/pages/person-reminder.data";
 import { makeT } from "@/lib/t";
 
@@ -22,7 +24,7 @@ function Hint({ label, children, sub }: { label: string; children: React.ReactNo
   );
 }
 
-export function PersonReminderView({ locale, contactId, avatar, card, name, spec, next, event, notes, picksOn, picksConfigured, skip, again, shareText, doneLabel, done, remindOnDay, picks }: PersonReminderProps) {
+export function PersonReminderView({ locale, contactId, avatar, card, name, spec, next, event, notes, picksOn, skip, again, shareText, doneLabel, done, remindOnDay, picks }: PersonReminderProps) {
   const t = makeT(locale);
   const { gifts, safety, taste, sizes } = card;
   const { favorites: fav, life } = card;
@@ -34,7 +36,6 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
     ...realCodes(safety?.dislikes).map((c) => labelOf(DISLIKES, c, locale)),
   ];
   const hasHints = !!(favHint || styleHint || taste?.dessert || life?.hobbies.length || fav?.flowers || fav?.scent || fav?.places?.length || gifts?.wishlist.length || gifts?.skip.length || meal.length || taste?.spicy != null || notes.length || sizes?.shoe);
-  const loading = [1, 2, 3, 4].map((n) => t(`picks.loading.${n}` as "picks.loading.1", { name }));
 
   // 컨닝페이퍼 힐끗 보기: 앱 아이콘 + 한 줄. 누르면 오른쪽에서 힌트가 나온다. 가격대 칩 바로 위 오른쪽에 둔다
   const peek = (
@@ -104,10 +105,14 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
               {t("picks.titleFor", { name })}
             </h2>
           </div>
-          {/* 다시 고르면 key가 바뀌어 고르는 동안 빈 자리와 문구를 다시 보인다 */}
-          <Suspense key={skip.join(",")} fallback={<GiftPicksSkeleton configured={picksConfigured} loading={loading} peek={peek} />}>
-            <GiftPicksBody picks={picks} locale={locale} again={again} peek={peek} />
-          </Suspense>
+          {/* 고르는 동안은 꼬마 마법사 장면, 다 고르면 번쩍임 뒤에 선물이 나온다. 다시 고르면 key가 바뀌어 장면을 다시 보인다 */}
+          <PicksStage key={skip.join(",")} label={t("picks.loading.1", { name })}>
+            <Suspense fallback={<PicksPending peek={peek} />}>
+              <PicksContent>
+                <GiftPicksBody picks={picks} locale={locale} again={again} peek={peek} />
+              </PicksContent>
+            </Suspense>
+          </PicksStage>
         </section>
       ) : null}
 
