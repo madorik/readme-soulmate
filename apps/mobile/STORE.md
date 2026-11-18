@@ -117,7 +117,9 @@ Vercel 운영에 `FCM_PROJECT_ID`·`FCM_CLIENT_EMAIL`·`FCM_PRIVATE_KEY`(줄바�
 - 심사 연락처: 이름 MinGyun Jeong, 이메일 watalabs.help@gmail.com, 전화는 Apple 개발자 계정 번호.
 - iOS 푸시는 아직: APNs 키 + 앱에 Firebase Messaging(GoogleService-Info.plist는 ~/.readme)을 넣어야 FCM 토큰을 받는다. 웹은 iOS에서 푸시 등록을 하지 않는다.
 
-## 앱인토스(토스 미니앱, 2026-11-18 시작)
+## 앱인토스(토스 미니앱, 2026-11-18 시작 → 같은 날 출시 중단)
+
+- **2026-11-18 사용자 결정으로 출시 중단.** 토스 정책상 미니앱 로그인은 토스 로그인만 되고(구글·애플 불가), 토스에 내놓은 버전은 없다. 20261118-3은 '출시 준비됨'(승인)이지만 출시하지 않았고, 20261118-4는 검토 요청 안 함. 앱 설정의 '토스에서 쓰기'는 숨김. 코드(apps/toss, /api/t, 화면 loader+View 구조)는 그대로 둔다.
 
 - 콘솔: watalabs 워크스페이스(107523, 사업자 미등록 = 개인, 맹고와 같은 곳). 앱 이름 기억해유, `intoss://remember-you`(바꿀 수 없음), 비게임. 만들 때 AI 정책 확인 통과.
 - 앱: `apps/toss`(Vite 정적 번들, SDK `@apps-in-toss/web-framework` 3.9.0). **앱(웹)과 같은 화면 코드를 그대로 그린다**(2026-11-18부터, 사용자 요청 "디자인과 기능은 기존 앱이랑 똑같이"):

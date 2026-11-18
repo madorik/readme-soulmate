@@ -4,7 +4,6 @@ import { TabBar } from "@/components/chrome";
 import { DeleteAccount } from "@/components/DeleteAccount";
 import { LanguageSetting } from "@/components/LanguageSetting";
 import { TossLegalRows, TossReminderSwitch } from "@/components/shell/TossSettings";
-import { TossLinkCode } from "@/components/TossLinkCode";
 import type { PrivacyData } from "@/lib/pages/types";
 import { SHELL } from "@/lib/shell";
 import { makeT } from "@/lib/t";
@@ -62,13 +61,8 @@ export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLoc
 
       {/* 계정 삭제는 설정 맨 아래(로그아웃은 홈 오른쪽 위 내 얼굴 메뉴) */}
       <h2 className="section-title px-6 pt-8">{t("profile.account")}</h2>
-      {/* 쓰던 계정을 토스 미니앱에서도(코드로 잇는다). 토스 안·데모 계정에는 없다 */}
-      {SHELL === "web" && !isAnonymous ? (
-        <div className="mx-6 mt-2">
-          <TossLinkCode locale={locale} />
-        </div>
-      ) : null}
-      <div className={`mx-6 border-y border-rule py-1.5 ${SHELL === "web" && !isAnonymous ? "" : "mt-2"}`}>
+      {/* 토스 미니앱 출시를 멈춰서(2026-11-18) '토스에서 쓰기'(TossLinkCode)는 숨겨 둔다. 다시 하면 이 자리에 넣는다 */}
+      <div className="mx-6 mt-2 border-y border-rule py-1.5">
         <DeleteAccount locale={locale} />
       </div>
 
