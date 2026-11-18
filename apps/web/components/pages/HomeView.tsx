@@ -301,7 +301,7 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
                 <span className="w-full truncate text-center text-[12.5px] font-medium">{displayName(p)}</span>
               </Link>
             ))}
-            <Link href="/request" className="flex w-[60px] shrink-0 flex-col items-center gap-1.5 text-accent">
+            <Link href="/request" data-tour="ask" className="flex w-[60px] shrink-0 flex-col items-center gap-1.5 text-accent">
               <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-2 border-dashed border-mango-edge">
                 <Icon name="plus" size={22} strokeWidth={2.2} />
               </span>
@@ -315,7 +315,7 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
               <Link href="/people/new" className="btn-outline">
                 {t("people.add")}
               </Link>
-              <Link href="/request" className="btn-primary">
+              <Link href="/request" data-tour="ask" className="btn-primary">
                 {t("home.ask")}
               </Link>
             </div>

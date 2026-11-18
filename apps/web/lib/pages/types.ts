@@ -45,11 +45,6 @@ export interface OnboardingFoodData {
   next: string;
 }
 
-export interface OnboardingIntroData {
-  locale: Locale;
-  next: string;
-}
-
 export interface OnboardingBirthdayData {
   locale: Locale;
   birthday: DateSpec | null;

@@ -1,10 +1,9 @@
 import { StepHeader } from "@/app/onboarding/StepHeader";
 import { AvatarStep, BirthdayStep, FoodStep } from "@/app/onboarding/Steps";
-import { IntroTour } from "@/app/onboarding/IntroTour";
-import type { OnboardingAvatarData, OnboardingBirthdayData, OnboardingFoodData, OnboardingIntroData } from "@/lib/pages/types";
+import type { OnboardingAvatarData, OnboardingBirthdayData, OnboardingFoodData } from "@/lib/pages/types";
 import { makeT } from "@/lib/t";
 
-// 처음 화면 세 단계(얼굴 → 음식 → 생일)와 그 뒤 소개 네 장
+// 처음 화면 세 단계(얼굴 → 음식 → 생일). 끝나면 홈에서 실제 화면을 짚어 주는 안내(GuidedTour)가 이어진다
 
 const nextQuery = (next: string) => (next !== "/home" ? `?next=${encodeURIComponent(next)}` : "");
 
@@ -38,8 +37,4 @@ export function OnboardingBirthdayView({ locale, birthday, offsets, next }: Onbo
       <BirthdayStep locale={locale} birthday={birthday} offsets={offsets} next={next} />
     </>
   );
-}
-
-export function OnboardingIntroView({ locale, next }: OnboardingIntroData) {
-  return <IntroTour locale={locale} next={next} />;
 }

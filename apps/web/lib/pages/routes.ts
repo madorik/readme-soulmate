@@ -28,7 +28,6 @@ export const ROUTES = [
   "/onboarding/avatar",
   "/onboarding/food",
   "/onboarding/birthday",
-  "/onboarding/intro",
 ] as const;
 
 export type RoutePattern = (typeof ROUTES)[number];

@@ -6,7 +6,7 @@ import { MeAvatarView } from "@/components/pages/MeAvatarView";
 import { MeEditSectionView } from "@/components/pages/MeEditSectionView";
 import { MeEditView } from "@/components/pages/MeEditView";
 import { MeView } from "@/components/pages/MeView";
-import { OnboardingAvatarView, OnboardingBirthdayView, OnboardingFoodView, OnboardingIntroView } from "@/components/pages/OnboardingViews";
+import { OnboardingAvatarView, OnboardingBirthdayView, OnboardingFoodView } from "@/components/pages/OnboardingViews";
 import { PeopleView } from "@/components/pages/PeopleView";
 import { PersonEditSectionView } from "@/components/pages/PersonEditSectionView";
 import { PersonEditView } from "@/components/pages/PersonEditView";
@@ -46,8 +46,7 @@ export const VIEWS: Partial<Record<RoutePattern, ComponentType<any>>> = {
   "/onboarding/avatar": OnboardingAvatarView,
   "/onboarding/food": OnboardingFoodView,
   "/onboarding/birthday": OnboardingBirthdayView,
-  "/onboarding/intro": OnboardingIntroView,
 };
 
 /** 온보딩 화면은 앱처럼 위쪽까지 하늘색 틀로 */
-export const ONBOARDING = new Set<RoutePattern>(["/onboarding/avatar", "/onboarding/food", "/onboarding/birthday", "/onboarding/intro"]);
+export const ONBOARDING = new Set<RoutePattern>(["/onboarding/avatar", "/onboarding/food", "/onboarding/birthday"]);

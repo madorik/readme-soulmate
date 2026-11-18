@@ -55,7 +55,7 @@ export async function saveFood(form: FormData): Promise<void> {
   redirect(withNext("/onboarding/birthday", safeNext(String(form.get("next") ?? ""))));
 }
 
-/** 온보딩 3단계: 생일 + 알림 시점, 그리고 온보딩 끝(그 뒤 소개 네 장으로). '나중에'면 생일은 건드리지 않는다 */
+/** 온보딩 3단계: 생일 + 알림 시점, 그리고 온보딩 끝(그 뒤 홈에서 실제 화면을 짚어 주는 안내로). '나중에'면 생일은 건드리지 않는다 */
 export async function finishOnboarding(form: FormData): Promise<void> {
   const s = await requireSession({ onboarding: true });
   const later = form.get("later") === "1";
@@ -66,7 +66,9 @@ export async function finishOnboarding(form: FormData): Promise<void> {
     await q("update profiles set reminder_offsets = $2, onboarded_at = coalesce(onboarded_at, now()) where id = $1", [s.user.id, sanitizeOffsets(json(form.get("offsets")))]);
   });
   track("onboarding_done", { userId: s.user.id });
-  redirect(withNext("/onboarding/intro", safeNext(String(form.get("next") ?? ""))));
+  const next = safeNext(String(form.get("next") ?? ""));
+  // 홈으로 가는 가입이면 안내(?tour=1)를 붙인다. 초대 링크 등 다른 곳으로 가던 중이면 그곳으로 먼저 보낸다
+  redirect(next === "/home" ? "/home?tour=1" : next);
 }
 
 export interface SaveState {

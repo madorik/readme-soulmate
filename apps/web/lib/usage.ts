@@ -80,7 +80,6 @@ export const PAGE_LABEL: Record<string, string> = {
   "/onboarding/avatar": "온보딩 1 · 얼굴",
   "/onboarding/food": "온보딩 2 · 음식",
   "/onboarding/birthday": "온보딩 3 · 생일",
-  "/onboarding/intro": "온보딩 소개",
   "/r/:token": "물어보기에 답하기",
   "/g/:token": "가족 카드",
   "/gifts": "선물 가이드",
