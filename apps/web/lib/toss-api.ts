@@ -34,6 +34,24 @@ export interface TPersonDetail {
   person: TPerson & { card: PartialCard };
   locale: Locale;
   today: YMD;
+  /** 물어볼 때 상대에게 보일 내 이름(아직 안 정했으면 "") */
+  me: string;
+}
+
+/** 물어보기 링크를 만들었을 때: 토큰(토스 공유 링크에 넣는다)과 같이 보낼 말 */
+export interface TAskCreated {
+  token: string;
+  text: string;
+}
+
+/** 물어보기 링크를 연 사람에게 보일 것(로그인 없이) */
+export interface TAskOpen {
+  state: "active" | "expired" | "used" | "canceled" | "not_found";
+  from: string;
+  message: string;
+  /** 미리 채운 항목 먼저 */
+  sections: Section[];
+  prefill: PartialCard;
 }
 
 export interface TGiftItem {
@@ -59,4 +77,9 @@ export interface TSession {
 /** 토스판에서 여는 사람 화면 주소 */
 export function tossPersonPath(contactId: string): string {
   return `/p/${contactId}`;
+}
+
+/** 물어보기 답하는 화면 딥링크(토스 공유 링크로 감싸서 보낸다) */
+export function tossAskPath(app: string, token: string): string {
+  return `intoss://${app}/r?ask=${encodeURIComponent(token)}`;
 }

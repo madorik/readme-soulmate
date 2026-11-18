@@ -1,15 +1,17 @@
-import { isEmptySection, isSection, SECTIONS, type Section } from "@readme/core";
+import { isEmptySection, isSection, sanitizeSections, SECTIONS, translate, type Section } from "@readme/core";
 import { NextResponse, type NextRequest } from "next/server";
 import { captureNote, undoCapture, type UndoOp } from "@/app/actions/capture";
 import { aiConfigured } from "@/lib/ai";
 import { reserveAi } from "@/lib/ai-quota";
+import { answerAsk, createAsk, readAsk } from "@/lib/ask";
 import { displayName, getSession, listNotes, listPeople, todayFor, writeContactSection, type Person, type Session } from "@/lib/data";
 import { eventName, eventsFor } from "@/lib/events";
 import { isGenericBasis } from "@/lib/gift-core";
 import { giftContext, giftLinkPicks, giftNotes, giftPicks, giftPicksConfigured } from "@/lib/gifts";
 import { makeT } from "@/lib/i18n";
 import { corsHeaders, exchangeAnonCode, tossDevLogin, tossLoginConfigured, tossSignIn } from "@/lib/toss";
-import type { TGifts, THome, TPerson, TPersonDetail } from "@/lib/toss-api";
+import { notifyUserT } from "@/lib/push";
+import type { TAskCreated, TAskOpen, TGifts, THome, TPerson, TPersonDetail } from "@/lib/toss-api";
 import { track } from "@/lib/track";
 
 // 토스 미니앱(apps/toss)이 부르는 API. 미니앱은 토스 도메인에서 열리므로 CORS로 그 주소만 받고, 로그인은 Bearer 토큰(lib/toss).
@@ -81,6 +83,7 @@ async function person(req: NextRequest, s: Session, id: string): Promise<NextRes
     person: { ...toPerson(p), card: p.card },
     locale: s.profile.locale,
     today: todayFor(s.profile),
+    me: s.profile.displayName ?? "",
     notes,
   };
   return reply(req, out);
@@ -170,6 +173,67 @@ async function undo(req: NextRequest): Promise<NextResponse> {
   return reply(req, await undoCapture((Array.isArray(b.ops) ? b.ops : []) as UndoOp[]));
 }
 
+// ── 물어보기 ───────────────────────────────────
+
+const ASK_NAME = /^[^<>{}]{1,20}$/;
+
+/** 물어보기 링크 만들기(내 주소록 사람에게). 처음이면 상대에게 보일 내 이름(from)을 같이 받아 프로필에 둔다 */
+async function ask(req: NextRequest, s: Session, id: string): Promise<NextResponse> {
+  if (!UUID.test(id)) return reply(req, { error: "not_found" }, 404);
+  const b = await body(req);
+  const sections = sanitizeSections(b.sections);
+  if (!sections.length) return reply(req, { error: "pickOne" }, 400);
+  const message = String(b.message ?? "").trim().slice(0, 300);
+  let from = s.profile.displayName ?? "";
+  const asked = String(b.from ?? "").replace(/\s+/g, " ").trim();
+  if (asked && asked !== from) {
+    if (!ASK_NAME.test(asked)) return reply(req, { error: "from" }, 400);
+    await s.tx((q) => q("update profiles set display_name = $2 where id = $1", [s.user.id, asked]));
+    from = asked;
+  }
+  if (!from) return reply(req, { error: "from" }, 400);
+  try {
+    const { token } = await createAsk(s, { to: id, sections, message });
+    track("ask_create", { userId: s.user.id, source: "toss" });
+    const out: TAskCreated = { token, text: translate(s.profile.locale, "request.text", { from }) };
+    return reply(req, out);
+  } catch {
+    return reply(req, { error: "common" }, 500);
+  }
+}
+
+/** 물어보기 링크 열기(로그인 없이). 토큰이 맞는 한 줄만 */
+async function askOpen(req: NextRequest, token: string): Promise<NextResponse> {
+  const { row, prefill } = await readAsk(token);
+  const out: TAskOpen = {
+    state: row.state,
+    from: row.inviter_name?.trim() || translate("ko", "app.name"),
+    message: row.message ?? "",
+    sections: row.state === "active" ? sanitizeSections(row.sections).sort((a, b) => Number(!prefill[a]) - Number(!prefill[b])) : [],
+    prefill,
+  };
+  return reply(req, out);
+}
+
+/** 답하기(로그인 없이). 토스에서 로그인돼 있어도 물어본 사람 주소록에 잇지 않는다(토스 계정은 이름·얼굴이 없다). 내 링크에는 못 답한다 */
+async function askAnswer(req: NextRequest, token: string): Promise<NextResponse> {
+  const b = await body(req);
+  const s = await getSession();
+  if (s) {
+    const { row } = await readAsk(token);
+    if (row.inviter_id === s.user.id) return reply(req, { sent: false, error: "self" }, 400);
+  }
+  const r = await answerAsk(token, b.data, b.consent === true, null);
+  if (!r.ok) return reply(req, { sent: false, error: r.error }, r.error === "common" ? 500 : 400);
+  await notifyUserT(r.inviter, (locale) => ({
+    title: r.name ? translate(locale, "notif.answered", { name: r.name }) : translate(locale, "notif.answeredAnon"),
+    body: translate(locale, "notif.open"),
+    path: `/people/${r.contactId}`,
+  }));
+  track("ask_answer", { userId: s?.user.id ?? null, source: "toss" });
+  return reply(req, { sent: true, error: null });
+}
+
 /** 녹음 → 글(받아쓰기). 토스 웹뷰에는 기기 받아쓰기가 없어서 녹음 파일을 받아 OpenAI로 글로 바꾼다 */
 async function transcribe(req: NextRequest, s: Session): Promise<NextResponse> {
   const key = process.env.OPENAI_API_KEY;
@@ -213,6 +277,9 @@ async function route(req: NextRequest, ctx: Ctx): Promise<NextResponse> {
   const m = req.method;
   const at = (...p: string[]) => path.length === p.length && p.every((x, i) => x === "*" || x === path[i]);
   if (m === "POST" && at("session")) return signIn(req);
+  // 물어보기 답하기는 로그인 없이(받은 사람은 아직 계정이 없을 수 있다)
+  if (m === "GET" && at("r", "*")) return askOpen(req, path[1]);
+  if (m === "POST" && at("r", "*")) return askAnswer(req, path[1]);
   const s = await getSession();
   if (!s) return reply(req, { error: "login" }, 401);
   if (m === "GET" && at("home")) return home(req, s);
@@ -222,6 +289,7 @@ async function route(req: NextRequest, ctx: Ctx): Promise<NextResponse> {
   if (m === "DELETE" && at("people", "*")) return removePerson(req, s, path[1]);
   if (m === "PUT" && at("people", "*", "sections", "*")) return saveSection(req, s, path[1], path[3]);
   if (m === "GET" && at("people", "*", "gifts")) return gifts(req, s, path[1]);
+  if (m === "POST" && at("people", "*", "ask")) return ask(req, s, path[1]);
   if (m === "POST" && at("capture")) return capture(req);
   if (m === "POST" && at("capture", "undo")) return undo(req);
   if (m === "POST" && at("transcribe")) return transcribe(req, s);

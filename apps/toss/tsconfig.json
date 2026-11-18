@@ -14,6 +14,7 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
+      "@/components/native": ["./src/shims/native.ts"],
       "@/*": ["../web/*"],
       "next/link": ["./src/shims/link.tsx"]
     }

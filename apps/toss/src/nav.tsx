@@ -1,9 +1,10 @@
 import type { Section } from "@readme/core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { closeApp, onBack } from "./bridge";
+import { closeApp, onBack, openedParam } from "./bridge";
 
 // 화면 이동: 주소(히스토리)를 바꾸지 않고 앱 안에서 화면을 쌓는다(토스 정책상 히스토리 조작을 피한다).
-// 토스 네비게이션 바 뒤로가기·안드로이드 백버튼이 맨 위 화면을 내리고, 맨 처음 화면이면 미니앱을 닫는다
+// 토스 네비게이션 바 뒤로가기·안드로이드 백버튼이 맨 위 화면을 내리고, 맨 처음 화면이면 미니앱을 닫는다.
+// 물어보기 공유 링크(?ask=)로 열리면 답하기 화면 하나로 시작한다
 
 export type Tab = "home" | "people" | "settings";
 
@@ -15,7 +16,10 @@ export type Route =
   | { name: "edit"; id: string; section: Section }
   | { name: "newPerson" }
   | { name: "voice"; about?: string }
-  | { name: "gifts"; id: string };
+  | { name: "gifts"; id: string }
+  | { name: "legal"; doc: "privacy" | "terms" }
+  | { name: "ask"; id: string }
+  | { name: "answer"; token: string };
 
 interface Nav {
   route: Route;
@@ -27,6 +31,8 @@ interface Nav {
   back: () => void;
   /** 탭으로 바꾸며 쌓인 화면을 비운다 */
   go: (tab: Tab) => void;
+  /** 쌓인 화면을 통째로 바꾼다 */
+  reset: (stack: Route[]) => void;
   /** 저장 뒤 다른 화면이 새로 읽게 하는 숫자 */
   version: number;
   bump: () => void;
@@ -41,7 +47,10 @@ export function useNav(): Nav {
 }
 
 export function NavProvider({ children }: { children: React.ReactNode }) {
-  const [stack, setStack] = useState<Route[]>([{ name: "home" }]);
+  const [stack, setStack] = useState<Route[]>(() => {
+    const ask = openedParam("ask");
+    return ask && /^[\w-]{8,128}$/.test(ask) ? [{ name: "answer", token: ask }] : [{ name: "home" }];
+  });
   const [version, setVersion] = useState(0);
   const stackRef = useRef(stack);
   stackRef.current = stack;
@@ -49,7 +58,7 @@ export function NavProvider({ children }: { children: React.ReactNode }) {
   const back = useCallback(() => {
     const s = stackRef.current;
     if (s.length > 1) setStack(s.slice(0, -1));
-    else if (s[0].name !== "home") setStack([{ name: "home" }]);
+    else if (s[0].name !== "home" && s[0].name !== "answer") setStack([{ name: "home" }]);
     else void closeApp();
   }, []);
 
@@ -76,6 +85,7 @@ export function NavProvider({ children }: { children: React.ReactNode }) {
       replace: (r) => setStack((s) => [...s.slice(0, -1), r]),
       back,
       go: (tab) => setStack([{ name: tab }]),
+      reset: (next) => setStack(next.length ? next : [{ name: "home" }]),
       version,
       bump: () => setVersion((v) => v + 1),
     };

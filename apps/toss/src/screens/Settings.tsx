@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { Icon } from "@/components/marks";
-import { api, API_BASE, forgetToken } from "../api";
-import { openExternal } from "../bridge";
+import { api, forgetToken } from "../api";
 import { useNav } from "../nav";
 import { Page, TabBar } from "../ui";
 
-// 설정: 약관·처리방침(기기 브라우저로), 문의 메일, 기록 모두 지우기
+// 설정: 약관·처리방침(토스 화면 안에서), 문의 메일, 기록 모두 지우기
 
 const SUPPORT_EMAIL = "watalabs.help@gmail.com";
 
 export function Settings() {
-  const { go, bump } = useNav();
+  const { go, push, bump } = useNav();
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -32,10 +31,10 @@ export function Settings() {
     setBusy(false);
   };
 
-  const row = (label: string, onClick: () => void, icon: "external" | "chevron" = "external") => (
+  const row = (label: string, onClick: () => void) => (
     <button type="button" onClick={onClick} className="flex min-h-[56px] w-full items-center justify-between border-t border-rule text-left text-[15px] font-medium first:border-t-0">
       {label}
-      <Icon name={icon} size={17} className="text-muted" />
+      <Icon name="chevron" size={17} className="text-muted" />
     </button>
   );
 
@@ -43,8 +42,8 @@ export function Settings() {
     <Page tabs>
       <h1 className="headline px-5 pb-3 pt-1 text-[24px]">설정</h1>
       <section className="card mx-4 flex flex-col px-5">
-        {row("개인정보 처리방침", () => void openExternal(`${API_BASE}/privacy-policy?lang=ko`))}
-        {row("이용약관", () => void openExternal(`${API_BASE}/terms?lang=ko`))}
+        {row("개인정보 처리방침", () => push({ name: "legal", doc: "privacy" }))}
+        {row("이용약관", () => push({ name: "legal", doc: "terms" }))}
         <div className="flex min-h-[56px] items-center justify-between gap-3 border-t border-rule">
           <span className="text-[15px] font-medium">문의</span>
           <span className="select-all text-[14px] text-ink-2">{SUPPORT_EMAIL}</span>

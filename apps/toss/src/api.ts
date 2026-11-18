@@ -58,6 +58,18 @@ export async function forgetToken(): Promise<void> {
   await saveValue(TOKEN_KEY, null);
 }
 
+/** 로그인 없이도 되는 부르기(물어보기 답하기). 이미 로그인돼 있으면 토큰을 같이 보내지만 새로 로그인하지는 않는다 */
+export async function publicApi<T>(path: string, json?: unknown): Promise<T> {
+  const tok = token ?? (await loadValue(TOKEN_KEY));
+  const headers: Record<string, string> = {};
+  if (tok) headers.authorization = `Bearer ${tok}`;
+  if (json !== undefined) headers["content-type"] = "application/json";
+  const res = await fetch(`${API_BASE}/api/t/${path}`, { method: json !== undefined ? "POST" : "GET", headers, body: json !== undefined ? JSON.stringify(json) : undefined });
+  const data = (await res.json().catch(() => ({}))) as T & { error?: string };
+  if (!res.ok && !data.error) throw new ApiError(res.status, "failed");
+  return data;
+}
+
 export async function api<T>(path: string, init: { method?: string; json?: unknown; body?: BodyInit; type?: string } = {}): Promise<T> {
   for (let attempt = 0; attempt < 2; attempt++) {
     const tok = await currentToken();

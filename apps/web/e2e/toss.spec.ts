@@ -48,3 +48,39 @@ test("토스 API: 로그인, 사람·생일 저장, 홈, 기록 지우기", asyn
   expect((await request.delete("/api/t/account", { headers })).ok()).toBeTruthy();
   expect((await request.get("/api/t/home", { headers })).status()).toBe(401);
 });
+
+test("토스 API: 물어보기 만들고, 로그인 없이 답하면 그 사람 기록에 들어간다", async ({ request }) => {
+  const login = await request.post("/api/t/session", { headers: { origin: ORIGIN }, data: { dev: `e2e-ask-${Date.now().toString(36)}` } });
+  const { token } = (await login.json()) as { token: string };
+  const headers = { origin: ORIGIN, authorization: `Bearer ${token}` };
+  const { id } = (await (await request.post("/api/t/people", { headers, data: { name: "물어볼엄마" } })).json()) as { id: string };
+
+  // 처음엔 상대에게 보일 내 이름이 있어야 한다
+  expect((await request.post(`/api/t/people/${id}/ask`, { headers, data: { sections: ["dates", "taste"] } })).status()).toBe(400);
+  const made = await request.post(`/api/t/people/${id}/ask`, { headers, data: { sections: ["dates", "taste"], message: "알려줘", from: "민지" } });
+  expect(made.ok()).toBeTruthy();
+  const { token: ask, text } = (await made.json()) as { token: string; text: string };
+  expect(text).toContain("민지");
+  expect((await (await request.get(`/api/t/people/${id}`, { headers })).json()).me).toBe("민지");
+
+  // 받은 사람: 로그인 없이 연다
+  const open = (await (await request.get(`/api/t/r/${ask}`, { headers: { origin: ORIGIN } })).json()) as { state: string; from: string; sections: string[] };
+  expect(open).toMatchObject({ state: "active", from: "민지" });
+  expect(open.sections.sort()).toEqual(["dates", "taste"]);
+
+  // 내 링크에는 못 답한다
+  expect((await (await request.post(`/api/t/r/${ask}`, { headers, data: { data: { taste: { likes: ["딸기"] } } } })).json()).error).toBe("self");
+
+  const answer = await request.post(`/api/t/r/${ask}`, {
+    headers: { origin: ORIGIN },
+    data: { data: { dates: { birthday: { calendar: "solar", month: 3, day: 5 }, anniversaries: [] }, taste: { likes: ["딸기"] } }, consent: false },
+  });
+  expect((await answer.json()).sent).toBe(true);
+  expect((await (await request.get(`/api/t/r/${ask}`, { headers: { origin: ORIGIN } })).json()).state).toBe("used");
+
+  const card = ((await (await request.get(`/api/t/people/${id}`, { headers })).json()) as { person: { card: { dates?: { birthday?: { month: number } }; taste?: { likes: string[] } } } }).person.card;
+  expect(card.dates?.birthday?.month).toBe(3);
+  expect(card.taste?.likes).toContain("딸기");
+
+  expect((await request.delete("/api/t/account", { headers })).ok()).toBeTruthy();
+});

@@ -4,7 +4,8 @@ import { getSession, openPrefill, readCard } from "@/lib/data";
 import { makeT, requestLocale } from "@/lib/i18n";
 import { asSystem } from "@/lib/db";
 import { ogMetadata, previewLocale } from "@/lib/og";
-import { AnswerForm } from "./AnswerForm";
+import { submitAnswer } from "@/app/actions/request";
+import { AnswerForm } from "@/components/AnswerForm";
 
 type Row = {
   state: "active" | "expired" | "used" | "canceled" | "not_found";
@@ -59,6 +60,7 @@ export default async function AnswerPage({ params }: { params: Promise<{ token: 
           prefill={prefill}
           mine={mine}
           signedIn={!!session}
+          submit={submitAnswer}
         />
       </main>
     );

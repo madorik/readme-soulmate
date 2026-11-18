@@ -13,7 +13,7 @@ import { BottomBar, Failed, Loading, Page } from "../ui";
 
 type Detail = TPersonDetail & { notes: { id: string; label: string; body: string; createdAt: string }[] };
 
-// 사람 한 명: 얼굴·이름, 말로 적기, 적어 둔 항목(눌러서 고치기), 아직 안 적은 항목, 메모, 선물 고르기
+// 사람 한 명: 얼굴·이름, 말로 적기, 적어 둔 항목(눌러서 고치기), 아직 안 적은 항목, 메모, 물어보기, 선물 고르기
 
 export function Person({ id }: { id: string }) {
   const { data, error, reload } = useLoad<Detail>(`people/${id}`);
@@ -163,10 +163,16 @@ export function Person({ id }: { id: string }) {
 
       <div className="h-4" />
       <BottomBar>
-        <button type="button" onClick={() => push({ name: "gifts", id })} className="btn-primary w-full">
-          <Icon name="gift" size={20} strokeWidth={2} />
-          선물 고르기
-        </button>
+        <div className="grid grid-cols-2 gap-2.5">
+          <button type="button" onClick={() => push({ name: "ask", id })} className="btn-outline">
+            <Icon name="share" size={18} strokeWidth={2} />
+            물어보기
+          </button>
+          <button type="button" onClick={() => push({ name: "gifts", id })} className="btn-primary">
+            <Icon name="gift" size={20} strokeWidth={2} />
+            선물 고르기
+          </button>
+        </div>
       </BottomBar>
     </Page>
   );

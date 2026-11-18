@@ -1,7 +1,10 @@
 import { NavProvider, useNav } from "./nav";
+import { Answer } from "./screens/Answer";
+import { Ask } from "./screens/Ask";
 import { Edit } from "./screens/Edit";
 import { Gifts } from "./screens/Gifts";
 import { Home } from "./screens/Home";
+import { Legal } from "./screens/Legal";
 import { NewPerson } from "./screens/NewPerson";
 import { People } from "./screens/People";
 import { Person } from "./screens/Person";
@@ -27,6 +30,12 @@ function Screen() {
       return <Voice about={route.about} />;
     case "gifts":
       return <Gifts key={route.id} id={route.id} />;
+    case "ask":
+      return <Ask key={route.id} id={route.id} />;
+    case "answer":
+      return <Answer key={route.token} token={route.token} />;
+    case "legal":
+      return <Legal key={route.doc} doc={route.doc} />;
   }
 }
 

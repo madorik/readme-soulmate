@@ -3,7 +3,7 @@
 import { emptySection, type CardData, type GiftsData, type Locale, type PartialCard, type Section } from "@readme/core";
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { submitAnswer, type AnswerState } from "@/app/actions/request";
+import type { AnswerState } from "@/app/actions/request";
 import { useIsNative } from "@/components/native";
 import { DateSpecPicker } from "@/components/editors/DatesEditor";
 import { CultureEditor } from "@/components/editors/CultureEditor";
@@ -57,6 +57,8 @@ export function AnswerForm({
   prefill,
   mine,
   signedIn,
+  submit,
+  embedded,
 }: {
   locale: Locale;
   token: string;
@@ -68,6 +70,10 @@ export function AnswerForm({
   /** 로그인하고 답할 때 내 리드미 값(물어본 사람이 모르는 항목의 처음 값) */
   mine: PartialCard;
   signedIn: boolean;
+  /** 보내기: 웹·앱은 서버 액션(submitAnswer), 토스 미니앱은 API 부르기 */
+  submit: (prev: AnswerState, form: FormData) => Promise<AnswerState>;
+  /** 다른 틀(토스 미니앱) 안에서: 로그인 안내를 빼고, 보낸 뒤 화면은 done이 그린다 */
+  embedded?: { done: (sent: Section[]) => React.ReactNode };
 }) {
   const t = useT(locale);
   const [answers, setAnswers] = useState<PartialCard>(() => Object.fromEntries(sections.map((s) => [s, prefill[s] ?? mine[s] ?? emptySection(s)])) as PartialCard);
@@ -75,11 +81,12 @@ export function AnswerForm({
   const [consent, setConsent] = useState(false);
   const [saveMine, setSaveMine] = useState(true);
   const [step, setStep] = useState(0);
-  const [state, action, pending] = useActionState(submitAnswer, INITIAL);
+  const [state, action, pending] = useActionState(submit, INITIAL);
   const inApp = useIsNative();
 
   if (state.sent) {
     const sent = sections.filter((x) => modes[x] != null);
+    if (embedded) return embedded.done(sent);
     // 답한 뒤: 나도 그 사람에게 물어보기. 웹에서는 앱 받기(기기에 맞는 스토어, 아이폰은 아직 웹으로 이어서), 앱 안에서는 바로 물어보기(로그인 안 했으면 로그인부터)
     const askBack = `/request?name=${encodeURIComponent(from)}`;
     const here = signedIn ? askBack : `/?next=${encodeURIComponent(askBack)}`;
@@ -193,7 +200,7 @@ export function AnswerForm({
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <h1 className="headline text-[23px]">{t("answer.title", { from, n: sections.length })}</h1>
             {message ? <p className="rounded-2xl rounded-tl-md bg-white px-4 py-3 text-[15px] leading-[1.55] shadow-[0_0_0_1px_var(--color-rule)]">{message}</p> : null}
-            {signedIn ? null : (
+            {signedIn || embedded ? null : (
               // 앱을 쓰는 사람이 로그인 안 된 브라우저에서 열었으면: 로그인하고 답하면 내 리드미 값이 미리 채워지고, 물어본 사람 목록에 내 얼굴로 보인다
               <Link href={`/?next=${encodeURIComponent(`/r/${token}`)}`} className="flex min-h-10 items-center self-start text-[14px] font-bold text-accent">
                 {t("answer.signInFirst")}
