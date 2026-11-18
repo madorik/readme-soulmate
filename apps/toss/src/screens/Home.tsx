@@ -1,22 +1,37 @@
 import { formatDayFull } from "@readme/core";
+import { useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/marks";
 import type { TEvent, THome } from "@/lib/toss-api";
+import { api } from "../api";
+import { askNotificationAgreement } from "../bridge";
 import { useLoad } from "../load";
 import { useNav } from "../nav";
 import { Failed, Loading, Page, TabBar } from "../ui";
 
-// 홈: 가장 가까운 챙길 날을 크게, 그 뒤 60일 안의 날들. 사람이 없으면 사람 더하기·말로 적기
+// 홈: 가장 가까운 챙길 날을 크게, 그 뒤 60일 안의 날들. 사람이 없으면 사람 더하기·말로 적기.
+// 챙길 날이 있고 토스 알림을 아직 안 켰으면 '생일 알림 받기'(누르면 토스 알림 동의)
 
 export function Home() {
   const { data, error, reload } = useLoad<THome>("home");
-  const { push } = useNav();
+  const { push, bump } = useNav();
+  const [asking, setAsking] = useState(false);
   if (error) return <Shell><Failed onRetry={reload} /></Shell>;
   if (!data) return <Shell><Loading /></Shell>;
   const face = (id: string) => data.people.find((p) => p.id === id);
   const [next, ...rest] = data.events;
   const sameDay = next ? data.events.filter((e) => e.daysUntil === next.daysUntil) : [];
   const later = rest.filter((e) => e.daysUntil !== next?.daysUntil);
+  const reminder = data.reminder;
+  const turnOn = async () => {
+    if (!reminder || asking) return;
+    setAsking(true);
+    if (await askNotificationAgreement(reminder.template)) {
+      await api("reminder", { json: { on: true } }).catch(() => null);
+      bump();
+    }
+    setAsking(false);
+  };
 
   return (
     <Shell>
@@ -63,6 +78,16 @@ export function Home() {
           </div>
         )}
       </section>
+
+      {reminder && !reminder.on && data.events.length ? (
+        <button type="button" onClick={() => void turnOn()} disabled={asking} className="card mx-4 mt-3 flex min-h-[60px] items-center gap-3 px-5 text-left">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-soft text-accent">
+            <Icon name="bell" size={18} strokeWidth={2} />
+          </span>
+          <span className="min-w-0 flex-1 text-[15px] font-bold">생일 알림 받기</span>
+          <Icon name="chevron" size={18} strokeWidth={1.6} className="text-muted" />
+        </button>
+      ) : null}
 
       {later.length ? (
         <section aria-label="그다음 챙길 날" className="card mx-4 mt-3 flex flex-col px-5 py-1.5">

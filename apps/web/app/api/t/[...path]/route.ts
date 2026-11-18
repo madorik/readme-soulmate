@@ -9,7 +9,7 @@ import { eventName, eventsFor } from "@/lib/events";
 import { isGenericBasis } from "@/lib/gift-core";
 import { giftContext, giftLinkPicks, giftNotes, giftPicks, giftPicksConfigured } from "@/lib/gifts";
 import { makeT } from "@/lib/i18n";
-import { corsHeaders, exchangeAnonCode, tossDevLogin, tossLoginConfigured, tossSignIn } from "@/lib/toss";
+import { corsHeaders, exchangeAnonCode, tossDevLogin, tossLoginConfigured, tossReminderTemplate, tossSignIn } from "@/lib/toss";
 import { notifyUserT } from "@/lib/push";
 import type { TAskCreated, TAskOpen, TGifts, THome, TPerson, TPersonDetail } from "@/lib/toss-api";
 import { track } from "@/lib/track";
@@ -71,7 +71,8 @@ async function home(req: NextRequest, s: Session): Promise<NextResponse> {
   const people = await listPeople(s);
   const today = todayFor(s.profile);
   const events = eventsFor(people, today, 60).map((e) => ({ contactId: e.contactId, title: eventName(e, t, s.profile.locale), date: e.date, daysUntil: e.daysUntil, kind: e.kind }));
-  const out: THome = { today, events, people: people.map(toPerson), ai: aiConfigured() };
+  const template = tossReminderTemplate();
+  const out: THome = { today, events, people: people.map(toPerson), ai: aiConfigured(), reminder: template ? { template, on: s.profile.tossReminders } : null };
   return reply(req, out);
 }
 
@@ -263,6 +264,14 @@ async function transcribe(req: NextRequest, s: Session): Promise<NextResponse> {
   }
 }
 
+/** 생일·기념일 토스 알림 켜기·끄기. 켜기는 미니앱이 토스 알림 동의를 받은 뒤에만 부른다 */
+async function reminder(req: NextRequest, s: Session): Promise<NextResponse> {
+  const b = await body(req);
+  if (typeof b.on !== "boolean") return reply(req, { error: "bad" }, 400);
+  await s.tx((q) => q("update profiles set toss_reminders = $2 where id = $1", [s.user.id, b.on]));
+  return reply(req, { on: b.on });
+}
+
 /** 계정과 기록 모두 지우기 */
 async function deleteAccount(req: NextRequest, s: Session): Promise<NextResponse> {
   await s.tx((q) => q("select delete_my_account()"));
@@ -293,6 +302,7 @@ async function route(req: NextRequest, ctx: Ctx): Promise<NextResponse> {
   if (m === "POST" && at("capture")) return capture(req);
   if (m === "POST" && at("capture", "undo")) return undo(req);
   if (m === "POST" && at("transcribe")) return transcribe(req, s);
+  if (m === "POST" && at("reminder")) return reminder(req, s);
   if (m === "DELETE" && at("account")) return deleteAccount(req, s);
   return reply(req, { error: "not_found" }, 404);
 }

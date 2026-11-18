@@ -1,4 +1,4 @@
-import { closeView, Environment, getOperationalEnvironment, getSchemeUri, graniteEvent, openURL, requestPermission, SafeArea, Share, Storage, User } from "@apps-in-toss/web-framework";
+import { closeView, Environment, getOperationalEnvironment, getSchemeUri, graniteEvent, Notification, openURL, requestPermission, SafeArea, Share, Storage, User } from "@apps-in-toss/web-framework";
 
 // 토스 앱 기능(브릿지). 브라우저에서 열면(개발) 브릿지가 없어 실패하므로 브라우저 기능으로 대신한다
 
@@ -164,4 +164,29 @@ export async function shareDeepLink(path: string, text: string): Promise<"shared
   } catch {
     return "failed";
   }
+}
+
+/**
+ * 토스 알림 동의(콘솔 기능성 캠페인 템플릿). 사용자가 눌렀을 때만 부른다(들어오자마자 띄우지 않는다).
+ * 동의했거나 이미 동의돼 있으면 true. 토스 밖(개발)에서는 그냥 true
+ */
+export function askNotificationAgreement(templateCode: string): Promise<boolean> {
+  if (!inToss()) return Promise.resolve(import.meta.env.DEV);
+  return new Promise((resolve) => {
+    let cleanup: (() => void) | null = null;
+    const done = (ok: boolean) => {
+      cleanup?.();
+      resolve(ok);
+    };
+    try {
+      if (!Notification.requestAgreement.isSupported()) return resolve(false);
+      cleanup = Notification.requestAgreement({
+        options: { templateCode },
+        onEvent: ({ type }) => done(type === "newAgreement" || type === "alreadyAgreed"),
+        onError: () => done(false),
+      });
+    } catch {
+      resolve(false);
+    }
+  });
 }

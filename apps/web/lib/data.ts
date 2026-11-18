@@ -42,6 +42,8 @@ export interface Profile {
   appLock: boolean;
   /** 설정 > 알림 받기 */
   pushEnabled: boolean;
+  /** 토스 미니앱: 토스 알림에 동의해 생일·기념일 알림을 토스로 받는다 */
+  tossReminders: boolean;
   isDemo: boolean;
   onboardedAt: string | null;
 }
@@ -64,6 +66,7 @@ function toProfile(row: Row, detected: Locale): Profile {
     reminderOffsets: Array.isArray(row.reminder_offsets) ? sanitizeOffsets(row.reminder_offsets) : DEFAULT_OFFSETS,
     appLock: row.app_lock === true,
     pushEnabled: row.push_enabled !== false,
+    tossReminders: row.toss_reminders === true,
     isDemo: row.is_demo === true,
     onboardedAt: iso(row.onboarded_at),
   };

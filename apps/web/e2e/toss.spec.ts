@@ -44,6 +44,10 @@ test("토스 API: 로그인, 사람·생일 저장, 홈, 기록 지우기", asyn
   const home2 = (await (await request.get("/api/t/home", { headers: { origin: ORIGIN, authorization: `Bearer ${again.token}` } })).json()) as { people: { name: string }[] };
   expect(home2.people.map((p) => p.name)).toContain("토스엄마");
 
+  // 토스 알림 켜기·끄기(미니앱이 토스 알림 동의를 받은 뒤에 부른다)
+  expect(await (await request.post("/api/t/reminder", { headers, data: { on: true } })).json()).toEqual({ on: true });
+  expect((await request.post("/api/t/reminder", { headers, data: { on: "yes" } })).status()).toBe(400);
+
   // 기록 모두 지우기 → 이 토큰은 더 못 쓴다
   expect((await request.delete("/api/t/account", { headers })).ok()).toBeTruthy();
   expect((await request.get("/api/t/home", { headers })).status()).toBe(401);

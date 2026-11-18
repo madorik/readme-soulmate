@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { Icon } from "@/components/marks";
+import type { THome } from "@/lib/toss-api";
 import { api, forgetToken } from "../api";
+import { askNotificationAgreement } from "../bridge";
+import { useLoad } from "../load";
 import { useNav } from "../nav";
 import { Page, TabBar } from "../ui";
 
-// 설정: 약관·처리방침(토스 화면 안에서), 문의 메일, 기록 모두 지우기
+// 설정: 생일 알림(토스 알림 동의), 약관·처리방침(토스 화면 안에서), 문의 메일, 기록 모두 지우기
 
 const SUPPORT_EMAIL = "watalabs.help@gmail.com";
 
@@ -14,6 +17,20 @@ export function Settings() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [failed, setFailed] = useState(false);
+  const { data } = useLoad<THome>("home");
+  const reminder = data?.reminder ?? null;
+  const [switching, setSwitching] = useState(false);
+
+  const toggleReminder = async () => {
+    if (!reminder || switching) return;
+    setSwitching(true);
+    const on = !reminder.on;
+    if (!on || (await askNotificationAgreement(reminder.template))) {
+      await api("reminder", { json: { on } }).catch(() => null);
+      bump();
+    }
+    setSwitching(false);
+  };
 
   const wipe = async () => {
     if (busy) return;
@@ -41,6 +58,16 @@ export function Settings() {
   return (
     <Page tabs>
       <h1 className="headline px-5 pb-3 pt-1 text-[24px]">설정</h1>
+      {reminder ? (
+        <section className="card mx-4 mb-3 flex flex-col px-5">
+          <button type="button" role="switch" aria-checked={reminder.on} onClick={() => void toggleReminder()} disabled={switching} className="flex min-h-[56px] w-full items-center justify-between text-left text-[15px] font-medium">
+            생일·기념일 알림
+            <span aria-hidden="true" className={`relative h-[30px] w-[50px] rounded-full transition-colors ${reminder.on ? "bg-sky" : "bg-rule"}`}>
+              <span className={`absolute top-[3px] h-6 w-6 rounded-full bg-white shadow transition-[left] ${reminder.on ? "left-[23px]" : "left-[3px]"}`} />
+            </span>
+          </button>
+        </section>
+      ) : null}
       <section className="card mx-4 flex flex-col px-5">
         {row("개인정보 처리방침", () => push({ name: "legal", doc: "privacy" }))}
         {row("이용약관", () => push({ name: "legal", doc: "terms" }))}

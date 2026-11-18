@@ -56,21 +56,23 @@ export function tossDevLogin(): boolean {
   return process.env.NODE_ENV !== "production" || process.env.TOSS_DEV_LOGIN === "1";
 }
 
-/** 일회용 코드 → 사용자 식별키. 코드가 틀리거나 만료됐으면 null */
-export async function exchangeAnonCode(code: string): Promise<string | null> {
+type TossReply = { resultType?: string; success?: Record<string, unknown> | null; error?: { errorCode?: string; reason?: string } };
+
+/** 앱인토스 서버 API를 mTLS 인증서로 부른다. 인증서가 없으면 null(업무 오류도 HTTP 200에 resultType FAIL로 온다) */
+async function tossPost(path: string, payload: unknown, headers: Record<string, string> = {}): Promise<TossReply | null> {
   const cert = pem(process.env.TOSS_MTLS_CERT);
   const key = pem(process.env.TOSS_MTLS_KEY);
-  if (!cert || !key || !code || code.length > 512) return null;
-  const body = JSON.stringify({ code });
+  if (!cert || !key) return null;
+  const body = JSON.stringify(payload);
   const text = await new Promise<string>((resolve, reject) => {
     const req = request(
       {
         host: API_HOST,
-        path: "/api-partner/v1/apps-in-toss/users/anon-key/exchange",
+        path,
         method: "POST",
         cert,
         key,
-        headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body) },
+        headers: { ...headers, "content-type": "application/json", "content-length": Buffer.byteLength(body) },
         timeout: 8000,
       },
       (res) => {
@@ -80,18 +82,47 @@ export async function exchangeAnonCode(code: string): Promise<string | null> {
         res.on("end", () => resolve(d));
       },
     );
-    req.on("timeout", () => req.destroy(new Error("toss exchange timeout")));
+    req.on("timeout", () => req.destroy(new Error(`toss ${path} timeout`)));
     req.on("error", reject);
     req.end(body);
   });
   try {
-    const j = JSON.parse(text) as { resultType?: string; success?: { anonKey?: unknown }; error?: { errorCode?: string; reason?: string } };
-    if (j.resultType === "SUCCESS" && typeof j.success?.anonKey === "string" && j.success.anonKey) return j.success.anonKey;
-    console.warn("toss exchange failed", j.resultType, j.error?.errorCode, j.error?.reason);
+    return JSON.parse(text) as TossReply;
   } catch {
-    console.warn("toss exchange: bad response");
+    console.warn("toss: bad response", path);
+    return null;
   }
+}
+
+/** 일회용 코드 → 사용자 식별키. 코드가 틀리거나 만료됐으면 null */
+export async function exchangeAnonCode(code: string): Promise<string | null> {
+  if (!code || code.length > 512) return null;
+  const j = await tossPost("/api-partner/v1/apps-in-toss/users/anon-key/exchange", { code });
+  const anonKey = j?.success?.anonKey;
+  if (j?.resultType === "SUCCESS" && typeof anonKey === "string" && anonKey) return anonKey;
+  if (j) console.warn("toss exchange failed", j.resultType, j.error?.errorCode, j.error?.reason);
   return null;
+}
+
+/** 생일·기념일 알림 템플릿 코드(콘솔 푸시알림 > 기능성 캠페인, 문구 검수 승인 뒤에만 보낼 수 있다). 없으면 토스 알림을 쓰지 않는다 */
+export function tossReminderTemplate(): string | null {
+  const v = (process.env.TOSS_REMINDER_TEMPLATE ?? "").trim();
+  return v.startsWith(`${TOSS_APP}-`) ? v : null;
+}
+
+/**
+ * 기능성 메시지 한 통(사용자 식별키로 받는 사람을 정한다). context는 템플릿 변수 값.
+ * 받는 사람 1명에 1분 10통까지라 크론에서 한 사람에게 몇 통씩만 보낸다
+ */
+export async function sendTossMessage(anonKey: string, templateSetCode: string, context: Record<string, string>): Promise<boolean> {
+  try {
+    const j = await tossPost("/api-partner/v1/apps-in-toss/messenger/send-message", { templateSetCode, context }, { "x-anon-key": anonKey });
+    if (j?.resultType === "SUCCESS") return true;
+    console.warn("toss message failed", j?.resultType, j?.error?.errorCode, j?.error?.reason);
+  } catch (e) {
+    console.warn("toss message error", String(e).slice(0, 120));
+  }
+  return false;
 }
 
 /** 사용자 식별키로 계정을 찾거나 만들고 세션 토큰을 준다. 토스 계정은 처음 화면(얼굴·음식·생일 묻기)을 건너뛴다 */

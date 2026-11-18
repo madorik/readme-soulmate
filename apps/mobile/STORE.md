@@ -121,7 +121,13 @@ Vercel 운영에 `FCM_PROJECT_ID`·`FCM_CLIENT_EMAIL`·`FCM_PRIVATE_KEY`(줄바�
 
 - 콘솔: watalabs 워크스페이스(107523, 사업자 미등록 = 개인, 맹고와 같은 곳). 앱 이름 기억해유, `intoss://remember-you`(바꿀 수 없음), 비게임. 만들 때 AI 정책 확인 통과.
 - 앱: `apps/toss`(Vite 정적 번들, SDK `@apps-in-toss/web-framework` 3.9.0). 웹의 화면 조각(기록 칸·편집기·얼굴·아이콘, `@/` → apps/web)을 그대로 쓰고 next/link만 `<a>`로 바꿔 끼운다. 화면 이동은 주소를 바꾸지 않는 화면 쌓기(src/nav.tsx), 뒤로가기는 토스 네비게이션 바·안드로이드 백버튼(graniteEvent backEvent), 라이트 모드만.
-- 첫 버전 범위: 홈(60일 안 챙길 날), 사람들, 사람 기록 보기·항목 고치기, 말로 적기(녹음 → 서버 받아쓰기 → AI 정리, 되돌리기), 선물 고르기(가격대별), 설정(약관·처리방침은 기기 브라우저, 문의 메일, 기록 모두 지우기). 물어보기·생일 알림(스마트 발송)·기존 계정 연결은 다음 버전.
+- 첫 버전 범위: 홈(60일 안 챙길 날), 사람들, 사람 기록 보기·항목 고치기, 말로 적기(녹음 → 서버 받아쓰기 → AI 정리, 되돌리기), 선물 고르기(가격대별), 설정(문의 메일, 기록 모두 지우기). 기존 계정 연결은 다음 버전.
+- 물어보기(20261118-2부터): 사람 화면 > 물어보기 → `POST /api/t/people/:id/ask`(처음엔 보내는 사람 이름을 받아 프로필에 둠) → `Share.createLink(intoss://remember-you/r?ask=<토큰>)` + `Share.sendMessage`. 받은 사람은 토스에서 열면 답하기 화면 하나로 시작(`Environment.initialURL`·테스트 스킴 queryParams·화면 주소에서 `ask`를 찾음), 로그인 없이 `GET/POST /api/t/r/:token`. 답하기 화면은 웹과 같은 `components/AnswerForm`(보내기만 바꿔 끼움), 공통 로직은 `lib/ask.ts`.
+- 약관·처리방침(20261118-2부터): 본문을 `components/legal/*Body.tsx`로 빼서 미니앱 화면 안에서 보여 줌(자사 사이트로 내보내지 않음). 처리방침에 토스 사용자 식별값·비바리퍼블리카(로그인 확인·알림)·토스판 녹음 받아쓰기 추가(시행일 2026-11-18).
+- 생일·기념일 알림(코드는 준비됨, 꺼져 있음): 콘솔 푸시알림은 **앱 정보 검토가 끝나야** 만들 수 있다. 검토 통과 뒤 할 일:
+  1. 콘솔 > 유입·성장 > 푸시알림에서 알림 동의문을 만들고, 기능성 캠페인(템플릿 코드는 `remember-you-`로 시작)을 만들어 동의문에 잇고 문구 검수를 받는다. 템플릿 변수로 쓸 수 있는 값: `title`(예: 엄마 생일까지 7일 남았어요 / 오늘은 엄마 생일이에요), `event`(엄마 생일), `days`(7, 오늘이면 0), `body`(기억해 둔 선물 힌트를 열어 보세요.).
+  2. 승인되면 Vercel에 `TOSS_REMINDER_TEMPLATE=<템플릿 코드>`를 넣고 다시 배포. 그때부터 홈에 '생일 알림 받기'(챙길 날이 있을 때), 설정에 '생일·기념일 알림' 스위치가 보이고, 누르면 `Notification.requestAgreement`로 토스 알림 동의를 받은 뒤 `profiles.toss_reminders`를 켠다. 번들은 다시 올리지 않아도 된다.
+  3. 매일 08:00(KST) `/api/cron/reminders`가 알릴 날을 찾아 `send-message`(mTLS, `x-anon-key`)로 보낸다. 개발용 키(dev-)로는 보내지 않는다.
 - 앱인토스 정책 때문에 바꾼 것: 구글·애플 로그인 대신 **사용자 식별키**(토스 로그인은 사업자 필요). 쿠팡 파트너스 링크 대신 쿠팡 일반 검색을 기기 브라우저로(바깥 광고 네트워크 금지). 우리 사이트 이동·앱 설치 유도 없음. 생성형 AI 고지(말로 적기 첫 화면)와 결과에 AI 표시.
 - 서버: `apps/web/app/api/t/[...path]`(CORS는 `https://remember-you.apps.tossmini.com`·`https://remember-you.private-apps.tossmini.com`만, 개발 중에는 localhost·같은 와이파이). 로그인: 미니앱 `User.createAnonymousKeyAuthCode()` → `POST /api/t/session {code}` → 서버가 mTLS로 `apps-in-toss-api.toss.im/api-partner/v1/apps-in-toss/users/anon-key/exchange` → anonKey로 계정(account.providerId `toss`) 찾기·만들기 → 세션 토큰(미니앱은 `Authorization: Bearer`, better-auth bearer 플러그인). 토스 계정은 웹·앱 계정과 따로.
 - mTLS 인증서: 콘솔 > 개발 > mTLS 인증서 `rememberyou1`(CN=remember-you, 2027-12-13 만료, 만료 전에 새로 발급). 파일은 `~/.readme/toss-mtls/`, Vercel `TOSS_MTLS_CERT`·`TOSS_MTLS_KEY`(base64, Secret).

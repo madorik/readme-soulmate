@@ -28,6 +28,8 @@ export interface THome {
   people: TPerson[];
   /** 말로 적기(AI)를 쓸 수 있는지 */
   ai: boolean;
+  /** 생일·기념일 토스 알림. 템플릿이 승인되기 전(서버에 코드가 없을 때)은 null */
+  reminder: { template: string; on: boolean } | null;
 }
 
 export interface TPersonDetail {

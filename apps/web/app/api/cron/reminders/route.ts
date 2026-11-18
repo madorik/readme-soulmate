@@ -4,9 +4,11 @@ import { aad, open } from "@/lib/crypto";
 import { asSystem } from "@/lib/db";
 import { tidyUsage } from "@/lib/housekeeping";
 import { sendPush } from "@/lib/push";
+import { sendTossMessage, tossReminderTemplate } from "@/lib/toss";
 
 // 매일 아침 한 번(vercel.json): 오늘 알릴 생일·기념일을 알림으로 남기고, 푸시 키가 있으면 보낸다.
 // 시스템 권한으로 모든 사람을 보므로, 각자 자기 주소록 사람의 기록(contact_cards)만 읽도록 쿼리에서 직접 지킨다.
+// 토스 미니앱 계정은 토스 알림에 동의했고(toss_reminders) 템플릿이 승인돼 있으면(TOSS_REMINDER_TEMPLATE) 토스 기능성 메시지로 보낸다.
 
 const BATCH = 200;
 
@@ -28,11 +30,14 @@ export async function GET(request: NextRequest) {
   let created = 0;
   let pushed = 0;
   let users = 0;
+  const tossTemplate = tossReminderTemplate();
 
   for (let offset = 0; ; offset += BATCH) {
     const profiles = await asSystem((q) =>
-      q<{ id: string; locale: string | null; system_locale: string; time_zone: string; reminder_offsets: number[] }>(
-        "select id, locale, system_locale, time_zone, reminder_offsets from profiles where onboarded_at is not null and push_enabled order by id limit $1 offset $2",
+      q<{ id: string; locale: string | null; system_locale: string; time_zone: string; reminder_offsets: number[]; toss_key: string | null }>(
+        `select p.id, p.locale, p.system_locale, p.time_zone, p.reminder_offsets,
+                case when p.toss_reminders then (select a."accountId" from account a where a."userId" = p.id and a."providerId" = 'toss' limit 1) end as toss_key
+           from profiles p where p.onboarded_at is not null and (p.push_enabled or p.toss_reminders) order by p.id limit $1 offset $2`,
         [BATCH, offset],
       ),
     );
@@ -84,6 +89,8 @@ export async function GET(request: NextRequest) {
       // 앱(안드로이드·iOS)은 생일·기념일 알림을 기기에 직접 예약한다(native.tsx 기기 로컬 알림). 서버 푸시까지 보내면 두 번 오므로
       // 앱 기기에는 보내지 않는다(서버 푸시는 답장처럼 기기가 알 수 없는 것만). 웹 푸시가 생기면 그 기기에만 보낸다
       const tokens = await asSystem((q) => q<{ token: string }>("select token from push_tokens where user_id = $1 and platform not in ('android', 'ios')", [me]));
+      // 토스 계정: 개발용 키(dev-)로는 보내지 않는다
+      const tossKey = tossTemplate && profile.toss_key && !profile.toss_key.startsWith("dev-") ? profile.toss_key : null;
       for (const n of inserted) {
         const e = due.find((x) => x.event.contactId === n.contact_id && x.event.kind === n.kind && x.offset === n.offset_days && (x.event.label ?? "") === n.label)?.event;
         if (!e) continue;
@@ -96,6 +103,7 @@ export async function GET(request: NextRequest) {
           if (r === true) sent = true;
           if (r === "gone") await asSystem((q) => q("delete from push_tokens where user_id = $1 and token = $2", [me, tk.token]));
         }
+        if (tossKey && (await sendTossMessage(tossKey, tossTemplate!, { title, event, days: String(n.offset_days), body: translate(locale, "notif.body") }))) sent = true;
         if (sent) {
           pushed++;
           await asSystem((q) => q("update notifications set pushed_at = now() where id = $1", [n.id]));
