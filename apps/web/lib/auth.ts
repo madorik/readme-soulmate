@@ -3,6 +3,7 @@ import { APP_ID } from "@readme/core";
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { anonymous } from "better-auth/plugins/anonymous";
+import { bearer } from "better-auth/plugins/bearer";
 import { oneTimeToken } from "better-auth/plugins/one-time-token";
 import { appleClientSecret } from "./apple";
 import { pool } from "./db";
@@ -40,6 +41,8 @@ function create() {
       anonymous({ emailDomainName: "demo.readme.invalid", generateName: () => "" }),
       // 시스템 브라우저 → 앱 웹뷰 세션 넘기기(3분 안에 한 번만)
       oneTimeToken({ expiresIn: 3 }),
+      // 토스 미니앱(토스 도메인에서 열려 우리 쿠키를 못 쓴다)은 세션 토큰을 Authorization: Bearer로 보낸다(lib/toss)
+      bearer(),
       nextCookies(),
     ],
   });

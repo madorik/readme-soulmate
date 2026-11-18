@@ -116,3 +116,14 @@ Vercel 운영에 `FCM_PROJECT_ID`·`FCM_CLIENT_EMAIL`·`FCM_PRIVATE_KEY`(줄바�
 - 심사 4.8: 애플로 로그인(Services ID kr.readme.app.web, 키 SKH7CXH449는 ~/.readme). 심사 메모: 로그인 없이 '데모로 둘러보기', 기기 기능(로컬 알림·음성 인식·Face ID·공유창), 계정 삭제, 쿠팡 제휴 고지.
 - 심사 연락처: 이름 MinGyun Jeong, 이메일 watalabs.help@gmail.com, 전화는 Apple 개발자 계정 번호.
 - iOS 푸시는 아직: APNs 키 + 앱에 Firebase Messaging(GoogleService-Info.plist는 ~/.readme)을 넣어야 FCM 토큰을 받는다. 웹은 iOS에서 푸시 등록을 하지 않는다.
+
+## 앱인토스(토스 미니앱, 2026-11-18 시작)
+
+- 콘솔: watalabs 워크스페이스(107523, 사업자 미등록 = 개인, 맹고와 같은 곳). 앱 이름 기억해유, `intoss://remember-you`(바꿀 수 없음), 비게임. 만들 때 AI 정책 확인 통과.
+- 앱: `apps/toss`(Vite 정적 번들, SDK `@apps-in-toss/web-framework` 3.9.0). 웹의 화면 조각(기록 칸·편집기·얼굴·아이콘, `@/` → apps/web)을 그대로 쓰고 next/link만 `<a>`로 바꿔 끼운다. 화면 이동은 주소를 바꾸지 않는 화면 쌓기(src/nav.tsx), 뒤로가기는 토스 네비게이션 바·안드로이드 백버튼(graniteEvent backEvent), 라이트 모드만.
+- 첫 버전 범위: 홈(60일 안 챙길 날), 사람들, 사람 기록 보기·항목 고치기, 말로 적기(녹음 → 서버 받아쓰기 → AI 정리, 되돌리기), 선물 고르기(가격대별), 설정(약관·처리방침은 기기 브라우저, 문의 메일, 기록 모두 지우기). 물어보기·생일 알림(스마트 발송)·기존 계정 연결은 다음 버전.
+- 앱인토스 정책 때문에 바꾼 것: 구글·애플 로그인 대신 **사용자 식별키**(토스 로그인은 사업자 필요). 쿠팡 파트너스 링크 대신 쿠팡 일반 검색을 기기 브라우저로(바깥 광고 네트워크 금지). 우리 사이트 이동·앱 설치 유도 없음. 생성형 AI 고지(말로 적기 첫 화면)와 결과에 AI 표시.
+- 서버: `apps/web/app/api/t/[...path]`(CORS는 `https://remember-you.apps.tossmini.com`·`https://remember-you.private-apps.tossmini.com`만, 개발 중에는 localhost·같은 와이파이). 로그인: 미니앱 `User.createAnonymousKeyAuthCode()` → `POST /api/t/session {code}` → 서버가 mTLS로 `apps-in-toss-api.toss.im/api-partner/v1/apps-in-toss/users/anon-key/exchange` → anonKey로 계정(account.providerId `toss`) 찾기·만들기 → 세션 토큰(미니앱은 `Authorization: Bearer`, better-auth bearer 플러그인). 토스 계정은 웹·앱 계정과 따로.
+- mTLS 인증서: 콘솔 > 개발 > mTLS 인증서 `rememberyou1`(CN=remember-you, 2027-12-13 만료, 만료 전에 새로 발급). 파일은 `~/.readme/toss-mtls/`, Vercel `TOSS_MTLS_CERT`·`TOSS_MTLS_KEY`(base64, Secret).
+- 개발: `pnpm dev`(웹 3200) + `cd apps/toss && npx vite`(5183, 개발용 로그인). 휴대폰 토스 샌드박스로 보려면 `VITE_API_BASE=http://<맥 IP>:3200`.
+- 빌드·올리기: `cd apps/toss && npm run build` → `remember-you.ait` → 콘솔 앱 출시 > 등록하기로 올림 → 토스 앱에서 QR 테스트 → 검토 요청.

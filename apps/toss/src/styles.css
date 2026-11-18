@@ -1,0 +1,10 @@
+/* 웹과 같은 색·글자·버튼(apps/web/app/globals.css). 토스판은 라이트 모드만 */
+@import "../../web/app/globals.css";
+
+/* 웹 화면 조각에 쓰인 클래스도 만들어지게 */
+@source "../../web/components";
+@source "./";
+
+:root {
+  color-scheme: light;
+}

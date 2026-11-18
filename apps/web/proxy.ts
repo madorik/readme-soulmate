@@ -14,6 +14,8 @@ const PUBLIC = [
   /^\/gifts(\/|$)/,
   /^\/admin(\/|$)/,
   /^\/api\/e$/,
+  // 토스 미니앱 API(쿠키 대신 Bearer 토큰, 화면에서 확인)
+  /^\/api\/t\//,
   /^\/(robots\.txt|sitemap\.xml|llms\.txt)$/,
   /^\/api\/auth\//,
   /^\/auth\//,
