@@ -99,8 +99,10 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
       {picksOn ? (
         <section id="picks" aria-labelledby="picks-title" className="relative flex scroll-mt-2 flex-col pt-7">
           {/* 아래(채워지면) 무엇을 보고 골랐는지 풀어 쓴 한두 문장. 오른쪽 위 다시 고르기 단추 자리는 float라 첫 두 줄만 비켜 가고 아래 줄은 전체 폭을 쓴다 */}
-          <div className="min-h-10 px-6">
-            <span aria-hidden="true" className="float-right h-10 w-28" />
+          {/* 고르는 동안엔 컨닝페이퍼 힐끗 보기가 제목 줄 오른쪽 끝에(.picks-peek-top), 다 고르면 그 자리는 다시 고르기 단추(.picks-again-slot) */}
+          <div className="flow-root min-h-10 px-6">
+            <span aria-hidden="true" className="picks-again-slot float-right h-10 w-28" />
+            <span className="picks-peek-top float-right -mt-0.5">{peek}</span>
             <h2 id="picks-title" className="text-[17px] font-bold leading-[1.4] tracking-[-0.02em]">
               <span className="picks-t-done">{t("picks.titleFor", { name })}</span>
               <span className="picks-t-busy">{t("picks.titleBusy", { name })}</span>
@@ -108,7 +110,7 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
           </div>
           {/* 고르는 동안은 꼬마 마법사 장면, 다 고르면 번쩍임 뒤에 선물이 나온다. 다시 고르면 key가 바뀌어 장면을 다시 보인다 */}
           <PicksStage key={skip.join(",")} lines={[1, 2, 3, 4].map((n) => t(`picks.loading.${n}` as "picks.loading.1", { name }))} shout={t("picks.shout")}>
-            <Suspense fallback={<PicksPending peek={peek} />}>
+            <Suspense fallback={<PicksPending />}>
               <PicksContent>
                 <GiftPicksBody picks={picks} locale={locale} again={again} peek={peek} />
               </PicksContent>

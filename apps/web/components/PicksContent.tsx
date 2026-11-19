@@ -8,12 +8,7 @@ export function PicksContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** 고르는 동안 Suspense 자리에 두는 표시(+ 힌트 단추). 이게 있으면 아직 고르는 중이다 */
-export function PicksPending({ peek, pad = "px-6" }: { peek?: React.ReactNode; pad?: string }) {
-  return (
-    <>
-      <span data-picks-pending="" hidden />
-      {peek ? <div className={`flex justify-end pt-3 ${pad}`}>{peek}</div> : null}
-    </>
-  );
+/** 고르는 동안 Suspense 자리에 두는 표시. 이게 있으면 아직 고르는 중이다 */
+export function PicksPending() {
+  return <span data-picks-pending="" hidden />;
 }
