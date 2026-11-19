@@ -23,24 +23,61 @@ export function TopBar({ back, close, label, center, right }: { back?: string; c
   );
 }
 
-/** 로고: 이름 그대로 글자만(한국어 '기억해유', 영어 'Remember You'). 글자에 알약·강조를 씌우지 않는다 */
-export function Wordmark({ size = 22, locale = "ko" }: { size?: number; locale?: Locale }) {
+/** 로고 글자: '기억해' / 'Remember' 뒤에 손그림 U(위에 점 둘). 읽어 줄 때는 이름 그대로(기억해유 / Remember You) */
+const WORD = { ko: "기억해", en: "Remember" } as const;
+
+export function Wordmark({ size = 26, locale = "ko" }: { size?: number; locale?: Locale }) {
   return (
     // 손글씨체는 같은 크기에서 작게 보여 글자 크기를 조금 키운다
     <span className="wordmark inline-flex items-center leading-[44px]" style={{ fontSize: Math.round(size * 1.25) }}>
-      {BRAND[locale].name}
+      <span className="sr-only">{BRAND[locale].name}</span>
+      <span aria-hidden="true" className="inline-flex items-center">
+        {WORD[locale]}
+        <svg viewBox="0 0 26 34" aria-hidden="true" className="relative shrink-0" style={{ width: "0.78em", height: "1.03em", marginLeft: "0.06em", top: "-0.11em" }}>
+          <circle cx="4.4" cy="3.6" r="2.4" fill="currentColor" />
+          <circle cx="22.3" cy="3.6" r="2.4" fill="currentColor" />
+          <path d="M4.2 10.6 C3.8 18.5 4.3 24 6.6 27.6 C8.6 30.6 11 31.8 13.4 31.8 C15.8 31.8 18.2 30.6 20.2 27.6 C22.5 24 22.9 18.5 22.5 10.2" fill="none" stroke="currentColor" strokeWidth="3.1" strokeLinecap="round" />
+        </svg>
+      </span>
     </span>
   );
 }
 
-/** 아래쪽에 떠 있는 흰 탭 막대. fab: 막대 바로 위 오른쪽에 떠 있는 버튼(사람들 화면의 직접 적기 등) */
+/** 탭 아이콘(다이어리 v2 모양): 챙길 날(달력 + 하트) · 사람들 · 나(웃는 얼굴) · 설정은 marks의 톱니 */
+const TAB_ICONS = {
+  home: (
+    <>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+      <path d="M12 17.6s-3-1.8-3-3.7a1.6 1.6 0 0 1 3-.8 1.6 1.6 0 0 1 3 .8c0 1.9-3 3.7-3 3.7z" />
+    </>
+  ),
+  people: (
+    <>
+      <circle cx="9" cy="9" r="3.5" />
+      <path d="M2.5 19.5c.8-3.3 3.3-5 6.5-5s5.7 1.7 6.5 5" />
+      <circle cx="17" cy="8" r="2.8" />
+      <path d="M16.5 13.2c2.6.1 4.4 1.6 5 4.3" />
+    </>
+  ),
+  me: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="9.3" cy="11" r=".6" fill="currentColor" />
+      <circle cx="14.7" cy="11" r=".6" fill="currentColor" />
+      <path d="M9.5 14.5q2.5 2 5 0" />
+    </>
+  ),
+} as const;
+
+/** 아래쪽 탭 막대: 종이색 막대에 가는 윗선, 지금 탭은 망고 알약. fab: 막대 바로 위 오른쪽에 떠 있는 버튼(사람들 화면의 직접 적기 등) */
 /** voice: 가운데 마이크(말로 적기). AI 키가 있을 때만 화면이 aiConfigured()로 켠다(이 파일은 클라이언트에서도 불려서 서버 전용 모듈을 못 들인다) */
 export function TabBar({ active, t, fab, voice = false }: { active: "home" | "people" | "me" | "privacy"; t: T; fab?: React.ReactNode; voice?: boolean }) {
   const tabs = [
-    { key: "home", href: "/home", icon: "calendar", label: t("nav.home") },
-    { key: "people", href: "/people", icon: "people", label: t("nav.people") },
-    { key: "me", href: "/me", icon: "card", label: t("nav.me") },
-    { key: "privacy", href: "/privacy", icon: "settings", label: t("nav.privacy") },
+    { key: "home", href: "/home", label: t("nav.home") },
+    { key: "people", href: "/people", label: t("nav.people") },
+    { key: "me", href: "/me", label: t("nav.me") },
+    { key: "privacy", href: "/privacy", label: t("nav.privacy") },
   ] as const;
   const tab = (item: (typeof tabs)[number]) => {
     const on = item.key === active;
@@ -51,9 +88,17 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
         // 탭 화면은 데이터까지 미리 받아 둔다(누르거나 좌우로 밀 때 빈 화면 없이 바로)
         prefetch={true}
         aria-current={on ? "page" : undefined}
-        className={`flex flex-col items-center justify-center gap-[3px] whitespace-nowrap text-[12px] ${on ? "font-bold text-accent" : "font-medium text-muted"}`}
+        className={`flex flex-col items-center justify-center gap-0.5 whitespace-nowrap text-[15px] leading-[1.2] ${on ? "text-ink" : "text-muted"}`}
       >
-        <Icon name={item.icon} strokeWidth={on ? 2.1 : 1.7} />
+        <span className={`flex h-8 w-[52px] items-center justify-center rounded-full ${on ? "bg-sky" : ""}`}>
+          {item.key === "privacy" ? (
+            <Icon name="settings" size={24} strokeWidth={1.8} />
+          ) : (
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              {TAB_ICONS[item.key]}
+            </svg>
+          )}
+        </span>
         {item.label}
       </Link>
     );
@@ -62,11 +107,11 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
     <nav
       aria-label={t("nav.menu")}
       data-tabbar=""
-      className="sticky bottom-0 z-30 mt-auto px-4 pt-3"
-      style={{ paddingBottom: "var(--pb-tab)", background: "linear-gradient(to top, var(--color-bg) 60%, rgb(246 247 251 / 0))" }}
+      className="sticky bottom-0 z-30 mt-auto bg-paper px-3 pt-2 shadow-[inset_0_1.5px_0_rgb(31_35_64/0.12)]"
+      style={{ paddingBottom: "var(--pb-tab)" }}
     >
       {fab ? <div className="absolute bottom-full right-4">{fab}</div> : null}
-      <div className={`grid h-[66px] ${voice ? "grid-cols-5" : "grid-cols-4"} rounded-[26px] bg-white px-1 shadow-[0_8px_24px_rgba(31,35,64,0.09),0_0_0_1px_rgba(31,35,64,0.04)]`}>
+      <div className={`grid h-[70px] ${voice ? "grid-cols-5" : "grid-cols-4"}`}>
         {tabs.slice(0, 2).map(tab)}
         {voice ? (
           <div className="flex items-center justify-center">

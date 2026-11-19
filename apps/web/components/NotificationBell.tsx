@@ -62,9 +62,12 @@ export function NotificationBell({ items, labels }: { items: BellItem[]; labels:
         onClick={() => setOpen(!open)}
         className="relative flex h-11 w-11 items-center justify-center rounded-full text-ink active:bg-fill"
       >
-        <Icon name="bell" size={23} strokeWidth={1.9} />
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.6 2.1H4.4z" />
+          <path d="M10 21a2.2 2.2 0 0 0 4 0" />
+        </svg>
         {count ? (
-          <span aria-hidden="true" className="num absolute right-[3px] top-[5px] flex h-[19px] min-w-[19px] items-center justify-center rounded-full bg-red px-1 text-[11.5px] !font-bold leading-none text-white shadow-[0_0_0_2px_var(--color-bg)]">
+          <span aria-hidden="true" className="num absolute right-[3px] top-[5px] flex h-[19px] min-w-[19px] items-center justify-center rounded-full bg-sky px-1 text-[13px] leading-none text-ink shadow-[0_0_0_1.5px_var(--color-ink)]">
             {count > 9 ? "9+" : count}
           </span>
         ) : null}
@@ -74,7 +77,7 @@ export function NotificationBell({ items, labels }: { items: BellItem[]; labels:
           id={listId}
           role="region"
           aria-label={labels.title}
-          className="absolute right-3 top-full z-40 mt-1 max-h-[min(60dvh,26rem)] w-[min(22rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-2xl bg-white py-1 shadow-[0_0_0_1px_var(--color-rule),0_10px_28px_rgba(31,35,64,0.14)]"
+          className="absolute right-3 top-full z-40 mt-1 max-h-[min(60dvh,26rem)] w-[min(22rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-[10px] bg-paper py-1 shadow-[0_0_0_1.5px_var(--color-ink),0_12px_26px_-12px_rgb(31_35_64/0.5)]"
         >
           {count ? (
             <ul className="flex flex-col">
@@ -83,8 +86,8 @@ export function NotificationBell({ items, labels }: { items: BellItem[]; labels:
                   <Link href={n.href} onClick={() => setOpen(false)} className="flex min-h-[60px] items-center gap-3 px-3.5 py-2 active:bg-fill">
                     <Avatar config={n.avatar} size={38} label={n.name} />
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate text-[15px] font-bold tracking-[-0.01em]">{n.title}</span>
-                      <span className="text-[12.5px] text-muted">{n.when}</span>
+                      <span className="truncate text-[17px]">{n.title}</span>
+                      <span className="text-[14px] text-muted">{n.when}</span>
                     </span>
                     <Icon name="chevron" size={18} className="shrink-0 text-muted" />
                   </Link>
@@ -92,7 +95,7 @@ export function NotificationBell({ items, labels }: { items: BellItem[]; labels:
               ))}
             </ul>
           ) : (
-            <p className="px-4 py-4 text-[14.5px] text-muted">{labels.empty}</p>
+            <p className="px-4 py-4 text-[16px] text-muted">{labels.empty}</p>
           )}
         </div>
       ) : null}

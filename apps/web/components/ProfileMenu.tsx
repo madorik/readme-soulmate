@@ -65,15 +65,15 @@ export function ProfileMenu({ avatar, labels }: { avatar: AvatarConfig | null; l
         onClick={() => setOpen(!open)}
         className="flex h-11 w-11 items-center justify-center"
       >
-        <span className="rounded-full shadow-[0_0_0_2px_#fff]"><Avatar config={avatar} size={38} label={labels.menu} /></span>
+        <Avatar config={avatar} size={36} label={labels.menu} />
       </button>
       {open ? (
-        <div id={menuId} role="menu" aria-label={labels.menu} onKeyDown={onMenuKey} className="absolute right-1 top-full z-40 mt-1 w-44 overflow-hidden rounded-2xl bg-white py-1 shadow-[0_0_0_1px_var(--color-rule),0_10px_28px_rgba(31,35,64,0.14)]">
-          <Link role="menuitem" href="/me/avatar" onClick={() => setOpen(false)} className="flex min-h-12 items-center px-4 text-[15px] font-semibold">
+        <div id={menuId} role="menu" aria-label={labels.menu} onKeyDown={onMenuKey} className="absolute right-1 top-full z-40 mt-1 w-44 overflow-hidden rounded-[10px] bg-paper py-1 shadow-[0_0_0_1.5px_var(--color-ink),0_12px_26px_-12px_rgb(31_35_64/0.5)]">
+          <Link role="menuitem" href="/me/avatar" onClick={() => setOpen(false)} className="flex min-h-12 items-center px-4 text-[17px]">
             {labels.profile}
           </Link>
           <form action={signOut} className="border-t border-rule">
-            <button role="menuitem" className="flex min-h-12 w-full items-center px-4 text-left text-[15px] font-semibold">
+            <button role="menuitem" className="flex min-h-12 w-full items-center px-4 text-left text-[17px]">
               {labels.signOut}
             </button>
           </form>

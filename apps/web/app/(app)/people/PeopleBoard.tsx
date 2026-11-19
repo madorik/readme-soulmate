@@ -525,7 +525,7 @@ export function PeopleBoard({
       )}
 
       {picking ? (
-        <div className="sticky mt-auto flex flex-col gap-2 bg-bg/95 px-5 pb-3 pt-3 backdrop-blur" style={{ bottom: "calc(78px + var(--pb-tab))" }}>
+        <div className="sticky mt-auto flex flex-col gap-2 bg-bg/95 px-5 pb-3 pt-3 backdrop-blur" style={{ bottom: "calc(var(--tab-h) + var(--pb-tab))" }}>
           <div className="flex items-center justify-between gap-3">
             <span role="status" className={`min-w-0 text-[12.5px] ${putMsg?.error ? "text-red" : "text-muted"}`}>
               {putMsg ? putMsg.text : ready ? labels.selected.replace("{n}", String(picked.length)) : labels.pickSome}

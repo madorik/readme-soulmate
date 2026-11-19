@@ -1,4 +1,4 @@
-import { aboutPrompt, addDays, canAnswerOwn, countWord, formatDayFull, formatSpec, NONE, NONE_LABEL, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
+import { aboutPrompt, addDays, canAnswerOwn, countWord, formatDayFull, formatMonthDay, formatSpec, NONE, NONE_LABEL, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
 import Link from "next/link";
 import { answerAbout } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";
@@ -6,16 +6,29 @@ import { ChiliMeter } from "@/components/Chili";
 import { TabBar, Wordmark } from "@/components/chrome";
 import { EmptyPortrait, EventPortrait, EventPortraits } from "@/components/EventArt";
 import { FaceStack } from "@/components/FaceStack";
-import { Mascot } from "@/components/Mascot";
 import { NotificationBell, type BellItem } from "@/components/NotificationBell";
 import { ProfileMenu } from "@/components/ProfileMenu";
-import { Icon } from "@/components/marks";
+import { HandCircle, Heart, MarginLine, Sparkle, SKY_STAR, Squiggle, Stamp, Star, Tape } from "@/components/diary";
+import { CheckGlyph, Icon } from "@/components/marks";
 import { eventName, eventsFor } from "@/lib/events";
+import type { Person } from "@/lib/data";
 import type { HomeData } from "@/lib/pages/home.data";
 import { displayName } from "@/lib/person";
 import { makeT } from "@/lib/t";
 
-// 시안 v3: 다가오는 날(흰 카드, 가는 큰 숫자) → 이번 주(오늘은 하늘 그라데이션, 챙길 날엔 그 사람 얼굴) → 리디가 묻는 오늘의 질문 → 내 사람들(가로 줄)
+// 다이어리 v2: 다이어리 머리(연도·날짜·월~일 줄) → 다가오는 날(테이프 붙인 종이, 폴라로이드 얼굴, D-day 도장) → 이번 주(오늘은 손그림 동그라미, 챙길 날엔 그 사람 얼굴 + 하트)
+// → 줄노트에 적힌 오늘의 질문 → 내 사람들(가로 줄). 장식은 components/diary.tsx
+
+/** '기억해 둔 것' 포스트잇에 적을 말: 사람 기록에서 꽃·마실 것·간식·좋아하는 것·향·갖고 싶은 것 중 셋까지 */
+function memoOf(p: Person | null): string {
+  const c = p?.card;
+  if (!c) return "";
+  return [c.favorites?.flowers, c.taste?.drinks, c.taste?.dessert, ...(c.taste?.likes ?? []).slice(0, 2), c.favorites?.scent, c.gifts?.wishlist?.[0]?.title]
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(" · ");
+}
 export function HomeView({ locale, avatar, today, people, question: asked, questionSkip, answers, answered, ai }: HomeData) {
   const t = makeT(locale);
   // 물어보기에 온 답장(아직 안 본 것)은 오른쪽 위 종에 모은다. 누르면 그 사람 화면, 열면 읽은 것으로
@@ -49,6 +62,10 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
   // 이번 주에 챙길 날 수(같은 날 두 사람이면 둘)
   const weekEvents = events.filter((e) => e.daysUntil < days.length).length;
   const lunarToday = solarToLunar(today);
+  // 다이어리 머리의 월~일 줄(월요일부터)
+  const weekRow = [1, 2, 3, 4, 5, 6, 0];
+  const todayWd = weekday(today);
+  const memo = nextFaces.length === 1 ? memoOf(nextPerson) : "";
   const hintHref = (e: (typeof events)[number]) => `/people/${e.contactId}/reminder?kind=${e.kind}${e.label ? `&label=${encodeURIComponent(e.label)}` : ""}`;
   // 내 사람들 줄: 즐겨찾기 먼저, 한 달 안에 챙길 날이 있으면 D-day 배지
   const strip = [...people]
@@ -63,7 +80,7 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
 
   return (
     <>
-      <div className="relative flex items-center justify-between pl-5 pr-3">
+      <div className="relative flex items-center justify-between pl-5 pr-2.5">
         <Wordmark locale={locale} />
         <div className="flex items-center gap-0.5">
           <NotificationBell items={bellItems} labels={{ title: t("notif.title"), empty: t("notif.empty") }} />
@@ -71,181 +88,202 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
         </div>
       </div>
 
-      {/* 오늘은 카드 밖에. 카드 안 날짜는 챙길 날 것만 */}
-      <p className="flex items-center gap-2 px-5 pb-2.5 pt-1 text-[13px] font-medium text-muted">
-        <span className="rounded-full bg-ink px-2 py-[2px] text-[12px] font-bold text-white">{t("start.today")}</span>
-        <span>
-          {formatDayFull(today, locale)}
-          {lunarToday ? (locale === "ko" ? ` · 음력 ${lunarToday.m}월 ${lunarToday.d}일` : ` · Lunar ${lunarToday.m}/${lunarToday.d}`) : ""}
-        </span>
-      </p>
+      {/* 다이어리 머리: 연도, 오늘 날짜, 월~일 줄(오늘은 손그림 동그라미), 물결선. 음력은 연도 옆에 작게 */}
+      <section aria-label={t("start.today")} className="relative px-5 pt-2">
+        <Star size={22} rotate={14} className="left-[134px] top-[42px]" />
+        <div className="flex items-end justify-between">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[15px] text-muted">
+              {locale === "ko" ? `${today.y}년` : today.y}
+              {lunarToday ? (locale === "ko" ? ` · 음력 ${lunarToday.m}월 ${lunarToday.d}일` : ` · Lunar ${lunarToday.m}/${lunarToday.d}`) : ""}
+            </span>
+            <h1 className="text-[30px] font-normal leading-[1.1]">{formatMonthDay(today, locale)}</h1>
+          </div>
+          <div className={`flex pb-[3px] ${locale === "ko" ? "gap-px text-[16px]" : "gap-1 text-[14px]"}`} aria-hidden="true">
+            {weekRow.map((wd) => (
+              <span key={wd} className={`relative flex h-[26px] min-w-6 items-center justify-center px-px ${wd === todayWd ? "text-ink" : wd === 0 ? "text-red" : wd === 6 ? "text-sat" : "text-muted"}`}>
+                {wd === todayWd ? <HandCircle w={34} h={31} stroke={2.4} className="-left-[5px] -top-[3px]" /> : null}
+                {names[wd]}
+              </span>
+            ))}
+          </div>
+        </div>
+        <svg aria-hidden="true" viewBox="0 0 350 10" preserveAspectRatio="none" width="100%" height="10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="mt-2 block">
+          <path vectorEffect="non-scaling-stroke" d="M2 6 C 60 2, 120 9, 180 5 S 300 3, 348 6" />
+        </svg>
+      </section>
 
-      <section aria-label={t("home.upcoming")} className="card mx-4 flex flex-col px-5 pt-[18px]">
+      <section aria-label={t("home.upcoming")} className="card relative mx-4 mt-[26px] flex -rotate-[0.7deg] flex-col px-5 pb-5 pt-[26px]">
+        <Tape color="mango" w={108} h={26} rotate={-3} alpha={0.62} className="-top-[13px] left-1/2 -ml-[54px]" />
+        {next ? (
+          <Stamp className="right-4 top-4" fontSize={next.daysUntil === 0 && locale !== "ko" ? 21 : 27}>
+            {next.daysUntil === 0 ? t("start.today") : `D-${next.daysUntil}`}
+          </Stamp>
+        ) : null}
+        <span className="text-[16px] text-accent">{t("home.upcoming")}</span>
         {next ? (
           <>
-            <div className="flex items-end gap-2.5 pt-1">
-              {next.daysUntil === 0 ? (
-                <span className="text-[56px] font-light leading-[0.9] tracking-[-0.04em]">{t("start.today")}</span>
-              ) : (
-                <span className="num text-[104px] font-extralight leading-[0.82] tracking-[-0.04em]">{next.daysUntil}</span>
-              )}
-              <div className="flex min-w-0 flex-1 flex-col gap-1 pb-0.5">
-                {next.daysUntil > 0 ? <span className="text-[12px] font-bold tracking-[0.04em] text-accent">{next.daysUntil === 1 ? t("home.dayToGo") : t("home.daysToGo")}</span> : null}
-                {/* 같은 날 둘까지는 한 줄씩, 셋 이상이면 첫 사람 + '외 n명' */}
-                <span className="flex flex-col text-[21px] font-bold leading-[1.25] tracking-[-0.02em]">
-                  {(nextGroup.length > 2 ? nextGroup.slice(0, 1) : nextGroup).map((e) => (
-                    <span key={`${e.contactId}-${e.kind}-${e.label ?? ""}`}>{eventName(e, t, locale)}</span>
-                  ))}
-                  {nextGroup.length > 2 ? <span className="text-[15px] text-ink-2">{t("home.others", { n: nextGroup.length - 1 })}</span> : null}
-                </span>
-              </div>
+            {/* 눈으로는 도장(D-2)이 알리니 읽어 줄 때만 '2 일 뒤' */}
+            {next.daysUntil > 0 ? (
+              <span className="sr-only">
+                {next.daysUntil} {next.daysUntil === 1 ? t("home.dayToGo") : t("home.daysToGo")}
+              </span>
+            ) : null}
+            <div className="mt-[26px] flex items-center gap-2">
               {nextFaces.length > 1 ? (
                 <EventPortraits faces={nextFaces.map((e) => ({ avatar: personOf(e.contactId)?.avatar ?? null, name: e.name }))} kind={next.kind} />
               ) : (
                 <EventPortrait href={`/people/${next.contactId}`} avatar={nextPerson?.avatar ?? null} name={nextPerson ? displayName(nextPerson) : next.name} kind={next.kind} />
               )}
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                {/* 같은 날 둘까지는 한 줄씩, 셋 이상이면 첫 사람 + '외 n명' */}
+                <span className="flex flex-col items-start leading-[1.25]">
+                  {(nextGroup.length > 2 ? nextGroup.slice(0, 1) : nextGroup).map((e) => {
+                    const title = eventName(e, t, locale);
+                    return (
+                      <span key={`${e.contactId}-${e.kind}-${e.label ?? ""}`} className={nextGroup.length > 1 || title.length > 7 ? "text-[24px]" : "text-[29px]"}>
+                        <span className="hl">{title}</span>
+                      </span>
+                    );
+                  })}
+                  {nextGroup.length > 2 ? <span className="text-[17px] text-ink-2">{t("home.others", { n: nextGroup.length - 1 })}</span> : null}
+                </span>
+                {/* 양력 날짜를 먼저, 음력이면 옆에 */}
+                <span className="text-[17px] text-muted">
+                  {formatDayFull(next.date, locale)}
+                  {nextGroup.length === 1 && next.spec.calendar === "lunar" ? ` · ${formatSpec(next.spec, locale)}` : ""}
+                </span>
+              </div>
             </div>
-            {/* 챙길 날: 양력 날짜를 먼저 굵게, 음력이면 옆에 */}
-            <span className="flex items-center gap-1.5 pt-3.5 text-[14px] font-bold">
-              <Icon name="calendar" size={16} strokeWidth={2} className="shrink-0 text-accent" />
-              {formatDayFull(next.date, locale)}
-              {nextGroup.length === 1 && next.spec.calendar === "lunar" ? <span className="font-medium text-muted">· {formatSpec(next.spec, locale)}</span> : null}
-            </span>
+            {memo ? (
+              <div className="mt-[18px] flex rotate-[0.8deg] flex-col gap-1 rounded-[3px] bg-postit px-3.5 pb-[13px] pt-3 shadow-[0_6px_12px_-9px_rgb(31_35_64/0.45)]">
+                <span className="text-[14px] text-[#8a3b4e]">{t("person.mineList")}</span>
+                <span className="text-[18px] leading-[1.45]">{memo}</span>
+              </div>
+            ) : null}
             {nextFaces.length > 1 ? (
               <div className="mt-[18px] flex flex-col">
                 {nextFaces.map((e) => (
-                  <Link key={e.contactId} href={hintHref(e)} className="flex min-h-[52px] items-center gap-2.5 border-t border-rule text-[14.5px] font-medium">
+                  <Link key={e.contactId} href={hintHref(e)} className="flex min-h-[52px] items-center gap-2.5 border-t-[1.5px] border-dashed border-rule text-[18px]">
                     <span aria-hidden="true">
-                      <Avatar config={personOf(e.contactId)?.avatar ?? null} size={26} label={e.name} />
+                      <Avatar config={personOf(e.contactId)?.avatar ?? null} size={28} label={e.name} />
                     </span>
                     <span className="min-w-0 flex-1 truncate">{t("home.hintsFor", { name: e.name })}</span>
-                    <Icon name="chevron" size={18} strokeWidth={1.6} className="text-muted" />
+                    <Icon name="chevron" size={18} strokeWidth={1.8} className="text-muted" />
                   </Link>
                 ))}
               </div>
             ) : (
-              <Link href={hintHref(next)} className="mt-[18px] flex min-h-[52px] items-center justify-between border-t border-rule text-[14.5px] font-medium">
+              <Link href={hintHref(next)} className="btn-primary mt-[18px]">
                 {t("home.hints")}
-                <Icon name="chevron" size={18} strokeWidth={1.6} className="text-muted" />
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
               </Link>
             )}
           </>
         ) : (
           <>
-            <div className="flex items-center gap-4 pt-1">
-              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <span className="text-[21px] font-bold leading-[1.25] tracking-[-0.02em]">{later ? t("home.quietTitle") : t("home.noUpcomingTitle")}</span>
-                {later ? <span className="text-[13px] leading-[1.55] text-muted">{t("home.quietBody", { event: eventName(later, t, locale), date: formatDayFull(later.date, locale) })}</span> : null}
-              </div>
+            <div className="mt-[26px] flex items-center gap-2">
               <EmptyPortrait />
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <span className="text-[24px] leading-[1.25]">{later ? t("home.quietTitle") : t("home.noUpcomingTitle")}</span>
+                {later ? <span className="text-[16px] leading-[1.45] text-muted">{t("home.quietBody", { event: eventName(later, t, locale), date: formatDayFull(later.date, locale) })}</span> : null}
+              </div>
             </div>
-            {later ? (
-              <div className="h-5" />
-            ) : people.length === 0 ? (
+            {later ? null : people.length === 0 ? (
               // 챙길 사람이 아직 없을 때: 사람부터 더하게 큰 버튼
-              <div className="pb-5 pt-[18px]">
+              <div className="pt-[18px]">
                 <Link href="/people/new" className="btn-primary w-full">
                   {t("home.addPerson")}
                 </Link>
               </div>
             ) : (
-              <Link href="/request" className="mt-[18px] flex min-h-[52px] items-center justify-between border-t border-rule text-[14.5px] font-medium">
+              <Link href="/request" className="mt-[18px] flex min-h-[52px] items-center justify-between border-t-[1.5px] border-dashed border-rule text-[18px]">
                 {t("home.askDates")}
-                <Icon name="chevron" size={18} strokeWidth={1.6} className="text-muted" />
+                <Icon name="chevron" size={18} strokeWidth={1.8} className="text-muted" />
               </Link>
             )}
           </>
         )}
+        {/* 낙서 */}
+        <Heart size={28} rotate={-14} className="-bottom-2.5 -left-2" />
+        <Squiggle w={58} className="-bottom-[7px] right-6" />
+        <Sparkle size={18} className="left-[106px] top-[46px]" />
       </section>
 
       {/* 누르면 월별 달력(카드 전체가 눌린다) */}
-      <section aria-label={t("home.thisWeek")} className="card relative mx-4 mt-3.5 px-1 pb-3.5 pt-4 transition-transform active:scale-[0.99]">
-        <Link href="/calendar" aria-label={t("home.openCalendar")} className="absolute inset-0 z-10 rounded-[24px]" />
-        <div className="flex items-center justify-between px-3.5 pb-3">
-          <h2 className="text-[16px] font-bold">{t("home.thisWeek")}</h2>
-          <span className="flex items-center gap-1">
-            {weekEvents ? <span className="chip-on rounded-full px-2.5 py-1 text-[12.5px]">{t("home.weekCount", { n: countWord(weekEvents, locale) })}</span> : null}
-            <Icon name="chevron" size={18} strokeWidth={1.8} className="text-muted" />
-          </span>
+      <section aria-label={t("home.thisWeek")} className="card relative mx-4 mt-[22px] px-3 pb-3 pt-4 transition-transform active:scale-[0.99]">
+        <Link href="/calendar" aria-label={t("home.openCalendar")} className="absolute inset-0 z-10 rounded-[10px]" />
+        <div className="flex items-center justify-between pl-2 pr-1">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-[21px] font-normal">{t("home.thisWeek")}</h2>
+            {weekEvents ? (
+              <span className="-rotate-3 rounded-full bg-[#fff0c9] px-2.5 pb-1 pt-[3px] text-[15px] shadow-[inset_0_0_0_1.5px_var(--color-ink)]">{t("home.weekCount", { n: countWord(weekEvents, locale) })}</span>
+            ) : null}
+          </div>
+          <Icon name="calendar" size={22} strokeWidth={1.8} className="text-ink" />
         </div>
-        <ol className="grid grid-cols-[repeat(8,minmax(0,1fr))]">
+        <ol className="mt-3 grid grid-cols-[repeat(8,minmax(0,1fr))]">
           {days.map((day, i) => {
             const wd = weekday(day);
             const dayEvents = events.filter((e) => sameYmd(e.date, day));
             const lunar = solarToLunar(day);
             const isToday = i === 0;
             return (
-              <li key={i} className="flex flex-col items-center gap-[5px]">
-                <span className={`whitespace-nowrap text-[12px] ${isToday ? "font-bold text-accent" : wd === 0 ? "text-red" : wd === 6 ? "text-sat" : "text-muted"}`}>{isToday ? t("start.today") : names[wd]}</span>
-                <span
-                  className={`num flex h-8 w-8 items-center justify-center rounded-full text-[16px] ${
-                    isToday ? "grad !font-bold" : dayEvents.length ? "chip-on !font-bold" : wd === 0 ? "font-semibold text-red" : "font-semibold"
-                  }`}
-                >
+              <li key={i} className={`flex flex-col items-center gap-0.5 py-0.5 ${i ? "border-l border-dashed border-rule" : ""}`} aria-current={isToday ? "date" : undefined}>
+                <span className={`whitespace-nowrap text-[15px] ${isToday ? "text-ink" : wd === 0 ? "text-red" : wd === 6 ? "text-sat" : "text-muted"}`}>
+                  {isToday ? <span className="sr-only">{t("start.today")} </span> : null}
+                  {names[wd]}
+                </span>
+                <span className={`num relative flex h-[34px] w-[38px] items-center justify-center text-[21px] ${!isToday && wd === 0 ? "text-red" : ""}`}>
+                  {isToday ? <HandCircle w={40} h={36} className="-left-px -top-px" /> : null}
                   {day.d}
                 </span>
-                <span className="num whitespace-nowrap text-[12px] !font-semibold text-muted">{lunar ? `${lunar.m}.${lunar.d}` : ""}</span>
-                <span className="flex h-6 items-center justify-center">
-                  <FaceStack faces={dayEvents.map((e) => ({ key: `${e.contactId}-${e.kind}-${e.label ?? ""}`, avatar: personOf(e.contactId)?.avatar ?? null, label: eventName(e, t, locale) }))} size={24} />
+                <span className="num whitespace-nowrap text-[13px] text-muted">{lunar ? `${lunar.m}.${lunar.d}` : ""}</span>
+                <span className="relative flex h-[30px] items-center justify-center">
+                  <FaceStack faces={dayEvents.map((e) => ({ key: `${e.contactId}-${e.kind}-${e.label ?? ""}`, avatar: personOf(e.contactId)?.avatar ?? null, label: eventName(e, t, locale) }))} size={28} />
+                  {dayEvents.length ? <Heart size={15} rotate={14} className="-right-[5px] -top-1.5" /> : null}
                 </span>
               </li>
             );
           })}
         </ol>
+        <Tape color="pink" className="-left-2.5 -top-1.5" />
+        <Tape color="mint" className="-bottom-1 -right-2.5" />
+        <Star size={20} rotate={-12} className="left-24 -top-2.5" />
+        <Squiggle w={54} color="#F59BAE" width={2.4} className="-bottom-2 left-[22px]" />
       </section>
 
       {question && asked && askedPerson ? (
-        <section aria-label={t("home.question")} className="card mx-4 mt-3.5 flex flex-col gap-3.5 px-4 pb-4 pt-[18px]">
+        <section aria-label={t("home.question")} className="card ruled relative mx-4 mt-[22px] flex flex-col gap-3 pb-3.5 pl-[42px] pr-[18px] pt-5">
+          <MarginLine />
+          <Tape color="mint" w={74} h={22} rotate={-8} alpha={0.55} vertical className="-top-2.5 left-3.5" />
           <div className="flex items-center gap-2.5">
-            <Mascot size={46} />
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-bold text-accent">
-                {t("home.question")}
-                <Link href={`/people/${asked.contactId}`} className="flex min-w-0 items-center gap-1 rounded-full bg-fill py-0.5 pl-0.5 pr-2 text-ink-2">
-                  <Avatar config={askedPerson.avatar} size={18} label={askedName} decorative />
-                  <span className="truncate">{askedName}</span>
-                </Link>
-              </span>
-              <h2 className="text-[19px] font-bold leading-[1.35] tracking-[-0.02em]">{aboutPrompt(question.id, askedName, locale)}</h2>
-            </div>
+            <span className="text-[16px] text-accent">{t("home.question")}</span>
+            <Link href={`/people/${asked.contactId}`} className="relative flex min-w-0 items-center gap-1 rounded-full bg-white py-0.5 pl-[3px] pr-2.5 text-[15px] shadow-[inset_0_0_0_1.5px_var(--color-ink)] before:absolute before:-inset-y-2 before:inset-x-0">
+              <Avatar config={askedPerson.avatar} size={24} label={askedName} decorative />
+              <span className="truncate">{askedName}</span>
+            </Link>
           </div>
-          {/* '없음'이 있는 질문: 없음은 아이콘으로 맨 오른쪽에 늘 보이고, 나머지는 셋까지 한 줄·넘으면 옆으로 넘겨 본다(카드 왼쪽 밖까지 이어지게).
-              없음이 없는 질문: 넷 이하면 두 줄 격자, 넘으면 옆으로 */}
+          <h2 className="text-[24px] font-normal leading-[1.3]">{aboutPrompt(question.id, askedName, locale)}</h2>
+          {/* 고를 수 있는 보기(칩). '없음'이 있는 질문은 맨 끝에 아이콘 칩 */}
           {(() => {
             const hasNone = question.options.some((o) => o.value === NONE);
             const opts = question.options.filter((o) => o.value !== NONE);
-            const scroll = hasNone ? opts.length > 3 : opts.length > 4;
-            const option = (o: (typeof opts)[number]) => (
-              <button
-                key={o.value}
-                name="value"
-                value={o.value}
-                className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl bg-white px-3 py-2 text-[15px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-rule)] transition-[transform,background-color] hover:bg-sky-soft active:scale-95 ${scroll ? "min-w-[96px] shrink-0 snap-start whitespace-nowrap px-4" : ""}`}
-              >
-                {o.label[locale]}
-                {/* 매운맛 질문은 고추 개수로도(값이 단계 0–4) */}
-                {question.id === "spicy" ? <ChiliMeter level={Number(o.value)} size={16} /> : null}
-              </button>
-            );
-            const list = scroll ? (
-              <div className={`flex min-w-0 flex-1 snap-x snap-mandatory gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${hasNone ? "-ml-4 scroll-pl-4 pl-4 pr-3 [mask-image:linear-gradient(to_right,black_calc(100%-28px),transparent)]" : "-mx-4 scroll-px-4 px-4"}`}>
-                {opts.map(option)}
-              </div>
-            ) : (
-              <div className={`grid min-w-0 flex-1 gap-2 ${hasNone ? (opts.length === 3 ? "grid-cols-3" : opts.length === 2 ? "grid-cols-2" : "grid-cols-1") : "grid-cols-2"}`}>{opts.map(option)}</div>
-            );
             return (
-              <form action={answerAbout} className="flex items-start gap-2">
+              <form action={answerAbout} className="flex flex-wrap gap-2">
                 <input type="hidden" name="contactId" value={asked.contactId} />
                 <input type="hidden" name="id" value={question.id} />
-                {list}
+                {opts.map((o) => (
+                  <button key={o.value} name="value" value={o.value} className={`chip transition-transform hover:bg-sky-soft active:scale-95 ${question.id === "spicy" ? "!flex-col !gap-0 !py-1.5" : ""}`}>
+                    {o.label[locale]}
+                    {/* 매운맛 질문은 고추 개수로도(값이 단계 0–4) */}
+                    {question.id === "spicy" ? <ChiliMeter level={Number(o.value)} size={16} /> : null}
+                  </button>
+                ))}
                 {hasNone ? (
-                  <button
-                    name="value"
-                    value={NONE}
-                    aria-label={NONE_LABEL[locale]}
-                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-muted shadow-[inset_0_0_0_1.5px_var(--color-rule)] transition-[transform,background-color] hover:bg-sky-soft active:scale-95"
-                  >
+                  <button name="value" value={NONE} aria-label={NONE_LABEL[locale]} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-muted shadow-[inset_0_0_0_1.5px_var(--color-ink)] transition-transform hover:bg-sky-soft active:scale-95">
                     <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                       <circle cx="12" cy="12" r="8.5" />
                       <path d="M6 6l12 12" />
@@ -257,7 +295,7 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
           })()}
           {/* 보기에 없는 답은 직접(음료·꽃·향·음악·영화) */}
           {canAnswerOwn(question.id) ? (
-            <form action={answerAbout} className="flex items-center gap-1.5 rounded-2xl bg-fill py-1 pl-4 pr-1 focus-within:shadow-[inset_0_0_0_2px_var(--color-sky)]">
+            <form action={answerAbout} className="flex items-center gap-2">
               <input type="hidden" name="contactId" value={asked.contactId} />
               <input type="hidden" name="id" value={question.id} />
               <input
@@ -267,62 +305,61 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
                 enterKeyHint="send"
                 placeholder={t("home.questionOwn")}
                 aria-label={t("home.questionOwn")}
-                className="h-11 min-w-0 flex-1 bg-transparent text-[15.5px] font-medium outline-none placeholder:text-muted"
+                className="h-11 min-w-0 flex-1 border-0 border-b-[1.5px] border-dashed border-ink bg-transparent px-0.5 text-[18px] placeholder:text-muted"
               />
-              <button aria-label={t("common.save")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-rule)] active:scale-95">
-                <Icon name="up" size={18} strokeWidth={2.2} />
+              <button aria-label={t("common.save")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1.5px_var(--color-ink)] active:scale-95">
+                <CheckGlyph size={20} />
               </button>
             </form>
           ) : null}
           {/* 모르는 건 건너뛴다: 같은 날 다음 칸으로(?skip=) */}
-          <Link replace href={`/home?skip=${questionSkip + 1}`} className="-mb-1.5 -mt-1 flex min-h-11 items-center self-end px-2 text-[13.5px] font-bold text-muted">
+          <Link replace href={`/home?skip=${questionSkip + 1}`} className="-mb-1.5 -mt-1 flex min-h-11 items-center gap-1 self-end pl-2 text-[16px] text-muted">
             {t("common.skip")}
+            <Icon name="chevron" size={18} strokeWidth={2} />
           </Link>
+          <Heart size={26} rotate={16} className="-right-[7px] top-11" />
+          <Star size={20} rotate={-12} className="-left-[7px] bottom-[30px]" />
         </section>
       ) : null}
       {answered ? (
-        <p role="status" className="mx-5 mt-2.5 flex items-center gap-2 text-[13px] text-muted">
+        <p role="status" className="mx-5 mt-2.5 flex items-center gap-2 text-[16px] text-muted">
           <Icon name="check" size={16} className="text-accent" />
           {t("home.answered")}
         </p>
       ) : null}
 
-      <section aria-label={t("home.people")} className="card mx-4 mt-3.5 px-3 pb-3.5 pt-4">
-        <div className="flex items-center justify-between px-1.5 pb-3">
-          <h2 className="flex items-baseline gap-1.5 text-[16px] font-bold">
+      <section aria-label={t("home.people")} className="card relative mx-4 mt-[22px] px-3 pb-3.5 pt-4">
+        <div className="flex items-center justify-between pl-2">
+          <h2 className="flex items-baseline gap-2 text-[21px] font-normal">
             {t("home.people")}
-            <span className="num text-[14px] !font-bold text-muted">{people.length}</span>
+            <span className="num text-[16px] text-muted">{people.length}</span>
           </h2>
           {people.length ? (
-            <Link href="/people" className="-my-1 flex min-h-11 items-center gap-0.5 text-[13px] font-medium text-muted">
+            <Link href="/people" className="flex min-h-11 items-center gap-0.5 pl-2 pr-0.5 text-[16px] text-muted">
               {t("home.seeAll")}
-              <Icon name="chevron" size={16} />
+              <Icon name="chevron" size={18} strokeWidth={2} />
             </Link>
           ) : null}
         </div>
         {people.length ? (
-          <div className="-mx-3 flex gap-1 overflow-x-auto px-3 pb-1 [scrollbar-width:none]">
+          <div className="-mx-3 mt-1 flex gap-2 overflow-x-auto px-4 pb-1 pt-1.5 [scrollbar-width:none]">
             {strip.map(({ p, label, badge }) => (
-              <Link key={p.contactId} href={`/people/${p.contactId}`} aria-label={badge ? `${label} ${badge}` : label} className="flex w-[60px] shrink-0 flex-col items-center gap-1.5">
-                <span className="relative block">
-                  <Avatar config={p.avatar} size={52} label={label} />
-                  {badge ? (
-                    <span className="grad num absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-[3px] text-[12px] !font-bold shadow-[0_0_0_2px_#fff]">{badge}</span>
-                  ) : null}
-                </span>
-                <span className="w-full truncate text-center text-[12.5px] font-medium">{displayName(p)}</span>
+              <Link key={p.contactId} href={`/people/${p.contactId}`} aria-label={badge ? `${label} ${badge}` : label} className="relative flex w-[60px] shrink-0 flex-col items-center gap-1">
+                <Avatar config={p.avatar} size={56} label={label} decorative />
+                <span className="w-full truncate text-center text-[16px]">{displayName(p)}</span>
+                {badge ? <span className="num absolute -right-2 -top-0.5 rotate-[8deg] whitespace-nowrap rounded-full bg-sky px-1.5 pb-0.5 pt-px text-[13px] shadow-[0_0_0_1.5px_var(--color-ink)]">{badge}</span> : null}
               </Link>
             ))}
-            <Link href="/request" className="flex w-[60px] shrink-0 flex-col items-center gap-1.5 text-accent">
-              <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full border-2 border-dashed border-mango-edge">
-                <Icon name="plus" size={22} strokeWidth={2.2} />
+            <Link href="/request" className="flex w-[60px] shrink-0 flex-col items-center gap-1 text-muted">
+              <span className="my-1.5 flex h-[46px] w-[46px] items-center justify-center rounded-full border-[1.8px] border-dashed border-ink text-ink">
+                <Icon name="plus" size={20} strokeWidth={2} />
               </span>
-              <span className="text-[12.5px] font-bold">{t("home.request")}</span>
+              <span className="text-[16px]">{t("home.request")}</span>
             </Link>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 px-1.5">
-            <p className="text-[14px] leading-[1.6] text-muted">{t("home.empty")}</p>
+          <div className="flex flex-col gap-3 px-2 pt-3">
+            <p className="text-[17px] leading-[1.5] text-muted">{t("home.empty")}</p>
             <div className="grid grid-cols-2 gap-2.5">
               <Link href="/people/new" className="btn-outline">
                 {t("people.add")}
@@ -333,6 +370,7 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
             </div>
           </div>
         )}
+        <Star size={22} rotate={12} color={SKY_STAR} className="-right-1 -top-[11px]" />
       </section>
 
       <div className="h-4" />

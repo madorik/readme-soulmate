@@ -39,7 +39,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f6f7fb",
+  themeColor: "#fbf6ea",
   // 안드로이드 자동 다크·삼성 인터넷 다크 모드가 화면을 뒤집지 않게(앱은 밝은 화면 하나만)
   colorScheme: "light",
 };

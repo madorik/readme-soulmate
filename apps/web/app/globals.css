@@ -1,35 +1,47 @@
 @import "tailwindcss";
 
-/* 시안 v3 맹고색: 연회색 바탕 위 흰 카드, 남색 글자와 선. 망고 노랑(#FFC23D, 위 글자는 남색)은 주 버튼(눌리는 3D)·D-day·오늘에,
-   망고 그라데이션은 화면당 한 덩어리에만, 고른 것은 연한 망고 바탕 + 망고 테두리, 강조 글자는 진한 망고 갈색.
+/* 다이어리 v2: 크림 종이 + 점 모눈 바탕 위에 종이색 카드, 남색 글자와 선. 망고 노랑(#FFC23D, 위 글자는 남색)은 주 버튼(눌리는 3D)·고른 칩·오늘에,
+   테이프(망고·분홍·민트)·별·하트·물결선은 장식(components/diary.tsx). 고른 것은 망고 바탕 + 남색 테두리, 강조 글자는 진한 망고 갈색.
    빨강은 진짜 경고(알레르기·지우기·오류)와 일요일에만. 색 이름(sky…)은 쓰는 곳이 많아 그대로 둔다 */
 @theme {
-  --color-paper: #ffffff;
-  --color-bg: #f6f7fb;
+  /* 종이 카드 */
+  --color-paper: #fffdf7;
+  /* 크림 바탕(점 모눈은 html에) */
+  --color-bg: #fbf6ea;
   --color-ink: #1f2340;
   --color-ink-2: #3a3f5c;
-  /* 작은 글씨 회색: 흰 바탕 5.6, 연회색(bg·fill)·연한 망고(sky-soft) 바탕에서도 5.0 안팎이라 모두 4.5:1이 넘는다 */
-  --color-muted: #62677f;
-  /* 구분선(가는 선)과 카드·버튼의 장식 테두리(대비 낮음) */
-  --color-rule: #e4e6ee;
-  --color-edge: #cdd1dc;
-  /* 켜짐·꺼짐을 테두리·바탕으로만 알리는 것(스위치 꺼짐 바탕·체크 칸·입력칸 테두리): 비글자 3:1 */
-  --color-edge-strong: #8389a0;
-  --color-fill: #f1f2f7;
-  /* 강조 글자(진한 망고 갈색, 흰 바탕 5.8:1)·망고 테두리·고른 칸 바탕 */
+  /* 작은 글씨 보조색: 종이 6.2, 크림 5.8, 눌러 앉힌 칸(fill) 5.5 */
+  --color-muted: #5b5f78;
+  /* 구분선(가는 선): 종이·크림 어디서나 */
+  --color-rule: rgb(31 35 64 / 0.14);
+  /* 칩·버튼의 남색 테두리(1.5px) */
+  --color-edge: #1f2340;
+  /* 켜짐·꺼짐을 테두리·바탕으로만 알리는 것(스위치 꺼짐 바탕·체크 칸): 비글자 3:1 */
+  --color-edge-strong: #7d8197;
+  /* 살짝 눌러 앉힌 칸(입력 바탕·빈 자리) */
+  --color-fill: #f6f0df;
+  /* 강조 글자(진한 망고 갈색, 종이 5.7:1)·고른 칸 글자 */
   --color-accent: #8f5a00;
   --color-sky: #ffc23d;
   --color-sky-soft: #fff4d6;
+  /* 진한 망고(버튼 그림자·손그림 동그라미·도장) */
+  --color-mango-deep: #e09a12;
   /* 점선·빈 자리 표시의 연한 망고 테두리 */
   --color-mango-edge: #f0d27a;
+  /* 장식 색: 분홍·민트·하늘(테이프·하트·별), 포스트잇 분홍, 줄노트 여백선과 줄 */
+  --color-pink: #f59bae;
+  --color-mint: #7fd6b8;
+  --color-blue: #8fd2ec;
+  --color-postit: #ffe3e8;
+  --color-margin: #f2a7b5;
   /* 경고(4.5:1)와 그 바탕 */
   --color-red: #c8283a;
   --color-red-soft: #fde9ea;
   /* 즐겨찾기 하트 */
   --color-marker: #ff7a8a;
-  --color-sat: #2563eb;
+  --color-sat: #2f5fc4;
   --color-hl: #ffe9a8;
-  --color-sticky: #f1f2f7;
+  --color-sticky: #ffe3e8;
   --color-ok: #1e7d55;
 
   /* 앱 전체 글꼴: 손글씨체 Poor Story(app/fonts.css, scripts/fetch-fonts.mjs). 글꼴에 없는 드문 글자는 시스템 한글 글꼴로(아이폰 웹뷰는 system-ui에서 한글로 못 넘어가 물음표 네모가 된다) */
@@ -45,7 +57,9 @@
     --sab: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
     /* 아래 고정 버튼 줄의 아래 여백: 아래 막대 가림 띠(.bar-mask-bottom) 위로 조금 더 띄워 버튼 모서리·3D 그림자가 잘리지 않게 */
     --pb: max(calc(var(--sab) + 12px), 16px);
-    --pb-tab: max(calc(var(--sab) + 12px), 16px);
+    --pb-tab: max(calc(var(--sab) + 12px), 22px);
+    /* 아래 탭 막대(TabBar) 높이(아래 여백 --pb-tab 제외): 탭 막대 위에 얹는 것들이 이만큼 띄운다 */
+    --tab-h: 78px;
     /* 망고: 큰 덩어리(크림 → 망고 그라데이션)와 버튼(단색 + 아래 진한 망고 그림자로 눌리는 3D) */
     --grad-hero: linear-gradient(140deg, #fff6dd 0%, #ffe7a6 55%, #ffd36b 100%);
     --grad-btn: #ffc23d;
@@ -54,13 +68,16 @@
     /* 밝은 화면 하나만: 안드로이드 자동 다크·삼성 인터넷 다크가 뒤집지 않게 */
     color-scheme: light;
   }
+  /* 크림 종이 + 점 모눈(18px 간격). 바탕은 html에만 깔고 body는 비워 둔다(둘 다 칠하면 body가 점을 덮는다) */
   html {
     -webkit-text-size-adjust: 100%;
-    background: var(--color-bg);
+    background-color: var(--color-bg);
+    background-image: radial-gradient(rgb(31 35 64 / 0.16) 1px, transparent 1.3px);
+    background-size: 18px 18px;
   }
   body {
     color: var(--color-ink);
-    background: var(--color-bg);
+    background: transparent;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
@@ -93,56 +110,58 @@
 }
 
 @layer components {
-  /* 숫자(날짜·D-day): 가는 기하 산세리프. 크게 쓸 때는 font-extralight/font-light로 더 가늘게 */
+  /* 숫자(날짜·D-day): 같은 손글씨체. 굵기는 한 벌뿐이라 400 */
   .num {
     font-family: var(--font-num);
-    font-weight: 500;
+    font-weight: 400;
     line-height: 1;
     letter-spacing: -0.01em;
     font-variant-numeric: tabular-nums;
   }
-  /* 로고 글자(기억해유 / Remember You)는 손글씨체(Poor Story, app/wordmark.css). 굵기는 한 벌뿐이라 400 */
+  /* 로고 글자(기억해U / Remember U)는 손글씨체(Poor Story, app/wordmark.css). 굵기는 한 벌뿐이라 400 */
   .wordmark {
     font-family: "Wordmark Hand", var(--font-num);
     font-weight: 400;
-    letter-spacing: 0;
+    letter-spacing: -0.01em;
     /* 손글씨체는 같은 크기에서 가늘어 보여 획을 살짝 보탠다 */
     -webkit-text-stroke: 0.6px currentColor;
   }
   .headline {
-    font-weight: 700;
-    letter-spacing: -0.03em;
+    font-weight: 400;
+    letter-spacing: -0.02em;
     line-height: 1.3;
   }
-  /* 오늘·새로 바뀐 것: 옅은 붉은 밑줄 형광 */
+  /* 형광펜 밑줄(이름·강조): 줄이 바뀌어도 줄마다 칠한다 */
   .hl {
-    background: linear-gradient(transparent 58%, var(--color-hl) 58%, var(--color-hl) 94%, transparent 94%);
+    background-image: linear-gradient(transparent 56%, rgb(255 194 61 / 0.7) 56%, rgb(255 194 61 / 0.7) 90%, transparent 90%);
     padding: 0 2px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
   /* 주 버튼: 망고 + 남색 글자(밝은 노랑 위 흰 글자는 대비가 모자라다), 누르면 그림자만큼 내려간다 */
   .btn-primary {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     /* 글자를 키워도 잘리지 않게 최소 높이만(줄이 늘면 같이 커진다) */
-    min-height: 54px;
+    min-height: 52px;
     padding-block: 8px;
-    border-radius: 18px;
+    border-radius: 16px;
     background: var(--grad-btn);
     color: var(--color-ink);
     box-shadow: var(--shadow-btn);
-    font-weight: 700;
-    font-size: 16px;
+    font-weight: 400;
+    font-size: 19px;
     transition: transform 0.08s ease-out, box-shadow 0.08s ease-out;
   }
   .btn-primary:active {
     transform: translateY(2px);
-    box-shadow: 0 2px 0 #e09a12;
+    box-shadow: 0 2px 0 var(--color-mango-deep);
   }
-  /* 꺼진 단추: 망고·그림자 없이 회색 바탕, 글자는 5:1 */
+  /* 꺼진 단추: 망고·그림자 없이 눌러 앉힌 바탕, 글자는 5:1 */
   .btn-primary:disabled {
-    background: #e4e6ee;
+    background: #e8e1cf;
     color: #5a5f78;
     box-shadow: none;
   }
@@ -150,14 +169,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    min-height: 54px;
+    gap: 6px;
+    min-height: 52px;
     padding-block: 8px;
-    border-radius: 18px;
+    border-radius: 16px;
     box-shadow: inset 0 0 0 1.5px var(--color-edge);
     background: #fff;
-    font-weight: 700;
-    font-size: 15px;
+    font-weight: 400;
+    font-size: 18px;
   }
   /* 높이를 !h-…로 못 박아 쓰는 작은 단추는 그 높이 그대로 */
   .btn-primary:where([class*="!h-"]),
@@ -174,36 +193,42 @@
     background: var(--grad-hero);
     color: var(--color-ink);
   }
-  /* 흰 카드: 하늘 바탕 위 묶음 */
+  /* 종이 카드: 크림 바탕 위에 올린 종이 한 장(모서리 10px, 아래로 깊은 그림자). 장식(테이프 등)은 이 안에 넣는다 */
   .card {
     background: var(--color-paper);
-    border-radius: 24px;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgb(31 35 64 / 0.08), 0 12px 26px -16px rgb(31 35 64 / 0.42);
   }
-  /* 고르는 칩: 꺼짐은 회색 바탕, 켜짐은 연한 망고 바탕 + 망고 테두리 + 진한 망고 글자 */
+  /* 줄노트 바탕(오늘의 질문 등): 파란 줄 + 왼쪽 분홍 여백선은 components/diary.tsx의 MarginLine */
+  .ruled {
+    background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgb(47 95 196 / 0.13) 31px 32px);
+    background-position: 0 14px;
+  }
+  /* 고르는 칩: 꺼짐은 흰 바탕 + 남색 테두리, 켜짐은 망고 바탕 + 같은 테두리 */
   .chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 5px;
     min-height: 44px;
-    padding: 0 15px;
+    padding: 0 16px;
     border-radius: 999px;
-    background: var(--color-fill);
-    box-shadow: inset 0 0 0 2px var(--color-fill);
-    font-weight: 500;
-    font-size: 15px;
-    transition: background-color 0.12s ease-out, box-shadow 0.12s ease-out;
+    background: #fff;
+    box-shadow: inset 0 0 0 1.5px var(--color-edge);
+    font-weight: 400;
+    font-size: 18px;
+    transition: background-color 0.12s ease-out;
   }
   .chip[aria-pressed="true"],
   .chip-on {
-    background: var(--color-sky-soft);
-    box-shadow: inset 0 0 0 2px var(--color-sky);
-    color: var(--color-accent);
-    font-weight: 700;
+    background: var(--color-sky);
+    box-shadow: inset 0 0 0 1.5px var(--color-edge);
+    color: var(--color-ink);
+    font-weight: 400;
   }
   .chip.chip-warn[aria-pressed="true"] {
     background: var(--color-red-soft);
-    box-shadow: inset 0 0 0 2px #f2a7b6;
+    box-shadow: inset 0 0 0 1.5px var(--color-red);
     color: var(--color-red);
   }
   .btn-soft {
@@ -214,8 +239,8 @@
     border-radius: 14px;
     box-shadow: inset 0 0 0 1.5px var(--color-edge);
     background: #fff;
-    font-weight: 500;
-    font-size: 14px;
+    font-weight: 400;
+    font-size: 16px;
   }
   .pill {
     display: inline-flex;
@@ -226,36 +251,39 @@
     border-radius: 999px;
     box-shadow: inset 0 0 0 1.5px var(--color-edge);
     background: #fff;
-    font-weight: 700;
-    font-size: 14px;
-  }
-  .field {
-    width: 100%;
-    min-height: 48px;
-    padding: 10px 14px;
-    border-radius: 14px;
-    box-shadow: inset 0 0 0 1px var(--color-edge-strong);
-    background: #fff;
+    font-weight: 400;
     font-size: 16px;
   }
+  /* 입력칸: 흰 바탕 + 남색 2px 테두리 + 아래 망고 그림자 한 줄 */
+  .field {
+    width: 100%;
+    min-height: 52px;
+    padding: 10px 14px;
+    border: 2px solid var(--color-edge);
+    border-radius: 14px;
+    box-shadow: 0 3px 0 var(--color-sky);
+    background: #fff;
+    font-size: 19px;
+  }
   .field:focus {
-    outline: none;
-    box-shadow: inset 0 0 0 2px var(--color-sky);
+    outline: 2px solid var(--color-mango-deep);
+    outline-offset: 2px;
+    box-shadow: 0 3px 0 var(--color-mango-deep);
   }
   .label {
-    font-size: 13px;
+    font-size: 15px;
     color: var(--color-muted);
   }
   .section-title {
-    font-size: 17px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-size: 21px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
   }
   .row {
     display: flex;
     gap: 12px;
     padding: 13px 0;
-    border-top: 1px solid var(--color-rule);
+    border-top: 1.5px dashed var(--color-rule);
   }
 }
 
