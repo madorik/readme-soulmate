@@ -7,6 +7,7 @@ import { TabBar, Wordmark } from "@/components/chrome";
 import { EmptyPortrait, EventPortrait, EventPortraits } from "@/components/EventArt";
 import { FaceStack } from "@/components/FaceStack";
 import { Mascot } from "@/components/Mascot";
+import { NotificationBell, type BellItem } from "@/components/NotificationBell";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { Icon } from "@/components/marks";
 import { eventName, eventsFor } from "@/lib/events";
@@ -17,7 +18,7 @@ import { makeT } from "@/lib/t";
 // 시안 v3: 다가오는 날(흰 카드, 가는 큰 숫자) → 이번 주(오늘은 하늘 그라데이션, 챙길 날엔 그 사람 얼굴) → 리디가 묻는 오늘의 질문 → 내 사람들(가로 줄)
 export function HomeView({ locale, avatar, today, people, card, answers, answered, ai }: HomeData) {
   const t = makeT(locale);
-  // 물어보기에 온 답장(아직 안 본 것): 맨 위에. 누르면 그 사람 화면, 열면 읽은 것으로
+  // 물어보기에 온 답장(아직 안 본 것)은 오른쪽 위 종에 모은다. 누르면 그 사람 화면, 열면 읽은 것으로
   const rtf = new Intl.RelativeTimeFormat(locale === "ko" ? "ko" : "en", { numeric: "auto" });
   const ago = (min: number) => {
     if (min < 1) return t("home.justNow");
@@ -28,6 +29,11 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
   const events = eventsFor(people, today);
   const next = events.find((e) => e.daysUntil <= 60) ?? null;
   const personOf = (contactId: string) => people.find((p) => p.contactId === contactId) ?? null;
+  const bellItems: BellItem[] = answers.map((a) => {
+    const who = personOf(a.contactId);
+    const name = who ? displayName(who) : a.label;
+    return { id: a.id, href: `/people/${a.contactId}`, avatar: who?.avatar ?? null, name: name || t("notif.answeredAnon"), title: name ? t("notif.answered", { name }) : t("notif.answeredAnon"), when: ago(a.minutes) };
+  });
   const nextPerson = next ? personOf(next.contactId) : null;
   // 같은 날 챙길 날이 여럿이면 모두 보인다. 얼굴·선물 힌트는 사람마다 하나
   const nextGroup = next ? events.filter((e) => e.daysUntil === next.daysUntil) : [];
@@ -56,27 +62,11 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
     <>
       <div className="flex items-center justify-between pl-5 pr-3">
         <Wordmark locale={locale} />
-        <ProfileMenu avatar={avatar} labels={{ menu: t("home.profileMenu"), profile: t("profile.title"), signOut: t("privacy.signOut") }} />
+        <div className="flex items-center gap-0.5">
+          <NotificationBell items={bellItems} labels={{ title: t("notif.title"), empty: t("notif.empty"), close: t("common.close") }} />
+          <ProfileMenu avatar={avatar} labels={{ menu: t("home.profileMenu"), profile: t("profile.title"), signOut: t("privacy.signOut") }} />
+        </div>
       </div>
-
-      {answers.length ? (
-        <section aria-label={t("home.replies")} className="mx-4 mb-3 flex flex-col overflow-hidden rounded-[22px] bg-sky-soft shadow-[inset_0_0_0_1.5px_rgba(255,194,61,0.55)]">
-          {answers.map((a, i) => {
-            const who = personOf(a.contactId);
-            const name = who ? displayName(who) : a.label;
-            return (
-              <Link key={a.id} href={`/people/${a.contactId}`} className={`flex min-h-[64px] items-center gap-3 px-4 py-2.5 active:bg-[rgba(255,194,61,0.18)] ${i ? "border-t border-[rgba(255,194,61,0.4)]" : ""}`}>
-                <Avatar config={who?.avatar ?? null} size={38} label={name || t("notif.answeredAnon")} />
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="truncate text-[15px] font-bold tracking-[-0.01em]">{name ? t("notif.answered", { name }) : t("notif.answeredAnon")}</span>
-                  <span className="text-[12.5px] text-muted">{ago(a.minutes)}</span>
-                </span>
-                <Icon name="chevron" size={18} className="shrink-0 text-muted" />
-              </Link>
-            );
-          })}
-        </section>
-      ) : null}
 
       {/* 오늘은 카드 밖에. 카드 안 날짜는 챙길 날 것만 */}
       <p className="flex items-center gap-2 px-5 pb-2.5 pt-1 text-[13px] font-medium text-muted">

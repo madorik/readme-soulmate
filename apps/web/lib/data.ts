@@ -333,7 +333,7 @@ export async function unreadAnswers(q: Q, me: string, contactId?: string): Promi
   const rows = await q<{ id: string; contact_id: string; label: string; created_at: Date; minutes: number }>(
     `select id, contact_id, label, created_at, floor(extract(epoch from now() - created_at) / 60)::int as minutes from notifications
      where user_id = $1 and kind = 'answered' and read_at is null and contact_id is not null and ($2::uuid is null or contact_id = $2::uuid)
-     order by created_at desc limit 5`,
+     order by created_at desc limit 30`,
     [me, contactId ?? null],
   );
   return rows.map((r) => ({ id: r.id, contactId: r.contact_id, label: r.label, at: iso(r.created_at)!, minutes: Math.max(0, Number(r.minutes) || 0) }));

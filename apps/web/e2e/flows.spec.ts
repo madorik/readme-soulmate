@@ -137,16 +137,17 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await dad.goto(askDadUrl);
   await expect(dad.getByText("이미 답한 링크예요.")).toBeVisible();
 
-  // 답장이 오면 홈 맨 위에 알림. 누르면 그 사람 화면, 열면 읽은 것으로 사라진다
+  // 답장이 오면 홈 오른쪽 위 종에 새 알림 개수가 붙고, 눌러 열면 알림이 모여 있다. 알림을 누르면 그 사람 화면, 열면 읽은 것으로 종의 숫자가 사라진다
   await page.goto("/home");
-  const reply = page.getByRole("region", { name: "새 답장" }).getByRole("link", { name: /아빠가 답장을 보냈어요/ });
+  await page.getByRole("button", { name: "알림 1" }).click();
+  const reply = page.getByRole("dialog", { name: "알림" }).getByRole("link", { name: /아빠가 답장을 보냈어요/ });
   await expect(reply).toBeVisible();
   await expect(reply).toContainText(/방금|분 전/);
   await shot(page, "07a-home-reply");
   await reply.click();
   await expect(page).toHaveURL(/\/people\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("link", { name: /알레르기와 못 먹는 음식/ })).toBeVisible();
-  await expect.poll(async () => (await page.request.get("/home")).text().then((h) => h.includes("답장을 보냈어요"))).toBe(false);
+  await expect.poll(async () => (await page.request.get("/home")).text().then((h) => h.includes('aria-label="알림 1"'))).toBe(false);
 
   // 아빠는 지수 사람들에 들어가 있고, 답한 항목에 받은 날이 붙는다
   await page.goto("/people");
@@ -159,7 +160,8 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await expect(page.getByRole("listitem").filter({ has: page.getByRole("link", { name: /알레르기와 못 먹는 음식/ }) }).getByText("굴", { exact: true })).toBeVisible();
   await shot(page, "07-person-answered");
   await page.goto("/home");
-  await expect(page.getByRole("region", { name: "새 답장" })).toHaveCount(0);
+  // 다 읽었으니 종에는 숫자가 없고, 열어도 새 알림이 없다
+  await expect(page.getByRole("button", { name: "알림", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: /아빠/ })).toBeVisible();
   await shot(page, "08-home");
 });
