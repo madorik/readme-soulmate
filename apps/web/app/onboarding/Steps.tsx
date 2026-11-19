@@ -4,6 +4,7 @@ import { emptySection, type AvatarConfig, type DateSpec, type Locale, type Remin
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { finishOnboarding, saveAvatar, saveFood } from "@/app/actions/card";
+import { Heart, SKY_STAR, Sparkle, Squiggle, Star, Tape, type TapeColor } from "@/components/diary";
 import { AvatarBuilder } from "@/components/editors/AvatarBuilder";
 import { DateSpecPicker, ReminderPicker } from "@/components/editors/DatesEditor";
 import { SafetyEditor } from "@/components/editors/SafetyEditor";
@@ -23,14 +24,18 @@ export function Submit({ children, disabled, className = "w-full" }: { children:
 function Later({ children }: { children: React.ReactNode }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" name="later" value="1" disabled={pending} className="mt-1 flex min-h-11 w-full items-center justify-center text-[14px] font-bold text-muted">
+    <button type="submit" name="later" value="1" disabled={pending} className="mt-1 flex min-h-11 w-full items-center justify-center text-[19px] text-muted">
       {children}
     </button>
   );
 }
 
-/** 온보딩 단계의 흰 시트: 그라데이션 머리 위로 살짝 겹쳐 올라온다 */
-const SHEET = "relative z-10 -mt-6 flex flex-1 flex-col rounded-t-[28px] bg-paper";
+/** 온보딩 단계의 종이 시트: 머리 아래에서 화면 끝까지, 윗변 가운데에 테이프 */
+const SHEET = "relative z-10 mt-4 flex flex-1 flex-col rounded-t-[28px] bg-paper shadow-[0_-1px_0_rgb(31_35_64/0.1),0_-14px_28px_-18px_rgb(31_35_64/0.4)]";
+
+function SheetTape({ color, vertical = false }: { color: TapeColor; vertical?: boolean }) {
+  return <Tape color={color} w={104} h={26} rotate={-3} alpha={color === "mint" ? 0.55 : color === "pink" ? 0.6 : 0.62} vertical={vertical} className="-top-3 left-1/2 -ml-[52px]" />;
+}
 
 /**
  * 프로필 고치기: 머리 줄(제목 · 오른쪽 끝 저장, 위에 붙어 늘 보인다) 아래에 이름 칸. 내 프로필과 사람 프로필이 같이 쓴다
@@ -95,17 +100,18 @@ export function AvatarStep({
     );
   return (
     <form action={saveAvatar} className={SHEET}>
+      <SheetTape color="mango" />
       {hidden}
-      <div className="px-4 pt-4">
+      <div className="px-4 pt-7">
         {/* 온보딩은 미리보기 아래에 이름 칸 */}
         <AvatarBuilder
           value={value}
           onChange={setValue}
           locale={locale}
           between={
-            <label className="mt-3 flex min-h-14 items-center gap-3 rounded-[18px] bg-bg px-4 shadow-[inset_0_0_0_1.5px_var(--color-rule)]">
-              <span className="shrink-0 text-[13px] font-bold text-muted">{t("onb.avatar.name")}</span>
-              <input name="name" defaultValue={name} required maxLength={40} className="min-w-0 flex-1 bg-transparent text-[18px] font-bold tracking-[-0.02em] outline-none" />
+            <label className="mt-[18px] flex min-h-14 items-center gap-3 rounded-2xl bg-white px-4 shadow-[inset_0_0_0_1.5px_var(--color-ink),0_3px_0_var(--color-sky)]">
+              <span className="shrink-0 text-[17px] text-muted">{t("onb.avatar.name")}</span>
+              <input name="name" defaultValue={name} required maxLength={40} className="h-[52px] min-w-0 flex-1 bg-transparent text-[24px] outline-none" />
             </label>
           }
         />
@@ -124,12 +130,17 @@ export function FoodStep({ locale, safety, spicy, next }: { locale: Locale; safe
   const [level, setLevel] = useState<number | null>(spicy);
   return (
     <form action={saveFood} className={SHEET}>
+      <SheetTape color="mint" vertical />
       <input type="hidden" name="safety" value={JSON.stringify(value)} />
       <input type="hidden" name="spicy" value={JSON.stringify(level)} />
       <input type="hidden" name="next" value={next} />
-      <div className="flex flex-col gap-7 px-5 pt-6">
+      <div className="relative flex flex-col gap-7 px-5 pt-8">
         <SafetyEditor value={value} onChange={setValue} locale={locale} showNote={false} />
         <SpicyScale value={level} onChange={setLevel} locale={locale} />
+        <Heart size={26} rotate={16} className="right-3 top-2" />
+        <Squiggle w={54} width={2.4} className="right-[30px] top-[214px]" />
+        <Sparkle size={18} className="left-px top-[380px]" />
+        <Star size={20} rotate={-12} color={SKY_STAR} className="right-2 top-[436px]" />
       </div>
       <div className="bottom-bar mt-auto bg-paper px-4 pt-4">
         <Submit>{t("common.next")}</Submit>
@@ -145,12 +156,17 @@ export function BirthdayStep({ locale, birthday, offsets, next }: { locale: Loca
   const [when, setWhen] = useState<ReminderOffset[]>(offsets);
   return (
     <form action={finishOnboarding} className={SHEET}>
+      <SheetTape color="pink" />
       <input type="hidden" name="birthday" value={JSON.stringify(spec)} />
       <input type="hidden" name="offsets" value={JSON.stringify(when)} />
       <input type="hidden" name="next" value={next} />
-      <div className="flex flex-col gap-7 px-5 pt-6">
+      <div className="relative flex flex-col gap-7 px-5 pt-8">
         <DateSpecPicker value={spec} onChange={setSpec} locale={locale} year="birth" />
         <ReminderPicker value={when} onChange={setWhen} locale={locale} />
+        <Heart size={26} rotate={16} className="right-3.5 top-2.5" />
+        <Star size={22} rotate={12} color={SKY_STAR} className="bottom-[52px] right-[18px]" />
+        <Sparkle size={18} className="right-[74px] top-[62px]" />
+        <Squiggle w={54} width={2.4} className="-bottom-2.5 right-5" />
       </div>
       <div className="bottom-bar mt-auto bg-paper px-4 pt-4">
         <Submit>{t("onb.finish")}</Submit>

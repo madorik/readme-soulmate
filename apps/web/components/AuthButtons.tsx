@@ -70,27 +70,27 @@ export function AuthButtons({ locale, next, google, apple, demo: showDemo = true
   return (
     <div className="flex flex-col gap-2.5">
       {google ? (
-        <button type="button" disabled={!!busy} onClick={() => void social("google")} className="btn-soft !h-[52px] gap-2 !text-[15px] !font-medium">
+        <button type="button" disabled={!!busy} onClick={() => void social("google")} className="btn-outline btn-outline-lift gap-2.5 !text-[20px]">
           <GoogleGlyph />
           {t("start.google")}
         </button>
       ) : null}
       {apple ? (
-        <button type="button" disabled={!!busy} onClick={() => void social("apple")} className="btn-soft !h-[52px] gap-2 !text-[15px] !font-medium">
+        <button type="button" disabled={!!busy} onClick={() => void social("apple")} className="btn-outline btn-outline-lift gap-2.5 !text-[20px]">
           <AppleGlyph />
           {t("start.apple")}
         </button>
       ) : null}
       {showDemo ? (
         <>
-          <button type="button" disabled={!!busy} onClick={() => void demo()} className={google || apple ? "btn-soft !h-14 !text-[16px]" : "btn-primary"}>
+          <button type="button" disabled={!!busy} onClick={() => void demo()} className={google || apple ? "btn-outline btn-outline-lift !min-h-14 !text-[20px]" : "btn-primary"}>
             {t("start.demo")}
           </button>
-          <span className="text-center text-[12.5px] text-muted">{t("start.demoNote")}</span>
+          <span className="text-center text-[15px] leading-[1.3] text-muted">{t("start.demoNote")}</span>
         </>
       ) : null}
       {failed ? (
-        <p role="alert" className="text-center text-[13.5px] text-red">
+        <p role="alert" className="text-center text-[17px] text-red">
           {t("login.failed")}
         </p>
       ) : null}

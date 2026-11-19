@@ -42,7 +42,7 @@ export function LinkAccount() {
         }}
       >
         <div className="card mx-4 mt-5 flex flex-col gap-3 px-5 py-5">
-          <label htmlFor="link-code" className="text-[15px] font-bold">
+          <label htmlFor="link-code" className="text-[18px]">
             연결 코드
           </label>
           <input

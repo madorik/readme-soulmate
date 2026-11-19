@@ -17,8 +17,12 @@ export interface LinkBand {
 
 const SWIPE = 56;
 
-/** share: 주면 아래 단추 줄(가족과 같이 준비·선물 완료)에 카드 주소와 지금 가격대를 알린다(선물 힌트 화면 하나에서만) */
-export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share, source }: { bands: LinkBand[]; initial: string; pad?: string; label: string; share?: { url: string; text: string }; source: "reminder" | "plan" | "card" }) {
+/**
+ * share: 주면 아래 단추 줄(가족과 같이 준비·선물 완료)에 카드 주소와 지금 가격대를 알린다(선물 힌트 화면 하나에서만)
+ * look="paper": 가족 카드(/g)처럼 한 칸씩 종이 카드에 상품 사진을 폴라로이드 틀로
+ */
+export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share, source, look = "list" }: { bands: LinkBand[]; initial: string; pad?: string; label: string; share?: { url: string; text: string }; source: "reminder" | "plan" | "card"; look?: "list" | "paper" }) {
+  const paper = look === "paper";
   const [index, setIndex] = useState(() => Math.max(0, bands.findIndex((b) => b.band === initial)));
   const [enter, setEnter] = useState<"left" | "right" | null>(null);
   const [dx, setDx] = useState(0);
@@ -99,37 +103,68 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share, sourc
           role="tabpanel"
           aria-label={cur.label}
           style={dx ? { transform: `translateX(${dx}px)` } : undefined}
-          className={`flex flex-col gap-2 pt-2.5 ${pad} ${dx ? "" : "transition-transform duration-200"} ${enter === "right" ? "motion-safe:animate-[picks-in-right_240ms_ease-out]" : enter === "left" ? "motion-safe:animate-[picks-in-left_240ms_ease-out]" : ""}`}
+          className={`flex flex-col ${paper ? "gap-3.5 pt-3" : "gap-2 pt-2.5"} ${pad} ${dx ? "" : "transition-transform duration-200"} ${enter === "right" ? "motion-safe:animate-[picks-in-right_240ms_ease-out]" : enter === "left" ? "motion-safe:animate-[picks-in-left_240ms_ease-out]" : ""}`}
         >
-          {cur.items.map((it) => (
-            <li key={it.id}>
-              <a href={it.url} target="_blank" rel="sponsored noopener noreferrer" draggable={false} onClick={() => beacon("gift_click", { i: it.id, b: cur.band, s: source })} className="flex items-start gap-3 rounded-[10px] bg-white p-3 shadow-[inset_0_0_0_1.5px_var(--color-ink)] active:bg-fill">
-                <span aria-hidden="true" className="h-[76px] w-[76px] shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-rule">
-                  {it.image ? (
-                    // 쿠팡 이미지 주소를 그대로(이미지 최적화 서버를 거치지 않게)
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={it.image} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" draggable={false} className="h-full w-full object-contain" />
-                  ) : (
-                    <span className="flex h-full w-full items-center justify-center bg-sky-soft text-accent">
-                      <Icon name="gift" size={24} strokeWidth={1.8} />
+          {cur.items.map((it, n) =>
+            paper ? (
+              <li key={it.id} className={n % 2 ? "[transform:rotate(0.4deg)]" : "[transform:rotate(-0.4deg)]"}>
+                <a
+                  href={it.url}
+                  target="_blank"
+                  rel="sponsored noopener noreferrer"
+                  draggable={false}
+                  onClick={() => beacon("gift_click", { i: it.id, b: cur.band, s: source })}
+                  className="card relative flex items-start gap-3.5 py-3.5 pl-3 pr-3.5 active:bg-fill"
+                >
+                  <span aria-hidden="true" className={`shrink-0 bg-white px-[5px] pb-1 pt-[5px] shadow-[0_1px_2px_rgb(31_35_64/0.12),0_6px_12px_-8px_rgb(31_35_64/0.5)] ${n % 2 ? "[transform:rotate(3deg)]" : "[transform:rotate(-3deg)]"}`}>
+                    <span className="flex h-[70px] w-[70px] items-center justify-center overflow-hidden bg-[#fff1cc]">
+                      {it.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={it.image} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" draggable={false} className="h-full w-full bg-white object-contain" />
+                      ) : (
+                        <Icon name="gift" size={26} strokeWidth={1.8} className="text-accent" />
+                      )}
                     </span>
-                  )}
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[20px] leading-[1.25]">{it.title}</span>
-                    <Icon name="external" size={15} className="shrink-0 text-muted" />
                   </span>
-                  {it.basis?.length ? <BasisTags words={it.basis} /> : null}
-                  {it.reason ? (
-                    <span className="line-clamp-3 text-[16px] leading-[1.45] text-muted">{it.reason}</span>
-                  ) : it.name ? (
-                    <span className="line-clamp-2 text-[15px] leading-[1.4] text-muted">{it.name}</span>
-                  ) : null}
-                </span>
-              </a>
-            </li>
-          ))}
+                  <span className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate text-[22px] leading-[1.2]">{it.title}</span>
+                      <Icon name="external" size={18} strokeWidth={2} className="shrink-0 text-muted" />
+                    </span>
+                    {it.name ? <span className="line-clamp-2 text-[16px] leading-[1.4] text-muted">{it.name}</span> : null}
+                  </span>
+                </a>
+              </li>
+            ) : (
+              <li key={it.id}>
+                <a href={it.url} target="_blank" rel="sponsored noopener noreferrer" draggable={false} onClick={() => beacon("gift_click", { i: it.id, b: cur.band, s: source })} className="flex items-start gap-3 rounded-[10px] bg-white p-3 shadow-[inset_0_0_0_1.5px_var(--color-ink)] active:bg-fill">
+                  <span aria-hidden="true" className="h-[76px] w-[76px] shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-rule">
+                    {it.image ? (
+                      // 쿠팡 이미지 주소를 그대로(이미지 최적화 서버를 거치지 않게)
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={it.image} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" draggable={false} className="h-full w-full object-contain" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center bg-sky-soft text-accent">
+                        <Icon name="gift" size={24} strokeWidth={1.8} />
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate text-[20px] leading-[1.25]">{it.title}</span>
+                      <Icon name="external" size={15} className="shrink-0 text-muted" />
+                    </span>
+                    {it.basis?.length ? <BasisTags words={it.basis} /> : null}
+                    {it.reason ? (
+                      <span className="line-clamp-3 text-[16px] leading-[1.45] text-muted">{it.reason}</span>
+                    ) : it.name ? (
+                      <span className="line-clamp-2 text-[15px] leading-[1.4] text-muted">{it.name}</span>
+                    ) : null}
+                  </span>
+                </a>
+              </li>
+            ),
+          )}
         </ul>
       </div>
     </div>

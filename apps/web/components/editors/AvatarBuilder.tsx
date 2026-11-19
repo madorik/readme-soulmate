@@ -16,7 +16,7 @@ import {
 } from "@readme/core";
 import { useState } from "react";
 import { AvatarArt, avatarBackground } from "../Avatar";
-import { Heart, Sparkle, SKY_STAR, Squiggle, Star, Tape } from "../diary";
+import { Heart, Sparkle, SKY_STAR, Squiggle, Star, Tape, type TapeColor } from "../diary";
 import { useT } from "./shared";
 
 type Tab = "hair" | "face" | "body" | "item" | "glasses" | "color";
@@ -47,7 +47,7 @@ function Swatch({ fill, on, label, onPick }: { fill: string; on: boolean; label:
 }
 
 /** 캐릭터 만들기: 큰 미리보기(아무거나·색깔) → between(이름 칸 등) → 머리·옷·소품·안경·색깔 탭과 고르기 칸 */
-export function AvatarBuilder({ value, onChange, locale, between }: { value: AvatarConfig; onChange: (v: AvatarConfig) => void; locale: Locale; between?: React.ReactNode }) {
+export function AvatarBuilder({ value, onChange, locale, between, tape = "pink" }: { value: AvatarConfig; onChange: (v: AvatarConfig) => void; locale: Locale; between?: React.ReactNode; tape?: TapeColor }) {
   const t = useT(locale);
   const [tab, setTab] = useState<Tab>("hair");
   const set = (patch: Partial<AvatarConfig>) => onChange({ ...value, ...patch });
@@ -114,7 +114,7 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
           </svg>
         </button>
       </div>
-      <Tape color="mango" w={96} h={24} rotate={-3} alpha={0.62} className="-top-2.5 left-1/2 -ml-12" />
+      <Tape color={tape} w={96} h={24} rotate={-3} alpha={tape === "pink" ? 0.6 : 0.62} className="-top-2.5 left-1/2 -ml-12" />
       </div>
       <Heart size={26} rotate={16} className="-right-[9px] top-[130px]" />
       <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[9px] top-[70px]" />

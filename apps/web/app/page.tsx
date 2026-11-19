@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { setLocale } from "@/app/actions/auth";
 import { AuthButtons } from "@/components/AuthButtons";
 import { LegalLinks, Wordmark } from "@/components/chrome";
+import { Squiggle, Star, SKY_STAR } from "@/components/diary";
 import { JsonLd } from "@/components/JsonLd";
 import { HeroHeadline, LoginHero } from "@/components/LoginHero";
 import { PROVIDERS } from "@/lib/auth";
@@ -59,12 +60,12 @@ export default async function Start({ searchParams }: { searchParams: Promise<{ 
           },
         ]}
       />
-      <div className="flex items-center justify-between pl-6 pr-4">
-        <Wordmark locale={locale} />
+      <div className="flex items-center justify-between pl-5 pr-2">
+        <Wordmark size={35} locale={locale} />
         <form action={setLocale}>
           <input type="hidden" name="locale" value={locale === "ko" ? "en" : "ko"} />
           <input type="hidden" name="back" value={rawNext ? `/?next=${encodeURIComponent(next)}` : "/"} />
-          <button className="flex min-h-11 items-center px-2 text-[15px] font-semibold">{t("lang.other")}</button>
+          <button className="flex min-h-11 items-center px-2.5 text-[19px] underline underline-offset-4">{t("lang.other")}</button>
         </form>
       </div>
 
@@ -73,11 +74,13 @@ export default async function Start({ searchParams }: { searchParams: Promise<{ 
         <LoginHero t={t} />
       </div>
 
-      <section className="flex flex-col gap-3 px-6">
+      <section className="relative flex flex-col gap-3 px-6">
         <HeroHeadline text={t("start.headline")} />
-        <p className="hero-rise whitespace-pre-line text-[16px] leading-[1.6] text-ink-2" style={{ animationDelay: "0.3s" }}>
+        <p className="hero-rise whitespace-pre-line text-[20px] leading-[1.5] text-muted" style={{ animationDelay: "0.3s" }}>
           {t("start.body")}
         </p>
+        <Star size={22} rotate={12} color={SKY_STAR} className="right-[34px] top-[22px]" />
+        <Squiggle w={58} className="right-9 top-[84px]" />
       </section>
 
       <div className="px-6 pt-7">

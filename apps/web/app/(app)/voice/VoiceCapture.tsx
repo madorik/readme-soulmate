@@ -6,7 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, use
 import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
 import { trackTour } from "@/app/actions/tour";
 import { Avatar } from "@/components/Avatar";
-import { Heart, MarginLine, Sparkle, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
+import { Heart, MarginLine, Sparkle, SKY_STAR, Squiggle, Star, Tape, TourNote } from "@/components/diary";
 import { Icon } from "@/components/marks";
 import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/CaptureBadge";
 import { TagChip } from "@/components/PersonRow";
@@ -707,11 +707,13 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
   ) : null;
   // 체험: 마이크면 "이렇게 말해보세요", 글이면 "이렇게 써보세요" + 예시 문장. 키보드가 뜨면 접어 적는 칸이 한 화면에 보이게
   const tourPrompt = tour ? (
-    <section aria-label={mode === "voice" ? tour.say : tour.write} className="mx-4 mt-3 flex flex-col items-center gap-1 rounded-3xl bg-sky-soft px-5 py-4 text-center [html[data-kb]_&]:hidden">
-      <span className="num text-[12px] text-accent">{tour.page}</span>
-      <h1 className="headline text-[19px]">{mode === "voice" ? tour.say : tour.write}</h1>
-      <p className="pt-0.5 text-[21px] leading-[1.4] tracking-[-0.02em]">“{tour.example}”</p>
-    </section>
+    <TourNote label={mode === "voice" ? tour.say : tour.write} className="mt-[18px]">
+      <span className="num text-[17px] text-[#1f4fa3]">{tour.page}</span>
+      <h1 className="text-[27px] font-normal leading-[1.3]">{mode === "voice" ? tour.say : tour.write}</h1>
+      <p className="mt-0.5 text-[27px] leading-[1.35]">
+        <span className="hl px-1">“{tour.example}”</span>
+      </p>
+    </TourNote>
   ) : null;
   const errorLine = error ? (
     <p role="alert" className="text-center text-[17px] text-red">

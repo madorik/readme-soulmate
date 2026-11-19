@@ -4,7 +4,8 @@ import type { Section } from "@readme/core";
 const INK = "#1F2340";
 const MANGO = "#FFC23D";
 
-const TILE: Record<Section, string> = {
+/** 항목마다 연한 색 타일(보낸 항목 목록의 칸 바탕도 같은 색) */
+export const SECTION_TILE: Record<Section, string> = {
   dates: "#FFF4D6",
   safety: "#FDE9EA",
   taste: "#FFF0E3",
@@ -117,12 +118,21 @@ function Art({ section }: { section: Section }) {
   }
 }
 
-export function SectionIcon({ section, size = 44, round = false }: { section: Section; size?: number; round?: boolean }) {
+/** outline: 남색 테두리 둥근 타일(고르는 카드 머리), bare: 타일 없이 그림만(보낸 것 목록) */
+export function SectionIcon({ section, size = 44, round = false, outline = false, bare = false }: { section: Section; size?: number; round?: boolean; outline?: boolean; bare?: boolean }) {
+  const art = (
+    <svg width={bare ? size : Math.round(size * 0.66)} height={bare ? size : Math.round(size * 0.66)} viewBox="0 0 32 32" fill="none" aria-hidden="true" className="shrink-0">
+      <Art section={section} />
+    </svg>
+  );
+  if (bare) return art;
   return (
-    <span aria-hidden="true" className={`flex shrink-0 items-center justify-center ${round ? "rounded-full" : "rounded-xl"}`} style={{ width: size, height: size, background: TILE[section] }}>
-      <svg width={Math.round(size * 0.66)} height={Math.round(size * 0.66)} viewBox="0 0 32 32" fill="none">
-        <Art section={section} />
-      </svg>
+    <span
+      aria-hidden="true"
+      className={`flex shrink-0 items-center justify-center ${round ? "rounded-full" : outline ? "rounded-2xl shadow-[inset_0_0_0_1.5px_var(--color-ink)]" : "rounded-xl"}`}
+      style={{ width: size, height: size, background: SECTION_TILE[section] }}
+    >
+      {art}
     </span>
   );
 }

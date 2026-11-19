@@ -198,3 +198,43 @@ export function NameChip({ avatar, name }: { avatar: AvatarConfig | null; name: 
     </span>
   );
 }
+
+/** 손으로 쭉 그은 남색 줄(제목 아래 구분선). 블록이라 자리를 차지한다 */
+export function HandRule({ className = "" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 350 10" preserveAspectRatio="none" width="100%" height="10" fill="none" stroke={INK} strokeWidth="1.6" strokeLinecap="round" vectorEffect="non-scaling-stroke" className={`block ${className}`}>
+      <path d="M2 6 C 60 2, 120 9, 180 5 S 300 3, 348 6" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/** 제목 속 낱말(이름 등)에 형광펜: text 안의 word를 .hl로 감싼다(없으면 그대로) */
+export function Highlight({ text, word }: { text: string; word: string }) {
+  const i = word ? text.indexOf(word) : -1;
+  if (i < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, i)}
+      <span className="hl">{word}</span>
+      {text.slice(i + word.length)}
+    </>
+  );
+}
+
+/**
+ * 체험(?tour=) 안내 상자: 하늘색 포스트잇을 살짝 기울여 위에 테이프로 붙이고, 모서리에 별·하트.
+ * 키보드가 뜨면(html[data-kb]) 접는다. 안에는 순서(1 / 2)·제목·예시를 넣는다
+ */
+export function TourNote({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section
+      aria-label={label}
+      className={`relative mx-4 flex flex-col items-center gap-0.5 rounded-md bg-[#d3e9ff] px-5 pb-[18px] pt-5 text-center shadow-[0_1px_2px_rgb(31_35_64/0.1),0_10px_20px_-12px_rgb(31_35_64/0.45)] [transform:rotate(-0.8deg)] [html[data-kb]_&]:hidden ${className}`}
+    >
+      <Tape color="mango" w={100} h={24} rotate={-3} alpha={0.62} className="-top-3 left-1/2 -ml-[50px]" />
+      {children}
+      <Star size={24} rotate={14} className="-right-2 -top-2" />
+      <Heart size={26} rotate={-14} className="-left-2.5 bottom-2" />
+    </section>
+  );
+}

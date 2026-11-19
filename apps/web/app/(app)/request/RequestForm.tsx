@@ -130,7 +130,7 @@ export function RequestForm({ locale, people, fixed, initialName, defaults, tour
             <form action={leaveTour}>
               <input type="hidden" name="kind" value="done" />
               <input type="hidden" name="source" value="ask" />
-              <button className="btn-outline w-full">{t("tour.start")}</button>
+              <button className="btn-outline btn-outline-lift w-full">{t("tour.start")}</button>
             </form>
           ) : null}
         </div>

@@ -70,7 +70,7 @@ function PeekRow({ pad, children }: { pad: string; children: React.ReactNode }) 
 }
 
 export function PicksDisclosure({ text, pad = "px-6" }: { text: string; pad?: string }) {
-  return <p className={`pt-4 text-[14px] leading-[1.45] text-muted ${pad}`}>{text}</p>;
+  return <p className={`pt-4 text-[15px] leading-[1.45] text-muted ${pad}`}>{text}</p>;
 }
 
 /** 이 사람에게 어울릴 선물(max: 찾을 말 몇 개까지). title이 없으면 제목·고지 없이 줄만(여러 사람 화면) */

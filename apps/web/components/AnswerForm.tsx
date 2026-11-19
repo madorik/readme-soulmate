@@ -16,6 +16,7 @@ import { TasteEditor } from "@/components/editors/TasteEditor";
 import { CircleOption, TextField, joinList, splitList, useT } from "@/components/editors/shared";
 import { DrawnCheck, Icon } from "@/components/marks";
 import { AnswerDone } from "@/components/AnswerDone";
+import { Heart, Polaroid, SKY_STAR, Squiggle, Star, Tape, MarginLine } from "@/components/diary";
 import { Mascot } from "@/components/Mascot";
 import { SectionIcon } from "@/components/SectionIcon";
 import { summarize } from "@/lib/summary";
@@ -29,7 +30,7 @@ function GiftsLite({ value, onChange, locale }: { value: GiftsData; onChange: (v
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <span className="text-[14px] font-bold">{t("gift.giftCard")}</span>
+        <span className="text-[19px]">{t("gift.giftCard")}</span>
         <div className="flex flex-wrap gap-2">
           <CircleOption large label={t("gift.giftCardYes")} on={value.giftCard === "yes"} onToggle={() => onChange({ ...value, giftCard: value.giftCard === "yes" ? null : "yes" })} />
           <CircleOption large color="ink" label={t("gift.giftCardNo")} on={value.giftCard === "no"} onToggle={() => onChange({ ...value, giftCard: value.giftCard === "no" ? null : "no" })} />
@@ -45,6 +46,19 @@ function GiftsLite({ value, onChange, locale }: { value: GiftsData; onChange: (v
         placeholder={t("gift.skipPlaceholder")}
       />
     </div>
+  );
+}
+
+/** 제목 속 '3가지' · '3 things'에 형광펜 */
+function highlightCount(text: string): React.ReactNode {
+  const m = /^(.*?)(\d+\s?(?:가지|things?))(.*)$/.exec(text);
+  if (!m) return text;
+  return (
+    <>
+      {m[1]}
+      <span className="hl">{m[2]}</span>
+      {m[3]}
+    </>
   );
 }
 
@@ -147,7 +161,7 @@ export function AnswerForm({
           </a>
         )}
         {state.savedMine ? (
-          <Link href="/me" className="flex min-h-11 items-center justify-center text-[14px] font-bold">
+          <Link href="/me" className="flex min-h-11 items-center justify-center text-[18px]">
             {t("answer.openApp")}
           </Link>
         ) : null}
@@ -177,18 +191,18 @@ export function AnswerForm({
   const finish = (
     <>
       {signedIn ? (
-        <button type="button" aria-pressed={saveMine} onClick={() => setSaveMine(!saveMine)} className="flex items-start gap-3 text-left">
+        <button type="button" aria-pressed={saveMine} onClick={() => setSaveMine(!saveMine)} className="flex min-h-11 items-start gap-3 text-left">
           <DrawnCheck on={saveMine} />
-          <span className="text-[14px] leading-[1.5] text-ink-2">{t("answer.saveMine")}</span>
+          <span className="text-[19px] leading-[1.45]">{t("answer.saveMine")}</span>
         </button>
       ) : null}
       {needsConsent ? (
-        <button type="button" aria-pressed={consent} onClick={() => setConsent(!consent)} className="flex items-start gap-3 text-left">
+        <button type="button" aria-pressed={consent} onClick={() => setConsent(!consent)} className="flex min-h-11 items-start gap-3 text-left">
           <DrawnCheck on={consent} />
-          <span className="text-[14px] leading-[1.5] text-ink-2">{t("answer.consent", { from })}</span>
+          <span className="text-[19px] leading-[1.45]">{t("answer.consent", { from })}</span>
         </button>
       ) : null}
-      <span className="text-[13px] leading-[1.5] text-muted">{t("answer.footer", { from })}</span>
+      <span className="text-[16px] leading-[1.45] text-muted">{t("answer.footer", { from })}</span>
     </>
   );
 
@@ -210,50 +224,72 @@ export function AnswerForm({
       {single ? (
         <div className="h-3" />
       ) : (
-        <div className="sticky top-0 z-20 flex items-center gap-3 bg-bg px-3 pb-2 pt-2" style={{ top: "var(--sat)" }}>
+        <div className="sticky top-0 z-20 flex items-center gap-2 bg-bg pb-1.5 pl-2 pr-3 pt-1.5" style={{ top: "var(--sat)" }}>
           <button type="button" onClick={() => go(step - 1)} disabled={step === 0} aria-label={t("common.back")} className="flex h-11 w-11 shrink-0 items-center justify-center disabled:opacity-0">
-            <Icon name="back" size={22} />
+            <Icon name="back" size={22} strokeWidth={2} />
           </button>
-          <div className="flex flex-1 gap-1" aria-hidden="true">
+          <div className="flex flex-1 gap-1.5" aria-hidden="true">
             {Array.from({ length: total }, (_, i) => (
-              <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-sky" : "bg-rule"}`} />
+              <span key={i} className={`h-2.5 flex-1 rounded-full shadow-[inset_0_0_0_1.5px_var(--color-ink)] ${i <= step ? "bg-sky" : "bg-white"}`} />
             ))}
           </div>
-          <span className="num w-11 shrink-0 text-center text-[13px] !font-bold text-muted">
+          <span className="num w-11 shrink-0 text-center text-[17px] text-muted">
             {step + 1}/{total}
           </span>
         </div>
       )}
 
       {step === 0 ? (
-        <div className="flex items-start gap-3 px-5 pt-3">
-          <Mascot size={58} />
+        <section className="relative flex items-start gap-3.5 px-5 pt-3.5">
+          <Polaroid photo={66} rotate={-4} className="mt-1 !px-1.5 !pb-[5px] !pt-1.5">
+            <Mascot size={58} />
+          </Polaroid>
           <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <h1 className="headline text-[23px]">{t("answer.title", { from, n: sections.length })}</h1>
-            {message ? <p className="rounded-2xl rounded-tl-md bg-white px-4 py-3 text-[15px] leading-[1.55] shadow-[0_0_0_1px_var(--color-rule)]">{message}</p> : null}
+            <h1 className="text-[27px] font-normal leading-[1.25]">{highlightCount(t("answer.title", { from, n: sections.length }))}</h1>
+            {message ? <p className="-rotate-[0.8deg] whitespace-pre-line rounded-[3px] bg-postit px-3.5 pb-[11px] pt-2.5 text-[18px] leading-[1.45] shadow-[0_6px_12px_-9px_rgb(31_35_64/0.45)]">{message}</p> : null}
             {signedIn || embedded ? null : (
               // 앱을 쓰는 사람이 로그인 안 된 브라우저에서 열었으면: 로그인하고 답하면 내 리드미 값이 미리 채워지고, 물어본 사람 목록에 내 얼굴로 보인다
-              <Link href={`/?next=${encodeURIComponent(`/r/${token}`)}`} className="flex min-h-10 items-center self-start text-[14px] font-bold text-accent">
+              <Link href={`/?next=${encodeURIComponent(`/r/${token}`)}`} className="flex min-h-11 items-center gap-1 self-start text-[18px] text-accent underline decoration-[1.5px] underline-offset-4">
                 {t("answer.signInFirst")}
+                <Icon name="chevron" size={18} strokeWidth={2} />
               </Link>
             )}
           </div>
-        </div>
+          <Star size={20} rotate={14} className="right-3.5 top-1" />
+        </section>
       ) : null}
 
       {s ? (
-        <section key={s} className="card mx-4 mt-4 flex flex-col gap-4 px-5 pb-5 pt-5">
+        <section key={s} className={`card relative mx-4 mt-3.5 flex flex-col gap-[18px] pb-[22px] pr-5 pt-7 ${step % 2 ? "ruled pl-[42px] [background-position:0_20px]" : "pl-5"}`}>
+          {step % 2 ? (
+            <>
+              <MarginLine left={28} />
+              <Tape color="mint" w={74} h={22} rotate={-8} alpha={0.55} vertical className="-top-2.5 left-3.5" />
+              <Star size={22} rotate={14} className="-right-[7px] top-[50px]" />
+              <Heart size={24} rotate={-14} className="-left-2 bottom-[90px]" />
+              <Squiggle w={56} color="#F59BAE" width={2.4} className="-bottom-2 right-[26px]" />
+            </>
+          ) : (
+            <>
+              <Tape color="mango" w={108} h={26} rotate={-3} alpha={0.62} className="-top-[13px] left-1/2 -ml-[54px]" />
+              <Heart size={24} rotate={16} className="-right-2 top-[52px]" />
+              <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[7px] bottom-[58px]" />
+              <Squiggle w={56} className="-bottom-[7px] right-[30px]" />
+            </>
+          )}
           <div className="flex items-center gap-3">
-            <SectionIcon section={s} size={44} />
-            <h2 className="flex-1 text-[19px] font-bold tracking-[-0.02em]">{t(`request.topic.${s}` as "request.topic.dates")}</h2>
+            <SectionIcon section={s} size={52} outline />
+            <h2 className="flex-1 text-[26px] font-normal leading-[1.2]">{t(`request.topic.${s}` as "request.topic.dates")}</h2>
           </div>
           {prefill[s] ? (
-            <div className="flex flex-col gap-3 rounded-2xl bg-fill px-4 py-4">
-              <span className="text-[13px] text-muted">{t("answer.prefilled", { from })}</span>
-              <span className={`text-[20px] font-bold leading-[1.4] tracking-[-0.02em] ${modes[s] === "fix" ? "text-muted line-through decoration-red decoration-2" : ""}`}>
-                {summarize(s, prefill[s], locale, t) || t("answer.empty")}
-              </span>
-              <div className="flex gap-2">
+            <>
+              <div className="flex flex-col gap-1.5 rounded-[3px] bg-[#fff0c9] px-4 pb-[15px] pt-[13px] shadow-[0_6px_12px_-9px_rgb(31_35_64/0.45)] [transform:rotate(0.6deg)]">
+                <span className="text-[16px] text-accent">{t("answer.prefilled", { from })}</span>
+                <span className={`text-[26px] leading-[1.3] ${modes[s] === "fix" ? "text-muted line-through decoration-red decoration-2" : ""}`}>
+                  {summarize(s, prefill[s], locale, t) || t("answer.empty")}
+                </span>
+              </div>
+              <div className="flex gap-2.5">
                 {(["ok", "fix"] as const).map((m) => (
                   <button
                     key={m}
@@ -264,13 +300,13 @@ export function AnswerForm({
                       // 맞으면 바로 다음 항목으로
                       if (m === "ok") go(step + 1);
                     }}
-                    className={`h-12 flex-1 rounded-full text-[16px] font-bold ${modes[s] === m ? "grad" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
+                    className={`h-[52px] flex-1 rounded-full text-[20px] shadow-[inset_0_0_0_1.5px_var(--color-edge)] ${modes[s] === m ? "grad" : "bg-white"}`}
                   >
                     {t(m === "ok" ? "answer.right" : "answer.fix")}
                   </button>
                 ))}
               </div>
-            </div>
+            </>
           ) : null}
           {modes[s] === "fix" || modes[s] === "new" ? (
             <div className="flex flex-col gap-4">
@@ -302,31 +338,34 @@ export function AnswerForm({
                 setModes((x) => ({ ...x, [s]: none ? "none" : "new" }));
                 if (none) go(step + 1);
               }}
-              className={`pill self-start ${modes[s] === "none" ? "grad !shadow-none" : ""}`}
+              className={`pill self-start !px-5 !text-[18px] ${modes[s] === "none" ? "grad" : ""}`}
             >
               {t("answer.none")}
             </button>
           ) : null}
         </section>
       ) : (
-        <section className="card mx-4 mt-4 flex flex-col gap-4 px-5 pb-5 pt-5">
+        <section className="card relative mx-4 mt-3.5 flex flex-col gap-[22px] px-5 pb-6 pt-7">
+          <Tape color="mango" w={108} h={26} rotate={-3} alpha={0.62} className="-top-[13px] left-1/2 -ml-[54px]" />
+          <Heart size={24} rotate={16} className="-right-2 top-10" />
+          <Star size={20} rotate={-12} className="-left-[7px] bottom-[26px]" />
           <div className="flex items-center gap-3">
-            <Mascot size={44} />
-            <h2 className="text-[19px] font-bold tracking-[-0.02em]">{t("answer.almost")}</h2>
+            <Mascot size={52} />
+            <h2 className="hl text-[28px] font-normal leading-[1.25]">{t("answer.almost")}</h2>
           </div>
           {finish}
         </section>
       )}
-      {single ? <div className="mx-5 mt-4 flex flex-col gap-4">{finish}</div> : null}
+      {single ? <div className="mx-5 mt-4 flex flex-col gap-3">{finish}</div> : null}
 
       <div className="bottom-bar mt-auto flex flex-col gap-2 bg-bg px-4 pt-4">
         {state.error ? (
-          <p role="alert" className="px-1 text-[14px] text-red">
+          <p role="alert" className="px-1 text-[17px] text-red">
             {t(state.error === "consent" ? "answer.needConsent" : state.error === "closed" ? "accept.expired" : state.error === "self" ? "answer.self" : "common.error")}
           </p>
         ) : null}
         {canSend ? (
-          <button disabled={pending || !answered.length || (needsConsent && !consent)} className="btn-primary h-[58px] w-full text-[17px]">
+          <button disabled={pending || !answered.length || (needsConsent && !consent)} className="btn-primary !min-h-[58px] w-full !text-[22px]">
             {t("answer.send")}
           </button>
         ) : (
@@ -338,12 +377,13 @@ export function AnswerForm({
                 setModes((x) => ({ ...x, [s!]: prefill[s!] ? null : x[s!] === "none" ? "none" : null }));
                 go(step + 1);
               }}
-              className="btn-soft !h-[56px] w-[34%] shrink-0"
+              className="btn-outline btn-outline-lift !min-h-14 w-[34%] shrink-0 !text-[20px]"
             >
               {t("answer.skip")}
             </button>
-            <button type="button" onClick={() => go(step + 1)} className="btn-primary !h-[56px] flex-1 text-[17px]">
+            <button type="button" onClick={() => go(step + 1)} className="btn-primary !min-h-14 flex-1 !text-[21px]">
               {t("answer.next")}
+              <Icon name="arrow" size={20} strokeWidth={2} />
             </button>
           </div>
         )}

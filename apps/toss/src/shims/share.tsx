@@ -40,7 +40,7 @@ export function ShareButtons({ locale, url, text, sendLabel }: { locale: Locale;
         {sendLabel ?? t("common.send")}
       </button>
       {state === "copied" ? (
-        <p role="status" className="flex items-center justify-center gap-1.5 text-[14px] font-medium text-ok">
+        <p role="status" className="flex items-center justify-center gap-1.5 text-[17px] text-ok">
           <Icon name="check" size={15} strokeWidth={2.4} />
           {t("common.copied")}
         </p>

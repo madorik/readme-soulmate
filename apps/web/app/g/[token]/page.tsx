@@ -4,8 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { Wordmark } from "@/components/chrome";
+import { Heart, HandRule, Highlight, Star } from "@/components/diary";
 import { GiftLinkTabs } from "@/components/GiftLinkTabs";
 import { PicksDisclosure } from "@/components/GiftPicks";
+import { Icon } from "@/components/marks";
 import { CATALOG_BY_ID, PRICE_BANDS, type CatalogGift } from "@/lib/gift-catalog";
 import { readGiftCard } from "@/lib/gifts";
 import { ogMetadata } from "@/lib/og";
@@ -38,34 +40,50 @@ export default async function GiftCardPage({ params, searchParams }: { params: P
   if (!c || !c.bands.length) notFound();
   if (!isBot((await headers()).get("user-agent"))) track("card_open", { source: "card" });
   const t = (k: Parameters<typeof translate>[1], v?: Record<string, string>) => translate(c.locale, k, v);
+  // 제목은 쉼표에서 두 줄로(쉼표 뒤에 이어지는 말이 없으면 한 줄)
+  const full = t("picks.cardTitle", { name: c.name });
+  const cut = full.indexOf(", ");
+  const title = cut > 0 ? [full.slice(0, cut + 1), full.slice(cut + 2)] : [full];
   const initial = c.bands.some((b) => b.band === sp.b) ? sp.b! : c.bands[0]!.band;
   return (
     <main className="screen">
-      <div className="flex items-center justify-between px-6">
+      <div className="flex min-h-11 items-center px-5">
         <Link href="/" aria-label={t("app.name")}>
-          <Wordmark size={24} locale={c.locale} />
+          <Wordmark size={26} locale={c.locale} />
         </Link>
       </div>
-      <section className="px-6 pt-6">
-        <h1 className="headline text-[26px] leading-[1.3]">{t("picks.cardTitle", { name: c.name })}</h1>
-        {c.event ? <p className="pt-1.5 text-[15px] font-semibold text-accent">{c.event}</p> : null}
+      <section className="relative px-5 pt-[18px]">
+        <h1 className="text-[31px] font-normal leading-[1.25]">
+          {title.map((line, i) => (
+            <span key={i}>
+              {i ? <br /> : null}
+              <Highlight text={line} word={c.name} />
+              {i < title.length - 1 ? " " : ""}
+            </span>
+          ))}
+        </h1>
+        {c.event ? <p className="pt-2 text-[20px] text-accent">{c.event}</p> : null}
+        <HandRule className="mt-3" />
+        <Heart size={26} rotate={14} className="right-[26px] top-[30px]" />
+        <Star size={20} rotate={-12} className="right-[78px] top-[62px]" />
       </section>
-      <div className="pt-3">
-        <GiftLinkTabs
-          initial={initial}
-          source="card"
-          label={t("picks.bands")}
-          bands={c.bands.map((b) => ({
-            band: b.band,
-            label: t(`picks.band.${b.band}` as "picks.band.1"),
-            items: b.items.map((x) => ({ id: x.id, title: x.q, reason: "", name: x.name, url: x.url, image: x.image })),
-          }))}
-        />
-      </div>
-      <PicksDisclosure text={t("picks.disclosure")} />
-      <div className="px-6 pt-8">
-        <Link href="/" className="btn-outline w-full">
+      <GiftLinkTabs
+        look="paper"
+        pad="px-4"
+        initial={initial}
+        source="card"
+        label={t("picks.bands")}
+        bands={c.bands.map((b) => ({
+          band: b.band,
+          label: t(`picks.band.${b.band}` as "picks.band.1"),
+          items: b.items.map((x) => ({ id: x.id, title: x.q, reason: "", name: x.name, url: x.url, image: x.image })),
+        }))}
+      />
+      <PicksDisclosure text={t("picks.disclosure")} pad="px-6" />
+      <div className="px-4 pt-5">
+        <Link href="/" className="btn-outline btn-outline-lift w-full !min-h-14 !text-[20px]">
           {t("picks.cardOpen")}
+          <Icon name="arrow" size={20} strokeWidth={2} />
         </Link>
       </div>
       <div className="page-end" />

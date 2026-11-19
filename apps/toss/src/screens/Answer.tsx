@@ -65,9 +65,9 @@ export function Answer({ token }: { token: string }) {
     const key = data.state === "expired" ? "accept.expired" : data.state === "canceled" ? "accept.canceled" : data.state === "used" ? "accept.used" : "accept.notFound";
     return (
       <Page>
-        <p className="headline px-6 pt-8 text-[24px]">{t(key)}</p>
+        <p className="px-6 pt-8 text-[28px] leading-[1.4]">{t(key)}</p>
         <div className="px-4 pt-8">
-          <button type="button" onClick={() => navigate("/home")} className="btn-outline w-full">
+          <button type="button" onClick={() => navigate("/home")} className="btn-outline btn-outline-lift w-full">
             기억해유 시작하기
           </button>
         </div>

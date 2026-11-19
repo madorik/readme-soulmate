@@ -8,7 +8,7 @@ export function Page({ children, tabs = false, className = "" }: { children: Rea
 
 /** 생성형 AI가 만든 결과 표시(앱인토스·AI 기본법 고지) */
 export function AiBadge({ children = "AI" }: { children?: React.ReactNode }) {
-  return <span className="inline-flex h-[22px] shrink-0 items-center rounded-md bg-sky-soft px-1.5 text-[11.5px] font-bold text-accent">{children}</span>;
+  return <span className="inline-flex h-[22px] shrink-0 items-center rounded-md bg-sky-soft px-1.5 text-[14px] text-accent">{children}</span>;
 }
 
 export function Loading() {

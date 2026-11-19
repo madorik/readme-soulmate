@@ -32,14 +32,15 @@ export function Circled({ on, color = "red", pad, width, children, className = "
   );
 }
 
-/** 둥근 네모 체크 칸: 켜면 파랑 바탕에 흰 체크 */
+/** 둥근 네모 체크 칸: 남색 테두리, 켜면 망고 바탕에 남색 체크 */
 export function DrawnCheck({ on }: { on: boolean }) {
   return (
     <span
-      className={`flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[8px] transition-colors ${on ? "bg-accent text-white" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge-strong)]"}`}
+      aria-hidden="true"
+      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-[1.8px] border-ink text-ink transition-colors ${on ? "bg-sky" : "bg-white"}`}
     >
       {on ? (
-        <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <path d="M5 12.5l4.5 4.5L19 7.5" />
         </svg>
       ) : null}
@@ -67,7 +68,7 @@ export function CheckGlyph({ size = 14 }: { size?: number }) {
 
 type IconName =
   | "back" | "close" | "lock" | "alert" | "mic" | "camera" | "link" | "share" | "gift" | "external" | "bell"
-  | "plus" | "check" | "calendar" | "people" | "card" | "globe" | "personAdd" | "chevron" | "trash" | "pick" | "map" | "eye" | "settings" | "star" | "pencil" | "up" | "undo";
+  | "plus" | "check" | "calendar" | "people" | "card" | "globe" | "personAdd" | "chevron" | "trash" | "pick" | "map" | "eye" | "settings" | "star" | "pencil" | "up" | "undo" | "arrow";
 
 const ICONS: Record<IconName, React.ReactNode> = {
   back: <path d="M15 18l-6-6 6-6" />,
@@ -149,6 +150,7 @@ const ICONS: Record<IconName, React.ReactNode> = {
     </>
   ),
   chevron: <path d="M9 18l6-6-6-6" />,
+  arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
   pencil: <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />,
   trash: <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />,
   pick: (

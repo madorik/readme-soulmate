@@ -33,16 +33,16 @@ export function TossLinkCode({ locale }: { locale: Locale }) {
 
   return (
     <div className="flex flex-col border-t border-rule">
-      <button type="button" onClick={() => void make()} disabled={busy} className="flex min-h-16 items-center justify-between text-left text-[15.5px] font-bold">
+      <button type="button" onClick={() => void make()} disabled={busy} className="flex min-h-16 items-center justify-between text-left text-[19px]">
         {t("toss.use")}
         <Icon name={code ? "check" : "chevron"} size={17} className="text-muted" />
       </button>
       {code ? (
         <div className="flex items-center justify-between gap-3 pb-4">
-          <span className="num select-all text-[26px] font-bold tracking-[0.12em]" data-testid="toss-link-code">
+          <span className="num select-all text-[30px] tracking-[0.12em]" data-testid="toss-link-code">
             {left > 0 ? code.code : "—"}
           </span>
-          <span className="text-[13px] text-muted">{left > 0 ? t("toss.minutesLeft", { n: left }) : t("toss.expired")}</span>
+          <span className="text-[16px] text-muted">{left > 0 ? t("toss.minutesLeft", { n: left }) : t("toss.expired")}</span>
         </div>
       ) : null}
     </div>

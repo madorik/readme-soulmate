@@ -130,7 +130,7 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
 /** 시작·로그인 화면 아래 약관 · 개인정보 처리방침 */
 export function LegalLinks({ locale, t }: { locale: Locale; t: T }) {
   return (
-    <p className="flex justify-center gap-x-4 pt-1 text-[12px] text-muted">
+    <p className="flex justify-center gap-x-3.5 pt-1 text-[14px] text-muted">
       <a href={`/terms?lang=${locale}`} className="flex min-h-11 items-center underline underline-offset-2">
         {t("legal.terms")}
       </a>

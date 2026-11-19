@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Wordmark } from "@/components/chrome";
+import { HandRule, Heart, Squiggle, Star, SKY_STAR, Tape, MarginLine } from "@/components/diary";
 import { PicksDisclosure } from "@/components/GiftPicks";
 import { GuideList } from "@/components/GuideList";
 import { JsonLd } from "@/components/JsonLd";
+import { Icon } from "@/components/marks";
 import { BAND_NAME, GUIDE_BY_SLUG, GUIDES, bandFaq, guidePicks } from "@/lib/guides";
 import { ogMetadata } from "@/lib/og";
 import { absoluteUrl } from "@/lib/site";
@@ -31,6 +33,9 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
   const faq = [...g.faq, ...bandFaq(g, picks)];
   const url = absoluteUrl(`/gifts/${g.slug}`);
   const others = GUIDES.filter((x) => x.slug !== g.slug);
+  // 제목은 쉼표 앞 첫 마디에 형광펜(없으면 통째로)
+  const comma = g.title.indexOf(", ");
+  const title = comma > 0 ? { head: g.title.slice(0, comma + 1), rest: g.title.slice(comma + 2) } : { head: g.title, rest: "" };
   return (
     <main className="screen" lang="ko">
       <JsonLd
@@ -58,55 +63,80 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
           },
         ]}
       />
-      <nav aria-label="위치" className="flex items-center gap-1.5 px-6 text-[13px] text-muted">
+      <nav aria-label="위치" className="flex min-h-11 items-center gap-1.5 px-5 text-[17px] text-muted">
         <Link href="/" aria-label="기억해유">
           <Wordmark size={22} locale="ko" />
         </Link>
         <span aria-hidden="true">›</span>
-        <Link href="/gifts" className="flex min-h-11 items-center font-semibold">
+        <Link href="/gifts" className="flex min-h-11 items-center">
           선물 가이드
         </Link>
       </nav>
-      <article className="flex flex-col px-5">
-        <header className="px-1 pt-4">
-          <h1 className="headline text-[26px] leading-[1.3]">{g.title}</h1>
-          <p className="pt-3 text-[15px] leading-[1.65] text-ink-2">{g.answer}</p>
+      <article className="flex flex-col">
+        <header className="relative px-5 pt-3.5">
+          <h1 className="text-[31px] font-normal leading-[1.25]">
+            {title.rest ? (
+              <>
+                <span className="hl">{title.head}</span> <br />
+                {title.rest}
+              </>
+            ) : (
+              <span className="hl">{g.title}</span>
+            )}
+          </h1>
+          <HandRule className="mt-3" />
+          <p className="mt-3.5 rounded-[3px] bg-[#fff0c9] px-3.5 pb-3.5 pt-3 text-[18px] leading-[1.55] shadow-[0_6px_12px_-9px_rgb(31_35_64/0.45)] [transform:rotate(-0.4deg)]">{g.answer}</p>
+          <Star size={22} rotate={14} className="right-[22px] top-2" />
+          <Heart size={24} rotate={16} className="-bottom-3 right-3.5" />
         </header>
-        <div className="pt-7">
+        <div className="px-4 pt-[30px]">
           <GuideList bands={picks.map((b) => ({ band: b.band, title: `${BAND_NAME[b.band]} ${g.who} 선물`, items: b.items.map((x) => ({ id: x.id, title: x.q, name: x.name, url: x.url, image: x.image })) }))} />
         </div>
-        <section aria-labelledby="faq" className="flex flex-col gap-2 pt-9">
-          <h2 id="faq" className="section-title px-1">
+        <section aria-labelledby="faq" className="relative flex flex-col gap-2.5 px-4 pt-[38px]">
+          <h2 id="faq" className="ml-1 text-[25px] font-normal">
             자주 묻는 질문
           </h2>
-          <div className="flex flex-col rounded-2xl bg-white px-4 py-1 ring-1 ring-rule">
+          <div className="ruled relative rounded-[10px] bg-paper py-1.5 pl-10 pr-3.5 shadow-[0_1px_2px_rgb(31_35_64/0.08),0_12px_26px_-16px_rgb(31_35_64/0.42)] [background-position:0_14px]">
+            <MarginLine left={26} />
             {faq.map((f) => (
-              <details key={f.q} className="border-t border-rule py-3.5 first:border-t-0">
-                <summary className="cursor-pointer text-[15px] font-bold leading-[1.45]">{f.q}</summary>
-                <p className="pt-2 text-[14px] leading-[1.6] text-ink-2">{f.a}</p>
+              <details key={f.q} className="group border-t border-dashed border-rule-strong first:border-t-0">
+                <summary className="flex min-h-[52px] cursor-pointer list-none items-center justify-between gap-2.5 py-1.5 text-[19px] leading-[1.35] [&::-webkit-details-marker]:hidden">
+                  <span>{f.q}</span>
+                  <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 transition-transform group-open:rotate-180">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </summary>
+                <p className="pb-3.5 text-[17px] leading-[1.55] text-muted">{f.a}</p>
               </details>
             ))}
           </div>
+          <Tape color="mint" w={62} h={20} rotate={-30} alpha={0.6} className="left-1 top-7" />
         </section>
-        <section className="flex flex-col gap-3 pt-9">
-          <h2 className="section-title px-1">{g.who}의 취향을 알면 더 꼭 맞아요</h2>
-          <p className="px-1 text-[14.5px] leading-[1.6] text-ink-2">기억해유에 {g.who}의 취향·사이즈·챙길 날을 적어 두면, 그 사람에게 맞춘 선물을 가격대별로 골라 드려요. 가족과 카드로 같이 고를 수도 있어요.</p>
-          <Link href="/" className="btn-primary w-full">
+        <section className="card relative mx-4 mt-10 flex flex-col gap-4 px-5 pb-[22px] pt-6">
+          <Tape color="mango" w={108} h={26} rotate={-3} alpha={0.62} className="-top-[13px] left-1/2 -ml-[54px]" />
+          <h2 className="text-[26px] font-normal leading-[1.3]">{g.who}의 취향을 알면 더 꼭 맞아요</h2>
+          <p className="text-[18px] leading-[1.5] text-ink-2">기억해유에 {g.who}의 취향·사이즈·챙길 날을 적어 두면, 그 사람에게 맞춘 선물을 가격대별로 골라 드려요. 가족과 카드로 같이 고를 수도 있어요.</p>
+          <Link href="/" className="btn-primary w-full !min-h-14 !text-[21px]">
             기억해유 시작하기
+            <Icon name="arrow" size={20} strokeWidth={2} />
           </Link>
+          <Star size={24} rotate={14} color={SKY_STAR} className="-right-2 top-6" />
+          <Squiggle w={56} className="-bottom-2 left-6" />
         </section>
-        <nav aria-label="다른 선물 가이드" className="flex flex-col gap-2 pt-9">
-          <h2 className="section-title px-1">다른 선물 가이드</h2>
-          <div className="flex flex-wrap gap-1.5">
+        <nav aria-label="다른 선물 가이드" className="flex flex-col gap-3 px-4 pt-[38px]">
+          <h2 className="ml-1 text-[25px] font-normal">다른 선물 가이드</h2>
+          <div className="flex flex-wrap gap-2">
             {others.map((x) => (
-              <Link key={x.slug} href={`/gifts/${x.slug}`} className="flex h-10 items-center rounded-full bg-white px-3.5 text-[14px] font-bold text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-edge)]">
+              <Link key={x.slug} href={`/gifts/${x.slug}`} className="chip">
                 {x.who} 선물
               </Link>
             ))}
           </div>
         </nav>
       </article>
-      <PicksDisclosure text="이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다." />
+      <div className="pt-3">
+        <PicksDisclosure text="이 페이지는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다." />
+      </div>
       <div className="page-end" />
     </main>
   );

@@ -24,7 +24,7 @@ export function AiNotice(_: { locale: Locale }) {
           setShow(false);
           void saveValue(KEY, "1");
         }}
-        className="self-end px-1 text-[14px] font-bold text-accent"
+        className="self-end px-1 text-[17px] text-accent"
       >
         확인
       </button>

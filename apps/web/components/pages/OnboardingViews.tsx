@@ -11,7 +11,7 @@ export function OnboardingAvatarView({ locale, name, avatar, next }: OnboardingA
   const t = makeT(locale);
   return (
     <>
-      <StepHeader step={1} t={t} title={t("onb.avatar.title")} />
+      <StepHeader step={1} t={t} locale={locale} title={t("onb.avatar.title")} />
       <AvatarStep locale={locale} name={name} avatar={avatar} next={next} />
     </>
   );
@@ -22,7 +22,7 @@ export function OnboardingFoodView({ locale, safety, spicy, next }: OnboardingFo
   const q = nextQuery(next);
   return (
     <>
-      <StepHeader step={2} back={`/onboarding/avatar${q}`} skip={`/onboarding/birthday${q}`} t={t} title={t("onb.food.title")} />
+      <StepHeader step={2} back={`/onboarding/avatar${q}`} skip={`/onboarding/birthday${q}`} t={t} locale={locale} title={t("onb.food.title")} />
       <FoodStep locale={locale} safety={safety} spicy={spicy} next={next} />
     </>
   );
@@ -33,7 +33,7 @@ export function OnboardingBirthdayView({ locale, birthday, offsets, next }: Onbo
   const q = nextQuery(next);
   return (
     <>
-      <StepHeader step={3} back={`/onboarding/food${q}`} t={t} title={t("onb.birthday.title")} />
+      <StepHeader step={3} back={`/onboarding/food${q}`} t={t} locale={locale} title={t("onb.birthday.title")} />
       <BirthdayStep locale={locale} birthday={birthday} offsets={offsets} next={next} />
     </>
   );

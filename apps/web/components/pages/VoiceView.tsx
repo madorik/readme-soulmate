@@ -20,7 +20,7 @@ export function VoiceView({ locale, people, tour }: VoiceData) {
             <form action={leaveTour}>
               <input type="hidden" name="kind" value="skip" />
               <input type="hidden" name="source" value="voice" />
-              <button className="flex min-h-11 items-center px-3 text-[14px] text-muted">{t("common.skip")}</button>
+              <button className="flex min-h-11 items-center px-3 text-[19px] text-muted">{t("common.skip")}</button>
             </form>
           ) : undefined
         }

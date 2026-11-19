@@ -1,7 +1,7 @@
 import { leaveTour } from "@/app/actions/tour";
 import { RequestForm } from "@/app/(app)/request/RequestForm";
 import { TopBar } from "@/components/chrome";
-import { Star } from "@/components/diary";
+import { Star, TourNote } from "@/components/diary";
 import type { RequestData } from "@/lib/pages/types";
 import { makeT } from "@/lib/t";
 
@@ -20,17 +20,17 @@ export function RequestView({ locale, people, fixed, initialName, defaults, tour
             <form action={leaveTour}>
               <input type="hidden" name="kind" value="skip" />
               <input type="hidden" name="source" value="ask" />
-              <button className="flex min-h-11 items-center px-3 text-[14px] text-muted">{t("common.skip")}</button>
+              <button className="flex min-h-11 items-center px-3 text-[19px] text-muted">{t("common.skip")}</button>
             </form>
           ) : undefined
         }
       />
       {tour ? (
-        <section className="mx-4 mt-1 flex flex-col gap-1 rounded-3xl bg-sky-soft px-5 py-4">
-          <span className="num text-[12px] text-accent">{t("tour.page", { n: tour.n, total: tour.total })}</span>
-          <h1 className="headline text-[22px]">{fixed ? t("request.titleTo", { name: fixed.label }) : t("tour.ask.title")}</h1>
-          <p className="text-[14.5px] leading-[1.6] text-ink-2">{t("tour.ask.body")}</p>
-        </section>
+        <TourNote label={fixed ? t("request.titleTo", { name: fixed.label }) : t("tour.ask.title")} className="mt-3.5">
+          <span className="num text-[17px] text-[#1f4fa3]">{t("tour.page", { n: tour.n, total: tour.total })}</span>
+          <h1 className="text-[27px] font-normal leading-[1.3]">{fixed ? t("request.titleTo", { name: fixed.label }) : t("tour.ask.title")}</h1>
+          <p className="text-[18px] leading-[1.5]">{t("tour.ask.body")}</p>
+        </TourNote>
       ) : (
         <div className="relative px-6 pt-1.5">
           <h1 className="hl inline-block px-1 text-[34px] font-normal leading-[1.2]">{fixed ? t("request.titleTo", { name: fixed.label }) : t("request.title")}</h1>
