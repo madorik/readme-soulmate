@@ -50,6 +50,12 @@ export function PeopleView({ locale, rows, folders, meAvatar, initialPick, initi
           sortRecent: t("people.sortRecent"),
           put: t("folder.put"),
           putDone: t("people.putDone", { n: "{n}", name: "{name}" }),
+          remove: t("people.remove"),
+          removeTitle: t("people.removeTitle", { n: "{n}" }),
+          removeBody: t("people.removeBody", { n: "{n}" }),
+          removed: t("people.removed", { n: "{n}" }),
+          removeConfirm: t("common.delete"),
+          removeCancel: t("common.cancel"),
           error: t("common.error"),
         }}
       />

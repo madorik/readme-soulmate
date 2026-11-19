@@ -3,7 +3,7 @@
 import type { AvatarConfig, Locale } from "@readme/core";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { addToFolder, setFolderMembers } from "@/app/actions/people";
+import { addToFolder, removeContacts, setFolderMembers } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";
 import { FolderArt, FolderMini } from "@/components/FolderArt";
 import { FolderSheet } from "@/components/FolderSheet";
@@ -57,6 +57,16 @@ interface Labels {
   put: string;
   /** "{n}명을 {name} 폴더에 넣었어요" */
   putDone: string;
+  /** 고른 사람 지우기(막대 단추) */
+  remove: string;
+  /** "{n}명을 지울까요?" */
+  removeTitle: string;
+  /** 무엇이 사라지는지 */
+  removeBody: string;
+  /** "{n}명을 지웠어요" */
+  removed: string;
+  removeConfirm: string;
+  removeCancel: string;
   error: string;
 }
 
@@ -141,12 +151,17 @@ export function PeopleBoard({
     }
     return { pick: initialPick, ids: initial, me: initialMe };
   });
-  const [picking, setPicking] = useState(start.pick && canPick);
+  const [pickOn, setPicking] = useState(start.pick && canPick);
+  // 다 지워서 고를 사람이 없어지면 고르기도 같이 끝난다
+  const picking = pickOn && canPick;
   const [picked, setPicked] = useState<string[]>(start.ids.filter((id) => rows.some((r) => r.contactId === id)));
   const [withMe, setWithMe] = useState(start.me);
   // 고른 사람을 폴더에 넣은 결과(알림 줄에 잠깐)
   const [putMsg, setPutMsg] = useState<{ text: string; error: boolean } | null>(null);
   const [putOpen, setPutOpen] = useState(false);
+  // 고른 사람 지우기: 확인 시트를 거치고, 지우는 동안 지우기 단추는 눌림 막힘
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [removing, startRemove] = useTransition();
   const toggle = (id: string) => {
     setPutMsg(null);
     setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : rows.map((r) => r.contactId).filter((x) => x === id || picked.includes(x)));
@@ -236,6 +251,21 @@ export function PeopleBoard({
         }
         return { rows, added: next };
       });
+    });
+  };
+  // 고른 사람을 한꺼번에 지운다. 서버가 새 목록을 주면 화면에서도 빠지고, 실패하면 고른 채로 두고 알린다
+  const removePicked = () => {
+    const ids = picked.filter((id) => byId.has(id));
+    if (!ids.length) return;
+    startRemove(async () => {
+      const r = await removeContacts(ids).catch(() => ({ ok: false, removed: 0 }));
+      setRemoveOpen(false);
+      if (r.ok) {
+        setPicked([]);
+        setPutMsg({ text: labels.removed.replace("{n}", String(r.removed)), error: false });
+      } else {
+        setPutMsg({ text: labels.error, error: true });
+      }
     });
   };
   const action = (href: string, label: string) =>
@@ -500,11 +530,17 @@ export function PeopleBoard({
             <span role="status" className={`min-w-0 text-[12.5px] ${putMsg?.error ? "text-red" : "text-muted"}`}>
               {putMsg ? putMsg.text : ready ? labels.selected.replace("{n}", String(picked.length)) : labels.pickSome}
             </span>
-            {/* 고른 사람을 폴더에 한꺼번에 */}
-            <button type="button" disabled={!ready} onClick={() => setPutOpen(true)} className="pill shrink-0 !gap-1.5 disabled:opacity-40">
-              <FolderMini color="mango" size={18} />
-              {labels.put}
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              {/* 고른 사람을 지우기(확인 시트를 거친다) */}
+              <button type="button" disabled={!ready} aria-haspopup="dialog" onClick={() => setRemoveOpen(true)} className="pill shrink-0 !text-red disabled:opacity-40">
+                {labels.remove}
+              </button>
+              {/* 고른 사람을 폴더에 한꺼번에 */}
+              <button type="button" disabled={!ready} onClick={() => setPutOpen(true)} className="pill shrink-0 !gap-1.5 disabled:opacity-40">
+                <FolderMini color="mango" size={18} />
+                {labels.put}
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {action(`/plan/menu${query}`, labels.menu)}
@@ -515,6 +551,27 @@ export function PeopleBoard({
         <div className="h-5" />
       )}
       {making ? <FolderSheet labels={sheet} onClose={() => setMaking(false)} /> : null}
+      {removeOpen ? (
+        <Sheet
+          id="people-remove-title"
+          title={labels.removeTitle.replace("{n}", String(picked.length))}
+          closeLabel={labels.clear}
+          onClose={() => setRemoveOpen(false)}
+          footer={
+            <div className="grid grid-cols-2 gap-2">
+              {/* 처음 포커스는 취소: 실수로 엔터를 쳐도 안 지워진다 */}
+              <button type="button" autoFocus onClick={() => setRemoveOpen(false)} className="btn-soft">
+                {labels.removeCancel}
+              </button>
+              <button type="button" disabled={removing} aria-busy={removing} onClick={removePicked} className="btn-soft !bg-red !text-white !shadow-none disabled:opacity-50 motion-safe:disabled:animate-pulse">
+                {labels.removeConfirm}
+              </button>
+            </div>
+          }
+        >
+          <p className="px-6 pb-3 pt-1 text-[15px] leading-[1.6]">{labels.removeBody.replace("{n}", String(picked.length))}</p>
+        </Sheet>
+      ) : null}
       {putOpen ? (
         <Sheet id="people-put-title" title={labels.put} closeLabel={labels.clear} onClose={() => setPutOpen(false)}>
           <ul className="flex flex-col px-6" style={{ paddingBottom: "max(var(--pb), 16px)" }}>

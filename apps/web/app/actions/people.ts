@@ -134,6 +134,23 @@ export async function removeContact(form: FormData): Promise<void> {
   redirect("/people");
 }
 
+/**
+ * 사람 목록에서 고른 여러 명을 한꺼번에 주소록에서 빼기. 기록·메모·보낸 물어보기 링크·폴더 소속이 같이 지워진다.
+ * 내 사람만 지워지고(RLS + user_id), 실제로 지운 수를 돌려준다
+ */
+export async function removeContacts(contactIds: string[]): Promise<{ ok: boolean; removed: number }> {
+  const s = await requireSession();
+  const ids = cleanIds(contactIds);
+  if (!ids.length) return { ok: false, removed: 0 };
+  try {
+    const gone = await s.tx((q) => q<{ id: string }>("delete from contacts where id::text = any($1::text[]) and user_id = $2 returning id", [ids, s.user.id]));
+    revalidatePeople();
+    return { ok: true, removed: gone.length };
+  } catch {
+    return { ok: false, removed: 0 };
+  }
+}
+
 /** 사람 더하기: 주소록에 넣고 빈 기록을 만든 뒤 그 사람 화면으로 */
 export async function createPerson(form: FormData): Promise<void> {
   const s = await requireSession();

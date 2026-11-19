@@ -841,6 +841,36 @@ test("사람들 > 고르기: 사람을 고르면 알레르기를 빼고 메뉴�
   await expect(page.getByRole("button", { name: "공유하기" })).toBeVisible();
 });
 
+test("사람들 > 고르기: 고른 사람을 한꺼번에 지운다(확인 시트에서 취소하면 그대로, 지우면 목록에서 빠진다)", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  await page.getByRole("link", { name: "사람들" }).click();
+  await page.getByRole("button", { name: "선택" }).click();
+  // 아무도 안 골랐을 땐 지우기가 막혀 있다
+  const remove = page.getByRole("button", { name: "지우기", exact: true });
+  await expect(remove).toBeDisabled();
+  await page.getByRole("button", { name: "아내 선택" }).click();
+  await page.getByRole("button", { name: "단짝 선택" }).click();
+  await remove.click();
+  const sheet = page.getByRole("dialog", { name: "2명을 지울까요?" });
+  await expect(sheet).toBeVisible();
+  // 취소하면 아무도 안 지워지고 고른 채로
+  await sheet.getByRole("button", { name: "취소" }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "아내 선택" })).toHaveAttribute("aria-pressed", "true");
+  // 지우면 두 명이 목록에서 빠지고 알림이 뜬다
+  await remove.click();
+  await page.getByRole("dialog", { name: "2명을 지울까요?" }).getByRole("button", { name: "지우기", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("2명을 지웠어요");
+  await expect(page.getByRole("button", { name: "아내 선택" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "단짝 선택" })).toHaveCount(0);
+  // 다른 사람은 그대로 있고, 새로 고쳐도 되살아나지 않는다
+  await expect(page.getByRole("button", { name: /선택$/ }).first()).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("아내", { exact: true })).toHaveCount(0);
+});
+
 test("기기 언어가 영어면 처음부터 영어로, 직접 고른 언어가 우선", async ({ browser }) => {
   const ctx = await browser.newContext({ locale: "en-US" });
   const page = await ctx.newPage();
