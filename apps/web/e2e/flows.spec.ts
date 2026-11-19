@@ -56,6 +56,10 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   await onboard(page, { name: "지수", allergy: "새우", dislike: "오이", lunar: { month: 10, day: 12 } });
   await expect(page).toHaveURL(/\/home/);
   await expect(page.getByRole("heading", { name: "내 사람들" })).toBeVisible();
+  // 챙길 사람이 아직 없으면 챙길 날 카드가 비어 있으니, 그 안에서 바로 사람을 더하게 이끈다
+  await expect(page.getByRole("region", { name: "다가오는 날" }).getByRole("link", { name: "사람 추가하기" })).toBeVisible();
+  // 오늘의 질문은 등록한 사람에 대한 것이라, 사람이 없으면 카드 자체가 없다
+  await expect(page.getByRole("region", { name: "오늘의 질문" })).toHaveCount(0);
 
   await shot(page, "02-home-empty");
   // 이번 주를 누르면 월별 달력, 앞뒤 달로 넘긴다
@@ -175,7 +179,8 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await page.goto("/home");
   // 다 읽었으니 종에는 숫자가 없고, 열어도 새 알림이 없다
   await expect(page.getByRole("button", { name: "알림", exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: /아빠/ })).toBeVisible();
+  // 사람들 줄에 아빠(오늘의 질문 카드의 이름 칩과 겹치지 않게 영역을 좁힌다)
+  await expect(page.getByRole("region", { name: "내 사람들" }).getByRole("link", { name: /아빠/ })).toBeVisible();
   await shot(page, "08-home");
 });
 
@@ -886,6 +891,30 @@ test("사람들 > 고르기: 고른 사람을 한꺼번에 지운다(확인 시�
   await expect(page.getByText("아내", { exact: true })).toHaveCount(0);
 });
 
+test("오늘의 질문: 내 질문이 아니라 등록한 사람에 대한 빈 칸을 하나씩 묻고, 답하면 그 사람 기록에 들어가며, 건너뛸 수 있다", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  const card = page.getByRole("region", { name: "오늘의 질문" });
+  await expect(card).toBeVisible();
+  // 누구에 대한 질문인지 보인다: 이름 칩(눌러 그 사람 화면)과 그 이름이 든 질문
+  const who = card.getByRole("link").first();
+  const name = ((await who.textContent()) ?? "").trim();
+  expect(name).toBeTruthy();
+  const first = ((await card.getByRole("heading").textContent()) ?? "").trim();
+  expect(first).toContain(name);
+  // 건너뛰면 같은 날 다음 칸(다른 질문)
+  await card.getByRole("link", { name: "건너뛰기" }).click();
+  await expect(page).toHaveURL(/\/home\?skip=1/);
+  await expect(card.getByRole("heading")).not.toHaveText(first);
+  await page.goto("/home");
+  await expect(card.getByRole("heading")).toHaveText(first);
+  // 답하면 그 사람 기록에 들어가고, 같은 질문은 다시 묻지 않는다
+  await card.locator('form button[name="value"]').first().click();
+  await expect(page.getByRole("status").filter({ hasText: "기억해 둘게요" })).toBeVisible();
+  await expect(card.getByRole("heading")).not.toHaveText(first);
+});
+
 test("기기 언어가 영어면 처음부터 영어로, 직접 고른 언어가 우선", async ({ browser }) => {
   const ctx = await browser.newContext({ locale: "en-US" });
   const page = await ctx.newPage();
@@ -958,7 +987,8 @@ test("가입 직후 체험: 글로 사람을 적어 보고(예시 문장) 적힌
   await expect(page.getByRole("heading", { name: "이렇게 기억해 둘게요" })).toBeVisible({ timeout: 60_000 });
   const saved = page.getByRole("link", { name: /엄마/ });
   await expect(saved.first()).toBeVisible();
-  await expect(page.getByText("장미꽃").first()).toBeVisible();
+  // 값 글자는 AI가 나누는 거라 "장미"로 적힐 때도 있다
+  await expect(page.getByText(/장미/).first()).toBeVisible();
   // 다음: 방금 적은 엄마에게 물어보기로(사람이 정해져 있다)
   await page.getByRole("link", { name: "다음" }).click();
   await expect(page).toHaveURL(/\/request\?tour=2&to=[0-9a-f-]{36}/);

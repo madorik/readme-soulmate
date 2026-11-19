@@ -1,9 +1,9 @@
 "use server";
 
-import { isSection, josa, sanitizeAvatar, type AvatarConfig, type Section } from "@readme/core";
+import { applyAnswer, isSection, josa, QUESTIONS, sanitizeAvatar, type AvatarConfig, type DailyQuestion, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireSession, sealNote, writeContactSection } from "@/lib/data";
+import { listPeople, requireSession, sealNote, writeContactSection } from "@/lib/data";
 import { LIMITS } from "@/lib/data-core";
 import { isFolderColor, isFolderIcon } from "@/lib/folders";
 import { GIFT_CATALOG } from "@/lib/gift-catalog";
@@ -149,6 +149,28 @@ export async function removeContacts(contactIds: string[]): Promise<{ ok: boolea
   } catch {
     return { ok: false, removed: 0 };
   }
+}
+
+/**
+ * 오늘의 질문 답: 내가 등록한 그 사람의 기록 한 칸에 넣는다(내 사람만, 이미 적힌 칸은 그 위에 더하거나 바꾼다).
+ * 끝나면 홈으로 돌아가 같은 자리에 다음 질문이 뜬다
+ */
+export async function answerAbout(form: FormData): Promise<void> {
+  const contactId = String(form.get("contactId") ?? "");
+  const id = String(form.get("id")) as DailyQuestion["id"];
+  const value = String(form.get("value") ?? "").trim();
+  if (!UUID.test(contactId) || !QUESTIONS.some((x) => x.id === id) || !value) return;
+  const s = await requireSession();
+  const person = (await listPeople(s)).find((p) => p.contactId === contactId);
+  if (!person) redirect("/home");
+  await s.tx(async (q) => {
+    for (const [section, data] of Object.entries(applyAnswer(person.card, id, value, s.profile.locale))) {
+      if (isSection(section)) await writeContactSection(q, s.user.id, contactId, section, data);
+    }
+  });
+  track("daily_answer", { userId: s.user.id, source: id.toLowerCase().replace(/[^a-z_]/g, "_").slice(0, 20) });
+  revalidatePeople(contactId);
+  redirect("/home?answered=1");
 }
 
 /** 사람 더하기: 주소록에 넣고 빈 기록을 만든 뒤 그 사람 화면으로 */

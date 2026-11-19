@@ -2,9 +2,10 @@ import { diffDays, type YMD } from "./calendar";
 import { METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, NONE_LABEL, PATTERNS, SEASONS, STYLES, type CatalogItem } from "./catalog";
 import { emptySection, type CardData, type CultureData, type FavoritesData } from "./card";
 import type { Label, Locale } from "./locale";
+import { josa } from "./i18n";
 import { clip } from "./text";
 
-// 오늘의 질문: 하루 한 문항으로 리드미를 조금씩 채운다. 답은 카드의 한 칸에 바로 들어간다.
+// 오늘의 질문: 내가 등록해 둔 사람들 중 아직 답이 없는 칸을 한 번에 하나씩 묻는다("엄마는 어떤 향을 좋아해요?"). 답은 그 사람 기록의 한 칸에 바로 들어간다.
 
 export interface QuestionOption {
   value: string;
@@ -125,12 +126,40 @@ export function isAnswered(card: Partial<CardData>, id: DailyQuestion["id"]): bo
   }
 }
 
-/** 날짜마다 돌아가며 고르되, 이미 답한 건 건너뛴다. 모두 답했으면 null */
-export function questionFor(today: YMD, card: Partial<CardData>): DailyQuestion | null {
-  const open = QUESTIONS.filter((q) => !isAnswered(card, q.id));
+/** 누구에 대한 어떤 질문인지 */
+export interface PersonQuestion {
+  contactId: string;
+  question: DailyQuestion;
+}
+
+/**
+ * 등록한 사람들 중 아직 답이 없는 (사람, 질문)을 하나 고른다. 사람 순서 → 질문 순서로 늘어놓고 날짜마다 한 칸씩 옮겨 가며,
+ * skip(건너뛰기를 누른 횟수)만큼 더 옮긴다. 하나 답하면 그 쌍이 빠져 같은 자리에 다음 것이 온다. 사람이 없거나 모두 답했으면 null
+ */
+export function questionForPeople(today: YMD, people: { contactId: string; card: Partial<CardData> }[], skip = 0): PersonQuestion | null {
+  const open = people.flatMap((p) => QUESTIONS.filter((q) => !isAnswered(p.card, q.id)).map((question) => ({ contactId: p.contactId, question })));
   if (!open.length) return null;
-  const index = Math.abs(diffDays({ y: 2026, m: 1, d: 1 }, today)) % open.length;
-  return open[index] ?? null;
+  const day = Math.abs(diffDays({ y: 2026, m: 1, d: 1 }, today));
+  return open[(day + Math.max(0, Math.floor(skip) || 0)) % open.length] ?? null;
+}
+
+/** 그 사람에 대해 묻는 말(질문마다 사람 이름을 넣는다). 한국어는 이름에 받침이 있으면 '은/이' */
+const ABOUT: Record<DailyQuestion["id"], { ko: (n: string) => string; en: (n: string) => string }> = {
+  drinks: { ko: (n) => `${josa(n, "은")} 요즘 제일 자주 마시는 게 뭐예요?`, en: (n) => `What does ${n} drink most these days?` },
+  flowers: { ko: (n) => `${n}에게 꽃을 준다면 어떤 꽃이 좋을까요?`, en: (n) => `Which flowers would ${n} like?` },
+  scent: { ko: (n) => `${josa(n, "은")} 어떤 향을 좋아해요?`, en: (n) => `Which scent does ${n} like?` },
+  giftCard: { ko: (n) => `${n}에게 상품권을 선물하면 좋아할까요?`, en: (n) => `Would ${n} like a gift card?` },
+  spicy: { ko: (n) => `${josa(n, "은")} 매운 음식을 어디까지 먹어요?`, en: (n) => `How spicy can ${n} go?` },
+  season: { ko: (n) => `${josa(n, "은")} 어떤 계절을 제일 좋아해요?`, en: (n) => `What's ${n}'s favorite season?` },
+  musicGenre: { ko: (n) => `${josa(n, "은")} 요즘 어떤 음악을 즐겨 들어요?`, en: (n) => `What music is ${n} into?` },
+  movieGenre: { ko: (n) => `${josa(n, "은")} 어떤 영화를 좋아해요?`, en: (n) => `Which movie genre does ${n} like?` },
+  pattern: { ko: (n) => `${josa(n, "은")} 어떤 무늬를 좋아해요?`, en: (n) => `Which pattern does ${n} like?` },
+  metal: { ko: (n) => `${josa(n, "은")} 액세서리는 어떤 색을 좋아해요?`, en: (n) => `Which metal does ${n} like in jewelry?` },
+  style: { ko: (n) => `${n}의 평소 옷 스타일은 어때요?`, en: (n) => `What's ${n}'s everyday style?` },
+};
+
+export function aboutPrompt(id: DailyQuestion["id"], name: string, locale: Locale): string {
+  return ABOUT[id][locale](clip(name.trim(), 20).trim() || (locale === "ko" ? "이 사람" : "this person"));
 }
 
 /** 답을 카드 칸에 넣은 결과(바뀐 항목만) */

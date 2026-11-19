@@ -1,7 +1,7 @@
 "use server";
 
 import { track } from "@/lib/track";
-import { applyAnswer, emptySection, isSection, QUESTIONS, sanitizeAvatar, sanitizeOffsets, type DailyQuestion, type Section } from "@readme/core";
+import { emptySection, isSection, sanitizeAvatar, sanitizeOffsets, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { readCard, requireSession, writeSection } from "@/lib/data";
@@ -92,23 +92,6 @@ export async function saveSection(_: SaveState, form: FormData): Promise<SaveSta
   revalidatePath("/me/edit");
   revalidatePath("/home");
   return { saved: true, error: false };
-}
-
-/** 오늘의 질문 답 → 카드 칸 */
-export async function answerQuestion(form: FormData): Promise<void> {
-  const s = await requireSession();
-  const id = String(form.get("id")) as DailyQuestion["id"];
-  const value = String(form.get("value") ?? "").trim();
-  if (!QUESTIONS.some((x) => x.id === id) || !value) return;
-  await s.tx(async (q) => {
-    const { card } = await readCard(q, s.user.id);
-    for (const [section, data] of Object.entries(applyAnswer(card, id, value, s.profile.locale))) {
-      if (isSection(section)) await writeSection(q, s.user.id, section, data);
-    }
-  });
-  track("daily_answer", { userId: s.user.id, source: id.toLowerCase().replace(/[^a-z_]/g, "_").slice(0, 20) });
-  revalidatePath("/home");
-  redirect("/home?answered=1");
 }
 
 /** 생일 알림 시점(공유 관리에서) */

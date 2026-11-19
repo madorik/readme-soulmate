@@ -28,7 +28,9 @@ import {
   normalizeCode,
   parseFoodSpeech,
   placeholders,
-  questionFor,
+  questionForPeople,
+  aboutPrompt,
+  QUESTIONS,
   randomCode,
   randomToken,
   RELATION_PRESETS,
@@ -152,17 +154,37 @@ test("날짜 표기", () => {
   assert.equal(formatDaysLeft(7, "en"), "In 7 days");
 });
 
-test("오늘의 질문: 답한 건 건너뛰고, 답은 카드 칸에", () => {
-  const q = questionFor(TODAY, {});
-  assert.ok(q);
-  const all = questionFor(TODAY, {
+test("오늘의 질문: 등록한 사람 중 답이 없는 칸을 하나씩, 답한 건 건너뛰고, 답은 그 사람 카드 칸에", () => {
+  // 사람이 없으면 물을 게 없다
+  assert.equal(questionForPeople(TODAY, []), null);
+  const full = {
     taste: { likes: [], spicy: 2, dessert: "", drinks: "라떼", alcohol: { level: null, kinds: [] } },
-    gifts: { giftCard: "yes", wishlist: [], skip: [], brands: [] },
+    gifts: { giftCard: "yes" as const, wishlist: [], skip: [], brands: [] },
     life: sanitizeSection("life", { seasons: ["autumn"] }),
     favorites: sanitizeSection("favorites", { scent: "우디", flowers: "튤립", patterns: ["stripe"], metals: ["silver"], styles: ["minimal"] }),
     culture: sanitizeSection("culture", { musicGenres: ["indie"], movieGenres: ["comedy"] }),
-  });
-  assert.equal(all, null);
+  };
+  // 모두 답한 사람만 있으면 null, 한 사람이라도 빈 칸이 있으면 그 사람 이야기를 묻는다
+  assert.equal(questionForPeople(TODAY, [{ contactId: "mom", card: full }]), null);
+  const only = questionForPeople(TODAY, [{ contactId: "mom", card: full }, { contactId: "dad", card: {} }]);
+  assert.equal(only?.contactId, "dad");
+  // 답한 칸은 다시 묻지 않는다: 아빠가 음료만 비었으면 음료 질문
+  const oneLeft = questionForPeople(TODAY, [{ contactId: "dad", card: { ...full, taste: { ...full.taste, drinks: "" } } }]);
+  assert.equal(oneLeft?.question.id, "drinks");
+  // 하루 한 칸씩 옮겨 가고, 건너뛰기를 누르면 그만큼 더 옮긴다
+  const dad = [{ contactId: "dad", card: {} }];
+  const a = questionForPeople(TODAY, dad, 0);
+  const b = questionForPeople(TODAY, dad, 1);
+  assert.ok(a && b && a.question.id !== b.question.id);
+  assert.equal(questionForPeople(TODAY, dad, QUESTIONS.length)?.question.id, a.question.id, "한 바퀴 돌면 처음으로");
+  // 사람 이름이 든 질문: 받침에 따라 은/는, 이름 없으면 '이 사람'
+  assert.equal(aboutPrompt("scent", "엄마", "ko"), "엄마는 어떤 향을 좋아해요?");
+  assert.equal(aboutPrompt("scent", "아빠", "ko"), "아빠는 어떤 향을 좋아해요?");
+  assert.equal(aboutPrompt("scent", "철수", "ko"), "철수는 어떤 향을 좋아해요?");
+  assert.equal(aboutPrompt("scent", "영민", "ko"), "영민은 어떤 향을 좋아해요?");
+  assert.equal(aboutPrompt("flowers", "엄마", "en"), "Which flowers would 엄마 like?");
+  assert.equal(aboutPrompt("style", "  ", "ko"), "이 사람의 평소 옷 스타일은 어때요?");
+  for (const q of QUESTIONS) assert.ok(aboutPrompt(q.id, "엄마", "ko").includes("엄마") && aboutPrompt(q.id, "Mom", "en").includes("Mom"), q.id);
   assert.deepEqual(applyAnswer({}, "drinks", "아메리카노"), { taste: { likes: [], spicy: null, dessert: "", drinks: "아메리카노", alcohol: { level: null, kinds: [] } } });
   assert.equal(applyAnswer({}, "giftCard", "no").gifts?.giftCard, "no");
   // 향·꽃은 취향 칸으로
@@ -355,7 +377,7 @@ test("없음: 고르는 칸은 '없음'만 남기거나 다른 것만, 오늘의
   assert.equal(isEmptySection("safety", sanitizeSection("safety", { allergens: [NONE] })), false, "없음도 답한 것");
   assert.deepEqual(sanitizeSection("life", { seasons: [NONE] }).seasons, [NONE]);
   assert.deepEqual(sanitizeSection("culture", { musicGenres: [NONE, "bogus"] }).musicGenres, [NONE]);
-  const q = questionFor(TODAY, {});
+  const q = questionForPeople(TODAY, [{ contactId: "a", card: {} }])?.question;
   assert.ok(q && (q.options[0]?.value === NONE || q.id === "giftCard" || q.id === "spicy"));
   assert.deepEqual(applyAnswer({ culture: sanitizeSection("culture", { musicGenres: ["indie"] }) }, "musicGenre", NONE).culture?.musicGenres, [NONE]);
   assert.deepEqual(applyAnswer({ life: sanitizeSection("life", { seasons: [NONE] }) }, "season", "autumn").life?.seasons, ["autumn"]);

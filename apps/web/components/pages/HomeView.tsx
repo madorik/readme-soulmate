@@ -1,6 +1,6 @@
-import { addDays, canAnswerOwn, countWord, formatDayFull, formatSpec, NONE, NONE_LABEL, questionFor, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
+import { aboutPrompt, addDays, canAnswerOwn, countWord, formatDayFull, formatSpec, NONE, NONE_LABEL, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
 import Link from "next/link";
-import { answerQuestion } from "@/app/actions/card";
+import { answerAbout } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";
 import { ChiliMeter } from "@/components/Chili";
 import { TabBar, Wordmark } from "@/components/chrome";
@@ -16,7 +16,7 @@ import { displayName } from "@/lib/person";
 import { makeT } from "@/lib/t";
 
 // 시안 v3: 다가오는 날(흰 카드, 가는 큰 숫자) → 이번 주(오늘은 하늘 그라데이션, 챙길 날엔 그 사람 얼굴) → 리디가 묻는 오늘의 질문 → 내 사람들(가로 줄)
-export function HomeView({ locale, avatar, today, people, card, answers, answered, ai }: HomeData) {
+export function HomeView({ locale, avatar, today, people, question: asked, questionSkip, answers, answered, ai }: HomeData) {
   const t = makeT(locale);
   // 물어보기에 온 답장(아직 안 본 것)은 오른쪽 위 종에 모은다. 누르면 그 사람 화면, 열면 읽은 것으로
   const rtf = new Intl.RelativeTimeFormat(locale === "ko" ? "ko" : "en", { numeric: "auto" });
@@ -40,7 +40,10 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
   const nextFaces = [...new Map(nextGroup.map((e) => [e.contactId, e])).values()];
   // 두 달 안에는 없지만 그 뒤에 있는 날(빈 화면에서 '다음은 …'으로 알려 준다)
   const later = next ? null : (events[0] ?? null);
-  const question = questionFor(today, card);
+  // 오늘의 질문: 내가 등록한 사람 중 아직 답이 없는 칸 하나. 답은 그 사람 기록에 들어간다
+  const question = asked?.q ?? null;
+  const askedPerson = asked ? personOf(asked.contactId) : null;
+  const askedName = askedPerson ? displayName(askedPerson) : "";
   const names = weekdayNames(locale);
   const days = Array.from({ length: 8 }, (_, i) => addDays(today, i));
   // 이번 주에 챙길 날 수(같은 날 두 사람이면 둘)
@@ -138,6 +141,13 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
             </div>
             {later ? (
               <div className="h-5" />
+            ) : people.length === 0 ? (
+              // 챙길 사람이 아직 없을 때: 사람부터 더하게 큰 버튼
+              <div className="pb-5 pt-[18px]">
+                <Link href="/people/new" className="btn-primary w-full">
+                  {t("home.addPerson")}
+                </Link>
+              </div>
             ) : (
               <Link href="/request" className="mt-[18px] flex min-h-[52px] items-center justify-between border-t border-rule text-[14.5px] font-medium">
                 {t("home.askDates")}
@@ -184,13 +194,19 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
         </ol>
       </section>
 
-      {question ? (
+      {question && asked && askedPerson ? (
         <section aria-label={t("home.question")} className="card mx-4 mt-3.5 flex flex-col gap-3.5 px-4 pb-4 pt-[18px]">
           <div className="flex items-center gap-2.5">
             <Mascot size={46} />
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[12.5px] font-bold text-accent">{t("home.question")}</span>
-              <span className="text-[19px] font-bold leading-[1.35] tracking-[-0.02em]">{question.prompt[locale]}</span>
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-bold text-accent">
+                {t("home.question")}
+                <Link href={`/people/${asked.contactId}`} className="flex min-w-0 items-center gap-1 rounded-full bg-fill py-0.5 pl-0.5 pr-2 text-ink-2">
+                  <Avatar config={askedPerson.avatar} size={18} label={askedName} decorative />
+                  <span className="truncate">{askedName}</span>
+                </Link>
+              </span>
+              <h2 className="text-[19px] font-bold leading-[1.35] tracking-[-0.02em]">{aboutPrompt(question.id, askedName, locale)}</h2>
             </div>
           </div>
           {/* '없음'이 있는 질문: 없음은 아이콘으로 맨 오른쪽에 늘 보이고, 나머지는 셋까지 한 줄·넘으면 옆으로 넘겨 본다(카드 왼쪽 밖까지 이어지게).
@@ -219,7 +235,8 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
               <div className={`grid min-w-0 flex-1 gap-2 ${hasNone ? (opts.length === 3 ? "grid-cols-3" : opts.length === 2 ? "grid-cols-2" : "grid-cols-1") : "grid-cols-2"}`}>{opts.map(option)}</div>
             );
             return (
-              <form action={answerQuestion} className="flex items-start gap-2">
+              <form action={answerAbout} className="flex items-start gap-2">
+                <input type="hidden" name="contactId" value={asked.contactId} />
                 <input type="hidden" name="id" value={question.id} />
                 {list}
                 {hasNone ? (
@@ -240,7 +257,8 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
           })()}
           {/* 보기에 없는 답은 직접(음료·꽃·향·음악·영화) */}
           {canAnswerOwn(question.id) ? (
-            <form action={answerQuestion} className="flex items-center gap-1.5 rounded-2xl bg-fill py-1 pl-4 pr-1 focus-within:shadow-[inset_0_0_0_2px_var(--color-sky)]">
+            <form action={answerAbout} className="flex items-center gap-1.5 rounded-2xl bg-fill py-1 pl-4 pr-1 focus-within:shadow-[inset_0_0_0_2px_var(--color-sky)]">
+              <input type="hidden" name="contactId" value={asked.contactId} />
               <input type="hidden" name="id" value={question.id} />
               <input
                 name="value"
@@ -256,6 +274,10 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
               </button>
             </form>
           ) : null}
+          {/* 모르는 건 건너뛴다: 같은 날 다음 칸으로(?skip=) */}
+          <Link replace href={`/home?skip=${questionSkip + 1}`} className="-mb-1.5 -mt-1 flex min-h-11 items-center self-end px-2 text-[13.5px] font-bold text-muted">
+            {t("common.skip")}
+          </Link>
         </section>
       ) : null}
       {answered ? (
