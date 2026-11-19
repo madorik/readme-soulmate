@@ -102,11 +102,12 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
           <div className="min-h-10 px-6">
             <span aria-hidden="true" className="float-right h-10 w-28" />
             <h2 id="picks-title" className="text-[17px] font-bold leading-[1.4] tracking-[-0.02em]">
-              {t("picks.titleFor", { name })}
+              <span className="picks-t-done">{t("picks.titleFor", { name })}</span>
+              <span className="picks-t-busy">{t("picks.titleBusy", { name })}</span>
             </h2>
           </div>
           {/* 고르는 동안은 꼬마 마법사 장면, 다 고르면 번쩍임 뒤에 선물이 나온다. 다시 고르면 key가 바뀌어 장면을 다시 보인다 */}
-          <PicksStage key={skip.join(",")} label={t("picks.loading.1", { name })}>
+          <PicksStage key={skip.join(",")} lines={[1, 2, 3, 4].map((n) => t(`picks.loading.${n}` as "picks.loading.1", { name }))} shout={t("picks.shout")}>
             <Suspense fallback={<PicksPending peek={peek} />}>
               <PicksContent>
                 <GiftPicksBody picks={picks} locale={locale} again={again} peek={peek} />

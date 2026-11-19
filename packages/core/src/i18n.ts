@@ -436,7 +436,12 @@ export const ko = {
   "picks.doneOwn": "직접 적기",
   "picks.doneSave": "기록하기",
   "picks.doneEdit": "다시 적기",
-  "picks.loading.1": "{name}님을 위한 선물을 고르고 있어요",
+  "picks.loading.1": "{name}님 선물, 고르고 있어요",
+  "picks.loading.2": "{name}님이 좋아할 만한 걸 떠올리는 중이에요",
+  "picks.loading.3": "구슬 속에서 열심히 찾는 중이에요",
+  "picks.loading.4": "거의 다 됐어요, 조금만요!",
+  "picks.shout": "얍!",
+  "picks.titleBusy": "{name}님에게 어울릴 선물을 찾는 중이에요",
   "picks.disclosure": "쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.",
 
 
@@ -1084,7 +1089,12 @@ export const en: Messages = {
   "picks.doneOwn": "Write your own",
   "picks.doneSave": "Save",
   "picks.doneEdit": "Change",
-  "picks.loading.1": "Picking gifts for {name}",
+  "picks.loading.1": "Picking a gift for {name}…",
+  "picks.loading.2": "Thinking about what {name} would love",
+  "picks.loading.3": "Searching deep in the orb…",
+  "picks.loading.4": "Almost there!",
+  "picks.shout": "Ta-da!",
+  "picks.titleBusy": "Finding gifts for {name}",
   "picks.disclosure": "As a Coupang Partners affiliate, we earn a commission on qualifying purchases.",
 
 

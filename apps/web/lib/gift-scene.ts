@@ -42,8 +42,8 @@ import {
 import type { BufferGeometry, Material, Shader, Texture } from "three";
 
 export interface GiftScene {
-  /** 얍! 구슬이 번쩍이고 소녀가 호응한다. 번쩍임이 한창일 때(얍! 직후) onPeak을 한 번 부른다(그때 고른 선물로 바꿔 끼우면 번쩍임 속에서 바뀐다) */
-  finale(onPeak: () => void): void;
+  /** 얍! 구슬이 번쩍이고 소녀가 호응한다. 소녀가 '얍!' 하는 순간 onHit, 번쩍임이 한창일 때 onPeak을 한 번씩 부른다(그때 고른 선물로 바꿔 끼우면 번쩍임 속에서 바뀐다) */
+  finale(onPeak: () => void, onHit?: () => void): void;
   dispose(): void;
 }
 
@@ -612,17 +612,17 @@ export function createGiftScene(canvas: HTMLCanvasElement, opts: { still?: boole
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerleave", onLeave);
 
-  // 세로로 9.5 만큼이 보이게 맞추고, 너무 좁으면(옆이 잘리면) 뒤로 물러난다
+  // 세로로 11.2 만큼이 보이게 맞추고(모자 위로 말풍선 자리를 남긴다), 너무 좁으면(옆이 잘리면) 뒤로 물러난다
   const TAN = Math.tan((30 / 2) * (Math.PI / 180));
   const resize = () => {
     const w = canvas.clientWidth || 358;
-    const h = canvas.clientHeight || 380;
+    const h = canvas.clientHeight || 410;
     const aspect = w / h;
-    const dist = Math.max(9.5 / 2 / TAN, 7.6 / aspect / 2 / TAN);
+    const dist = Math.max(11.2 / 2 / TAN, 7.6 / aspect / 2 / TAN);
     renderer.setSize(w, h, false);
     camera.aspect = aspect;
-    camera.position.set(0, 4.15, dist);
-    camera.lookAt(0, 4.0, 0);
+    camera.position.set(0, 4.65, dist);
+    camera.lookAt(0, 4.5, 0);
     camera.updateProjectionMatrix();
     flash.scale.set(aspect, 1, 1);
   };
@@ -640,7 +640,7 @@ export function createGiftScene(canvas: HTMLCanvasElement, opts: { still?: boole
   };
 
   // 얍! 진행: t0(시계 초)부터. 모으기(0~CHARGE) → 얍!(CHARGE) → 번쩍임이 가장 환할 때(CHARGE+FLASH_UP) onPeak
-  let fin: { t0: number; onPeak: () => void; peaked: boolean; burst: boolean } | null = null;
+  let fin: { t0: number; onPeak: () => void; onHit?: () => void; peaked: boolean; burst: boolean } | null = null;
   let spin = 0;
   let last = 0;
 
@@ -700,6 +700,7 @@ export function createGiftScene(canvas: HTMLCanvasElement, opts: { still?: boole
     if (fin && hit) {
       if (!fin.burst) {
         fin.burst = true;
+        fin.onHit?.();
         burst.forEach((p, i) => {
           const a = Math.random() * Math.PI * 2;
           const sp = 2.4 + Math.random() * 3.6;
@@ -776,9 +777,9 @@ export function createGiftScene(canvas: HTMLCanvasElement, opts: { still?: boole
   }
 
   return {
-    finale(onPeak) {
+    finale(onPeak, onHit) {
       if (fin || disposed) return;
-      fin = { t0: clock.getElapsedTime(), onPeak, peaked: false, burst: false };
+      fin = { t0: clock.getElapsedTime(), onPeak, onHit, peaked: false, burst: false };
       if (opts.still) onPeak();
     },
     dispose() {
