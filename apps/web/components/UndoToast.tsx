@@ -106,8 +106,8 @@ function UndoToast({ text, undoLabel, onUndo }: { text: string; undoLabel: strin
         on ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
       }`}
     >
-      <span className="min-w-0 flex-1 text-[14.5px] font-medium">{text}</span>
-      <button type="button" onClick={onUndo} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[14.5px] font-bold text-sky active:opacity-70">
+      <span className="min-w-0 flex-1 text-[17px]">{text}</span>
+      <button type="button" onClick={onUndo} className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[17px] text-sky active:opacity-70">
         <Icon name="undo" size={16} strokeWidth={2} />
         {undoLabel}
       </button>

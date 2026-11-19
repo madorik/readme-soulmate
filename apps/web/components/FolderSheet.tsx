@@ -55,7 +55,7 @@ export function FolderSheet({ folder, labels, onClose }: { folder?: FolderView |
       footer={
         <>
           {failed ? (
-            <p role="alert" className="pb-1 text-[13.5px] text-red">
+            <p role="alert" className="pb-1 text-[16px] text-red">
               {labels.error}
             </p>
           ) : null}
@@ -63,7 +63,7 @@ export function FolderSheet({ folder, labels, onClose }: { folder?: FolderView |
             {folder ? labels.save : labels.create}
           </button>
           {folder && !builtin ? (
-            <button type="button" disabled={busy} onClick={remove} className="flex min-h-11 items-center justify-center text-[14px] font-bold text-red">
+            <button type="button" disabled={busy} onClick={remove} className="flex min-h-11 items-center justify-center text-[17px] text-red">
               {labels.del}
             </button>
           ) : null}
@@ -91,7 +91,7 @@ export function FolderSheet({ folder, labels, onClose }: { folder?: FolderView |
           maxLength={30}
           autoFocus={!folder}
           placeholder={labels.namePlaceholder}
-          className="field font-medium disabled:bg-fill disabled:text-muted"
+          className="field disabled:bg-fill disabled:text-muted"
         />
       </form>
       <div className="flex flex-col gap-2 px-6 pt-5">
@@ -104,7 +104,7 @@ export function FolderSheet({ folder, labels, onClose }: { folder?: FolderView |
               aria-label={labels.icons[i]}
               aria-pressed={icon === i}
               onClick={() => setIcon(i)}
-              className={`flex h-14 items-center justify-center rounded-2xl transition-colors ${icon === i ? "bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-sky)]" : "bg-fill"}`}
+              className={`flex h-14 items-center justify-center rounded-2xl transition-colors ${icon === i ? "bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-ink)]" : "bg-fill"}`}
             >
               <FolderIconGlyph icon={i} />
             </button>

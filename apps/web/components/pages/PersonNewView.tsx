@@ -1,5 +1,6 @@
 import { createPerson } from "@/app/actions/people";
 import { TopBar } from "@/components/chrome";
+import { Heart, MarginLine, Squiggle, SKY_STAR, Star, Tape } from "@/components/diary";
 import { BirthdayField } from "@/components/editors/BirthdayField";
 import { Icon } from "@/components/marks";
 import type { PersonNewData } from "@/lib/pages/person-new.data";
@@ -11,11 +12,15 @@ export function PersonNewView({ locale, folders, error, name }: PersonNewData) {
   return (
     <form action={createPerson} className="flex flex-1 flex-col">
       <TopBar close="/people" label={t("common.close")} />
-      <div className="flex flex-col gap-1.5 px-6 pt-1">
-        <h1 className="headline text-[28px]">{t("people.newTitle")}</h1>
+      <div className="relative px-6 pt-1.5">
+        <h1 className="hl inline-block px-1 text-[34px] font-normal leading-[1.2]">{t("people.newTitle")}</h1>
+        <Star size={22} rotate={14} className="right-[42px] top-0" />
       </div>
-      <label className="flex flex-col gap-2 px-6 pt-7">
-        <span className="text-[15px] font-bold">{t("people.newName")}</span>
+      <div className="card ruled relative mx-4 mt-[22px] flex flex-col gap-[22px] pb-6 pl-10 pr-5 pt-[26px] [background-position:0_18px]">
+      <MarginLine left={26} />
+      <Tape color="mango" w={100} h={24} rotate={-3} alpha={0.62} className="-top-[11px] left-1/2 -ml-[50px]" />
+      <label className="flex flex-col gap-2">
+        <span className="text-[20px]">{t("people.newName")}</span>
         <input
           name="name"
           required
@@ -24,19 +29,19 @@ export function PersonNewView({ locale, folders, error, name }: PersonNewData) {
           defaultValue={(name ?? "").slice(0, 40)}
           placeholder={t("people.newNamePlaceholder")}
           aria-invalid={error === "name" || undefined}
-          className="field"
+          className="field !text-[21px]"
         />
         {error === "name" || error === "limit" ? (
-          <span role="alert" className="text-[13.5px] text-red">
+          <span role="alert" className="text-[16px] text-red">
             {t(error === "limit" ? "people.newLimit" : "people.newNameError")}
           </span>
         ) : null}
       </label>
       {/* 처음 넣을 폴더(드롭다운). 다른 폴더는 그 사람 화면에서 더 넣는다 */}
-      <label className="flex flex-col gap-2 px-6 pt-6">
-        <span className="text-[15px] font-bold">{t("folder.label")}</span>
+      <label className="flex flex-col gap-2">
+        <span className="text-[20px]">{t("folder.label")}</span>
         <span className="relative flex">
-          <select name="folderId" defaultValue="" className="field appearance-none pr-10 font-bold">
+          <select name="folderId" defaultValue="" className="field appearance-none pr-10 !text-[21px] !shadow-none !border-[1.5px]">
             <option value="">{t("folder.none")}</option>
             {folders.map((f) => (
               <option key={f.id} value={f.id}>
@@ -48,6 +53,10 @@ export function PersonNewView({ locale, folders, error, name }: PersonNewData) {
         </span>
       </label>
       <BirthdayField locale={locale} />
+      <Heart size={24} rotate={16} className="-right-2 top-[70px]" />
+      <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[7px] top-[250px]" />
+      <Squiggle w={54} width={2.4} className="-bottom-2 right-9" />
+      </div>
       <div className="bottom-bar mt-auto bg-bg px-6 pt-4">
         <button className="btn-primary w-full">{t("people.create")}</button>
       </div>

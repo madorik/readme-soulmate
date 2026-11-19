@@ -1,6 +1,7 @@
 import { leaveTour } from "@/app/actions/tour";
 import { VoiceCapture } from "@/app/(app)/voice/VoiceCapture";
 import { TopBar } from "@/components/chrome";
+import { Heart, Star } from "@/components/diary";
 import { AiNotice } from "@/components/shell/AiNotice";
 import type { VoiceData } from "@/lib/pages/types";
 import { makeT } from "@/lib/t";
@@ -19,14 +20,28 @@ export function VoiceView({ locale, people, tour }: VoiceData) {
             <form action={leaveTour}>
               <input type="hidden" name="kind" value="skip" />
               <input type="hidden" name="source" value="voice" />
-              <button className="flex min-h-11 items-center px-3 text-[14px] font-bold text-muted">{t("common.skip")}</button>
+              <button className="flex min-h-11 items-center px-3 text-[14px] text-muted">{t("common.skip")}</button>
             </form>
           ) : undefined
         }
       />
       <AiNotice locale={locale} />
       {/* 키보드가 뜨면(적는 동안) 제목은 숨겨 적는 칸과 사람 줄이 한 화면에. 체험이면 제목 대신 아래 안내(이렇게 말해보세요) */}
-      {tour ? null : <h1 className="headline whitespace-pre-line px-6 pt-1 text-center text-[22px] leading-[1.35] [html[data-kb]_&]:hidden">{t("voice.headline")}</h1>}
+      {tour ? null : (
+        <div className="relative px-6 pt-2 text-center [html[data-kb]_&]:hidden">
+          <h1 className="text-[30px] font-normal leading-[1.35]">
+            {t("voice.headline")
+              .split("\n")
+              .map((line, i, all) => (
+                <span key={i} className="block">
+                  {i === all.length - 1 ? <span className="hl px-1">{line}</span> : line}
+                </span>
+              ))}
+          </h1>
+          <Star size={22} rotate={14} className="right-[42px] top-0.5" />
+          <Heart size={22} rotate={-14} className="left-[38px] top-[54px]" />
+        </div>
+      )}
       <VoiceCapture
         locale={locale}
         people={people}

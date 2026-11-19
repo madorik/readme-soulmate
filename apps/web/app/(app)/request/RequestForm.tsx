@@ -6,6 +6,7 @@ import { createRequest, type InviteState } from "@/app/actions/request";
 import { leaveTour, trackTour } from "@/app/actions/tour";
 import { useT } from "@/components/editors/shared";
 import { Avatar } from "@/components/Avatar";
+import { Heart, MarginLine, Polaroid, Sparkle, Squiggle, SKY_STAR, Star, Tape } from "@/components/diary";
 import { CheckGlyph, Icon } from "@/components/marks";
 import { Mascot } from "@/components/Mascot";
 import { SectionIcon } from "@/components/SectionIcon";
@@ -86,23 +87,41 @@ export function RequestForm({ locale, people, fixed, initialName, defaults, tour
   if (state.url) {
     return (
       <div className="flex flex-1 flex-col">
-        <section className="grad-hero relative mx-4 mt-4 flex flex-col items-center overflow-hidden rounded-3xl px-5 pb-6 pt-6 text-center">
-          <span aria-hidden="true" className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/25" />
-          <Mascot size={84} />
-          <h2 className="headline relative pt-3 text-[22px]">{t("request.ready", { name: name.trim() })}</h2>
-          <ul className="relative flex flex-wrap justify-center gap-1.5 pt-3.5">
+        <section className="card relative mx-4 mt-[22px] -rotate-[0.5deg] px-5 pb-[22px] pt-[30px]">
+          <Tape color="mango" w={108} h={26} rotate={-3} alpha={0.62} className="-top-[13px] left-1/2 -ml-[54px]" />
+          <div className="flex items-center gap-[18px]">
+            <Polaroid
+              photo={80}
+              rotate={-4}
+              caption={<span className="max-w-[80px] truncate">{name.trim()}</span>}
+            >
+              {who?.kind === "person" ? (
+                <Avatar config={who.person.avatar} size={74} label={who.person.label} decorative />
+              ) : (
+                <Mascot size={70} />
+              )}
+            </Polaroid>
+            <h2 className="min-w-0 text-[26px] font-normal leading-[1.3]">{t("request.ready", { name: name.trim() })}</h2>
+          </div>
+          <ul className="mt-5 flex flex-wrap gap-2">
             {SECTIONS_BY_IMPORTANCE.filter((x) => topics.includes(x)).map((x) => (
-              <li key={x} className="flex items-center gap-1.5 rounded-full bg-white/85 py-1 pl-1 pr-3 text-[13px] font-bold">
-                <SectionIcon section={x} size={22} />
+              <li key={x} className="flex h-[38px] items-center gap-1.5 rounded-full bg-white pl-[5px] pr-3.5 text-[17px] shadow-[inset_0_0_0_1.5px_var(--color-ink)]">
+                <SectionIcon section={x} size={28} round />
                 {topicLabel(x)}
               </li>
             ))}
           </ul>
+          <Heart size={28} rotate={16} className="-right-2 top-[26px]" />
+          <Star size={20} rotate={-12} className="-left-[7px] bottom-6" />
         </section>
-        <section className="card mx-4 mt-3 flex flex-col gap-2.5 px-5 py-5">
-          <h3 className="text-[13.5px] font-bold text-muted">{t("request.message")}</h3>
-          <p className="whitespace-pre-line rounded-2xl rounded-tl-md bg-sky-soft px-4 py-3 text-[15px] leading-[1.55]">{shareText}</p>
-          <LinkField url={state.url} label={t("common.copyLink")} />
+        <section className="card ruled relative mx-4 mt-[22px] flex flex-col pb-5 pl-10 pr-5 pt-[22px] [background-position:0_26px]">
+          <MarginLine left={26} />
+          <Tape color="mint" w={74} h={22} rotate={-8} alpha={0.55} vertical className="-top-2.5 left-3.5" />
+          <h3 className="pb-3 text-[18px] leading-[26px] text-muted">{t("request.message")}</h3>
+          <p className="whitespace-pre-line rounded-[6px_20px_20px_20px] bg-[#d3e9ff] px-4 pb-[15px] pt-3.5 text-[20px] leading-[1.5]">{shareText}</p>
+          <div className="pt-4">
+            <LinkField url={state.url} label={t("common.copyLink")} />
+          </div>
         </section>
         <div className="bottom-bar mt-auto flex flex-col gap-2 bg-bg px-4 pt-4">
           <ShareButtons locale={locale} url={state.url} text={shareText} sendLabel={t("request.send")} />
@@ -126,17 +145,18 @@ export function RequestForm({ locale, people, fixed, initialName, defaults, tour
       <input type="hidden" name="name" value={name} />
 
       {fixed ? null : (
-        <section className="card mx-4 mt-4 flex flex-col gap-3 px-5 py-5">
-          <label htmlFor="request-who" className="text-[15px] font-bold">
+        <section className="card relative mx-4 mt-5 flex flex-col px-5 pb-5 pt-[22px]">
+          <Tape color="mango" w={100} h={24} rotate={-3} alpha={0.62} className="-top-[11px] left-1/2 -ml-[50px]" />
+          <label htmlFor="request-who" className="pb-3 text-[21px] leading-[26px]">
             {t("request.who")}
           </label>
           {who ? (
             <div className="flex items-center gap-1.5">
-              <span className="chip-on flex h-12 min-w-0 items-center gap-2 rounded-full pl-1.5 pr-4 text-[16px] font-bold">
+              <span className="flex h-[54px] min-w-0 items-center gap-2 rounded-full bg-[#fff0c9] pl-1.5 pr-5 text-[22px] shadow-[inset_0_0_0_1.5px_var(--color-ink),0_3px_0_var(--color-mango-deep)]">
                 {who.kind === "person" ? (
-                  <Avatar config={who.person.avatar} size={36} label={who.person.label} />
+                  <Avatar config={who.person.avatar} size={40} label={who.person.label} />
                 ) : (
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white">
                     <Icon name="personAdd" size={18} strokeWidth={2} />
                   </span>
                 )}
@@ -159,7 +179,7 @@ export function RequestForm({ locale, people, fixed, initialName, defaults, tour
           ) : (
             <>
               <div className="relative">
-                <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="pointer-events-none absolute left-[14px] top-[15px] text-muted">
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="pointer-events-none absolute left-[15px] top-4 text-muted">
                   <circle cx="11" cy="11" r="7" />
                   <path d="M20 20l-4-4" />
                 </svg>
@@ -172,19 +192,19 @@ export function RequestForm({ locale, people, fixed, initialName, defaults, tour
                   maxLength={40}
                   enterKeyHint="go"
                   placeholder={t("people.search")}
-                  className="field !pl-[42px] [&::-webkit-search-cancel-button]:appearance-none"
+                  className="field !pl-[44px] [&::-webkit-search-cancel-button]:appearance-none"
                 />
               </div>
               {matches.length || (q && !exact) ? (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="mt-4 flex flex-wrap gap-2">
                   {matches.map((p) => (
-                    <button key={p.id} type="button" onClick={() => choose(p)} className="flex h-11 items-center gap-1.5 rounded-full bg-white pl-1 pr-3.5 text-[14.5px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-edge)]">
-                      <Avatar config={p.avatar} size={34} label={p.label} />
+                    <button key={p.id} type="button" onClick={() => choose(p)} className="flex h-12 items-center gap-1.5 rounded-full bg-white pl-[5px] pr-4 text-[19px] shadow-[inset_0_0_0_1.5px_var(--color-edge)]">
+                      <Avatar config={p.avatar} size={36} label={p.label} />
                       {p.label}
                     </button>
                   ))}
                   {q && !exact ? (
-                    <button type="button" onClick={chooseNew} className="flex h-11 items-center gap-1.5 rounded-full pl-3 pr-3.5 text-[14.5px] font-bold text-accent ring-[1.5px] ring-inset ring-mango-edge">
+                    <button type="button" onClick={chooseNew} className="flex h-12 items-center gap-1.5 rounded-full border-[1.5px] border-dashed border-ink pl-3 pr-3.5 text-[19px] text-accent">
                       <Icon name="personAdd" size={17} strokeWidth={2} />
                       {q}
                       <TagChip>{t("voice.newPerson")}</TagChip>
@@ -194,15 +214,16 @@ export function RequestForm({ locale, people, fixed, initialName, defaults, tour
               ) : null}
             </>
           )}
+          <Heart size={26} rotate={16} className="-right-2 top-[18px]" />
         </section>
       )}
 
-      <section className={`card mx-4 flex flex-col gap-3 px-4 py-5 ${fixed ? "mt-4" : "mt-3"}`}>
+      <section className={`card relative mx-4 px-4 py-[18px] ${fixed ? "mt-5" : "mt-4"}`}>
         <div className="flex items-baseline justify-between px-1">
-          <h2 className="text-[15px] font-bold">{t("request.topics")}</h2>
-          <span className="num text-[13px] !font-bold text-muted">{topics.length}</span>
+          <h2 className="text-[21px] font-normal">{t("request.topics")}</h2>
+          <span className="num text-[18px] text-muted">{topics.length}</span>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="mt-3.5 grid grid-cols-2 gap-x-2 gap-y-2.5 pb-[3px]">
           {SECTIONS_BY_IMPORTANCE.map((x) => {
             const on = topics.includes(x);
             return (
@@ -211,31 +232,37 @@ export function RequestForm({ locale, people, fixed, initialName, defaults, tour
                 type="button"
                 aria-pressed={on}
                 onClick={() => setTopics(on ? topics.filter((y) => y !== x) : SECTIONS.filter((y) => y === x || topics.includes(y)))}
-                className={`relative flex min-h-[60px] items-center gap-2.5 rounded-2xl py-2.5 pl-2.5 pr-3 text-left transition-shadow ${on ? "bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-sky)]" : "bg-fill"}`}
+                className={`relative flex min-h-[60px] items-center gap-2 rounded-[14px] py-2 pl-2 pr-2.5 text-left transition-shadow ${on ? "bg-sky-soft shadow-[inset_0_0_0_1.5px_var(--color-ink),0_3px_0_var(--color-mango-deep)]" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-ink)]"}`}
               >
                 <SectionIcon section={x} size={36} />
-                <span className={`min-w-0 flex-1 text-[14px] leading-[1.3] ${on ? "font-bold" : "font-semibold text-ink-2"}`}>{topicLabel(x)}</span>
+                <span className="min-w-0 flex-1 text-[19px] leading-[1.2]">{topicLabel(x)}</span>
                 {on ? (
-                  <span aria-hidden="true" className="absolute right-1.5 top-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-sky text-ink">
-                    <CheckGlyph size={11} />
+                  <span aria-hidden="true" className="absolute -right-[5px] -top-2 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-sky text-ink shadow-[inset_0_0_0_1.5px_var(--color-ink)]">
+                    <CheckGlyph size={13} />
                   </span>
                 ) : null}
               </button>
             );
           })}
         </div>
+        <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[7px] top-[22px]" />
+        <Squiggle w={54} width={2.4} className="-bottom-2 right-[30px]" />
       </section>
 
-      <section className="card mx-4 mt-3 flex flex-col gap-2.5 px-5 py-5">
-        <label htmlFor="request-message" className="text-[15px] font-bold">
+      <section className="card ruled relative mx-4 mt-4 flex flex-col pb-5 pl-10 pr-5 pt-[22px] [background-position:0_26px]">
+        <MarginLine left={26} />
+        <Tape color="mint" w={74} h={22} rotate={-8} alpha={0.55} vertical className="-top-2.5 left-3.5" />
+        <label htmlFor="request-message" className="mb-2.5 text-[21px] leading-[26px]">
           {t("request.message")}
         </label>
-        <textarea id="request-message" name="message" value={message} onChange={(e) => setMessage(e.target.value)} rows={3} maxLength={300} className="field resize-none leading-[1.55]" />
+        <textarea id="request-message" name="message" value={message} onChange={(e) => setMessage(e.target.value)} rows={3} maxLength={300} className="h-24 resize-none border-0 bg-transparent p-0 text-[20px] leading-8 outline-none" />
+        <Star size={22} rotate={12} className="-right-1.5 bottom-[26px]" />
+        <Sparkle size={18} className="right-[30px] top-[18px]" />
       </section>
 
       <div className="bottom-bar mt-auto flex flex-col gap-2 bg-bg px-4 pt-4">
         {state.error ? (
-          <p role="alert" className="px-1 text-[13.5px] text-red">
+          <p role="alert" className="px-1 text-[17px] text-red">
             {t(state.error === "pickOne" ? "request.pickOne" : name.trim() ? "common.error" : "request.needName")}
           </p>
         ) : null}

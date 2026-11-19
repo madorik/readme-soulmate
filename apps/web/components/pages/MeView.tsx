@@ -2,6 +2,7 @@ import { SECTIONS_BY_IMPORTANCE } from "@readme/core";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { TabBar } from "@/components/chrome";
+import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
 import { SectionBody } from "@/components/SectionBody";
 import { SectionIcon } from "@/components/SectionIcon";
@@ -16,42 +17,55 @@ export function MeView({ locale, name, avatar, card, today, ai }: MeData) {
 
   return (
     <>
-      <div className="flex items-center gap-4 pb-3 pl-5 pr-4 pt-5">
-        <Link href="/me/avatar" className="shrink-0 rounded-full">
-          <Avatar config={avatar} size={82} label={t("avatar.of", { name })} />
+      <div className="relative flex items-center gap-[22px] pb-1 pl-[26px] pr-4 pt-[26px]">
+        <Link
+          href="/me/avatar"
+          className="relative block shrink-0 -rotate-3 bg-white px-[7px] pb-5 pt-[7px] shadow-[0_1px_2px_rgb(31_35_64/0.12),0_8px_16px_-10px_rgb(31_35_64/0.5)]"
+        >
+          <span className="flex h-[86px] w-[86px] items-center justify-center bg-[#f1ecff]">
+            <Avatar config={avatar} size={80} label={t("avatar.of", { name })} />
+          </span>
+          <Tape color="pink" w={48} h={18} rotate={-6} className="-top-[9px] left-[22px]" />
         </Link>
-        <div className="flex min-w-0 items-center gap-0.5">
-          <h1 className="truncate text-[30px] font-bold leading-[1.15] tracking-[-0.03em]">{name}</h1>
+        <div className="flex min-w-0 items-center">
+          <h1 className="hl truncate px-1 text-[40px] font-normal leading-[1.15]">{name}</h1>
           <Link href="/me/avatar" aria-label={t("me.face")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-fill">
-            <Icon name="pencil" size={18} strokeWidth={2} />
+            <Icon name="pencil" size={19} strokeWidth={1.9} />
           </Link>
         </div>
+        <Star size={22} rotate={14} className="right-10 top-6" />
+        <Heart size={24} rotate={-14} className="left-[100px] top-28" />
       </div>
 
-      <section aria-labelledby="me-title" className="mx-4 mt-2 flex flex-col">
+      <section aria-labelledby="me-title" className="relative mx-4 mt-[18px] flex flex-col">
         <div className="flex min-h-11 items-center justify-between pl-2">
-          <h2 id="me-title" className="section-title">
+          <h2 id="me-title" className="text-[22px] font-normal">
             {t("me.title")}
           </h2>
           <Link href="/me/edit" aria-label={t("me.edit")} className="flex h-11 w-11 items-center justify-center rounded-full text-ink-2 active:bg-fill">
-            <Icon name="pencil" size={19} strokeWidth={2} />
+            <Icon name="pencil" size={21} strokeWidth={1.9} />
           </Link>
         </div>
         {filled.length ? (
-          <ul className="card mt-1 flex flex-col px-[18px]">
+          <div className="card relative mt-1 px-4">
+            <Tape color="mint" className="-left-2.5 -top-1.5" />
+            <ul className="flex flex-col">
             {filled.map(({ section, body }) => (
-              <li key={section} className="border-t border-rule first:border-t-0">
-                <Link href={`/me/edit?open=${section}`} className="flex min-h-[56px] items-center gap-3 pb-1 pt-3">
-                  <SectionIcon section={section} size={36} />
-                  <span className={`min-w-0 flex-1 text-[16px] font-bold tracking-[-0.02em] ${section === "safety" ? "text-red" : ""}`}>{t(`section.${section}`)}</span>
-                  <Icon name="chevron" size={17} className="shrink-0 text-muted" />
+              <li key={section} className="border-t border-dashed border-rule first:border-t-0">
+                <Link href={`/me/edit?open=${section}`} className="flex min-h-[56px] items-center gap-3 pt-2">
+                  <SectionIcon section={section} size={40} />
+                  <span className={`min-w-0 flex-1 text-[20px] ${section === "safety" ? "text-red" : ""}`}>{t(`section.${section}`)}</span>
+                  <Icon name="chevron" size={18} className="shrink-0 text-muted" />
                 </Link>
-                <div className="pb-3.5">{body}</div>
+                <div className="pb-3.5 pt-1">{body}</div>
               </li>
             ))}
-          </ul>
+            </ul>
+            <Star size={20} rotate={12} color={SKY_STAR} className="-right-1.5 top-[210px]" />
+            <Squiggle w={54} width={2.4} color="#F59BAE" className="-bottom-2 right-[30px]" />
+          </div>
         ) : (
-          <Link href="/me/edit" className="card mt-1 flex min-h-[72px] items-center justify-center gap-1.5 text-[15px] font-bold text-accent">
+          <Link href="/me/edit" className="card mt-1 flex min-h-[72px] items-center justify-center gap-1.5 text-[19px] text-accent">
             <Icon name="plus" size={17} strokeWidth={2.4} />
             {t("person.write")}
           </Link>

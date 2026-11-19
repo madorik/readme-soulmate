@@ -38,14 +38,16 @@ const SHEET = "relative z-10 -mt-6 flex flex-1 flex-col rounded-t-[28px] bg-pape
 export function ProfileHeader({ title, name, nameLabel, save, required = true }: { title: string; name: string; nameLabel: string; save: string; required?: boolean }) {
   return (
     <>
-      <div className="sticky z-30 flex items-center gap-3 bg-bg px-4 pb-3 pt-1" style={{ top: "var(--sat)" }}>
-        <h1 className="headline min-w-0 flex-1 truncate pl-2 text-[28px]">{title}</h1>
-        <Submit className="!h-11 shrink-0 !rounded-full px-5 !text-[15px]">{save}</Submit>
+      <div className="sticky z-30 flex items-center gap-3 bg-bg pb-3 pl-6 pr-4 pt-1.5" style={{ top: "var(--sat)" }}>
+        <h1 className="min-w-0 flex-1 truncate text-[34px] font-normal leading-[1.25]">
+          <span className="hl px-1">{title}</span>
+        </h1>
+        <Submit className="!h-11 shrink-0 !rounded-full !px-[22px] !text-[19px] !shadow-[0_3px_0_var(--color-mango-deep)]">{save}</Submit>
       </div>
       <div className="px-4">
-        <label className="mb-3 flex min-h-14 items-center gap-3 rounded-[18px] bg-paper px-4 shadow-[inset_0_0_0_1.5px_var(--color-rule)]">
-          <span className="shrink-0 text-[13px] font-bold text-muted">{nameLabel}</span>
-          <input name="name" defaultValue={name} required={required} maxLength={40} className="min-w-0 flex-1 bg-transparent text-[18px] font-bold tracking-[-0.02em] outline-none" />
+        <label className="mb-5 flex min-h-14 items-center gap-3 rounded-2xl bg-paper px-4 shadow-[inset_0_0_0_1.5px_var(--color-ink),0_3px_0_var(--color-sky)]">
+          <span className="shrink-0 text-[17px] text-muted">{nameLabel}</span>
+          <input name="name" defaultValue={name} required={required} maxLength={40} className="h-[52px] min-w-0 flex-1 bg-transparent text-[24px] outline-none" />
         </label>
       </div>
     </>

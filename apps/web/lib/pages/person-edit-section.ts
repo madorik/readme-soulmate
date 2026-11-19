@@ -12,5 +12,5 @@ export async function loadPersonEditSection({ params }: PageInput): Promise<Pers
   const s = await requireSession();
   const p = (await listPeople(s)).find((x) => x.contactId === id);
   if (!p) notFound();
-  return { locale: s.profile.locale, contactId: p.contactId, name: displayName(p), section, card: p.card };
+  return { locale: s.profile.locale, contactId: p.contactId, name: displayName(p), avatar: p.avatar, section, card: p.card };
 }

@@ -37,7 +37,7 @@ export function CircleOption({
       type="button"
       aria-pressed={on}
       onClick={onToggle}
-      className={`chip ${color === "warn" ? "chip-warn" : ""} ${large ? "!min-h-12 !px-[18px] text-[16.5px]" : ""} ${textClass}`}
+      className={`chip ${color === "warn" ? "chip-warn" : ""} ${large ? "!min-h-12 !px-[18px] text-[19px]" : ""} ${textClass}`}
     >
       {on ? <CheckGlyph /> : null}
       {label}
@@ -53,8 +53,8 @@ export function CheckRow({ on, onToggle, label, sub }: { on: boolean; onToggle: 
     <button type="button" aria-pressed={on} onClick={onToggle} className="flex min-h-[58px] w-full items-center gap-3.5 border-t border-rule text-left first:border-t-0">
       <DrawnCheck on={on} />
       <span className="flex flex-col gap-0.5">
-        <span className="text-[15.5px] font-bold">{label}</span>
-        {sub ? <span className="text-[12.5px] text-muted">{sub}</span> : null}
+        <span className="text-[18px]">{label}</span>
+        {sub ? <span className="text-[15px] text-muted">{sub}</span> : null}
       </span>
     </button>
   );
@@ -63,8 +63,8 @@ export function CheckRow({ on, onToggle, label, sub }: { on: boolean; onToggle: 
 export function SectionHeading({ children, tone = "ink", right }: { children: React.ReactNode; tone?: "ink" | "red"; right?: React.ReactNode }) {
   return (
     <div className="flex items-baseline justify-between">
-      <span className={`text-[16px] font-bold ${tone === "red" ? "text-red" : ""}`}>{children}</span>
-      {right ? <span className="text-[12.5px] text-muted">{right}</span> : null}
+      <span className={`text-[19px] ${tone === "red" ? "text-red" : ""}`}>{children}</span>
+      {right ? <span className="text-[15px] text-muted">{right}</span> : null}
     </div>
   );
 }
@@ -88,7 +88,7 @@ export function TextField({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[14px] font-bold">{label}</span>
+      <span className="text-[17px]">{label}</span>
       {multiline ? (
         <textarea name={name} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={2} className="field resize-none leading-[1.5]" />
       ) : (

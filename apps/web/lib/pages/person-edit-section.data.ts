@@ -1,4 +1,4 @@
-import type { Locale, PartialCard, Section } from "@readme/core";
+import type { AvatarConfig, Locale, PartialCard, Section } from "@readme/core";
 
 // 사람 기록 항목 하나 고치기 화면 데이터(lib/pages/person-edit-section.ts가 만들고 components/pages/PersonEditSectionView가 그린다). 타입만 둔다
 
@@ -7,6 +7,8 @@ export interface PersonEditSectionData {
   contactId: string;
   /** 부를 이름 */
   name: string;
+  /** 이름 옆 작은 얼굴 */
+  avatar: AvatarConfig | null;
   section: Section;
   card: PartialCard;
 }

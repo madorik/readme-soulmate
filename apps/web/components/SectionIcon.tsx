@@ -117,9 +117,9 @@ function Art({ section }: { section: Section }) {
   }
 }
 
-export function SectionIcon({ section, size = 44 }: { section: Section; size?: number }) {
+export function SectionIcon({ section, size = 44, round = false }: { section: Section; size?: number; round?: boolean }) {
   return (
-    <span aria-hidden="true" className="flex shrink-0 items-center justify-center rounded-[14px]" style={{ width: size, height: size, background: TILE[section] }}>
+    <span aria-hidden="true" className={`flex shrink-0 items-center justify-center ${round ? "rounded-full" : "rounded-xl"}`} style={{ width: size, height: size, background: TILE[section] }}>
       <svg width={Math.round(size * 0.66)} height={Math.round(size * 0.66)} viewBox="0 0 32 32" fill="none">
         <Art section={section} />
       </svg>

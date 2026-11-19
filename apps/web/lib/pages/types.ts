@@ -15,6 +15,8 @@ export interface MeData {
 export interface MeEditData {
   locale: Locale;
   name: string;
+  /** 이름 옆 작은 얼굴 */
+  avatar: AvatarConfig;
   card: PartialCard;
   open: Section | null;
 }

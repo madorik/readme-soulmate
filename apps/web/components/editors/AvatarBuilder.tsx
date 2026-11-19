@@ -16,6 +16,7 @@ import {
 } from "@readme/core";
 import { useState } from "react";
 import { AvatarArt, avatarBackground } from "../Avatar";
+import { Heart, Sparkle, SKY_STAR, Squiggle, Star, Tape } from "../diary";
 import { useT } from "./shared";
 
 type Tab = "hair" | "face" | "body" | "item" | "glasses" | "color";
@@ -38,8 +39,8 @@ function Swatch({ fill, on, label, onPick }: { fill: string; on: boolean; label:
   return (
     <button type="button" aria-pressed={on} aria-label={label} onClick={onPick} className="flex h-11 w-11 items-center justify-center">
       <span
-        className="h-10 w-10 rounded-full transition-shadow"
-        style={{ background: fill, boxShadow: on ? "inset 0 0 0 1.5px rgba(31,35,64,0.14), 0 0 0 3px var(--color-bg), 0 0 0 5.5px var(--color-accent)" : "inset 0 0 0 1.5px rgba(31,35,64,0.14)" }}
+        className="h-9 w-9 rounded-full transition-shadow"
+        style={{ background: fill, boxShadow: on ? "inset 0 0 0 1.5px rgba(31,35,64,0.14), 0 0 0 3px var(--color-paper), 0 0 0 5px var(--color-ink)" : "inset 0 0 0 1.5px rgba(31,35,64,0.14)" }}
       />
     </button>
   );
@@ -78,14 +79,16 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
 
   return (
     <div className="flex flex-col">
-      <div className="relative flex h-[280px] items-end justify-center overflow-hidden rounded-[28px]" style={{ background: avatarBackground(value) }}>
+      <section className="relative">
+      <div className="relative -rotate-[0.5deg] bg-white px-2.5 pb-[18px] pt-2.5 shadow-[0_1px_2px_rgb(31_35_64/0.12),0_12px_24px_-14px_rgb(31_35_64/0.5)]">
+      <div className="relative flex h-[264px] items-end justify-center overflow-hidden" style={{ background: avatarBackground(value) }}>
         <span aria-hidden="true" className="absolute left-[22px] top-[22px] h-16 w-16 rounded-full bg-white/45" />
         <span aria-hidden="true" className="absolute right-10 top-12 h-[22px] w-[22px] rounded-full bg-white/45" />
-        <AvatarArt config={value} size={256} />
+        <AvatarArt config={value} size={244} />
         <button
           type="button"
           onClick={shuffle}
-          className="absolute bottom-3.5 left-3.5 flex h-11 items-center gap-1.5 rounded-full bg-white pl-3 pr-3.5 text-[13.5px] font-bold shadow-[0_4px_14px_rgba(31,35,64,0.10)] active:scale-95"
+          className="absolute bottom-2.5 left-2.5 flex h-11 items-center gap-1.5 rounded-full bg-white pl-[11px] pr-[15px] text-[17px] shadow-[inset_0_0_0_1.5px_var(--color-ink)] active:scale-95"
         >
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="4" y="4" width="16" height="16" rx="4" />
@@ -101,7 +104,7 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
           aria-label={t("avatar.palette")}
           aria-pressed={tab === "color"}
           onClick={() => setTab("color")}
-          className={`absolute bottom-3.5 right-3.5 flex h-12 w-12 items-center justify-center rounded-full shadow-[0_4px_14px_rgba(31,35,64,0.10)] active:scale-95 ${tab === "color" ? "grad" : "bg-white"}`}
+          className={`absolute bottom-2.5 right-2.5 flex h-12 w-12 items-center justify-center rounded-full shadow-[inset_0_0_0_1.5px_var(--color-ink)] active:scale-95 ${tab === "color" ? "bg-sky" : "bg-white"}`}
         >
           <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A4.6 4.6 0 0 0 21 9.8C21 6 17 3 12 3z" />
@@ -111,11 +114,18 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
           </svg>
         </button>
       </div>
+      <Tape color="mango" w={96} h={24} rotate={-3} alpha={0.62} className="-top-2.5 left-1/2 -ml-12" />
+      </div>
+      <Heart size={26} rotate={16} className="-right-[9px] top-[130px]" />
+      <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[9px] top-[70px]" />
+      <Squiggle w={54} width={2.4} className="-bottom-1 left-10" />
+      <Sparkle size={18} className="-top-3.5 right-[22px]" />
+      </section>
 
       {between}
 
       {/* 여섯 칸: 좁은 화면에서 영어(Clothes·Glasses)도 칸을 넘지 않게 13px, 380px부터 14.5px */}
-      <div role="tablist" aria-label={t("avatar.parts")} className="mt-3 grid grid-cols-[repeat(6,minmax(0,1fr))] border-b border-rule">
+      <div role="tablist" aria-label={t("avatar.parts")} className="mt-5 grid grid-cols-[repeat(6,minmax(0,1fr))] border-b-[1.5px] border-dashed border-rule-strong">
         {TABS.map((k) => {
           const on = tab === k;
           return (
@@ -125,10 +135,10 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
               role="tab"
               aria-selected={on}
               onClick={() => setTab(k)}
-              className={`relative h-12 whitespace-nowrap text-[13px] tracking-[-0.02em] min-[380px]:text-[14.5px] ${on ? "font-bold text-ink" : "font-medium text-muted"}`}
+              className={`relative h-12 whitespace-nowrap text-[19px] ${on ? "text-ink" : "text-muted"}`}
             >
               {t(TAB_KEY[k])}
-              <span aria-hidden="true" className={`absolute inset-x-[22%] -bottom-px h-[3px] rounded-full ${on ? "bg-accent" : "bg-transparent"}`} />
+              <span aria-hidden="true" className={`absolute inset-x-[22%] -bottom-px h-1 rounded-full ${on ? "bg-sky" : "bg-transparent"}`} />
             </button>
           );
         })}
@@ -149,10 +159,10 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
                     aria-pressed={on}
                     aria-label={label}
                     onClick={() => set({ [options.key]: id } as Partial<AvatarConfig>)}
-                    className={`flex h-[116px] snap-start flex-col items-center justify-end gap-0.5 overflow-hidden rounded-[20px] pb-2 transition-colors ${on ? "bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-accent)]" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-rule)]"}`}
+                    className={`flex h-[116px] snap-start flex-col items-center justify-end gap-0.5 overflow-hidden rounded-[14px] pb-1.5 transition-colors ${on ? "bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-ink)]" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-rule-strong)]"}`}
                   >
-                    <AvatarArt config={{ ...value, [options.key]: id } as AvatarConfig} size={82} />
-                    <span className={`text-[12px] ${on ? "font-bold text-accent" : "font-medium text-muted"}`}>{label}</span>
+                    <AvatarArt config={{ ...value, [options.key]: id } as AvatarConfig} size={80} />
+                    <span className={`text-[15px] leading-[1.2] ${on ? "text-ink" : "text-muted"}`}>{label}</span>
                   </button>
                 );
               })}
@@ -161,7 +171,7 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
         ) : (
           <div className="flex flex-col gap-4 pt-1">
             <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-bold">{t("avatar.bg")}</span>
+              <span className="text-[19px]">{t("avatar.bg")}</span>
               <div className="flex flex-wrap gap-1">
                 {AVATAR_BGS.map((bg) => {
                   const [a, b] = AVATAR_BG_FILLS[bg];
@@ -170,7 +180,7 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-bold">{t("avatar.cloth")}</span>
+              <span className="text-[19px]">{t("avatar.cloth")}</span>
               <div className="flex flex-wrap gap-1">
                 {AVATAR_CLOTHS.map((c, i) => (
                   <Swatch key={c} fill={c} on={value.cloth === c} label={CLOTH_LABELS[locale][i]!} onPick={() => set({ cloth: c })} />
@@ -178,7 +188,7 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-bold">{t("avatar.hairColor")}</span>
+              <span className="text-[19px]">{t("avatar.hairColor")}</span>
               <div className="flex flex-wrap gap-1">
                 {AVATAR_HAIR_COLORS.map((c, i) => (
                   <Swatch key={c} fill={c} on={value.hairColor === c} label={HAIR_COLOR_LABELS[locale][i]!} onPick={() => set({ hairColor: c })} />
@@ -186,7 +196,7 @@ export function AvatarBuilder({ value, onChange, locale, between }: { value: Ava
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-bold">{t("avatar.skin")}</span>
+              <span className="text-[19px]">{t("avatar.skin")}</span>
               <div className="flex flex-wrap gap-1">
                 {AVATAR_SKINS.map((c, i) => (
                   <Swatch key={c} fill={c} on={value.skin === c} label={SKIN_LABELS[locale][i]!} onPick={() => set({ skin: c })} />

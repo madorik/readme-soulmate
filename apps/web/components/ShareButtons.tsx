@@ -70,7 +70,7 @@ export function LinkField({ url, label }: { url: string; label: string }) {
       aria-label={label}
       data-testid="invite-url"
       onFocus={(e) => e.currentTarget.select()}
-      className="field !h-11 truncate !bg-fill text-[13px] text-muted !shadow-none"
+      className="field !h-11 !min-h-11 truncate !rounded-xl !border-[1.5px] !border-dashed !bg-fill !text-[17px] text-muted !shadow-none"
     />
   );
 }
@@ -95,7 +95,7 @@ export function ShareButtons({ locale, url, text, sendLabel }: { locale: Locale;
         <Icon name="share" size={19} strokeWidth={2} />
         {sendLabel ?? t("common.send")}
       </button>
-      <button type="button" onClick={copy} className="btn-soft !h-12 w-full gap-1.5">
+      <button type="button" onClick={copy} className="btn-soft !h-12 w-full gap-1.5 !rounded-2xl !text-[18px]">
         <Icon name={copied === "ok" ? "check" : "link"} size={17} />
         {copied === "ok" ? t("common.copied") : copied === "failed" ? t("common.copyFailed") : t("common.copyLink")}
       </button>

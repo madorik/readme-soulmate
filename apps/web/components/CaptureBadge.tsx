@@ -12,7 +12,7 @@ export function CaptureBadge({ line, labels }: { line: CaptureLine; labels: Capt
   const text = line.same ? (line.op === "remove" ? labels.gone : labels.same) : line.op === "replace" ? labels.changed : line.op === "remove" ? labels.removed : null;
   if (!text) return null;
   const tone = line.same ? "bg-fill text-muted" : line.op === "remove" ? "bg-red-soft text-red" : "chip-on";
-  return <span className={`shrink-0 rounded-full px-2 py-[1px] text-[11.5px] font-bold ${tone}`}>{text}</span>;
+  return <span className={`shrink-0 rounded-full px-2.5 pb-px text-[14px] ${tone}`}>{text}</span>;
 }
 
 /** 지운 값은 줄을 그어 보인다 */

@@ -59,7 +59,7 @@ export function PetsEditor({ value, onChange, locale }: { value: PetsData; onCha
             <SectionHeading>{t("pets.kind")}</SectionHeading>
             <div className="flex flex-wrap gap-2 pt-1">
               {PET_KINDS.map((k) => (
-                <CircleOption key={k.code} label={k.label[locale]} color="ink" on={p.kind === k.code} onToggle={() => set(i, { kind: p.kind === k.code ? null : k.code })} textClass="!text-[15px] whitespace-nowrap" />
+                <CircleOption key={k.code} label={k.label[locale]} color="ink" on={p.kind === k.code} onToggle={() => set(i, { kind: p.kind === k.code ? null : k.code })} textClass="!text-[18px] whitespace-nowrap" />
               ))}
             </div>
           </div>

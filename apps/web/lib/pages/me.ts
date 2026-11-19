@@ -19,7 +19,7 @@ export async function loadMe({ searchParams }: PageInput): Promise<MeData> {
 export async function loadMeEdit({ searchParams }: PageInput): Promise<MeEditData> {
   const s = await requireSession();
   const { card } = await s.tx((q) => readCard(q, s.user.id));
-  return { locale: s.profile.locale, name: s.profile.displayName, card, open: isSection(searchParams.open) ? searchParams.open : null };
+  return { locale: s.profile.locale, name: s.profile.displayName, avatar: s.profile.avatar, card, open: isSection(searchParams.open) ? searchParams.open : null };
 }
 
 /** 항목 하나 고치기 */

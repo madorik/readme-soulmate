@@ -6,6 +6,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, use
 import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
 import { trackTour } from "@/app/actions/tour";
 import { Avatar } from "@/components/Avatar";
+import { Heart, MarginLine, Sparkle, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
 import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/CaptureBadge";
 import { TagChip } from "@/components/PersonRow";
@@ -485,7 +486,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
               className={`flex min-h-[52px] w-full items-center gap-3 rounded-[16px] px-2.5 text-left ${i === activeIndex ? "bg-fill" : ""}`}
             >
               <Avatar config={o.avatar} size={34} label={mentionLabel(o)} />
-              <span className="min-w-0 truncate text-[16px] font-bold">{o.name}</span>
+              <span className="min-w-0 truncate text-[19px]">{o.name}</span>
               {o.tag && o.tag !== o.name ? <TagChip>{o.tag}</TagChip> : null}
             </button>
           </li>
@@ -617,30 +618,34 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
   if (result && !result.error) {
     return (
       <div className="flex flex-1 flex-col">
-        <section className="card mx-4 mt-4 flex flex-col px-5 pb-2 pt-5" aria-live="polite">
-          <h2 className="flex items-center gap-2 pb-2 text-[15px] font-bold">
-            <Icon name="check" size={18} strokeWidth={2.4} className="text-accent" />
+        <section className="card relative mx-4 mt-6 -rotate-[0.4deg] px-5 pb-2 pt-[22px]" aria-live="polite">
+          <Tape color="mango" w={104} h={26} rotate={-3} alpha={0.62} className="-top-3 left-1/2 -ml-[52px]" />
+          <h2 className="flex items-center gap-2 pb-2 text-[22px] font-normal">
+            <Icon name="check" size={22} strokeWidth={2.4} className="text-accent" />
             {undone ? labels.undone : labels.saved}
           </h2>
           <ul className={`flex flex-col ${undone ? "opacity-40" : ""}`}>
             {result.lines.map((l, i) => (
-              <li key={i} className="border-t border-rule">
-                <Link href={l.href} className="flex min-h-[60px] flex-col justify-center gap-0.5 py-2">
-                  <span className="flex items-center gap-1.5 text-[13px] font-bold text-muted">
+              <li key={i} className="border-t border-dashed border-rule">
+                <Link href={l.href} className="flex min-h-16 flex-col justify-center gap-0.5 py-2">
+                  <span className="flex flex-wrap items-center gap-1.5 text-[17px] text-muted">
                     {l.who}
-                    {l.isNew ? <span className="chip-on rounded-full px-2 py-[1px] text-[12px]">{labels.isNew}</span> : null}
+                    {l.isNew ? <span className="chip-on rounded-full px-2.5 pb-px text-[15px]">{labels.isNew}</span> : null}
                     <span aria-hidden="true">·</span>
                     {l.field}
                     <CaptureBadge line={l} labels={labels} />
                   </span>
-                  {l.value ? <span className={`text-[16px] font-bold leading-[1.4] ${struck(l)}`}>{l.value}</span> : null}
+                  {l.value ? <span className={`text-[23px] leading-[1.35] ${struck(l)}`}>{l.value}</span> : null}
                 </Link>
               </li>
             ))}
           </ul>
+          <Heart size={28} rotate={16} className="-right-2 top-[30px]" />
+          <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[7px] bottom-9" />
+          <Squiggle w={54} width={2.4} className="-bottom-2 right-[30px]" />
         </section>
         {/* 되돌리기(아이콘) · 더 말하기(마이크·연필 아이콘, 적는 화면으로) · 완료(홈으로). 체험이면 더 말하기 대신 다음(방금 적은 사람에게 물어보기로) */}
-        <div className="bottom-bar mt-auto flex items-center gap-2.5 bg-bg px-4 pt-4">
+        <div className="bottom-bar mt-auto flex items-center gap-2.5 bg-bg px-5 pt-3.5">
           <button
             type="button"
             aria-label={undone ? labels.undone : labels.undo}
@@ -672,7 +677,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
               <Icon name="pencil" size={19} strokeWidth={2} />
             </button>
           )}
-          <Link href={tour ? nextHref : "/home"} className="btn-primary flex-1">
+          <Link href={tour ? nextHref : "/home"} className="btn-primary flex-1 !min-h-14 !text-[21px]">
             {tour ? tour.next : labels.done}
           </Link>
         </div>
@@ -684,7 +689,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
   // 글로: 적는 칸 하나와 기억해 두기
   const idle = !!text && !listening && !settling && !pending;
   const toggle = canListen ? (
-    <div role="radiogroup" aria-label={labels.mode} className="relative z-10 mx-auto mt-4 flex shrink-0 rounded-full bg-fill p-1">
+    <div role="radiogroup" aria-label={labels.mode} className="relative z-10 mx-auto mt-4 flex w-fit shrink-0 rounded-full bg-white p-[3px] shadow-[inset_0_0_0_1.5px_var(--color-ink)]">
       {(["voice", "text"] as const).map((m) => (
         <button
           key={m}
@@ -692,9 +697,9 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
           role="radio"
           aria-checked={mode === m}
           onClick={() => choose(m)}
-          className={`relative flex h-10 items-center gap-1.5 rounded-full px-5 text-[14.5px] font-bold transition-colors before:absolute before:-inset-y-1 before:inset-x-0 ${mode === m ? "bg-white text-ink shadow-[0_1px_4px_rgba(31,35,64,0.12)]" : "text-muted"}`}
+          className={`relative flex h-11 items-center gap-1.5 rounded-full pl-5 pr-6 text-[20px] transition-colors ${mode === m ? "bg-sky text-ink" : "text-muted"}`}
         >
-          <Icon name={m === "voice" ? "mic" : "pencil"} size={16} strokeWidth={2} />
+          <Icon name={m === "voice" ? "mic" : "pencil"} size={19} strokeWidth={2} />
           {m === "voice" ? labels.modeVoice : labels.modeText}
         </button>
       ))}
@@ -703,13 +708,13 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
   // 체험: 마이크면 "이렇게 말해보세요", 글이면 "이렇게 써보세요" + 예시 문장. 키보드가 뜨면 접어 적는 칸이 한 화면에 보이게
   const tourPrompt = tour ? (
     <section aria-label={mode === "voice" ? tour.say : tour.write} className="mx-4 mt-3 flex flex-col items-center gap-1 rounded-3xl bg-sky-soft px-5 py-4 text-center [html[data-kb]_&]:hidden">
-      <span className="num text-[12px] font-bold text-accent">{tour.page}</span>
+      <span className="num text-[12px] text-accent">{tour.page}</span>
       <h1 className="headline text-[19px]">{mode === "voice" ? tour.say : tour.write}</h1>
-      <p className="pt-0.5 text-[21px] font-bold leading-[1.4] tracking-[-0.02em]">“{tour.example}”</p>
+      <p className="pt-0.5 text-[21px] leading-[1.4] tracking-[-0.02em]">“{tour.example}”</p>
     </section>
   ) : null;
   const errorLine = error ? (
-    <p role="alert" className="text-center text-[14px] text-red">
+    <p role="alert" className="text-center text-[17px] text-red">
       {error}
     </p>
   ) : null;
@@ -728,7 +733,10 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
       >
         {toggle}
         {tourPrompt}
-        <div className="flex flex-col gap-2 px-4 pt-5">
+        <div className="flex flex-col gap-2 px-4 pt-[22px]">
+          <section className="card ruled relative pb-5 pl-10 pr-5 pt-5 [background-position:0_20px]">
+          <MarginLine left={26} />
+          <Tape color="mango" w={100} h={24} rotate={-3} alpha={0.62} className="-top-2.5 left-1/2 -ml-[50px]" />
           <textarea
             ref={field}
             value={text}
@@ -739,8 +747,12 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
             autoFocus={canListen}
             placeholder={labels.placeholderText}
             aria-label={labels.placeholderText}
-            className="card min-h-[168px] w-full resize-none p-5 [html[data-kb]_&]:min-h-[132px] text-[18px] font-medium leading-[1.55] tracking-[-0.01em] outline-none placeholder:text-muted/80 focus:shadow-[inset_0_0_0_2px_var(--color-sky)]"
+            className="block min-h-40 w-full resize-none border-0 bg-transparent p-0 text-[22px] leading-8 outline-none placeholder:text-muted/80 [html[data-kb]_&]:min-h-32"
           />
+          <Heart size={26} rotate={16} className="-right-2 top-[34px]" />
+          <Star size={20} rotate={-12} className="-left-[7px] bottom-7" />
+          <Squiggle w={54} width={2.4} className="-bottom-2 right-8" />
+          </section>
           <div className="flex min-h-8 items-center justify-center">{errorLine}</div>
         </div>
         <div className="bottom-bar mt-auto flex flex-col gap-2.5 bg-bg px-4 pt-2.5">
@@ -756,7 +768,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={startMention}
                 aria-label={labels.mention}
-                className="flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full bg-white px-3 text-[19px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-edge)]"
+                className="flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-white px-3 text-[24px] shadow-[inset_0_0_0_1.5px_var(--color-edge)]"
               >
                 @
               </button>
@@ -772,18 +784,18 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
                     aria-pressed={listOpen ? undefined : on}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => (listOpen ? pick(field.current, p) : togglePerson(p))}
-                    className={`flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-1 pr-3.5 text-[14.5px] font-bold transition-colors ${
-                      on ? "chip-on" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"
+                    className={`flex h-12 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-[5px] pr-4 text-[19px] transition-colors ${
+                      on ? "bg-[#fff0c9] shadow-[inset_0_0_0_1.5px_var(--color-ink),0_3px_0_var(--color-mango-deep)]" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"
                     }`}
                   >
-                    <Avatar config={p.avatar} size={34} label={mentionLabel(p)} />
+                    <Avatar config={p.avatar} size={36} label={mentionLabel(p)} />
                     {mentionLabel(p)}
                   </button>
                 );
               })}
             </div>
           ) : null}
-          <button disabled={pending || !text.trim()} aria-busy={pending} className="btn-primary w-full">
+          <button disabled={pending || !text.trim()} aria-busy={pending} className="btn-primary w-full !min-h-14 !text-[21px]">
             <SaveLabel pending={pending}>{labels.save}</SaveLabel>
           </button>
         </div>
@@ -801,7 +813,9 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
     >
       {toggle}
       {tourPrompt}
-      <div className="flex flex-1 flex-col items-center justify-center px-5 pb-4">
+      <div className="relative flex flex-1 flex-col items-center justify-center px-5 pb-4">
+        <Star size={24} rotate={12} color={SKY_STAR} className="right-[38px] top-[42px]" />
+        <Sparkle size={18} className="left-11 top-[150px]" />
         <button
           type="button"
           onClick={() => void listen()}
@@ -821,14 +835,14 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
           maxLength={500}
           placeholder={labels.placeholder}
           aria-label={labels.placeholder}
-          className="mt-2 max-h-[30vh] min-h-[84px] w-full resize-none overflow-y-auto bg-transparent text-center text-[20px] font-semibold leading-[1.5] tracking-[-0.02em] outline-none placeholder:font-medium placeholder:text-muted/80"
+          className="mt-2 max-h-[30vh] min-h-[84px] w-full resize-none overflow-y-auto bg-transparent text-center text-[24px] leading-[1.45] outline-none placeholder:text-muted/80"
         />
         {mentionList("box")}
         <div className="flex h-8 items-center">
           {error ? (
             errorLine
           ) : idle ? (
-            <button type="button" onClick={() => setText("")} className="relative text-[13.5px] font-bold text-muted underline underline-offset-4 before:absolute before:-inset-x-3 before:-inset-y-3.5">
+            <button type="button" onClick={() => setText("")} className="relative text-[18px] text-muted underline underline-offset-4 before:absolute before:-inset-x-3 before:-inset-y-3.5">
               {labels.clear}
             </button>
           ) : null}
@@ -850,7 +864,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
             <Icon name="mic" size={24} strokeWidth={2} className="relative" />
           </button>
         ) : null}
-        <button disabled={pending || listening || settling || !text.trim()} aria-busy={pending} className="btn-primary flex-1">
+        <button disabled={pending || listening || settling || !text.trim()} aria-busy={pending} className="btn-primary flex-1 !min-h-14 !text-[21px]">
           <SaveLabel pending={pending}>{labels.save}</SaveLabel>
         </button>
       </div>

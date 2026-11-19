@@ -10,9 +10,9 @@ export function BirthdayField({ locale }: { locale: Locale }) {
   const t = useT(locale);
   const [spec, setSpec] = useState<DateSpec | null>(null);
   return (
-    <div className="flex flex-col gap-2 px-6 pt-6">
+    <div className="flex flex-col gap-2.5">
       <input type="hidden" name="birthday" value={JSON.stringify(spec)} />
-      <span className="text-[15px] font-bold">{t("dates.birthday")}</span>
+      <span className="text-[20px]">{t("dates.birthday")}</span>
       <DateSpecPicker value={spec} onChange={setSpec} locale={locale} year="birth" />
     </div>
   );

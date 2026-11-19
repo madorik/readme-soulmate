@@ -27,7 +27,7 @@ export interface PersonRow {
 /** 이름 옆 태그(내가 붙인 부르는 말) */
 export function TagChip({ children, large = false }: { children: React.ReactNode; large?: boolean }) {
   return (
-    <span className={`max-w-[9em] shrink-0 truncate rounded-md bg-fill font-bold text-muted ${large ? "px-2 py-[3px] text-[13px]" : "px-1.5 py-px text-[12px]"}`}>
+    <span className={`max-w-[9em] shrink-0 truncate rounded-md bg-fill text-muted ${large ? "px-2 py-[3px] text-[15px]" : "px-1.5 py-px text-[14px]"}`}>
       {children}
     </span>
   );
@@ -48,15 +48,15 @@ export function RowBody({ row }: { row: PersonRow; avatarLabel?: string }) {
               <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
             </svg>
           ) : null}
-          <span className="truncate text-[16px] font-bold tracking-[-0.01em]">{row.name}</span>
+          <span className="truncate text-[21px] leading-[1.25]">{row.name}</span>
           {row.tag ? <TagChip>{row.tag}</TagChip> : null}
         </span>
-        {row.sub ? <span className="truncate text-[12.5px] text-muted">{row.sub}</span> : null}
+        {row.sub ? <span className="truncate text-[15px] text-muted">{row.sub}</span> : null}
       </span>
       {row.date ? (
         <span className="flex flex-col items-end gap-px">
-          <span className="num text-[16px] !font-semibold">{row.date}</span>
-          <span className={`text-[12px] ${row.soon ? "font-bold text-accent" : "text-muted"}`}>{row.dateSub}</span>
+          <span className="num text-[21px]">{row.date}</span>
+          <span className={`text-[15px] ${row.soon ? "text-accent" : "text-muted"}`}>{row.dateSub}</span>
         </span>
       ) : null}
     </>

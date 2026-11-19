@@ -2,6 +2,9 @@
 // 장식은 모두 aria-hidden + pointer-events-none이고 absolute다(자리는 className으로). 감싸는 요소에는 relative가 있어야 하고,
 // 새로 relative·transform을 씌우지 않도록 이미 relative인 카드(.card relative) 안에 넣는다.
 
+import type { AvatarConfig } from "@readme/core";
+import { Avatar } from "./Avatar";
+
 const INK = "#1F2340";
 const MANGO = "#FFC23D";
 const MANGO_DEEP = "#E09A12";
@@ -120,6 +123,15 @@ export function HandCircle({ w = 40, h = 36, stroke = 2.2, className = "" }: { w
   );
 }
 
+/** 글자 둘레에 손으로 두른 가로로 긴 동그라미(양력·음력 고르기). 부모는 relative */
+export function HandOval({ w = 72, h = 40, className = "" }: { w?: number; h?: number; className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 70 40" width={w} height={h} fill="none" stroke={MANGO_DEEP} strokeWidth="2.4" strokeLinecap="round" className={`${PLACE} ${className}`}>
+      <path d="M10 22 C6 9 24 4 38 5 C56 6 68 12 65 22 C62 32 46 36 30 34 C16 32 7 27 11 17" />
+    </svg>
+  );
+}
+
 /** D-day 도장: 이중 테두리 동그라미를 살짝 기울여 찍는다. 안은 글자(D-2, 오늘) */
 export function Stamp({ children, size = 72, fontSize = 27, className = "" }: { children: React.ReactNode; size?: number; fontSize?: number; className?: string }) {
   return (
@@ -175,4 +187,14 @@ export function Polaroid({
 /** 줄노트의 왼쪽 분홍 여백선(부모에 .ruled와 relative, 왼쪽 안쪽 여백이 있어야 한다) */
 export function MarginLine({ left = 28 }: { left?: number }) {
   return <span aria-hidden="true" className="pointer-events-none absolute bottom-0 top-0 w-[1.5px] bg-margin" style={{ left }} />;
+}
+
+/** 고치기 화면 머리의 이름표: 작은 얼굴 + 이름을 흰 알약에 */
+export function NameChip({ avatar, name }: { avatar: AvatarConfig | null; name: string }) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-[5px] rounded-full bg-white py-0.5 pl-[3px] pr-3 text-[16px] shadow-[inset_0_0_0_1.5px_var(--color-ink)]">
+      <Avatar config={avatar} size={26} label={name} decorative />
+      <span className="truncate">{name}</span>
+    </span>
+  );
 }

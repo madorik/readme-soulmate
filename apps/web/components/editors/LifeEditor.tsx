@@ -21,11 +21,11 @@ export function LifeEditor({ value, onChange, locale }: { value: LifeData; onCha
         placeholder={t("life.hobbiesPlaceholder")}
       />
       <div className="flex flex-col gap-1">
-        <span className="text-[13.5px] font-bold">{t("fav.seasons")}</span>
+        <span className="text-[16px]">{t("fav.seasons")}</span>
         <div className="flex flex-wrap gap-2 pt-1">
-          <CircleOption label={NONE_LABEL[locale]} color="ink" on={value.seasons.includes(NONE)} onToggle={() => toggle(NONE)} textClass="!text-[15px] whitespace-nowrap" />
+          <CircleOption label={NONE_LABEL[locale]} color="ink" on={value.seasons.includes(NONE)} onToggle={() => toggle(NONE)} textClass="!text-[18px] whitespace-nowrap" />
           {SEASONS.map((i) => (
-            <CircleOption key={i.code} label={i.label[locale]} on={value.seasons.includes(i.code)} onToggle={() => toggle(i.code)} textClass="!text-[15px] whitespace-nowrap" />
+            <CircleOption key={i.code} label={i.label[locale]} on={value.seasons.includes(i.code)} onToggle={() => toggle(i.code)} textClass="!text-[18px] whitespace-nowrap" />
           ))}
         </div>
       </div>

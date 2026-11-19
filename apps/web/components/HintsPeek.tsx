@@ -18,7 +18,7 @@ export function HintsPeek({ label, title, closeLabel, children }: { label: strin
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="flex h-11 items-center gap-2 self-start rounded-full bg-white pl-1.5 pr-4 text-[14px] font-bold text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:bg-fill"
+        className="flex h-11 items-center gap-2 self-start rounded-full bg-white pl-1.5 pr-4 text-[17px] text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:bg-fill"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={APP_ICON} alt="" width={32} height={32} className="h-8 w-8 rounded-[9px]" />
@@ -54,7 +54,7 @@ function PeekPanel({ title, closeLabel, onClose, children }: { title: string; cl
         <div className="flex items-center gap-2.5 pb-1 pl-5 pr-2 pt-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={APP_ICON} alt="" width={28} height={28} className="h-7 w-7 shrink-0 rounded-[8px]" />
-          <h2 id="hints-peek" className="min-w-0 flex-1 truncate text-[17px] font-bold tracking-[-0.02em]">
+          <h2 id="hints-peek" className="min-w-0 flex-1 truncate text-[21px]">
             {title}
           </h2>
           <button type="button" aria-label={closeLabel} onClick={onClose} className="flex h-11 w-11 shrink-0 items-center justify-center text-muted">

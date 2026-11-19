@@ -8,6 +8,7 @@ import { TagEditor } from "@/app/(app)/people/[id]/TagEditor";
 import { cancelInvite } from "@/app/actions/request";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
+import { Heart, Sparkle, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
 import { SectionBody } from "@/components/SectionBody";
 import { SectionIcon } from "@/components/SectionIcon";
@@ -47,17 +48,23 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
         }
       />
 
-      <div className="flex items-start gap-[18px] px-6 pt-3">
-        {/* 얼굴을 누르면 내 프로필처럼 그 사람의 얼굴·부르는 말을 꾸민다 */}
-        <Link href={`/people/${p.contactId}/profile`} className="shrink-0 rounded-full">
-          <Avatar config={p.avatar} size={84} label={t("avatar.of", { name: p.name || name })} />
+      <div className="relative flex items-start gap-5 px-6 pt-4">
+        {/* 얼굴을 누르면 내 프로필처럼 그 사람의 얼굴·부르는 말을 꾸민다. 폴라로이드 한 장 */}
+        <Link
+          href={`/people/${p.contactId}/profile`}
+          className="relative block shrink-0 -rotate-3 bg-white px-[7px] pb-5 pt-[7px] shadow-[0_1px_2px_rgb(31_35_64/0.12),0_8px_16px_-10px_rgb(31_35_64/0.5)]"
+        >
+          <span className="flex h-[86px] w-[86px] items-center justify-center bg-[#fff1cc]">
+            <Avatar config={p.avatar} size={80} label={t("avatar.of", { name: p.name || name })} />
+          </span>
+          <Tape color="mango" w={48} h={18} rotate={-6} alpha={0.62} className="-top-[9px] left-[22px]" />
         </Link>
-        <div className="flex min-w-0 flex-1 flex-col gap-1 pt-1">
-          <div className="flex items-center gap-0.5">
-            {/* 긴 이름은 두 줄까지(좁은 화면은 28px, 390px부터 32px) */}
-            <h1 className="line-clamp-2 min-w-0 break-words text-[28px] font-bold leading-[1.2] tracking-[-0.03em] min-[390px]:text-[32px]">{p.name || name}</h1>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center">
+            {/* 긴 이름은 두 줄까지 */}
+            <h1 className="hl line-clamp-2 min-w-0 break-words px-1 text-[40px] font-normal leading-[1.15]">{p.name || name}</h1>
             <Link href={`/people/${p.contactId}/profile`} aria-label={t("me.face")} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-fill">
-              <Icon name="pencil" size={18} strokeWidth={2} />
+              <Icon name="pencil" size={19} strokeWidth={1.9} />
             </Link>
           </div>
           {/* 앱 사용자와 이어진 사람은 내가 단 태그도 이름 밑에서 바로 고친다 */}
@@ -79,7 +86,7 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
             />
           ) : null}
           {/* 든 폴더(여러 개) + 폴더 고르기 */}
-          <div className="pt-1">
+          <div>
             <PersonFolders
               contactId={p.contactId}
               name={name}
@@ -99,17 +106,19 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
             />
           </div>
         </div>
+        <Star size={22} rotate={14} className="right-6 top-2" />
+        <Heart size={24} rotate={-14} className="left-[92px] top-[98px]" />
       </div>
 
       {/* 물어보고 답을 기다리는 중: 아직 아무도 안 연 링크는 여기서 취소한다 */}
       {waiting ? (
-        <div className="mx-6 mt-5 flex min-h-[52px] items-center gap-2.5 rounded-2xl bg-fill pl-4 pr-1.5">
+        <div className="mx-6 mt-5 flex min-h-[52px] items-center gap-2.5 rounded-[10px] bg-sky-soft pl-4 pr-1.5">
           <Icon name="link" size={17} strokeWidth={2} className="shrink-0 text-accent" />
-          <span className="min-w-0 flex-1 text-[14px] font-bold">{t("home.waiting")}</span>
+          <span className="min-w-0 flex-1 text-[17px]">{t("home.waiting")}</span>
           <form action={cancelInvite}>
             <input type="hidden" name="id" value={waiting.inviteId} />
             <input type="hidden" name="back" value={`/people/${p.contactId}`} />
-            <button className="flex min-h-11 items-center px-2.5 text-[14px] font-bold text-red">{t("privacy.linkCancel")}</button>
+            <button className="flex min-h-11 items-center px-2.5 text-[17px] text-red">{t("privacy.linkCancel")}</button>
           </form>
         </div>
       ) : null}
@@ -135,30 +144,36 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
       ) : null}
 
       {/* 기억해 둔 것: 적어 둔 항목만 미리 보기. 연필(수정)을 누르면 모든 항목을 고치는 화면, 항목을 누르면 그 항목이 펼쳐진 채로 */}
-      <section aria-labelledby="mine-title" className="mx-4 mt-4 flex flex-col">
+      <section aria-labelledby="mine-title" className="relative mx-4 mt-3.5 flex flex-col">
         <div className="flex min-h-11 items-center justify-between pl-2">
-          <h2 id="mine-title" className="section-title">
+          <h2 id="mine-title" className="text-[22px] font-normal">
             {t("person.mineList")}
           </h2>
           <Link href={`/people/${p.contactId}/edit`} aria-label={t("me.edit")} className="flex h-11 w-11 items-center justify-center rounded-full text-ink-2 active:bg-fill">
-            <Icon name="pencil" size={19} strokeWidth={2} />
+            <Icon name="pencil" size={21} strokeWidth={1.9} />
           </Link>
         </div>
         {filled.length ? (
-          <ul className="card mt-1 flex flex-col px-[18px]">
+          <div className="card relative mt-1 px-4">
+            <Tape color="pink" rotate={34} className="-right-2.5 -top-1.5" />
+            <ul className="flex flex-col">
             {filled.map(({ section, body }) => (
-              <li key={section} className="border-t border-rule first:border-t-0">
-                <Link href={`/people/${p.contactId}/edit?open=${section}`} className="flex min-h-[56px] items-center gap-3 pb-1 pt-3">
-                  <SectionIcon section={section} size={36} />
-                  <span className={`min-w-0 flex-1 text-[16px] font-bold tracking-[-0.02em] ${section === "safety" ? "text-red" : ""}`}>{t(`section.${section}` as "section.safety")}</span>
+              <li key={section} className="border-t border-dashed border-rule first:border-t-0">
+                <Link href={`/people/${p.contactId}/edit?open=${section}`} className="flex min-h-[56px] items-center gap-3 pt-2">
+                  <SectionIcon section={section} size={40} />
+                  <span className={`min-w-0 flex-1 text-[20px] ${section === "safety" ? "text-red" : ""}`}>{t(`section.${section}` as "section.safety")}</span>
                   <Icon name="chevron" size={17} className="shrink-0 text-muted" />
                 </Link>
-                <div className="pb-3.5">{body}</div>
+                <div className="pb-3.5 pt-1">{body}</div>
               </li>
             ))}
-          </ul>
+            </ul>
+            <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[7px] top-44" />
+            <Squiggle w={54} width={2.4} className="-bottom-2 left-[30px]" />
+            <Sparkle size={18} className="bottom-[60px] right-2" />
+          </div>
         ) : (
-          <Link href={`/people/${p.contactId}/edit?open=dates`} className="card mt-1 flex min-h-[72px] items-center justify-center gap-1.5 text-[15px] font-bold text-accent">
+          <Link href={`/people/${p.contactId}/edit?open=dates`} className="card mt-1 flex min-h-[72px] items-center justify-center gap-1.5 text-[19px] text-accent">
             <Icon name="plus" size={17} strokeWidth={2.4} />
             {t("person.write")}
           </Link>
@@ -167,7 +182,7 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
 
       <div className="h-6" />
       <div className="bottom-bar mt-auto grid grid-cols-2 gap-2.5 bg-bg px-6 pt-4">
-        <Link href={`/request?to=${encodeURIComponent(p.contactId)}`} className="btn-outline">
+        <Link href={`/request?to=${encodeURIComponent(p.contactId)}`} className="btn-outline btn-outline-lift">
           {t("person.askMore")}
         </Link>
         <Link href={`/people/${p.contactId}/reminder`} className="btn-primary">

@@ -18,7 +18,7 @@ export interface NoteItem {
 function AddButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
-    <button disabled={pending} className="btn-primary !h-12 shrink-0 !rounded-[14px] px-4 !text-[15px]">
+    <button disabled={pending} className="btn-primary !h-12 shrink-0 !rounded-[14px] px-4 !text-[18px]">
       {label}
     </button>
   );
@@ -73,11 +73,11 @@ export function NotesButton({
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-white pl-3 pr-3.5 text-[14px] font-bold shadow-[inset_0_0_0_1px_var(--color-edge)] active:scale-95"
+        className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-white pl-[13px] pr-3 text-[18px] shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:scale-95"
       >
         <Icon name="pencil" size={15} strokeWidth={2} />
         {labels.button}
-        {shown.length ? <span className="num min-w-5 rounded-full bg-sky-soft px-1.5 text-center text-[12px] leading-5 text-accent">{shown.length}</span> : null}
+        {shown.length ? <span className="num flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-sky px-[5px] text-[15px] leading-none text-ink">{shown.length}</span> : null}
       </button>
 
       {open ? (
@@ -96,16 +96,16 @@ export function NotesButton({
           }
         >
           {failed ? (
-            <p role="alert" className="px-6 pb-1 text-[13.5px] text-red">
+            <p role="alert" className="px-6 pb-1 text-[16px] text-red">
               {translate(document.documentElement.lang === "en" ? "en" : "ko", "common.error")}
             </p>
           ) : null}
           {shown.length ? (
             <ul className="px-6 pb-2">
               {shown.map((n) => (
-                <li key={n.id} className="flex items-start gap-2 border-t border-rule py-3 text-[15px] leading-[1.5] first:border-t-0">
+                <li key={n.id} className="flex items-start gap-2 border-t border-rule py-3 text-[18px] leading-[1.4] first:border-t-0">
                   <span className="min-w-0 flex-1 whitespace-pre-line">{n.body}</span>
-                  <span className="shrink-0 pt-[2px] text-[12.5px] text-muted">{n.when}</span>
+                  <span className="shrink-0 pt-[2px] text-[15px] text-muted">{n.when}</span>
                   {/* 눌리는 칸은 44px, 보이는 건 작은 ×(줄 높이는 그대로) */}
                   <button type="button" aria-label={labels.del} onClick={() => remove(n.id)} className="-my-3 -mr-3 flex h-11 w-11 shrink-0 items-center justify-center text-muted">
                     <Icon name="close" size={15} />

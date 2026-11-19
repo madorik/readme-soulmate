@@ -50,8 +50,8 @@ export function DrawnCheck({ on }: { on: boolean }) {
 /** 켜고 끄는 스위치의 모양(누르는 건 감싼 button이 한다). 꺼진 바탕은 흰 바탕과 3:1 이상 */
 export function SwitchLook({ on }: { on: boolean }) {
   return (
-    <span className={`flex h-7 w-[46px] items-center rounded-full p-[3px] transition-colors ${on ? "justify-end bg-accent" : "justify-start bg-edge-strong"}`}>
-      <span className="h-[22px] w-[22px] rounded-full bg-white shadow-[0_1px_3px_rgba(31,35,64,0.18)]" />
+    <span className={`flex h-8 w-[54px] items-center rounded-full border-2 border-ink p-0.5 transition-colors ${on ? "justify-end bg-sky" : "justify-start bg-[#ece7d8]"}`}>
+      <span className="h-6 w-6 rounded-full border-2 border-ink bg-white" />
     </span>
   );
 }

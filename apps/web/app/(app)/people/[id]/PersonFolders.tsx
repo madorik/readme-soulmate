@@ -75,8 +75,8 @@ export function PersonFolders({ contactId, name, folders, mine, labels }: { cont
           <Link
             key={f.id}
             href={`/people/folder/${f.id}`}
-            // 보이는 칩은 32px, 누르는 자리는 위아래 6px씩 넓혀 44px(before)
-            className="relative flex h-8 max-w-full items-center gap-[5px] rounded-full bg-paper pl-2 pr-[11px] text-[13.5px] font-bold shadow-[inset_0_0_0_1px_var(--color-edge)] before:absolute before:-inset-y-1.5 before:inset-x-0"
+            // 보이는 칩은 34px, 누르는 자리는 위아래 5px씩 넓혀 44px(before)
+            className="relative flex h-[34px] max-w-full items-center gap-1.5 rounded-full bg-paper pl-[9px] pr-3 text-[17px] shadow-[inset_0_0_0_1.5px_var(--color-edge)] before:absolute before:-inset-y-[5px] before:inset-x-0"
           >
             <FolderMini color={f.color} />
             <span className="truncate">{f.name}</span>
@@ -86,8 +86,8 @@ export function PersonFolders({ contactId, name, folders, mine, labels }: { cont
           type="button"
           aria-label={labels.put}
           onClick={openSheet}
-          // 보이는 동그라미는 32px, 누르는 자리는 44px(before)
-          className="relative flex h-8 w-8 items-center justify-center rounded-full text-accent shadow-[inset_0_0_0_1.5px_var(--color-mango-edge)] before:absolute before:-inset-1.5"
+          // 보이는 동그라미는 34px, 누르는 자리는 44px(before)
+          className="relative flex h-[34px] w-[34px] items-center justify-center rounded-full border-[1.8px] border-dashed border-ink text-ink before:absolute before:-inset-[5px]"
         >
           <Icon name="plus" size={16} strokeWidth={2.4} />
         </button>
@@ -102,7 +102,7 @@ export function PersonFolders({ contactId, name, folders, mine, labels }: { cont
           footer={
             <>
               {failed ? (
-                <p role="alert" className="pb-1 text-[13.5px] text-red">
+                <p role="alert" className="pb-1 text-[16px] text-red">
                   {labels.error}
                 </p>
               ) : null}
@@ -119,8 +119,8 @@ export function PersonFolders({ contactId, name, folders, mine, labels }: { cont
                 <li key={f.id} className="border-t border-rule first:border-t-0">
                   <button type="button" aria-pressed={on} onClick={() => toggle(f.id)} className="flex min-h-[62px] w-full items-center gap-3.5 text-left">
                     <FolderArt icon={f.icon} color={f.color} size={40} />
-                    <span className="min-w-0 flex-1 truncate text-[16.5px] font-bold tracking-[-0.02em]">{f.name}</span>
-                    <span className="text-[13px] text-muted">{labels.count.replace("{n}", String(f.memberIds.length))}</span>
+                    <span className="min-w-0 flex-1 truncate text-[20px]">{f.name}</span>
+                    <span className="text-[15px] text-muted">{labels.count.replace("{n}", String(f.memberIds.length))}</span>
                     <DrawnCheck on={on} />
                   </button>
                 </li>
@@ -153,7 +153,7 @@ export function PersonFolders({ contactId, name, folders, mine, labels }: { cont
                   <span className="flex h-[31px] w-10 items-center justify-center rounded-[9px] shadow-[inset_0_0_0_2px_var(--color-mango-edge)]">
                     <Icon name="plus" size={18} strokeWidth={2.4} />
                   </span>
-                  <span className="text-[16px] font-bold">{labels.newFolder}</span>
+                  <span className="text-[19px]">{labels.newFolder}</span>
                 </button>
               )}
             </li>

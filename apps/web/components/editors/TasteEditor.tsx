@@ -8,12 +8,12 @@ import { CircleOption, SectionHeading, TextField, joinList, splitList, useT } fr
 /** 매운맛: 고추 다섯 개 한 줄. 몇 번째를 누르느냐가 단계(그만큼 빨개진다), 옆에 그 단계 이름. 같은 걸 다시 누르면 뺀다 */
 export function SpicyScale({ value, onChange, locale, large = false }: { value: number | null; onChange: (v: number | null) => void; locale: Locale; large?: boolean }) {
   const t = useT(locale);
-  const size = large ? 34 : 30;
+  const size = large ? 34 : 32;
   return (
     <div className="flex flex-col gap-1.5">
       <SectionHeading>{t("taste.spicy")}</SectionHeading>
-      <div className="flex min-h-14 items-center gap-2 pt-1">
-        <div role="radiogroup" aria-label={t("taste.spicy")} className="relative flex shrink-0 items-center">
+      <div className="flex flex-col items-start">
+        <div role="radiogroup" aria-label={t("taste.spicy")} className="relative flex shrink-0 items-center pb-[22px]">
           {SPICY_LEVELS.map((label, i) => (
             <button
               key={i}
@@ -22,19 +22,19 @@ export function SpicyScale({ value, onChange, locale, large = false }: { value: 
               aria-checked={value === i}
               aria-label={label[locale]}
               onClick={() => onChange(value === i ? null : i)}
-              className={`flex items-center justify-center rounded-full transition-transform active:scale-90 ${large ? "h-14 w-14" : "h-12 w-12"}`}
+              className={`flex items-center justify-center rounded-full transition-transform active:scale-90 ${large ? "h-14 w-14" : "h-11 w-11"}`}
             >
               <ChiliIcon on={value != null && i <= value} size={size} />
             </button>
           ))}
           {/* 가운데(보통)가 어느 정도인지 기준 하나: 신라면. 고르면 옆 이름에 같은 말이 나오니 그때는 뺀다 */}
           {value !== 2 ? (
-            <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 whitespace-nowrap text-[12px] font-medium leading-none text-muted">
+            <span aria-hidden="true" className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 whitespace-nowrap text-[15px] leading-none text-muted">
               {t("taste.spicyAnchor")}
             </span>
           ) : null}
         </div>
-        {value != null ? <span className={`min-w-0 font-bold text-accent ${large ? "text-[16.5px]" : "text-[15px]"}`}>{SPICY_LEVELS[value]?.[locale]}</span> : null}
+        {value != null ? <span className="min-w-0 text-[19px] text-accent">{SPICY_LEVELS[value]?.[locale]}</span> : null}
       </div>
     </div>
   );
@@ -54,13 +54,13 @@ export function AlcoholPicker({ value, onChange, locale }: { value: AlcoholData;
             on={value.level === l.code}
             color="ink"
             onToggle={() => onChange(value.level === l.code ? { level: null, kinds: value.kinds } : { level: l.code, kinds: l.code === "none" ? [] : value.kinds })}
-            textClass="!text-[14.5px] whitespace-nowrap"
+            textClass="!text-[17px] whitespace-nowrap"
           />
         ))}
       </div>
       {value.level && value.level !== "none" ? (
         <>
-          <span className="pt-2 text-[13px] text-muted">{t("taste.alcoholKinds")}</span>
+          <span className="pt-2 text-[16px] text-muted">{t("taste.alcoholKinds")}</span>
           <div className="flex flex-wrap gap-2">
             {ALCOHOL_KINDS.map((k) => (
               <CircleOption
@@ -69,7 +69,7 @@ export function AlcoholPicker({ value, onChange, locale }: { value: AlcoholData;
                 on={value.kinds.includes(k.code)}
                 color="ink"
                 onToggle={() => onChange({ ...value, kinds: value.kinds.includes(k.code) ? value.kinds.filter((x) => x !== k.code) : [...value.kinds, k.code] })}
-                textClass="!text-[15px]"
+                textClass="!text-[18px]"
               />
             ))}
           </div>

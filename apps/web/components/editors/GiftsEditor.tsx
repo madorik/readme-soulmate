@@ -50,7 +50,7 @@ export function GiftsEditor({ value, onChange, locale, forOther = false }: { val
                 <Icon name="close" size={20} />
               </button>
             </div>
-            <input value={w.url} onChange={(e) => setWish(i, { url: e.target.value })} placeholder="https://" aria-label={t("gift.wishUrl")} inputMode="url" className="field text-[14px]" />
+            <input value={w.url} onChange={(e) => setWish(i, { url: e.target.value })} placeholder="https://" aria-label={t("gift.wishUrl")} inputMode="url" className="field text-[17px]" />
           </div>
         ))}
         {value.wishlist.length < 10 ? (

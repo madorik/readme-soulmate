@@ -29,7 +29,7 @@ export function RemovePersonButton({
   const close = useCallback(() => setAsk(false), []);
   return (
     <>
-      <button type="button" aria-haspopup="dialog" onClick={() => setAsk(true)} className="flex min-h-11 items-center text-[14px] font-bold text-muted">
+      <button type="button" aria-haspopup="dialog" onClick={() => setAsk(true)} className="flex min-h-11 items-center text-[18px] text-muted underline underline-offset-4">
         {labels.open}
       </button>
       {ask ? (
@@ -50,7 +50,7 @@ export function RemovePersonButton({
             </div>
           }
         >
-          <p className="px-6 pb-3 pt-1 text-[15px] leading-[1.6]">{labels.body}</p>
+          <p className="px-6 pb-3 pt-1 text-[18px] leading-[1.6]">{labels.body}</p>
         </Sheet>
       ) : null}
     </>

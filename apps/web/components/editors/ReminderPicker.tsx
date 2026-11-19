@@ -8,7 +8,7 @@ export function ReminderPicker({ value, onChange, locale }: { value: ReminderOff
   const t = useT(locale);
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[16px] font-bold">{t("remind.when")}</span>
+      <span className="pl-1 text-[19px] leading-[1.35]">{t("remind.when")}</span>
       <div className="flex flex-wrap gap-2 pt-1">
         {REMINDER_OFFSETS.map((o) => (
           <CircleOption

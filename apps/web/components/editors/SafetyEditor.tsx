@@ -18,7 +18,7 @@ function AddTag({ label, placeholder, onAdd, large }: { label: string; placehold
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`chip gap-1 !bg-transparent font-bold text-muted !shadow-[inset_0_0_0_1.5px_var(--color-edge)] ${large ? "!min-h-12 text-[16.5px]" : ""}`}
+        className={`chip gap-1 !bg-transparent text-muted !shadow-[inset_0_0_0_1.5px_var(--color-edge)] ${large ? "!min-h-12 text-[19px]" : ""}`}
       >
         <span aria-hidden="true" className="text-[17px] leading-none">
           +
@@ -54,7 +54,7 @@ function AddTag({ label, placeholder, onAdd, large }: { label: string; placehold
           take();
           setOpen(false);
         }}
-        className="flex min-h-11 shrink-0 items-center px-3 text-[14.5px] font-bold"
+        className="flex min-h-11 shrink-0 items-center px-3 text-[17px]"
       >
         {label}
       </button>
@@ -112,7 +112,7 @@ export function SafetyEditor({
             <CircleOption key={i.code} label={i.label[locale]} color="warn" on={value.allergens.includes(i.code)} onToggle={() => toggle("allergens", i.code)} large={large} />
           ))}
           {custom("allergens")}
-          <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className={`chip !bg-transparent font-bold text-muted !shadow-[inset_0_0_0_1.5px_var(--color-edge)] ${large ? "!min-h-12 text-[16.5px]" : ""}`}>
+          <button type="button" onClick={() => setMore(!more)} aria-expanded={more} className={`chip !bg-transparent text-muted !shadow-[inset_0_0_0_1.5px_var(--color-edge)] ${large ? "!min-h-12 text-[19px]" : ""}`}>
             {more ? t("safety.less") : t("safety.more")}
           </button>
           {addTag("allergens")}

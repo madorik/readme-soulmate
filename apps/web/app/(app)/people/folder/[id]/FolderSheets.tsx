@@ -88,7 +88,7 @@ function AddPeople({
       footer={
         <>
           {failed ? (
-            <p role="alert" className="pb-1 text-[13.5px] text-red">
+            <p role="alert" className="pb-1 text-[16px] text-red">
               {labels.error}
             </p>
           ) : null}
@@ -121,7 +121,7 @@ function AddPeople({
                 <span aria-hidden="true">
                   <Avatar config={p.avatar} size={44} label={p.name} />
                 </span>
-                <span className="min-w-0 flex-1 truncate text-[16.5px] font-bold tracking-[-0.02em]">{p.name}</span>
+                <span className="min-w-0 flex-1 truncate text-[19px] tracking-[-0.02em]">{p.name}</span>
                 <DrawnCheck on={on} />
               </button>
             </li>

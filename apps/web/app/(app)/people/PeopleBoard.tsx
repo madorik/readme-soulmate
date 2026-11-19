@@ -8,6 +8,7 @@ import { Avatar } from "@/components/Avatar";
 import { FolderArt, FolderMini } from "@/components/FolderArt";
 import { FolderSheet } from "@/components/FolderSheet";
 import { Mascot } from "@/components/Mascot";
+import { Heart, Sparkle, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { DrawnCheck, Icon } from "@/components/marks";
 import { RowBody, type PersonRow } from "@/components/PersonRow";
 import { Sheet } from "@/components/Sheet";
@@ -113,6 +114,8 @@ function NewNamed({ href, label }: { href: string; label: string }) {
 
 /** 목록이 길어도 화면 밖 줄은 그리지 않게(사람이 많고 얼굴 그림이 많을 때만) */
 const LONG_LIST = 40;
+/** 폴더 칸을 살짝씩 다르게 기울인 종이 */
+const FOLDER_TILT = ["-rotate-[0.8deg]", "rotate-[0.6deg]", "-rotate-[0.5deg]", "rotate-[0.7deg]"];
 const LAZY_ROW = "[content-visibility:auto] [contain-intrinsic-size:auto_71px]";
 
 /**
@@ -289,7 +292,7 @@ export function PeopleBoard({
           ["recent", labels.sortRecent],
         ] as const
       ).map(([key, label]) => (
-        <button key={key} type="button" aria-pressed={sort === key} onClick={() => setSort(sort === key ? null : key)} className="chip !min-h-11 !px-3.5 !text-[14px]">
+        <button key={key} type="button" aria-pressed={sort === key} onClick={() => setSort(sort === key ? null : key)} className="chip !min-h-11 !px-3.5 !text-[16px]">
           {label}
         </button>
       ))}
@@ -299,10 +302,11 @@ export function PeopleBoard({
 
   return (
     <>
-      <div className="flex items-end justify-between gap-2 pl-5 pr-4 pt-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <h1 className="headline text-[26px]">{labels.title}</h1>
-          {rows.length ? <span className="text-[13px] font-medium text-muted">{labels.summary.replace("{n}", String(rows.length)).replace("{f}", String(favCount))}</span> : null}
+      <div className="relative flex items-end justify-between gap-2 pl-5 pr-4 pt-4">
+        <Star size={20} rotate={14} className="left-[150px] top-[18px]" />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h1 className="text-[32px] font-normal leading-[1.1]">{labels.title}</h1>
+          {rows.length ? <span className="text-[16px] text-muted">{labels.summary.replace("{n}", String(rows.length)).replace("{f}", String(favCount))}</span> : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {/* 직접 적기: 사람 아이콘 + (선택 중에는 숨긴다) */}
@@ -310,18 +314,18 @@ export function PeopleBoard({
             <Link
               href="/people/new"
               aria-label={labels.add}
-              className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)] transition-transform before:absolute before:-inset-0.5 before:content-[''] active:scale-95"
+              className="relative flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)] transition-transform active:scale-95"
             >
-              <Icon name="personAdd" size={20} strokeWidth={2} />
+              <Icon name="personAdd" size={22} strokeWidth={1.9} />
             </Link>
           )}
           {canPick ? (
-            <button type="button" aria-pressed={picking} onClick={() => setPicking(!picking)} className={`pill relative !h-10 shrink-0 !gap-1.5 !px-3.5 before:absolute before:-inset-y-0.5 before:inset-x-0 before:content-[''] ${picking ? "grad !shadow-none" : ""}`}>
+            <button type="button" aria-pressed={picking} onClick={() => setPicking(!picking)} className={`pill relative shrink-0 !gap-1.5 !pl-[13px] !pr-4 !text-[18px] ${picking ? "grad !shadow-none" : ""}`}>
               {picking ? (
                 labels.cancel
               ) : (
                 <>
-                  <Icon name="check" size={17} strokeWidth={2} />
+                  <Icon name="check" size={19} strokeWidth={2} />
                   {labels.pick}
                 </>
               )}
@@ -331,8 +335,8 @@ export function PeopleBoard({
       </div>
 
       {rows.length ? (
-        <div className="relative px-4 pt-3.5">
-          <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="pointer-events-none absolute left-[31px] top-[29px] text-muted">
+        <div className="relative px-4 pt-4">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="pointer-events-none absolute left-[31px] top-[30px] text-muted">
             <circle cx="11" cy="11" r="7" />
             <path d="M20 20l-4-4" />
           </svg>
@@ -343,10 +347,10 @@ export function PeopleBoard({
             placeholder={labels.search}
             aria-label={labels.search}
             enterKeyHint="search"
-            className="h-12 w-full rounded-2xl bg-paper pl-[44px] pr-12 text-[16px] shadow-[inset_0_0_0_1.5px_var(--color-rule)] outline-none placeholder:text-muted focus:shadow-[inset_0_0_0_2px_var(--color-sky)] [&::-webkit-search-cancel-button]:appearance-none"
+            className="h-12 w-full rounded-2xl bg-white pl-[44px] pr-12 text-[18px] shadow-[inset_0_0_0_1.5px_var(--color-edge)] outline-none placeholder:text-muted focus:shadow-[inset_0_0_0_2px_var(--color-mango-deep)] [&::-webkit-search-cancel-button]:appearance-none"
           />
           {find ? (
-            <button type="button" aria-label={labels.clear} onClick={() => setFind("")} className="absolute right-5 top-[17px] flex h-11 w-11 items-center justify-center text-muted">
+            <button type="button" aria-label={labels.clear} onClick={() => setFind("")} className="absolute right-5 top-[18px] flex h-11 w-11 items-center justify-center text-muted">
               <Icon name="close" size={18} strokeWidth={2} />
             </button>
           ) : null}
@@ -357,16 +361,17 @@ export function PeopleBoard({
       {picking || searching || !rows.length ? null : (
         <Link
           href="/request"
-          className="mx-4 mt-3 flex min-h-[64px] items-center gap-3 rounded-[20px] bg-paper py-2 pl-2 pr-2.5 shadow-[inset_0_0_0_1.5px_var(--color-rule)] transition-transform active:scale-[0.99]"
+          className="card relative mx-4 mt-3.5 flex min-h-[68px] items-center gap-3 py-2 pl-2 pr-2.5 transition-transform active:scale-[0.99]"
         >
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-soft">
-            <Mascot size={36} bubble="question" />
+          <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg bg-[#d3e9ff]">
+            <Mascot size={44} bubble="question" />
           </span>
-          <span className="min-w-0 flex-1 text-[15px] font-bold tracking-[-0.02em]">{labels.bannerTitle}</span>
-          <span className="grad flex h-9 shrink-0 items-center gap-0.5 rounded-full pl-3.5 pr-2.5 text-[13.5px] font-bold">
+          <span className="min-w-0 flex-1 text-[19px] leading-[1.3]">{labels.bannerTitle}</span>
+          <span className="flex h-[38px] shrink-0 items-center gap-0.5 rounded-full bg-sky pl-3.5 pr-2 text-[17px] shadow-[inset_0_0_0_1.5px_var(--color-ink)]">
             {labels.bannerCta}
-            <Icon name="chevron" size={15} strokeWidth={2.2} />
+            <Icon name="chevron" size={17} strokeWidth={2.2} />
           </span>
+          <Tape color="mint" w={66} h={20} rotate={5} alpha={0.55} vertical className="-top-[9px] right-[26px]" />
         </Link>
       )}
 
@@ -375,7 +380,7 @@ export function PeopleBoard({
           <div className="card px-3.5">
             <button type="button" aria-pressed={withMe} onClick={() => setWithMe(!withMe)} className="flex min-h-[64px] w-full items-center gap-3 text-left">
               <Avatar config={meAvatar} size={44} label={labels.meName} />
-              <span className="flex-1 text-[15.5px] font-bold">{labels.withMe}</span>
+              <span className="flex-1 text-[19px]">{labels.withMe}</span>
               <DrawnCheck on={withMe} />
             </button>
           </div>
@@ -391,11 +396,11 @@ export function PeopleBoard({
                     aria-pressed={all}
                     aria-label={labels.pickFolder.replace("{name}", f.name)}
                     onClick={() => toggleMany(ids, !all)}
-                    className={`relative flex h-[38px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-3 pr-3.5 text-[14px] before:absolute before:-inset-y-[3px] before:inset-x-0 before:content-[''] ${all ? "chip-on" : "bg-white font-medium shadow-[inset_0_0_0_1.5px_var(--color-rule)]"}`}
+                    className={`relative flex h-[38px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-3 pr-3.5 text-[17px] before:absolute before:-inset-y-[3px] before:inset-x-0 before:content-[''] ${all ? "chip-on" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
                   >
                     <FolderMini color={f.color} size={18} />
                     {f.name}
-                    <span className="num text-[13px] !font-bold text-muted">{ids.length}</span>
+                    <span className="num text-[15px] text-muted">{ids.length}</span>
                   </button>
                 );
               })}
@@ -403,7 +408,7 @@ export function PeopleBoard({
           ) : null}
           {searching && !found.length ? (
             <div className="flex flex-col gap-3 px-2 pt-5">
-              <p className="text-[14px] text-muted">{labels.searchEmpty}</p>
+              <p className="text-[16px] text-muted">{labels.searchEmpty}</p>
               {newName ? <NewNamed href={`/people/new?name=${encodeURIComponent(newName)}`} label={labels.addNamed.replace("{name}", newName)} /> : null}
             </div>
           ) : null}
@@ -412,8 +417,8 @@ export function PeopleBoard({
             {found.map((r) => {
               const on = picked.includes(r.contactId);
               return (
-                <li key={r.contactId} className={`flex items-center border-t border-rule first:border-t-0 ${lazyRow}`}>
-                  <Link href={`/people/${r.contactId}?back=${encodeURIComponent(here)}`} className="flex min-h-[70px] min-w-0 flex-1 items-center gap-3">
+                <li key={r.contactId} className={`flex items-center border-t border-dashed border-rule first:border-t-0 ${lazyRow}`}>
+                  <Link href={`/people/${r.contactId}?back=${encodeURIComponent(here)}`} className="flex min-h-[72px] min-w-0 flex-1 items-center gap-3">
                     <RowBody row={r} avatarLabel={labels.avatarOf.replace("{name}", r.name)} />
                   </Link>
                   <button
@@ -434,8 +439,8 @@ export function PeopleBoard({
         found.length ? (
           <ul className="card mx-4 mt-3.5 flex flex-col px-3.5">
             {found.map((r) => (
-              <li key={r.contactId} className={`border-t border-rule first:border-t-0 ${lazyRow}`}>
-                <Link href={`/people/${r.contactId}`} className="flex min-h-[70px] items-center gap-3">
+              <li key={r.contactId} className={`border-t border-dashed border-rule first:border-t-0 ${lazyRow}`}>
+                <Link href={`/people/${r.contactId}`} className="flex min-h-[72px] items-center gap-3">
                   <RowBody row={r} avatarLabel={labels.avatarOf.replace("{name}", r.name)} />
                 </Link>
               </li>
@@ -443,7 +448,7 @@ export function PeopleBoard({
           </ul>
         ) : (
           <div className="flex flex-col gap-3 px-6 pt-6">
-            <p className="text-[14px] text-muted">{labels.searchEmpty}</p>
+            <p className="text-[16px] text-muted">{labels.searchEmpty}</p>
             {newName ? <NewNamed href={`/people/new?name=${encodeURIComponent(newName)}`} label={labels.addNamed.replace("{name}", newName)} /> : null}
           </div>
         )
@@ -452,7 +457,7 @@ export function PeopleBoard({
           {/* 아직 아무도 없으면 홈 빈 화면과 같은 두 가지로 시작한다 */}
           {rows.length ? null : (
             <section className="card mx-4 mt-4 flex flex-col gap-3 px-4 pb-4 pt-5">
-              <p className="px-1.5 text-[14px] leading-[1.6] text-muted">{labels.empty}</p>
+              <p className="px-1.5 text-[17px] leading-[1.5] text-muted">{labels.empty}</p>
               <div className="grid grid-cols-2 gap-2.5">
                 <Link href="/people/new" className="btn-outline">
                   {labels.add}
@@ -463,12 +468,13 @@ export function PeopleBoard({
               </div>
             </section>
           )}
-          <h2 className="flex items-baseline gap-1.5 px-6 pb-3 pt-5">
-            <span className="section-title">{labels.folders}</span>
-            <span className="num text-[14px] !font-bold text-muted">{folders.length}</span>
+          <section aria-label={labels.folders} className="relative">
+          <h2 className="flex items-baseline gap-2 px-6 pb-3 pt-6">
+            <span className="text-[22px] font-normal">{labels.folders}</span>
+            <span className="text-[17px] text-muted">{folders.length}</span>
           </h2>
-          <div className="grid grid-cols-3 gap-2.5 px-4">
-            {folders.map((f) => {
+          <div className="grid grid-cols-3 gap-x-2.5 gap-y-3 px-4">
+            {folders.map((f, i) => {
               // 끄는 중 손가락 아래 폴더는 망고 테두리로
               const target = !!drag.dragging && drag.over === f.id;
               return (
@@ -476,49 +482,59 @@ export function PeopleBoard({
                   key={f.id}
                   href={`/people/folder/${f.id}`}
                   data-drop={f.id}
-                  className={`flex min-w-0 flex-col items-center gap-2 rounded-[22px] px-1.5 pb-3 pt-4 transition-[transform,background-color,box-shadow] active:scale-[0.97] ${
-                    target ? "scale-[1.04] bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-sky)]" : "bg-paper"
+                  className={`card flex min-w-0 flex-col items-center gap-0.5 px-1 pb-3 pt-4 transition-[transform,background-color,box-shadow] active:scale-[0.97] ${FOLDER_TILT[i % FOLDER_TILT.length]} ${
+                    target ? "scale-[1.04] !bg-sky-soft !shadow-[inset_0_0_0_2px_var(--color-sky)]" : ""
                   }`}
                 >
-                  <FolderArt icon={f.icon} color={f.color} size={77} faces={facesOf(f)} />
-                  <span className="w-full truncate text-center text-[15px] font-bold tracking-[-0.02em]">{f.name}</span>
-                  <span className="-mt-1.5 text-[12.5px] text-muted">{labels.count.replace("{n}", String(membersOf(f).length))}</span>
+                  <FolderArt icon={f.icon} color={f.color} size={86} faces={facesOf(f)} />
+                  <span className="mt-1.5 w-full truncate text-center text-[19px]">{f.name}</span>
+                  <span className="text-[15px] text-muted">{labels.count.replace("{n}", String(membersOf(f).length))}</span>
                 </Link>
               );
             })}
             <button
               type="button"
               onClick={() => setMaking(true)}
-              className="flex min-h-[132px] flex-col items-center justify-center gap-1.5 rounded-[22px] text-accent ring-2 ring-inset ring-mango-edge transition-transform active:scale-[0.97]"
+              className="flex min-h-[132px] flex-col items-center justify-center gap-1.5 rounded-[10px] border-[1.8px] border-dashed border-ink text-accent transition-transform active:scale-[0.97]"
             >
-              <Icon name="plus" size={26} strokeWidth={2.2} />
-              <span className="text-[14.5px] font-bold">{labels.newFolder}</span>
+              <Icon name="plus" size={26} strokeWidth={2.2} className="text-ink" />
+              <span className="text-[18px]">{labels.newFolder}</span>
             </button>
           </div>
+          <Heart size={24} rotate={-12} className="left-28 top-[62px]" />
+          <Star size={22} rotate={12} color={SKY_STAR} className="right-2 top-7" />
+          <Squiggle w={54} width={2.4} className="-bottom-1.5 left-[30px]" />
+          </section>
 
           {/* 아직 폴더에 없는 사람만. 다 넣었으면 이 칸은 없다 */}
           {unfiled.length ? (
             <>
-              <h2 className="flex items-baseline gap-1.5 px-6 pb-2.5 pt-7">
-                <span className="section-title">{labels.unfiled}</span>
-                <span className="num text-[14px] !font-bold text-muted">{unfiled.length}</span>
+              <section aria-label={labels.unfiled} className="relative">
+              <h2 className="flex items-baseline gap-2 px-6 pb-3 pt-7">
+                <span className="text-[22px] font-normal">{labels.unfiled}</span>
+                <span className="text-[17px] text-muted">{unfiled.length}</span>
               </h2>
               {unfiled.length > 1 ? <div className="px-4">{sortChips}</div> : null}
-              <ul className="card mx-4 flex flex-col px-3.5">
+              <div className="card relative mx-4 px-3.5">
+                <Tape color="pink" w={54} h={18} rotate={-34} className="-left-2 -top-[9px]" />
+                <ul className="flex flex-col">
                 {unfiled.map((r) => (
                   <li
                     key={r.contactId}
                    
                     onPointerDown={(e) => drag.onPointerDown(e, r.contactId, r.name, "list")}
                     onContextMenu={(e) => e.preventDefault()}
-                    className={`select-none border-t border-rule first:border-t-0 [-webkit-touch-callout:none] ${lazyRow} ${drag.dragging?.id === r.contactId ? "opacity-40" : ""}`}
+                    className={`select-none border-t border-dashed border-rule first:border-t-0 [-webkit-touch-callout:none] ${lazyRow} ${drag.dragging?.id === r.contactId ? "opacity-40" : ""}`}
                   >
-                    <Link href={`/people/${r.contactId}`} draggable={false} className="flex min-h-[70px] items-center gap-3">
+                    <Link href={`/people/${r.contactId}`} draggable={false} className="flex min-h-[72px] items-center gap-3">
                       <RowBody row={r} avatarLabel={labels.avatarOf.replace("{name}", r.name)} />
                     </Link>
                   </li>
                 ))}
-              </ul>
+                </ul>
+                <Sparkle size={18} className="right-[22px] top-[22px]" />
+              </div>
+              </section>
             </>
           ) : null}
         </div>
@@ -527,7 +543,7 @@ export function PeopleBoard({
       {picking ? (
         <div className="sticky mt-auto flex flex-col gap-2 bg-bg/95 px-5 pb-3 pt-3 backdrop-blur" style={{ bottom: "calc(var(--tab-h) + var(--pb-tab))" }}>
           <div className="flex items-center justify-between gap-3">
-            <span role="status" className={`min-w-0 text-[12.5px] ${putMsg?.error ? "text-red" : "text-muted"}`}>
+            <span role="status" className={`min-w-0 text-[15px] ${putMsg?.error ? "text-red" : "text-muted"}`}>
               {putMsg ? putMsg.text : ready ? labels.selected.replace("{n}", String(picked.length)) : labels.pickSome}
             </span>
             <div className="flex shrink-0 items-center gap-2">
@@ -569,18 +585,18 @@ export function PeopleBoard({
             </div>
           }
         >
-          <p className="px-6 pb-3 pt-1 text-[15px] leading-[1.6]">{labels.removeBody.replace("{n}", String(picked.length))}</p>
+          <p className="px-6 pb-3 pt-1 text-[17px] leading-[1.5]">{labels.removeBody.replace("{n}", String(picked.length))}</p>
         </Sheet>
       ) : null}
       {putOpen ? (
         <Sheet id="people-put-title" title={labels.put} closeLabel={labels.clear} onClose={() => setPutOpen(false)}>
           <ul className="flex flex-col px-6" style={{ paddingBottom: "max(var(--pb), 16px)" }}>
             {folders.map((f) => (
-              <li key={f.id} className="border-t border-rule first:border-t-0">
+              <li key={f.id} className="border-t border-dashed border-rule first:border-t-0">
                 <button type="button" onClick={() => putIn(f)} className="flex min-h-14 w-full items-center gap-3 text-left">
                   <FolderMini color={f.color} size={22} />
-                  <span className="min-w-0 flex-1 truncate text-[15.5px] font-bold">{f.name}</span>
-                  <span className="num text-[13px] !font-bold text-muted">{membersOf(f).length}</span>
+                  <span className="min-w-0 flex-1 truncate text-[19px]">{f.name}</span>
+                  <span className="num text-[15px] text-muted">{membersOf(f).length}</span>
                 </button>
               </li>
             ))}

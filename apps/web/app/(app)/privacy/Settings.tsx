@@ -36,19 +36,19 @@ function SwitchRow({ locale, prefKey, enabled, label, note, disabled = false }: 
           setFailed(true);
         }
       }}
-      className="flex min-h-16 flex-col justify-center border-t border-rule"
+      className="flex min-h-16 flex-col justify-center border-t-[1.5px] border-dashed border-rule"
     >
       <input type="hidden" name="key" value={prefKey} />
       <input type="hidden" name="value" value={enabled ? "0" : "1"} />
       <div className="flex items-center gap-3">
-        <div className="flex flex-1 flex-col gap-0.5">
-          <span className="text-[15.5px] font-bold">{label}</span>
+        <div className="flex flex-1 flex-col gap-0.5 pl-1">
+          <span className="text-[21px]">{label}</span>
           {note}
         </div>
         <SwitchButton label={label} on={on} disabled={disabled} />
       </div>
       {failed ? (
-        <p role="alert" className="pb-2 text-[13px] text-red">
+        <p role="alert" className="pb-2 pl-1 text-[16px] text-red">
           {t("common.error")}
         </p>
       ) : null}
@@ -59,7 +59,7 @@ function SwitchRow({ locale, prefKey, enabled, label, note, disabled = false }: 
 function SwitchButton({ label, on, disabled }: { label: string; on: boolean; disabled: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button disabled={disabled || pending} aria-label={label} aria-pressed={on} aria-busy={pending} className={`flex h-11 w-14 shrink-0 items-center justify-end disabled:opacity-40 ${pending ? "motion-safe:animate-pulse" : ""}`}>
+    <button disabled={disabled || pending} aria-label={label} aria-pressed={on} aria-busy={pending} className={`flex h-11 w-16 shrink-0 items-center justify-end disabled:opacity-40 ${pending ? "motion-safe:animate-pulse" : ""}`}>
       <SwitchLook on={on} />
     </button>
   );
@@ -74,7 +74,7 @@ export function AppLockSetting({ locale, enabled }: { locale: Locale; enabled: b
       prefKey="app_lock"
       enabled={enabled}
       label={t("privacy.lock")}
-      note={native ? null : <span className="text-[12.5px] text-muted">{t("privacy.lockUnavailable")}</span>}
+      note={native ? null : <span className="text-[15px] text-muted">{t("privacy.lockUnavailable")}</span>}
       disabled={!native && !enabled}
     />
   );
@@ -106,11 +106,11 @@ export function ReminderSetting({ locale, offsets }: { locale: Locale; offsets: 
       <input type="hidden" name="offsets" value={JSON.stringify(value)} />
       <ReminderPicker value={value} onChange={setValue} locale={locale} />
       {failed ? (
-        <p role="alert" className="text-[13px] text-red">
+        <p role="alert" className="text-[16px] text-red">
           {t("common.error")}
         </p>
       ) : null}
-      {dirty ? <PendingButton className="btn-primary !h-11 !text-[14.5px]">{t("common.save")}</PendingButton> : null}
+      {dirty ? <PendingButton className="btn-primary !h-11 !text-[18px]">{t("common.save")}</PendingButton> : null}
     </form>
   );
 }

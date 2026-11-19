@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ShareBar } from "@/app/(app)/plan/ShareBar";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
+import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
 import type { Person } from "@/lib/data";
 import { eventName, eventsFor } from "@/lib/events";
@@ -65,36 +66,60 @@ export function PlanGiftView({ locale, today, people, back, picksOn, picks }: Pl
   return (
     <div className="flex flex-1 flex-col">
       <TopBar back={back} label={t("common.back")} />
-      <h1 className="headline px-6 pt-1 text-[26px]">{t("plan.giftTitle")}</h1>
-      <div className="flex flex-col gap-3 px-4 pt-5">
-        {people.map((p) => {
+      <div className="relative px-6 pt-1.5">
+        <h1 className="hl inline-block px-1 text-[34px] font-normal leading-[1.2]">{t("plan.giftTitle")}</h1>
+        <Star size={22} rotate={14} className="left-[154px] top-0.5" />
+      </div>
+      <div className="flex flex-col gap-7 px-4 pt-[26px]">
+        {people.map((p, idx) => {
           const name = displayName(p);
           const next = eventsFor([p], today)[0];
           const rows = hints(p);
           return (
-            <section key={p.contactId} className="flex flex-col rounded-2xl bg-fill px-5 pb-2 pt-4">
-              <div className="flex items-center gap-3 pb-2">
-                <Avatar config={p.avatar} size={40} label={t("avatar.of", { name })} />
-                <div className="flex min-w-0 flex-1 flex-col gap-px">
-                  <span className="truncate text-[16px] font-bold">{name}</span>
-                  {next ? <span className={`text-[12.5px] ${next.daysUntil <= 30 ? "font-bold text-accent" : "text-muted"}`}>{t("plan.nextDate", { event: eventName(next, t, locale), n: next.daysUntil })}</span> : null}
+            <section key={p.contactId} className={`card relative flex flex-col px-5 pb-3.5 pt-[26px] ${idx % 2 ? "rotate-[0.4deg]" : "-rotate-[0.4deg]"}`}>
+              {idx % 2 ? (
+                <>
+                  <Tape color="pink" className="-left-2.5 -top-1.5" />
+                  <Tape color="mint" className="-bottom-1 -right-2.5" />
+                </>
+              ) : (
+                <Tape color="mango" w={108} h={26} rotate={-3} alpha={0.62} className="-top-[13px] left-1/2 -ml-[54px]" />
+              )}
+              <div className="flex min-h-14 items-center gap-3">
+                <Avatar config={p.avatar} size={54} label={t("avatar.of", { name })} />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-[26px] leading-[1.2]">{name}</span>
+                  {next ? <span className={`text-[17px] ${next.daysUntil <= 30 ? "text-accent" : "text-muted"}`}>{t("plan.nextDate", { event: eventName(next, t, locale), n: next.daysUntil })}</span> : null}
                 </div>
-                <Link href={`/people/${p.contactId}/reminder`} className="flex min-h-11 items-center gap-0.5 text-[13px] font-medium text-muted">
+                <Link href={`/people/${p.contactId}/reminder`} className="flex min-h-11 items-center gap-px pl-2 text-[17px] text-muted">
                   {t("plan.seeHints")}
-                  <Icon name="chevron" size={16} />
+                  <Icon name="chevron" size={18} />
                 </Link>
               </div>
-              {rows.length ? (
-                rows.map((r) => (
-                  <div key={r.label} className="flex gap-3 border-t border-rule py-2.5">
-                    <span className="w-[84px] shrink-0 text-[12.5px] text-muted">{r.label}</span>
-                    <span className={`min-w-0 flex-1 text-[14.5px] font-medium leading-[1.45] ${r.strike ? "text-muted line-through decoration-red" : ""}`}>{r.value}</span>
-                  </div>
-                ))
+              <div className="mt-2.5">
+                {rows.length ? (
+                  rows.map((r) => (
+                    <div key={r.label} className="flex gap-3 border-t border-dashed border-rule-strong pb-3 pt-[11px]">
+                      <span className="w-[84px] shrink-0 text-[16px] leading-[1.5] text-muted">{r.label}</span>
+                      <span className={`min-w-0 flex-1 text-[20px] leading-[1.4] ${r.strike ? "text-muted line-through decoration-red decoration-2" : ""}`}>{r.value}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="border-t border-dashed border-rule-strong py-3 text-[17px] text-muted">{t("plan.giftNone")}</p>
+                )}
+              </div>
+              {picksOn && picks ? <div className="-mx-5 border-t border-dashed border-rule-strong pb-2">{picks.row(p, name, next)}</div> : null}
+              {idx % 2 ? (
+                <>
+                  <Star size={20} rotate={-12} color="#FFC23D" className="-top-2.5 right-[70px]" />
+                  <Squiggle w={54} width={2.4} color="#F59BAE" className="-bottom-[9px] left-6" />
+                </>
               ) : (
-                <p className="border-t border-rule py-3 text-[13.5px] text-muted">{t("plan.giftNone")}</p>
+                <>
+                  <Heart size={28} rotate={16} className="-right-[9px] top-11" />
+                  <Star size={20} rotate={-12} color={SKY_STAR} className="-left-2 top-[190px]" />
+                </>
               )}
-              {picksOn && picks ? <div className="-mx-5 border-t border-rule pb-2">{picks.row(p, name, next)}</div> : null}
             </section>
           );
         })}

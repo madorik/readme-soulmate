@@ -12,5 +12,5 @@ export async function loadPersonEdit({ params, searchParams }: PageInput): Promi
   const s = await requireSession();
   const p = (await listPeople(s)).find((x) => x.contactId === id);
   if (!p) notFound();
-  return { locale: s.profile.locale, contactId: p.contactId, name: displayName(p), card: p.card, open: isSection(open) ? open : null };
+  return { locale: s.profile.locale, contactId: p.contactId, name: displayName(p), avatar: p.avatar, card: p.card, open: isSection(open) ? open : null };
 }

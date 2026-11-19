@@ -36,8 +36,8 @@ import { Icon, MarkerCircle } from "./marks";
 function Row({ label, children, center = false }: { label: string; children: React.ReactNode; center?: boolean }) {
   return (
     <div className={`flex gap-3 py-[7px] ${center ? "items-center" : ""}`}>
-      <span className={`w-[88px] shrink-0 text-[13.5px] text-muted ${center ? "" : "pt-[2px]"}`}>{label}</span>
-      <span className="min-w-0 flex-1 text-[15px] font-medium leading-[1.5]">{children}</span>
+      <span className={`w-[92px] shrink-0 text-[16px] leading-[1.2] text-muted ${center ? "" : "pt-[2px]"}`}>{label}</span>
+      <span className="min-w-0 flex-1 text-[19px] leading-[1.4]">{children}</span>
     </div>
   );
 }
@@ -60,18 +60,18 @@ export function SectionBody({ section, card, today, locale, t }: { section: Sect
           {allergens.length ? (
             <div className="flex flex-wrap items-baseline gap-x-[24px] gap-y-3 pb-2.5 pl-2.5 pt-2.5">
               {allergens.map((c) => (
-                <span key={c} className="relative text-[22px] font-bold tracking-[-0.03em] text-red">
+                <span key={c} className="relative text-[24px] text-red">
                   {labelOf(ALLERGENS, c, locale)}
                   <MarkerCircle color="warn" pad={[11, 6]} width={2} />
                 </span>
               ))}
-              <span className="text-[14px] font-medium text-red">{t("person.allergy")}</span>
+              <span className="text-[16px] text-red">{t("person.allergy")}</span>
             </div>
           ) : null}
           {s.allergens.includes(NONE) ? <Row label={t("safety.allergens")}>{labelOf(ALLERGENS, NONE, locale)}</Row> : null}
           {s.dislikes.length ? <Row label={t("person.wontEat")}>{codes(DISLIKES, s.dislikes)}</Row> : null}
           {s.diets.length ? <Row label={t("person.diet")}>{codes(DIETS, s.diets)}</Row> : null}
-          {s.allergyNote ? <p className="py-[7px] text-[15px] leading-[1.6]">“{s.allergyNote}”</p> : null}
+          {s.allergyNote ? <p className="py-[7px] text-[18px] leading-[1.5]">“{s.allergyNote}”</p> : null}
         </>
       );
     }
@@ -85,7 +85,7 @@ export function SectionBody({ section, card, today, locale, t }: { section: Sect
           {x.spicy != null ? (
             <Row label={t("person.spicy")} center>
               <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                <ChiliMeter level={x.spicy} size={18} />
+                <ChiliMeter level={x.spicy} size={19} />
                 {SPICY_LEVELS[x.spicy]?.[locale]}
               </span>
             </Row>
@@ -115,13 +115,13 @@ export function SectionBody({ section, card, today, locale, t }: { section: Sect
       return (
         <div className="flex flex-wrap gap-2 pb-1 pt-1.5">
           {cells.map((c) => (
-            <div key={c.label} className="flex min-w-[100px] flex-col gap-1 rounded-2xl bg-fill px-3.5 py-2.5">
-              <span className="text-[12px] font-medium text-muted">{c.label}</span>
+            <div key={c.label} className="flex min-w-[100px] flex-col gap-1 rounded-[10px] bg-sky-soft px-3.5 py-2.5">
+              <span className="text-[15px] text-muted">{c.label}</span>
               <span className="flex items-baseline gap-1">
-                <span className="num text-[26px] font-light leading-none">{c.value}</span>
-                <span className="text-[12.5px] font-medium">{c.unit}</span>
+                <span className="num text-[28px] leading-none">{c.value}</span>
+                <span className="text-[15px]">{c.unit}</span>
               </span>
-              {c.hint ? <span className="text-[11.5px] text-ink-2">{c.hint}</span> : null}
+              {c.hint ? <span className="text-[16px] text-ink-2">{c.hint}</span> : null}
             </div>
           ))}
         </div>
@@ -221,11 +221,11 @@ export function SectionBody({ section, card, today, locale, t }: { section: Sect
                 <span className="flex flex-col gap-0.5">
                   {what && pet.name ? <span>{what}</span> : pet.breed && !pet.name ? <span>{pet.breed}</span> : null}
                   {pet.treats.length ? (
-                    <span className="text-[14px] text-ink-2">
+                    <span className="text-[16px] text-ink-2">
                       {t("pets.treats")} · {pet.treats.join(and)}
                     </span>
                   ) : null}
-                  {pet.note ? <span className="text-[14px] text-muted">{pet.note}</span> : null}
+                  {pet.note ? <span className="text-[16px] text-muted">{pet.note}</span> : null}
                 </span>
               </Row>
             );

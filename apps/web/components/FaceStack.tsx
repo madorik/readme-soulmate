@@ -20,7 +20,7 @@ export function FaceStack({ faces, size }: { faces: { key: string; avatar: Avata
             .slice(shown.length)
             .map((f) => f.label)
             .join(", ")}
-          className="num flex items-center justify-center rounded-full bg-ink !font-bold text-white shadow-[0_0_0_1.5px_#fff]"
+          className="num flex items-center justify-center rounded-full bg-ink text-white shadow-[0_0_0_1.5px_#fff]"
           style={{ width: size, height: size, marginLeft: -size * 0.36, fontSize: Math.round(size * 0.42) }}
         >
           +{rest}

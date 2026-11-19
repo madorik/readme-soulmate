@@ -60,7 +60,7 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share, sourc
               role="tab"
               aria-selected={on}
               onClick={() => go(i)}
-              className={`flex h-10 shrink-0 items-center rounded-full px-3.5 text-[13.5px] font-bold ${on ? "chip-on" : "bg-white text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
+              className={`flex h-11 shrink-0 items-center rounded-full px-3.5 text-[17px] ${on ? "chip-on" : "bg-white text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
             >
               {b.label}
             </button>
@@ -103,7 +103,7 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share, sourc
         >
           {cur.items.map((it) => (
             <li key={it.id}>
-              <a href={it.url} target="_blank" rel="sponsored noopener noreferrer" draggable={false} onClick={() => beacon("gift_click", { i: it.id, b: cur.band, s: source })} className="flex items-start gap-3 rounded-2xl bg-white p-3 ring-1 ring-rule active:bg-fill">
+              <a href={it.url} target="_blank" rel="sponsored noopener noreferrer" draggable={false} onClick={() => beacon("gift_click", { i: it.id, b: cur.band, s: source })} className="flex items-start gap-3 rounded-[10px] bg-white p-3 shadow-[inset_0_0_0_1.5px_var(--color-ink)] active:bg-fill">
                 <span aria-hidden="true" className="h-[76px] w-[76px] shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-rule">
                   {it.image ? (
                     // 쿠팡 이미지 주소를 그대로(이미지 최적화 서버를 거치지 않게)
@@ -117,14 +117,14 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label, share, sourc
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
                   <span className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[15.5px] font-bold tracking-[-0.01em]">{it.title}</span>
+                    <span className="truncate text-[20px] leading-[1.25]">{it.title}</span>
                     <Icon name="external" size={15} className="shrink-0 text-muted" />
                   </span>
                   {it.basis?.length ? <BasisTags words={it.basis} /> : null}
                   {it.reason ? (
-                    <span className="line-clamp-3 text-[13.5px] leading-[1.5] text-ink-2">{it.reason}</span>
+                    <span className="line-clamp-3 text-[16px] leading-[1.45] text-muted">{it.reason}</span>
                   ) : it.name ? (
-                    <span className="line-clamp-2 text-[13px] leading-[1.45] text-muted">{it.name}</span>
+                    <span className="line-clamp-2 text-[15px] leading-[1.4] text-muted">{it.name}</span>
                   ) : null}
                 </span>
               </a>
@@ -141,7 +141,7 @@ export function BasisTags({ words }: { words: string[] }) {
   return (
     <span className="flex flex-wrap gap-1">
       {words.map((w) => (
-        <span key={w} className="flex h-[22px] items-center rounded-full bg-sky-soft px-2 text-[11.5px] font-bold text-accent">
+        <span key={w} className="flex h-6 items-center rounded-full bg-[#d3e9ff] pb-px px-2.5 text-[15px] text-ink">
           {w}
         </span>
       ))}

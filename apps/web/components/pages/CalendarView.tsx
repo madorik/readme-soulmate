@@ -1,6 +1,7 @@
 import { addDays, daysInMonth, diffDays, formatDayFull, formatSpec, monthName, sameYmd, solarToLunar, weekday, weekdayNames, type UpcomingEvent, type YMD } from "@readme/core";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
+import { HandCircle, Heart, Sparkle, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { FaceStack } from "@/components/FaceStack";
 import { TabBar } from "@/components/chrome";
 import { Icon } from "@/components/marks";
@@ -47,27 +48,28 @@ export function CalendarView({ locale, today, cur, people, ai }: CalendarData) {
         {isThisMonth ? (
           <span className="w-11" />
         ) : (
-          <Link href="/calendar" className="pill relative !h-9 !px-3.5 text-[13.5px] before:absolute before:-inset-y-1 before:inset-x-0">
+          <Link href="/calendar" className="pill relative !h-9 !px-3.5 text-[15px] before:absolute before:-inset-y-1 before:inset-x-0">
             {t("cal.thisMonth")}
           </Link>
         )}
       </div>
 
-      <div className="flex items-center justify-between px-3 pt-1">
-        <Link href={`/calendar?m=${monthKey(shift(cur, -1))}`} aria-label={t("cal.prev")} className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1.5px_var(--color-rule)]">
+      <div className="relative flex items-center justify-between px-3 pt-1">
+        <Link href={`/calendar?m=${monthKey(shift(cur, -1))}`} aria-label={t("cal.prev")} className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]">
           <Icon name="back" size={20} strokeWidth={2} />
         </Link>
         <div className="flex flex-col items-center gap-0.5">
-          <h1 className="headline text-[24px]">{title}</h1>
-          {lunarRange ? <span className="text-[12.5px] font-medium text-muted">{t("cal.lunar", { m: lunarRange })}</span> : null}
+          <h1 className="hl px-1 text-[31px] font-normal leading-[1.15]">{title}</h1>
+          {lunarRange ? <span className="text-[15px] text-muted">{t("cal.lunar", { m: lunarRange })}</span> : null}
         </div>
-        <Link href={`/calendar?m=${monthKey(shift(cur, 1))}`} aria-label={t("cal.next")} className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1.5px_var(--color-rule)]">
+        <Link href={`/calendar?m=${monthKey(shift(cur, 1))}`} aria-label={t("cal.next")} className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]">
           <Icon name="chevron" size={20} strokeWidth={2} />
         </Link>
+        <Star size={20} rotate={-14} className="left-[76px] top-0.5" />
       </div>
 
-      <section aria-label={title} className="card mx-4 mt-4 px-1.5 pb-2 pt-3.5">
-        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] pb-1.5 text-center text-[12px] font-bold">
+      <section aria-label={title} className="card relative mx-4 mt-5 px-2 pb-2 pt-4">
+        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))] pb-1.5 text-center text-[16px]">
           {names.map((n, i) => (
             <span key={n} className={i === 0 ? "text-red" : i === 6 ? "text-sat" : "text-muted"}>
               {n}
@@ -75,67 +77,91 @@ export function CalendarView({ locale, today, cur, people, ai }: CalendarData) {
           ))}
         </div>
         <ol className="grid grid-cols-[repeat(7,minmax(0,1fr))]">
-          {cells.map((day) => {
+          {cells.map((day, i) => {
             const inMonth = day.m === cur.m;
             const wd = weekday(day);
             const isToday = sameYmd(day, today);
             const dayEvents = inMonth ? events.filter((e) => sameYmd(e.date, day)) : [];
+            const past = diffDays(today, day) < 0;
             const lunar = solarToLunar(day);
             return (
-              <li key={`${day.m}-${day.d}`} className="flex min-h-[78px] flex-col items-center gap-1 border-t border-rule pt-2">
+              <li key={`${day.m}-${day.d}`} className={`flex h-[76px] flex-col items-center gap-px border-dashed border-rule pt-[5px] ${i >= 7 ? "border-t" : ""} ${wd ? "border-l" : ""} ${inMonth ? "" : "opacity-40"}`}>
                 <span
-                  className={`num flex h-8 w-8 items-center justify-center rounded-full text-[15px] ${inMonth ? "" : "opacity-35"} ${
-                    isToday ? "grad !font-bold" : dayEvents.length ? "chip-on !font-bold" : wd === 0 ? "font-semibold text-red" : wd === 6 ? "font-semibold text-sat" : "font-semibold"
-                  }`}
+                  className={`num relative flex h-[30px] w-[34px] items-center justify-center rounded-full text-[20px] ${
+                    isToday ? "" : dayEvents.length ? (past ? "bg-postit/60" : "bg-postit") : ""
+                  } ${wd === 0 && !isToday ? "text-red" : wd === 6 && !isToday ? "text-sat" : ""}`}
                 >
+                  {isToday ? <HandCircle w={40} h={36} className="-left-[3px] -top-[3px]" /> : null}
                   {day.d}
                 </span>
-                <span className={`num whitespace-nowrap text-[12px] !font-semibold text-muted ${lunar?.leap ? "tracking-[-0.05em]" : ""} ${inMonth ? "" : "opacity-35"}`}>{lunar ? `${lunar.leap ? "윤" : ""}${lunar.m}.${lunar.d}` : ""}</span>
-                <FaceStack faces={dayEvents.map((e) => ({ key: `${e.contactId}-${e.kind}-${e.label ?? ""}`, avatar: who(e)?.avatar ?? null, label: eventName(e, t, locale) }))} size={20} />
+                <span className={`num whitespace-nowrap text-[12px] leading-[14px] text-muted ${lunar?.leap ? "tracking-[-0.05em]" : ""}`}>{lunar ? `${lunar.leap ? "윤" : ""}${lunar.m}.${lunar.d}` : ""}</span>
+                <span className={`relative flex h-[26px] items-center justify-center ${past ? "opacity-50" : ""}`}>
+                  <FaceStack faces={dayEvents.map((e) => ({ key: `${e.contactId}-${e.kind}-${e.label ?? ""}`, avatar: who(e)?.avatar ?? null, label: eventName(e, t, locale) }))} size={25} />
+                  {dayEvents.length ? <Heart size={13} rotate={14} className="-top-[5px] right-0.5" /> : null}
+                </span>
               </li>
             );
           })}
         </ol>
+        <Tape color="pink" className="-left-2.5 -top-1.5" />
+        <Tape color="mint" className="-bottom-1 -right-2.5" />
+        <Heart size={24} rotate={16} className="-right-2 top-10" />
+        <Squiggle w={54} width={2.4} className="-bottom-2 left-[70px]" />
+        <Sparkle size={18} className="-left-1.5 bottom-[120px]" />
       </section>
 
-      <section aria-label={t("cal.events")} className="mx-4 mt-5">
-        <h2 className="flex items-baseline gap-1.5 pb-2 pl-1.5 text-[15px] font-bold">
-          {t("cal.events")}
-          <span className="num text-[13px] !font-bold text-muted">{events.length}</span>
-        </h2>
+      <section aria-label={t("cal.events")} className="relative mx-4 mt-[26px]">
+        <div className="flex items-center gap-2.5 pb-2.5 pl-1.5">
+          <h2 className="text-[22px] font-normal">{t("cal.events")}</h2>
+          <span className="num -rotate-3 rounded-full bg-[#fff0c9] px-[11px] pb-[3px] pt-0.5 text-[16px] shadow-[inset_0_0_0_1.5px_var(--color-ink)]">{events.length}</span>
+        </div>
         {events.length ? (
-          <ul className="card flex flex-col px-3.5">
-            {events.map((e) => {
-              const p = who(e);
-              const name = eventName(e, t, locale);
-              const left = diffDays(today, e.date);
-              const badge = left === 0 ? t("start.today") : left > 0 ? `D-${left}` : t("cal.passed");
-              return (
-                <li key={`${e.contactId}-${e.kind}-${e.label ?? ""}`} className="border-t border-rule first:border-t-0">
-                  <Link href={hintHref(e)} className="flex min-h-[70px] items-center gap-3">
-                    <Avatar config={p?.avatar ?? null} size={44} label={name} />
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate text-[15.5px] font-bold">{name}</span>
-                      <span className="truncate text-[12.5px] text-muted">
-                        {e.spec.calendar === "lunar" ? `${formatSpec(e.spec, locale)}${t("common.and")}` : ""}
-                        {formatDayFull(e.date, locale)}
+          <div className="card relative px-3.5 py-1">
+            <Tape color="mango" w={84} h={22} rotate={4} alpha={0.62} className="-top-[11px] right-[34px]" />
+            <ul className="flex flex-col">
+            {(() => {
+              const firstUp = events.findIndex((e) => diffDays(today, e.date) >= 0);
+              return events.map((e, i) => {
+                const p = who(e);
+                const name = eventName(e, t, locale);
+                const left = diffDays(today, e.date);
+                const badge = left === 0 ? t("start.today") : left > 0 ? `D-${left}` : t("cal.passed");
+                return (
+                  <li key={`${e.contactId}-${e.kind}-${e.label ?? ""}`} className="border-t border-dashed border-rule first-of-type:border-t-0">
+                    <Link href={hintHref(e)} className="flex min-h-[70px] items-center gap-3">
+                      <span className={`flex shrink-0 ${left < 0 ? "opacity-55" : ""}`}>
+                        <Avatar config={p?.avatar ?? null} size={46} label={name} />
                       </span>
-                    </span>
-                    <span className={`num shrink-0 rounded-full px-2.5 py-1 text-[12px] !font-bold ${left >= 0 ? "grad" : "bg-fill text-muted"}`}>{badge}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                      <span className="flex min-w-0 flex-1 flex-col gap-px">
+                        <span className="truncate text-[20px] leading-[1.25]">{name}</span>
+                        <span className="truncate text-[15px] text-muted">
+                          {e.spec.calendar === "lunar" ? `${formatSpec(e.spec, locale)}${t("common.and")}` : ""}
+                          {formatDayFull(e.date, locale)}
+                        </span>
+                      </span>
+                      <span
+                        className={`num shrink-0 rounded-full px-3 pb-1 pt-[3px] text-[16px] shadow-[inset_0_0_0_1.5px_var(--color-ink)] ${left < 0 ? "bg-[#ece7d8]" : i === firstUp ? "bg-sky" : "bg-[#ffe4a3]"}`}
+                        style={left >= 0 ? { transform: `rotate(${i === firstUp ? -4 : 3}deg)` } : undefined}
+                      >
+                        {badge}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              });
+            })()}
+            </ul>
+          </div>
         ) : (
           <div className="card flex flex-col gap-1 px-5 py-5">
-            <span className="text-[15px] font-bold">{t("cal.empty")}</span>
-            <Link href="/request" className="flex min-h-11 items-center gap-0.5 self-start text-[14px] font-bold text-accent">
+            <span className="text-[18px]">{t("cal.empty")}</span>
+            <Link href="/request" className="flex min-h-11 items-center gap-0.5 self-start text-[17px] text-accent">
               {t("home.askDates")}
               <Icon name="chevron" size={16} strokeWidth={2.2} />
             </Link>
           </div>
         )}
+        {events.length ? <Star size={22} rotate={12} color={SKY_STAR} className="-right-[5px] top-[30px]" /> : null}
       </section>
 
       <div className="h-6" />

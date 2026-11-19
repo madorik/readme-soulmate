@@ -89,26 +89,26 @@ export function GiftActions({
   return (
     <>
       <div className="grid grid-cols-2 gap-2.5">
-        <button type="button" onClick={send} className="btn-outline">
+        <button type="button" onClick={send} className="btn-outline btn-outline-lift !text-[19px]">
           {state === "sent" ? labels.shared : state === "failed" ? (labels.copyFailed ?? labels.together) : labels.together}
         </button>
         <span role="status" className="sr-only">
           {state === "sent" ? labels.shared : state === "failed" ? labels.copyFailed : ""}
         </span>
         {shown ? (
-          <button type="button" onClick={() => setOpen(true)} aria-label={`${labels.done} · ${shown} · ${labels.doneEdit}`} className="btn-soft min-w-0 gap-1.5 !px-3">
+          <button type="button" onClick={() => setOpen(true)} aria-label={`${labels.done} · ${shown} · ${labels.doneEdit}`} className="btn-soft btn-outline-lift min-w-0 gap-1.5 !h-[52px] !rounded-2xl !px-3 !text-[19px]">
             <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-sky text-ink">
               <CheckGlyph size={11} />
             </span>
             <span className="truncate">{labels.done}</span>
           </button>
         ) : (
-          <button type="button" onClick={() => setOpen(true)} className="btn-primary">
+          <button type="button" onClick={() => setOpen(true)} className="btn-primary !text-[19px]">
             {labels.done}
           </button>
         )}
       </div>
-      {shown ? <p className="truncate px-1 text-center text-[13px] text-muted">{shown}</p> : null}
+      {shown ? <p className="truncate px-1 text-center text-[16px] text-muted">{shown}</p> : null}
       {open ? (
         <Sheet
           id="gift-done"
@@ -130,7 +130,7 @@ export function GiftActions({
                     type="button"
                     aria-pressed={gift === name}
                     onClick={() => setGift(name)}
-                    className={`flex h-10 items-center rounded-full px-3.5 text-[14px] font-bold ${gift === name ? "chip-on" : "bg-white text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
+                    className={`flex h-11 items-center rounded-full px-3.5 text-[17px] ${gift === name ? "chip-on" : "bg-white text-ink-2 shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
                   >
                     {name}
                   </button>

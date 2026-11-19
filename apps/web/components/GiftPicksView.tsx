@@ -19,12 +19,12 @@ function Row({ pick, pad, t, priceOf }: { pick: GiftPickData; pad: string; t: T;
     <div className="flex flex-col pt-3.5">
       <div className={`flex items-start justify-between gap-3 pb-2.5 ${pad}`}>
         <span className="flex min-w-0 flex-col gap-1 pt-1">
-          <span className="truncate text-[15.5px] font-bold tracking-[-0.01em]">{pick.keyword}</span>
+          <span className="truncate text-[22px] leading-[1.25]">{pick.keyword}</span>
           {pick.basis?.length ? <BasisTags words={pick.basis} /> : null}
-          <span className="line-clamp-3 text-[13.5px] leading-[1.5] text-ink-2">{pick.reason}</span>
+          <span className="line-clamp-3 text-[17px] leading-[1.45] text-muted">{pick.reason}</span>
         </span>
         {pick.products.length ? (
-          <a href={pick.more} target="_blank" rel="sponsored noopener noreferrer" aria-label={`${pick.keyword} ${t("picks.more")}`} className="-mr-1.5 flex min-h-11 shrink-0 items-center gap-0.5 pl-2 text-[13px] font-medium text-muted">
+          <a href={pick.more} target="_blank" rel="sponsored noopener noreferrer" aria-label={`${pick.keyword} ${t("picks.more")}`} className="-mr-1.5 flex min-h-11 shrink-0 items-center gap-0.5 whitespace-nowrap pl-2 text-[16px] text-muted">
             {t("picks.more")}
             <Icon name="chevron" size={15} />
           </a>
@@ -33,17 +33,17 @@ function Row({ pick, pad, t, priceOf }: { pick: GiftPickData; pad: string; t: T;
       {pick.products.length ? (
         <ul className={`${SCROLLER} ${pad === "px-5" ? "scroll-px-5" : "scroll-px-6"} ${pad}`}>
           {pick.products.map((p) => (
-            <li key={p.id} className="w-[124px] shrink-0 snap-start">
+            <li key={p.id} className="w-[116px] shrink-0 snap-start">
               <a href={p.url} target="_blank" rel="sponsored noopener noreferrer" className="flex flex-col">
-                <span className="block aspect-square overflow-hidden rounded-2xl bg-white ring-1 ring-rule">
+                <span className="block aspect-square overflow-hidden rounded-xl bg-white shadow-[inset_0_0_0_1.5px_var(--color-ink)]">
                   {/* 쿠팡 이미지 주소를 그대로(이미지 최적화 서버를 거치지 않게) */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={p.image} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" className="h-full w-full object-contain" />
                 </span>
-                <span className="mt-2 line-clamp-2 text-[13px] font-medium leading-[1.35] text-ink-2">{p.name}</span>
+                <span className="mt-2 line-clamp-2 text-[15px] leading-[1.3] text-muted">{p.name}</span>
                 <span className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
-                  <span className="num text-[14.5px] !font-bold">{priceOf(p.price)}</span>
-                  {p.rocket ? <span className="text-[11px] font-bold text-sat">{t("picks.rocket")}</span> : null}
+                  <span className="num text-[19px]">{priceOf(p.price)}</span>
+                  {p.rocket ? <span className="text-[14px] text-sat">{t("picks.rocket")}</span> : null}
                 </span>
               </a>
             </li>
@@ -51,9 +51,9 @@ function Row({ pick, pad, t, priceOf }: { pick: GiftPickData; pad: string; t: T;
         </ul>
       ) : (
         <div className={pad}>
-          <a href={pick.more} target="_blank" rel="sponsored noopener noreferrer" className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl bg-white px-4 text-[14px] font-bold ring-1 ring-rule">
+          <a href={pick.more} target="_blank" rel="sponsored noopener noreferrer" className="flex min-h-[52px] items-center justify-between gap-2 rounded-2xl bg-white px-4 text-[18px] shadow-[inset_0_0_0_1.5px_var(--color-ink)]">
             <span className="min-w-0 truncate">{pick.keyword}</span>
-            <span className="flex shrink-0 items-center gap-1 text-[13px] font-medium text-muted">
+            <span className="flex shrink-0 items-center gap-1 text-[16px] text-muted">
               {t("picks.coupang")}
               <Icon name="external" size={15} />
             </span>
@@ -70,7 +70,7 @@ function PeekRow({ pad, children }: { pad: string; children: React.ReactNode }) 
 }
 
 export function PicksDisclosure({ text, pad = "px-6" }: { text: string; pad?: string }) {
-  return <p className={`pt-4 text-[11.5px] leading-[1.5] text-muted ${pad}`}>{text}</p>;
+  return <p className={`pt-4 text-[14px] leading-[1.45] text-muted ${pad}`}>{text}</p>;
 }
 
 /** 이 사람에게 어울릴 선물(max: 찾을 말 몇 개까지). title이 없으면 제목·고지 없이 줄만(여러 사람 화면) */
@@ -95,7 +95,7 @@ export function GiftPicksBody({ picks, locale, pad = "px-6", title = true, again
     return (
       <>
         {again ? (
-          <Link href={`${again}${again.includes("?") ? "&" : "?"}skip=${next}#picks`} scroll={false} className="absolute right-3 top-[22px] flex h-10 items-center gap-1 rounded-full px-3 text-[13.5px] font-bold text-accent active:bg-sky-soft">
+          <Link href={`${again}${again.includes("?") ? "&" : "?"}skip=${next}#picks`} scroll={false} className="absolute right-3 top-[22px] flex h-11 items-center gap-1 rounded-full px-3 text-[17px] text-accent active:bg-sky-soft">
             <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 12a8 8 0 1 1-2.34-5.66" />
               <path d="M20 4v5h-5" />
@@ -105,9 +105,11 @@ export function GiftPicksBody({ picks, locale, pad = "px-6", title = true, again
         ) : null}
         {/* 무엇을 보고 어떻게 골랐는지, 얘기하듯 */}
         {title && note ? (
-          <p data-note="" className={`pt-1.5 text-[14.5px] leading-[1.6] text-ink-2 ${pad}`}>
-            {note}
-          </p>
+          <div className={`pt-3 ${pad}`}>
+            <p data-note="" className="rotate-[0.6deg] rounded-[3px] bg-postit px-3.5 pb-[13px] pt-3 text-[18px] leading-[1.5] shadow-[0_6px_12px_-9px_rgb(31_35_64/0.45)]">
+              {note}
+            </p>
+          </div>
         ) : null}
         {peekRow}
         <GiftLinkTabs

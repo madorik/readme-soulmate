@@ -4,14 +4,14 @@ import type { T } from "@/lib/i18n";
 /** 한 장 뜯어 쓰는 작은 달력: 위 띠에 달, 아래 큰 날. 한 달 안이면 띠가 망고 */
 function CalendarLeaf({ m, d, soon, locale }: { m: number; d: number; soon: boolean; locale: Locale }) {
   return (
-    <span aria-hidden="true" className="flex h-[58px] w-[54px] shrink-0 flex-col overflow-hidden rounded-[13px] bg-paper shadow-[0_0_0_1.5px_var(--color-edge)]">
-      <span className={`relative flex h-[19px] items-center justify-center text-[10.5px] font-bold ${soon ? "bg-sky text-ink" : "bg-fill text-ink-2"}`}>
+    <span aria-hidden="true" className="flex h-[58px] w-[54px] shrink-0 flex-col overflow-hidden rounded-[10px] bg-white shadow-[0_0_0_1.5px_var(--color-edge)]">
+      <span className={`relative flex h-5 items-center justify-center border-b-[1.5px] border-ink text-[14px] leading-none ${soon ? "bg-sky text-ink" : "bg-fill text-ink-2"}`}>
         {/* 고리 두 개 */}
         <span className="absolute -top-[3px] left-[12px] h-[7px] w-[3px] rounded-full bg-ink" />
         <span className="absolute -top-[3px] right-[12px] h-[7px] w-[3px] rounded-full bg-ink" />
         {monthName(m, locale)}
       </span>
-      <span className="num flex flex-1 items-center justify-center text-[25px] font-semibold tracking-[-0.03em]">{d}</span>
+      <span className="num flex flex-1 items-center justify-center text-[27px]">{d}</span>
     </span>
   );
 }
@@ -40,20 +40,20 @@ export function DateTiles({ dates, today, locale, t, className = "mx-6 mt-6" }: 
                 return n != null && n > 0 ? `${item.spec.year} · ${t("dates.years", { n })}` : String(item.spec.year);
               })();
         return (
-          <li key={i} className="flex items-center gap-3.5 rounded-2xl bg-fill py-2.5 pl-2.5 pr-3.5">
+          <li key={i} className="flex items-center gap-3.5 rounded-[10px] bg-sky-soft py-2.5 pl-2.5 pr-3.5">
             <CalendarLeaf m={next ? next.date.m : item.spec.month} d={next ? next.date.d : item.spec.day} soon={soon} locale={locale} />
             <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
               <div className="flex items-start gap-2">
-                <span className="line-clamp-2 min-w-0 flex-1 text-[15.5px] font-bold leading-[1.35] tracking-[-0.02em]">{item.label}</span>
+                <span className="line-clamp-2 min-w-0 flex-1 text-[21px] leading-[1.25]">{item.label}</span>
                 {next ? (
-                  <span className={`num shrink-0 rounded-full px-2.5 py-[5px] text-[12px] font-bold ${soon ? "grad" : "bg-paper text-muted"}`}>
+                  <span className={`num shrink-0 -rotate-3 rounded-full px-[11px] pb-[3px] pt-0.5 text-[16px] shadow-[inset_0_0_0_1.5px_var(--color-ink)] ${soon ? "bg-sky" : "bg-white text-muted"}`}>
                     {next.daysUntil === 0 ? t("start.today") : `D-${next.daysUntil}`}
                   </span>
                 ) : null}
               </div>
               {next ? <span className="sr-only">{formatDayFull(next.date, locale)}</span> : null}
-              <span className="truncate text-[13px] font-medium text-ink-2">{when}</span>
-              {years ? <span className="truncate text-[12.5px] text-muted">{years}</span> : null}
+              <span className="truncate text-[16px] text-muted">{when}</span>
+              {years ? <span className="truncate text-[15px] text-muted">{years}</span> : null}
             </div>
           </li>
         );

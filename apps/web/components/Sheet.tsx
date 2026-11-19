@@ -120,7 +120,7 @@ export function Sheet({
       >
         <div className="flex shrink-0 items-center gap-2.5 pb-1 pl-6 pr-2 pt-3">
           {icon}
-          <h2 id={id} className="min-w-0 flex-1 truncate text-[17px] font-bold tracking-[-0.02em]">
+          <h2 id={id} className="min-w-0 flex-1 truncate text-[21px]">
             {title}
           </h2>
           <button type="button" aria-label={closeLabel} onClick={onClose} className="flex h-11 w-11 shrink-0 items-center justify-center text-muted">

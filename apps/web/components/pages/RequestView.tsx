@@ -1,6 +1,7 @@
 import { leaveTour } from "@/app/actions/tour";
 import { RequestForm } from "@/app/(app)/request/RequestForm";
 import { TopBar } from "@/components/chrome";
+import { Star } from "@/components/diary";
 import type { RequestData } from "@/lib/pages/types";
 import { makeT } from "@/lib/t";
 
@@ -19,19 +20,22 @@ export function RequestView({ locale, people, fixed, initialName, defaults, tour
             <form action={leaveTour}>
               <input type="hidden" name="kind" value="skip" />
               <input type="hidden" name="source" value="ask" />
-              <button className="flex min-h-11 items-center px-3 text-[14px] font-bold text-muted">{t("common.skip")}</button>
+              <button className="flex min-h-11 items-center px-3 text-[14px] text-muted">{t("common.skip")}</button>
             </form>
           ) : undefined
         }
       />
       {tour ? (
         <section className="mx-4 mt-1 flex flex-col gap-1 rounded-3xl bg-sky-soft px-5 py-4">
-          <span className="num text-[12px] font-bold text-accent">{t("tour.page", { n: tour.n, total: tour.total })}</span>
+          <span className="num text-[12px] text-accent">{t("tour.page", { n: tour.n, total: tour.total })}</span>
           <h1 className="headline text-[22px]">{fixed ? t("request.titleTo", { name: fixed.label }) : t("tour.ask.title")}</h1>
           <p className="text-[14.5px] leading-[1.6] text-ink-2">{t("tour.ask.body")}</p>
         </section>
       ) : (
-        <h1 className="headline px-6 pt-1 text-[28px]">{fixed ? t("request.titleTo", { name: fixed.label }) : t("request.title")}</h1>
+        <div className="relative px-6 pt-1.5">
+          <h1 className="hl inline-block px-1 text-[34px] font-normal leading-[1.2]">{fixed ? t("request.titleTo", { name: fixed.label }) : t("request.title")}</h1>
+          <Star size={22} rotate={14} className="left-[150px] top-0.5" />
+        </div>
       )}
       <RequestForm locale={locale} people={people} fixed={fixed?.id ?? null} initialName={initialName} defaults={defaults} tour={!!tour} />
     </div>

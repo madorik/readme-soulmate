@@ -1,4 +1,5 @@
 import { TopBar } from "@/components/chrome";
+import { Star } from "@/components/diary";
 import { SectionForm } from "@/components/editors/SectionForm";
 import type { MeEditSectionData } from "@/lib/pages/types";
 import { makeT } from "@/lib/t";
@@ -8,9 +9,11 @@ export function MeEditSectionView({ locale, section, card }: MeEditSectionData) 
   return (
     <div className="flex flex-1 flex-col">
       <TopBar back={`/me/edit?open=${section}`} label={t("common.back")} />
-      <div className="flex flex-col gap-1.5 px-6 pt-2">
-        <h1 className="headline text-[28px]">{t(`section.${section}` as "section.safety")}</h1>
-        <p className="text-[14px] leading-[1.5] text-muted">{t(`section.${section}.sub` as "section.safety.sub")}</p>
+      <div className="relative px-6 pt-1.5">
+        <h1 className="text-[32px] font-normal leading-[1.3]">
+          <span className="hl px-1">{t(`section.${section}` as "section.safety")}</span>
+        </h1>
+        <Star size={22} rotate={14} className="right-9 top-1.5" />
       </div>
       <SectionForm section={section} initial={card[section] ?? null} locale={locale} />
     </div>

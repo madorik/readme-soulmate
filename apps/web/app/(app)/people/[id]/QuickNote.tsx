@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
 import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/CaptureBadge";
+import { MarginLine, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
 
 /**
@@ -36,13 +37,15 @@ export function QuickNote({
   const error = result?.error === "ai_off" ? labels.aiOff : result?.error === "nothing" ? labels.nothing : result?.error === "limit" ? labels.limit : result?.error ? labels.failed : null;
 
   return (
-    <div className="card mx-4 mt-5 flex flex-col p-1.5">
+    <div className="card ruled relative mx-4 mt-[22px] flex flex-col pb-3 pl-[42px] pr-3 pt-3">
+      <MarginLine />
+      <Tape color="mint" w={74} h={22} rotate={-8} alpha={0.55} vertical className="-top-2.5 left-3.5" />
       <form
         onSubmit={(e) => {
           e.preventDefault();
           submit();
         }}
-        className="flex items-end gap-1.5"
+        className="flex items-center gap-2"
       >
         <textarea
           value={text}
@@ -58,13 +61,13 @@ export function QuickNote({
           enterKeyHint="send"
           placeholder={labels.placeholder}
           aria-label={labels.placeholder}
-          className="max-h-36 min-h-12 flex-1 resize-none bg-transparent py-[13px] pl-3.5 text-[15.5px] leading-[1.4] outline-none [field-sizing:content] placeholder:text-muted"
+          className="max-h-36 min-h-12 min-w-0 flex-1 resize-none border-0 border-b-[1.5px] border-dashed border-ink bg-transparent px-0.5 py-[11px] text-[19px] leading-[1.3] outline-none [field-sizing:content] placeholder:text-muted"
         />
         <button
           type="submit"
           aria-label={labels.save}
           disabled={!text.trim() || pending}
-          className="mb-0.5 mr-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky text-ink transition-colors disabled:bg-fill disabled:text-muted"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky text-ink shadow-[inset_0_0_0_1.5px_var(--color-ink)] transition-colors disabled:bg-fill disabled:text-muted"
         >
           {pending ? <span className="h-[18px] w-[18px] animate-spin rounded-full border-[2.5px] border-current border-t-transparent" /> : <Icon name="up" size={20} strokeWidth={2.4} />}
         </button>
@@ -73,15 +76,15 @@ export function QuickNote({
       {result ? (
         <div role="status" aria-live="polite" className="mx-2 border-t border-rule pb-0.5 pt-1.5">
           {error ? (
-            <p className="py-2 text-[14px] text-red">{error}</p>
+            <p className="py-2 text-[16px] text-red">{error}</p>
           ) : (
             <div className="flex items-end gap-2">
               <ul className={`flex min-w-0 flex-1 flex-col py-1 ${undone ? "opacity-40" : ""}`}>
                 {result.lines.map((l, i) => (
-                  <li key={i} className="flex min-h-8 items-center gap-2 text-[14.5px]">
+                  <li key={i} className="flex min-h-8 items-center gap-2 text-[17px]">
                     <Icon name="check" size={15} strokeWidth={2.6} className={`shrink-0 ${l.same ? "text-muted" : "text-ok"}`} />
                     <span className="shrink-0 text-muted">{l.href === self ? l.field : `${l.who} · ${l.field}`}</span>
-                    <span className={`min-w-0 flex-1 truncate font-bold ${struck(l)}`}>{l.value}</span>
+                    <span className={`min-w-0 flex-1 truncate ${struck(l)}`}>{l.value}</span>
                     <CaptureBadge line={l} labels={labels} />
                   </li>
                 ))}
@@ -96,7 +99,7 @@ export function QuickNote({
                       if (r.ok) setUndone(true);
                     })
                   }
-                  className="flex min-h-11 shrink-0 items-center px-1.5 text-[13.5px] font-bold text-muted disabled:opacity-60"
+                  className="flex min-h-11 shrink-0 items-center px-1.5 text-[16px] text-muted disabled:opacity-60"
                 >
                   {undone ? labels.undone : labels.undo}
                 </button>

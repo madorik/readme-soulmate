@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FolderSheets } from "@/app/(app)/people/folder/[id]/FolderSheets";
 import { TopBar } from "@/components/chrome";
 import { FolderArt } from "@/components/FolderArt";
+import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
 import { RowBody } from "@/components/PersonRow";
 import { folderSheetLabels } from "@/lib/folders";
@@ -16,9 +17,7 @@ export function FolderView({ locale, folder, rows, byName, memberIds, people, op
   const withParam = (key: string) => `${here}${byName ? "&" : "?"}${key}=1`;
   const faces = rows.map((r) => ({ key: r.contactId, avatar: r.avatar, label: r.name }));
   const picked = `?with=${memberIds.join(",")}&me=1`;
-  // 보이는 칩은 40px, 누르는 자리는 위아래 2px씩 넓혀 44px(before)
-  const chip = (on: boolean) =>
-    `relative flex h-10 items-center rounded-full px-[15px] text-[14.5px] before:absolute before:-inset-y-0.5 before:inset-x-0 ${on ? "chip-on" : "bg-fill font-medium"}`;
+  const chip = (on: boolean) => `chip !px-[17px] ${on ? "chip-on" : ""}`;
 
   return (
     <>
@@ -32,16 +31,21 @@ export function FolderView({ locale, folder, rows, byName, memberIds, people, op
         }
       />
 
-      <div className="flex items-center gap-[18px] px-6 pt-2.5">
-        <FolderArt icon={folder.icon} color={folder.color} size={116} faces={faces} />
+      <div className="relative flex items-center gap-[22px] px-6 pt-3.5">
+        <span className="relative shrink-0 -rotate-3">
+          <FolderArt icon={folder.icon} color={folder.color} size={132} faces={faces} />
+          <Tape color="pink" w={54} h={18} rotate={-38} className="-left-3.5 top-3.5" />
+        </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h1 className="line-clamp-2 break-words text-[28px] font-bold leading-[1.2] tracking-[-0.03em] min-[390px]:text-[32px]">{folder.name}</h1>
-          <span className="text-[14px] text-muted">{t("folder.count", { n: memberIds.length })}</span>
+          <h1 className="hl line-clamp-2 self-start break-words px-1 text-[40px] font-normal leading-[1.15]">{folder.name}</h1>
+          <span className="pl-1 text-[19px] text-muted">{t("folder.count", { n: memberIds.length })}</span>
         </div>
+        <Star size={22} rotate={14} className="right-[38px] top-0.5" />
+        <Heart size={24} rotate={14} className="right-[22px] top-[82px]" />
       </div>
 
       {memberIds.length > 1 ? (
-        <div className="flex gap-2 px-5 pb-3 pt-[22px]">
+        <div className="flex gap-2 px-5 pb-3 pt-6">
           <Link href={`/people/folder/${folder.id}`} replace scroll={false} aria-current={!byName ? "true" : undefined} className={chip(!byName)}>
             {t("folder.sortSoon")}
           </Link>
@@ -53,29 +57,34 @@ export function FolderView({ locale, folder, rows, byName, memberIds, people, op
         <div className="h-5" />
       )}
 
-      <ul className="card mx-4 flex flex-col px-3.5">
+      <div className="card relative mx-4 px-3.5">
+        <Tape color="mango" w={84} h={22} rotate={4} alpha={0.62} className="-top-[11px] right-[34px]" />
+        <ul className="flex flex-col">
         {rows.map((r) => (
-          <li key={r.contactId} className="border-t border-rule first:border-t-0">
-            <Link href={`/people/${r.contactId}?back=${encodeURIComponent(here)}`} className="flex min-h-[70px] items-center gap-3">
+          <li key={r.contactId} className="border-t border-dashed border-rule first-of-type:border-t-0">
+            <Link href={`/people/${r.contactId}?back=${encodeURIComponent(here)}`} className="flex min-h-[72px] items-center gap-3">
               <RowBody row={r} avatarLabel={t("avatar.of", { name: r.name })} />
             </Link>
           </li>
         ))}
-        <li className="border-t border-rule first:border-t-0">
-          <Link href={withParam("add")} scroll={false} className="flex min-h-[70px] items-center gap-3 text-accent">
-            <span className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_2px_var(--color-mango-edge)]">
+        <li className="border-t border-dashed border-rule first-of-type:border-t-0">
+          <Link href={withParam("add")} scroll={false} className="flex min-h-[72px] items-center gap-3 text-accent">
+            <span className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full border-[1.8px] border-dashed border-ink text-ink">
               <Icon name="plus" size={20} strokeWidth={2.2} />
             </span>
-            <span className="text-[16px] font-bold">{t("folder.addPeople")}</span>
+            <span className="text-[20px]">{t("folder.addPeople")}</span>
           </Link>
         </li>
-      </ul>
+        </ul>
+        <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[7px] top-24" />
+        <Squiggle w={54} width={2.4} color="#F59BAE" className="-bottom-2 right-[26px]" />
+      </div>
 
       {memberIds.length ? (
         <>
           <div className="h-6" />
           <div className="bottom-bar mt-auto grid grid-cols-2 gap-2.5 bg-bg px-6 pt-4">
-            <Link href={`/plan/gift${picked}`} className="btn-outline">
+            <Link href={`/plan/gift${picked}`} className="btn-outline btn-outline-lift">
               {t("plan.gift")}
             </Link>
             <Link href={`/plan/menu${picked}`} className="btn-primary">
