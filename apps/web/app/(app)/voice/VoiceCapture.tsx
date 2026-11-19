@@ -4,6 +4,7 @@ import type { AvatarConfig, Locale } from "@readme/core";
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
+import { trackTour } from "@/app/actions/tour";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/marks";
 import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/CaptureBadge";
@@ -321,7 +322,18 @@ type Labels = CaptureBadgeLabels & {
   micError: string;
 };
 
-export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; labels: Labels; people?: MentionOption[] }) {
+/** 가입 직후 체험(?tour=)일 때 위에 붙는 안내: "이렇게 말해보세요 / 써보세요 + 예시 문장", 끝나면 다음(물어보기)으로 */
+export interface VoiceTour {
+  /** "1 / 2" */
+  page: string;
+  say: string;
+  write: string;
+  /** 예시 문장(엄마는 장미꽃을 좋아해) */
+  example: string;
+  next: string;
+}
+
+export function VoiceCapture({ locale, labels, people = [], tour = null }: { locale: Locale; labels: Labels; people?: MentionOption[]; tour?: VoiceTour | null }) {
   const canListen = useSyncExternalStore(
     () => () => {},
     () => !!webCtor() || !!nativeSpeech() || !!shellDictation,
@@ -497,12 +509,23 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
     };
   }, []);
 
-  const submit = (value: string) => {
+  // 체험일 때만: 이 화면을 봤다는 기록(한 번)
+  const seen = useRef(false);
+  useEffect(() => {
+    if (!tour || seen.current) return;
+    seen.current = true;
+    void trackTour("view", "voice");
+  }, [tour]);
+
+  // via: 말로(마이크) 적었나 글로 적었나. 체험이면 결과(적음·실패 이유)를 이용 기록에 남긴다
+  const submit = (value: string, via: "voice" | "text") => {
     const v = value.trim();
     if (!v || pending) return;
     start(async () => {
       setUndone(false);
-      setResult(await captureNote(v, undefined, tagged));
+      const r = await captureNote(v, undefined, tagged);
+      setResult(r);
+      if (tour) void trackTour(r.error ? "fail" : "capture", r.error ?? via);
     });
   };
 
@@ -547,7 +570,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
             setSettling(false);
             if (t) heard.current = t;
             setText(heard.current);
-            if (heard.current.trim()) submit(heard.current);
+            if (heard.current.trim()) submit(heard.current, "voice");
           },
         };
         native.current = plugin ? await startDictation(plugin, options) : await shellDictation!(options);
@@ -577,7 +600,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
     r.onend = () => {
       web.current = null;
       setListening(false);
-      if (heard.current.trim()) submit(heard.current);
+      if (heard.current.trim()) submit(heard.current, "voice");
     };
     web.current = r;
     setListening(true);
@@ -585,6 +608,10 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
   };
 
   const error = result?.error === "ai_off" ? labels.aiOff : result?.error === "failed" ? labels.failed : result?.error === "limit" ? labels.limit : result?.error === "nothing" ? labels.nothing : micError ? labels.micError : "";
+
+  // 체험: 방금 적은 사람이 있으면 그 사람에게 물어보기로(없으면 사람 고르기부터)
+  const firstPerson = result?.lines.map((l) => /^\/people\/([0-9a-f-]{36})$/i.exec(l.href)?.[1]).find(Boolean);
+  const nextHref = `/request?tour=2${firstPerson ? `&to=${firstPerson}` : ""}`;
 
   // 적은 뒤: 어디에 들어갔는지 한 줄씩, 아래에 되돌리기·더 말하기
   if (result && !result.error) {
@@ -612,7 +639,7 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
             ))}
           </ul>
         </section>
-        {/* 되돌리기(아이콘) · 더 말하기(마이크·연필 아이콘, 적는 화면으로) · 완료(홈으로) */}
+        {/* 되돌리기(아이콘) · 더 말하기(마이크·연필 아이콘, 적는 화면으로) · 완료(홈으로). 체험이면 더 말하기 대신 다음(방금 적은 사람에게 물어보기로) */}
         <div className="bottom-bar mt-auto flex items-center gap-2.5 bg-bg px-4 pt-4">
           <button
             type="button"
@@ -629,22 +656,24 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
           >
             <Icon name="undo" size={22} strokeWidth={2} />
           </button>
-          <button
-            type="button"
-            aria-label={labels.more}
-            title={labels.more}
-            onClick={() => {
-              setResult(null);
-              setText("");
-              setTagged([]);
-            }}
-            className="flex h-14 shrink-0 items-center justify-center gap-1 rounded-full bg-white px-4 text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:bg-fill"
-          >
-            <Icon name="mic" size={21} strokeWidth={2} />
-            <Icon name="pencil" size={19} strokeWidth={2} />
-          </button>
-          <Link href="/home" className="btn-primary flex-1">
-            {labels.done}
+          {tour ? null : (
+            <button
+              type="button"
+              aria-label={labels.more}
+              title={labels.more}
+              onClick={() => {
+                setResult(null);
+                setText("");
+                setTagged([]);
+              }}
+              className="flex h-14 shrink-0 items-center justify-center gap-1 rounded-full bg-white px-4 text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:bg-fill"
+            >
+              <Icon name="mic" size={21} strokeWidth={2} />
+              <Icon name="pencil" size={19} strokeWidth={2} />
+            </button>
+          )}
+          <Link href={tour ? nextHref : "/home"} className="btn-primary flex-1">
+            {tour ? tour.next : labels.done}
           </Link>
         </div>
       </div>
@@ -671,6 +700,14 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
       ))}
     </div>
   ) : null;
+  // 체험: 마이크면 "이렇게 말해보세요", 글이면 "이렇게 써보세요" + 예시 문장. 키보드가 뜨면 접어 적는 칸이 한 화면에 보이게
+  const tourPrompt = tour ? (
+    <section aria-label={mode === "voice" ? tour.say : tour.write} className="mx-4 mt-3 flex flex-col items-center gap-1 rounded-3xl bg-sky-soft px-5 py-4 text-center [html[data-kb]_&]:hidden">
+      <span className="num text-[12px] font-bold text-accent">{tour.page}</span>
+      <h1 className="headline text-[19px]">{mode === "voice" ? tour.say : tour.write}</h1>
+      <p className="pt-0.5 text-[21px] font-bold leading-[1.4] tracking-[-0.02em]">“{tour.example}”</p>
+    </section>
+  ) : null;
   const errorLine = error ? (
     <p role="alert" className="text-center text-[14px] text-red">
       {error}
@@ -686,11 +723,12 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
         className="flex flex-1 flex-col"
         onSubmit={(e) => {
           e.preventDefault();
-          submit(text);
+          submit(text, "text");
         }}
       >
         {toggle}
-        <div data-tour="voice" className="flex flex-col gap-2 px-4 pt-5">
+        {tourPrompt}
+        <div className="flex flex-col gap-2 px-4 pt-5">
           <textarea
             ref={field}
             value={text}
@@ -758,10 +796,11 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
       className="flex flex-1 flex-col"
       onSubmit={(e) => {
         e.preventDefault();
-        submit(text);
+        submit(text, heard.current.trim() ? "voice" : "text");
       }}
     >
       {toggle}
+      {tourPrompt}
       <div className="flex flex-1 flex-col items-center justify-center px-5 pb-4">
         <button
           type="button"
@@ -769,8 +808,6 @@ export function VoiceCapture({ locale, labels, people = [] }: { locale: Locale; 
           aria-pressed={listening}
           aria-label={listening ? labels.listening : labels.speak}
           disabled={pending || settling || !canListen}
-          // 처음 안내(GuidedTour)가 짚는 곳
-          data-tour="voice"
           className="shrink-0 rounded-full transition-transform active:scale-95 disabled:active:scale-100"
         >
           <WaterDrop active={listening || settling} measure={!nativeSpeech() && !shellDictation} beat={shown.length} />

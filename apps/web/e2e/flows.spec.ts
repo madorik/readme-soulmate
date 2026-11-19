@@ -53,7 +53,7 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   await expect(page.getByRole("heading", { name: /사랑하는 사람들의/ })).toBeVisible();
   await shot(page, "01-start");
   await signIn(page);
-  await onboard(page, { name: "지수", allergy: "새우", dislike: "오이", lunar: { month: 10, day: 12 }, intro: "tour" });
+  await onboard(page, { name: "지수", allergy: "새우", dislike: "오이", lunar: { month: 10, day: 12 } });
   await expect(page).toHaveURL(/\/home/);
   await expect(page.getByRole("heading", { name: "내 사람들" })).toBeVisible();
 
@@ -137,10 +137,23 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await dad.goto(askDadUrl);
   await expect(dad.getByText("이미 답한 링크예요.")).toBeVisible();
 
-  // 답장이 오면 홈 오른쪽 위 종에 새 알림 개수가 붙고, 눌러 열면 알림이 모여 있다. 알림을 누르면 그 사람 화면, 열면 읽은 것으로 종의 숫자가 사라진다
+  // 답장이 오면 홈 오른쪽 위 종에 새 알림 개수가 붙고, 누르면 종 아래 드롭다운에 알림이 모여 있다. 알림을 누르면 그 사람 화면, 열면 읽은 것으로 종의 숫자가 사라진다
   await page.goto("/home");
-  await page.getByRole("button", { name: "알림 1" }).click();
-  const reply = page.getByRole("dialog", { name: "알림" }).getByRole("link", { name: /아빠가 답장을 보냈어요/ });
+  const bell = page.getByRole("button", { name: "알림 1" });
+  await bell.click();
+  const list = page.getByRole("region", { name: "알림" });
+  await expect(list).toBeVisible();
+  // 드롭다운은 종 바로 아래에 붙는다(시트처럼 화면 맨 아래가 아니다)
+  const bellBox = (await bell.boundingBox())!;
+  const listBox = (await list.boundingBox())!;
+  expect(listBox.y).toBeGreaterThanOrEqual(bellBox.y + bellBox.height - 1);
+  expect(listBox.y).toBeLessThan(bellBox.y + bellBox.height + 24);
+  // Esc로 닫히고 포커스는 종으로 돌아온다
+  await page.keyboard.press("Escape");
+  await expect(list).toHaveCount(0);
+  await expect(bell).toBeFocused();
+  await bell.click();
+  const reply = page.getByRole("region", { name: "알림" }).getByRole("link", { name: /아빠가 답장을 보냈어요/ });
   await expect(reply).toBeVisible();
   await expect(reply).toContainText(/방금|분 전/);
   await shot(page, "07a-home-reply");
@@ -928,4 +941,32 @@ test("통계: 이용 기록을 받고, 관리자 키로 들어가 기간을 바�
   await page.getByRole("link", { name: "7일", exact: true }).click();
   await expect(page).toHaveURL(/range=7/);
   await expect(page.getByText(/\(7일\)/)).toBeVisible();
+});
+
+test("가입 직후 체험: 글로 사람을 적어 보고(예시 문장) 적힌 걸 본 뒤, 물어보기 링크까지 만들면 홈으로 끝난다", async ({ browser }) => {
+  const page = await newPage(browser);
+  await page.goto("/");
+  await signIn(page);
+  await onboard(page, { name: "하나", intro: "stay" });
+  // ① 말로·글로 적기: 예시 문장과 안내. 마이크가 있으면 '말로'가 먼저라 '글로'로 바꾼다
+  const toText = page.getByRole("radio", { name: "글로" });
+  if (await toText.count()) await toText.click();
+  await expect(page.getByRole("heading", { name: "이렇게 써보세요" })).toBeVisible();
+  await page.getByRole("textbox", { name: "엄마는 장미꽃을 좋아해" }).fill("엄마는 장미꽃을 좋아해");
+  await page.getByRole("button", { name: "기억해 두기" }).click();
+  // 자동으로 사람이 등록된 걸 보여 준다(엄마 · 새로 · 장미꽃)
+  await expect(page.getByRole("heading", { name: "이렇게 기억해 둘게요" })).toBeVisible({ timeout: 60_000 });
+  const saved = page.getByRole("link", { name: /엄마/ });
+  await expect(saved.first()).toBeVisible();
+  await expect(page.getByText("장미꽃").first()).toBeVisible();
+  // 다음: 방금 적은 엄마에게 물어보기로(사람이 정해져 있다)
+  await page.getByRole("link", { name: "다음" }).click();
+  await expect(page).toHaveURL(/\/request\?tour=2&to=[0-9a-f-]{36}/);
+  await expect(page.getByText("2 / 2")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /엄마/ })).toBeVisible();
+  await makeLink(page);
+  // 링크를 만들었으면 시작하기로 마치고 홈으로. 엄마는 사람들에 남아 있다
+  await page.getByRole("button", { name: "시작하기" }).click();
+  await expect(page).toHaveURL(/\/home$/);
+  await expect(page.getByRole("link", { name: /엄마/ }).first()).toBeVisible();
 });

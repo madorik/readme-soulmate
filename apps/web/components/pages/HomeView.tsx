@@ -60,10 +60,10 @@ export function HomeView({ locale, avatar, today, people, card, answers, answere
 
   return (
     <>
-      <div className="flex items-center justify-between pl-5 pr-3">
+      <div className="relative flex items-center justify-between pl-5 pr-3">
         <Wordmark locale={locale} />
         <div className="flex items-center gap-0.5">
-          <NotificationBell items={bellItems} labels={{ title: t("notif.title"), empty: t("notif.empty"), close: t("common.close") }} />
+          <NotificationBell items={bellItems} labels={{ title: t("notif.title"), empty: t("notif.empty") }} />
           <ProfileMenu avatar={avatar} labels={{ menu: t("home.profileMenu"), profile: t("profile.title"), signOut: t("privacy.signOut") }} />
         </div>
       </div>

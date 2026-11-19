@@ -304,6 +304,17 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               <div className="flex flex-col gap-2">
                 <h3 className="text-[14.5px] font-bold">온보딩 단계별</h3>
                 <Funnel steps={st.funnel.onboarding} />
+                <h3 className="pt-2 text-[14.5px] font-bold">체험(말로·글로 적기 → 물어보기)에서 한 것</h3>
+                <p className="text-[12.5px] text-muted">이 기간에 가입한 사람 중 해당하는 사람 수. 마침 = 링크를 만들고 시작하기를 누른 사람</p>
+                <Bars
+                  rows={[
+                    { label: "말로 적음", n: st.funnel.tour.byVoice },
+                    { label: "글로 적음", n: st.funnel.tour.byText },
+                    { label: "적기 실패", n: st.funnel.tour.failed },
+                    { label: "적기에서 건너뜀", n: st.funnel.tour.skipVoice },
+                    { label: "물어보기에서 건너뜀", n: st.funnel.tour.skipAsk },
+                  ]}
+                />
               </div>
             </div>
           ) : (

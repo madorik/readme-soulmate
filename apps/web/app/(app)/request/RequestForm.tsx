@@ -1,8 +1,9 @@
 "use client";
 
 import { SECTIONS, SECTIONS_BY_IMPORTANCE, type AvatarConfig, type Locale, type Section } from "@readme/core";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createRequest, type InviteState } from "@/app/actions/request";
+import { leaveTour, trackTour } from "@/app/actions/tour";
 import { useT } from "@/components/editors/shared";
 import { Avatar } from "@/components/Avatar";
 import { CheckGlyph, Icon } from "@/components/marks";
@@ -32,7 +33,7 @@ type Who = { kind: "person"; person: AskPerson } | { kind: "new"; name: string }
  * 누구에게: 주소록 사람을 이름·태그로 찾아 고르면 그 사람에게 묻고 답은 그 사람 기록에 들어간다(내 기록에 적힌 값은 서버가 미리 채워 보낸다).
  * 없는 사람이면 적은 이름으로 새로. fixed(사람 화면에서 왔을 때)면 그 사람으로 정해져 있다
  */
-export function RequestForm({ locale, people, fixed, initialName, defaults }: { locale: Locale; people: AskPerson[]; fixed: string | null; initialName: string; defaults: Section[] }) {
+export function RequestForm({ locale, people, fixed, initialName, defaults, tour = false }: { locale: Locale; people: AskPerson[]; fixed: string | null; initialName: string; defaults: Section[]; tour?: boolean }) {
   const t = useT(locale);
   const topicsFor = (p: AskPerson | null) => (p && p.missing.length ? p.missing : defaults);
   const fixedPerson = fixed ? (people.find((p) => p.id === fixed) ?? null) : null;
@@ -41,6 +42,19 @@ export function RequestForm({ locale, people, fixed, initialName, defaults }: { 
   const [topics, setTopics] = useState<Section[]>(topicsFor(fixedPerson));
   const [message, setMessage] = useState("");
   const [state, action, pending] = useActionState(createRequest, INITIAL);
+  // 가입 직후 체험이면: 이 화면을 봤다는 기록(한 번), 링크를 만들면 그 기록(누구에게: 있는 사람/새로)
+  const seen = useRef(false);
+  useEffect(() => {
+    if (!tour || seen.current) return;
+    seen.current = true;
+    void trackTour("view", "ask");
+  }, [tour]);
+  const made = useRef(false);
+  useEffect(() => {
+    if (!tour || !state.url || made.current) return;
+    made.current = true;
+    void trackTour("ask", who?.kind === "person" ? "person" : "new");
+  }, [tour, state.url, who]);
   const name = who ? (who.kind === "person" ? who.person.label : who.name) : "";
   const q = query.replace(/\s+/g, " ").trim();
   const matches = (q ? people.filter((p) => matchesPerson(q, p.name, p.tag)) : people).slice(0, 12);
@@ -90,8 +104,16 @@ export function RequestForm({ locale, people, fixed, initialName, defaults }: { 
           <p className="whitespace-pre-line rounded-2xl rounded-tl-md bg-sky-soft px-4 py-3 text-[15px] leading-[1.55]">{shareText}</p>
           <LinkField url={state.url} label={t("common.copyLink")} />
         </section>
-        <div className="bottom-bar mt-auto bg-bg px-4 pt-4">
+        <div className="bottom-bar mt-auto flex flex-col gap-2 bg-bg px-4 pt-4">
           <ShareButtons locale={locale} url={state.url} text={shareText} sendLabel={t("request.send")} />
+          {/* 체험의 끝: 링크를 만들었으면 시작하기로 마치고 홈으로 */}
+          {tour ? (
+            <form action={leaveTour}>
+              <input type="hidden" name="kind" value="done" />
+              <input type="hidden" name="source" value="ask" />
+              <button className="btn-outline w-full">{t("tour.start")}</button>
+            </form>
+          ) : null}
         </div>
       </div>
     );
@@ -104,7 +126,7 @@ export function RequestForm({ locale, people, fixed, initialName, defaults }: { 
       <input type="hidden" name="name" value={name} />
 
       {fixed ? null : (
-        <section data-tour="ask" className="card mx-4 mt-4 flex flex-col gap-3 px-5 py-5">
+        <section className="card mx-4 mt-4 flex flex-col gap-3 px-5 py-5">
           <label htmlFor="request-who" className="text-[15px] font-bold">
             {t("request.who")}
           </label>
@@ -175,7 +197,7 @@ export function RequestForm({ locale, people, fixed, initialName, defaults }: { 
         </section>
       )}
 
-      <section data-tour={fixed ? "ask" : undefined} className={`card mx-4 flex flex-col gap-3 px-4 py-5 ${fixed ? "mt-4" : "mt-3"}`}>
+      <section className={`card mx-4 flex flex-col gap-3 px-4 py-5 ${fixed ? "mt-4" : "mt-3"}`}>
         <div className="flex items-baseline justify-between px-1">
           <h2 className="text-[15px] font-bold">{t("request.topics")}</h2>
           <span className="num text-[13px] !font-bold text-muted">{topics.length}</span>

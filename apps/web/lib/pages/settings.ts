@@ -3,6 +3,7 @@ import { SECTIONS, type Section } from "@readme/core";
 import { notFound } from "next/navigation";
 import { aiConfigured } from "@/lib/ai";
 import { displayName, listOpenInvites, listPeople, requireSession } from "@/lib/data";
+import { tourTotal } from "@/lib/tour";
 import { tossReminderTemplate } from "@/lib/toss";
 import type { PageInput } from "./routes";
 import type { PrivacyData, RequestData, VoiceData } from "./types";
@@ -45,16 +46,18 @@ export async function loadRequest({ searchParams }: PageInput): Promise<RequestD
       missing: SECTIONS.filter((x) => !p.card[x] && x !== "pets"),
     }));
   const fixed = searchParams.to ? (people.find((p) => p.id === searchParams.to) ?? null) : null;
-  return { locale: s.profile.locale, people, fixed, initialName: (searchParams.name ?? "").slice(0, 40), defaults };
+  // 체험(?tour=)이면 마지막 단계: 말로 적기가 있으면 둘째, 없으면(AI 꺼짐) 첫째이자 마지막
+  const total = tourTotal();
+  return { locale: s.profile.locale, people, fixed, initialName: (searchParams.name ?? "").slice(0, 40), defaults, tour: searchParams.tour ? { n: total, total } : null };
 }
 
 /** 말로 적기: 말하면(또는 적으면) 누구의 어느 칸인지 나눠서 바로 넣는다. 없는 사람은 새로, 맞는 칸이 없으면 메모로 */
-export async function loadVoice(): Promise<VoiceData> {
+export async function loadVoice({ searchParams }: PageInput): Promise<VoiceData> {
   if (!aiConfigured()) notFound();
   const s = await requireSession();
   // @로 부를 사람: 이름과 내가 붙인 태그(부르는 말), 즐겨찾기가 먼저
   const people = [...(await listPeople(s))]
     .sort((a, b) => Number(b.favorite) - Number(a.favorite))
     .map((p) => ({ id: p.contactId, name: p.name, tag: p.nickname && p.nickname !== p.name ? p.nickname : "", avatar: p.avatar }));
-  return { locale: s.profile.locale, people };
+  return { locale: s.profile.locale, people, tour: searchParams.tour ? { n: 1, total: tourTotal() } : null };
 }

@@ -22,8 +22,8 @@ export async function signIn(page: Page) {
   await page.waitForURL((u) => !u.searchParams.has("demo"));
 }
 
-/** 온보딩 세 단계와 홈에서 시작하는 안내(기본은 건너뛰기, intro: "tour"면 끝까지 넘긴다) */
-export async function onboard(page: Page, opts: { name: string; allergy?: string; dislike?: string; lunar?: { month: number; day: number }; solar?: { month: number; day: number }; intro?: "skip" | "tour" }) {
+/** 온보딩 세 단계와 이어지는 체험(기본은 건너뛰기, intro: "stay"면 체험 첫 화면에서 멈춘다) */
+export async function onboard(page: Page, opts: { name: string; allergy?: string; dislike?: string; lunar?: { month: number; day: number }; solar?: { month: number; day: number }; intro?: "skip" | "stay" }) {
   await expect(page).toHaveURL(/\/onboarding\/avatar/);
   await page.getByLabel("부를 이름").fill(opts.name);
   await page.getByRole("button", { name: "단발" }).click();
@@ -43,21 +43,12 @@ export async function onboard(page: Page, opts: { name: string; allergy?: string
   if (process.env.SHOTS && opts.lunar) await page.screenshot({ path: `${process.env.SHOTS}/00-birthday.png`, fullPage: true });
   await page.getByRole("button", { name: "이제 시작해요" }).click();
 
-  // 온보딩을 마치면 안내가 시작된다: 단계마다 그 기능의 실제 페이지로 옮겨 가서 설명한다(말로 적기 → 물어보기 → 홈)
+  // 온보딩을 마치면 직접 해 보는 체험이 시작된다(말로·글로 적기 → 물어보기 → 홈). 기본은 안내 화면만 확인하고 건너뛰고, "stay"면 그 화면에서 멈춘다
   await expect(page).toHaveURL(/\/voice\?tour=1/);
-  const tour = page.getByRole("dialog");
-  await expect(tour.getByRole("heading", { name: "말하거나 적으면 알아서 기억해요" })).toBeVisible();
-  if (opts.intro === "tour") {
-    await expect(tour.getByText(/와이프는 바닐라라떼를 좋아해/)).toBeVisible();
-    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/00-tour-voice.png` });
-    await tour.getByRole("button", { name: "다음" }).click();
-    await expect(page).toHaveURL(/\/request\?tour=2/);
-    await expect(tour.getByRole("heading", { name: "모르는 건 물어보세요" })).toBeVisible();
-    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/00-tour-ask.png` });
-    await tour.getByRole("button", { name: "시작하기" }).click();
-  } else {
-    await tour.getByRole("button", { name: "건너뛰기" }).click();
-  }
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByText("1 / 2")).toBeVisible();
+  await expect(page.getByText("“엄마는 장미꽃을 좋아해”")).toBeVisible();
+  if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/00-tour-voice.png` });
+  if (opts.intro === "stay") return;
+  await page.getByRole("button", { name: "건너뛰기" }).click();
   await expect(page).toHaveURL(/\/home$/);
 }

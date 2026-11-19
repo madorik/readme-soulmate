@@ -1,8 +1,5 @@
 import { translate } from "@readme/core";
 import { headers } from "next/headers";
-import { Suspense } from "react";
-import { GuidedTour } from "@/components/GuidedTour";
-import { tourSteps } from "@/lib/tour";
 import { NativeBridge } from "@/components/native";
 import { ResumeRefresh } from "@/components/ResumeRefresh";
 import { SwipeTabs } from "@/components/SwipeTabs";
@@ -24,13 +21,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {children}
       <SwipeTabs />
       <ResumeRefresh />
-      {/* 가입하고 온보딩을 마치면 단계마다 그 기능의 실제 페이지(?tour=N)로 옮겨 가며 짚어 준다. 말로 적기는 AI가 켜졌을 때만. 설정의 '소개 다시 보기'도 같은 주소 */}
-      <Suspense fallback={null}>
-        <GuidedTour
-          steps={tourSteps(locale)}
-          labels={{ next: translate(locale, "common.next"), start: translate(locale, "tour.start"), skip: translate(locale, "common.skip"), page: translate(locale, "tour.page") }}
-        />
-      </Suspense>
       <NativeBridge
         locale={locale}
         appLock={s.profile.appLock}

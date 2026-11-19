@@ -74,15 +74,23 @@ export interface AskPersonData {
   missing: Section[];
 }
 
+/** 가입 직후 체험 중이면 몇 번째 단계/전체(말로 적기 → 물어보기, AI가 꺼지면 물어보기만) */
+export interface TourInfo {
+  n: number;
+  total: number;
+}
+
 export interface RequestData {
   locale: Locale;
   people: AskPersonData[];
   fixed: AskPersonData | null;
   initialName: string;
   defaults: Section[];
+  tour: TourInfo | null;
 }
 
 export interface VoiceData {
   locale: Locale;
   people: { id: string; name: string; tag: string; avatar: AvatarConfig | null }[];
+  tour: TourInfo | null;
 }

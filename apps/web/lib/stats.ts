@@ -113,11 +113,20 @@ export interface FunnelStep {
   n: number;
 }
 
-async function funnel(start: string, end: string): Promise<{ steps: FunnelStep[]; onboarding: FunnelStep[] } | null> {
+/** 가입 직후 체험(말로·글로 적기 → 물어보기)에서 한 것: 적은 방식·건너뜀·실패(가입한 사람 수) */
+export interface TourStats {
+  byVoice: number;
+  byText: number;
+  skipVoice: number;
+  skipAsk: number;
+  failed: number;
+}
+
+async function funnel(start: string, end: string): Promise<{ steps: FunnelStep[]; onboarding: FunnelStep[]; tour: TourStats } | null> {
   return safe(async (q) => {
     const r = await q.one(
       `with c as (select u.id from "user" u where ${REAL} and u."createdAt" >= $1::timestamptz and u."createdAt" < $2::timestamptz),
-       ev as (select e.user_id, e.name, e.path from app_events e join c on c.id = e.user_id)
+       ev as (select e.user_id, e.name, e.path, e.source from app_events e join c on c.id = e.user_id)
        select
          (select count(*) from c) as signup,
          (select count(*) from c join profiles p on p.id = c.id where p.onboarded_at is not null) as onboarded,
@@ -129,7 +138,17 @@ async function funnel(start: string, end: string): Promise<{ steps: FunnelStep[]
          (select count(distinct user_id) from ev where name = 'gift_click') as gift_click,
          (select count(distinct user_id) from ev where name = 'page_view' and path = '/onboarding/avatar') as ob1,
          (select count(distinct user_id) from ev where name = 'page_view' and path = '/onboarding/food') as ob2,
-         (select count(distinct user_id) from ev where name = 'page_view' and path = '/onboarding/birthday') as ob3`,
+         (select count(distinct user_id) from ev where name = 'page_view' and path = '/onboarding/birthday') as ob3,
+         (select count(distinct user_id) from ev where name = 'tour_view' and source = 'voice') as tv_voice,
+         (select count(distinct user_id) from ev where name = 'tour_capture') as tc,
+         (select count(distinct user_id) from ev where name = 'tour_capture' and source = 'voice') as tc_voice,
+         (select count(distinct user_id) from ev where name = 'tour_capture' and source = 'text') as tc_text,
+         (select count(distinct user_id) from ev where name = 'tour_view' and source = 'ask') as tv_ask,
+         (select count(distinct user_id) from ev where name = 'tour_ask') as ta,
+         (select count(distinct user_id) from ev where name = 'tour_done') as td,
+         (select count(distinct user_id) from ev where name = 'tour_skip' and source = 'voice') as ts_voice,
+         (select count(distinct user_id) from ev where name = 'tour_skip' and source = 'ask') as ts_ask,
+         (select count(distinct user_id) from ev where name = 'tour_fail') as tf`,
       [start, end],
     );
     return {
@@ -149,7 +168,19 @@ async function funnel(start: string, end: string): Promise<{ steps: FunnelStep[]
         { key: "ob2", label: "2 · 음식", n: num(r?.ob2) },
         { key: "ob3", label: "3 · 생일", n: num(r?.ob3) },
         { key: "done", label: "온보딩 끝", n: num(r?.onboarded) },
+        { key: "tv_voice", label: "체험 ① 적기 화면 봄", n: num(r?.tv_voice) },
+        { key: "tc", label: "체험 ① 말로·글로 적음", n: num(r?.tc) },
+        { key: "tv_ask", label: "체험 ② 물어보기 화면 봄", n: num(r?.tv_ask) },
+        { key: "ta", label: "체험 ② 링크 만듦", n: num(r?.ta) },
+        { key: "td", label: "체험 마침", n: num(r?.td) },
       ],
+      tour: {
+        byVoice: num(r?.tc_voice),
+        byText: num(r?.tc_text),
+        skipVoice: num(r?.ts_voice),
+        skipAsk: num(r?.ts_ask),
+        failed: num(r?.tf),
+      },
     };
   });
 }

@@ -64,8 +64,9 @@ export const ko = {
   "onb.birthday.later": "나중에 할게요",
   "tour.start": "시작하기",
   "tour.page": "{n} / {total}",
-  "tour.voice.title": "말하거나 적으면 알아서 기억해요",
-  "tour.voice.body": "가운데 버튼을 누르면 이 화면이 열려요. 말하거나 글로 적으면 그 사람 기록에 들어가요. \"와이프는 바닐라라떼를 좋아해\"라고 하면, 없는 사람은 새로 만들고 있는 사람은 기록에 더해요.",
+  "tour.say": "이렇게 말해보세요",
+  "tour.write": "이렇게 써보세요",
+  "tour.example": "엄마는 장미꽃을 좋아해",
   "tour.ask.title": "모르는 건 물어보세요",
   "tour.ask.body": "사람과 물어볼 항목을 고르면 링크가 만들어져요. 그 링크를 보내면 상대가 로그인 없이 답하고, 온 답은 내 기록에 쌓여요.",
 
@@ -723,8 +724,9 @@ export const en: Messages = {
   "onb.birthday.later": "Maybe later",
   "tour.start": "Get started",
   "tour.page": "{n} / {total}",
-  "tour.voice.title": "Say it or type it, it remembers",
-  "tour.voice.body": "The middle button opens this screen. Say it or type it and it goes into that person's notes. Say \"My wife loves vanilla lattes\": if they're new, we add them, and if they're already there, we add to what you have.",
+  "tour.say": "Try saying",
+  "tour.write": "Try writing",
+  "tour.example": "Mom loves roses",
   "tour.ask.title": "Don't know? Just ask",
   "tour.ask.body": "Pick the person and what to ask, and we make a link. Send it and they answer without logging in. Their answers land in your notes.",
 
