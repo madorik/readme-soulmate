@@ -136,11 +136,13 @@ export function PicksStage({ children, lines, shout, compact }: { children: Reac
         >
           <span aria-hidden="true" className="absolute -right-16 top-6 size-56 rounded-full bg-white/30" />
           {/* 장면이 뜨기 전(또는 WebGL이 안 될 때) 자리를 지키는 구슬 */}
-          <span
-            aria-hidden="true"
-            className="absolute left-1/2 top-[58%] size-32 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-300 group-data-[scene=on]/stage:opacity-0 motion-safe:animate-pulse"
-            style={{ background: "radial-gradient(circle at 36% 30%, #fff 0, #dff0fd 42%, #8cc8f0 100%)", boxShadow: "0 0 0 3px #1f2340, 0 0 56px 18px rgba(255,255,255,0.65)" }}
-          />
+          {/* (깜빡이는 건 안쪽 span: 바깥이 흐려지는 것과 겹치면 장면 뒤로 비친다) */}
+          <span aria-hidden="true" className="absolute left-1/2 top-[58%] size-32 -translate-x-1/2 -translate-y-1/2 transition-opacity duration-300 group-data-[scene=on]/stage:opacity-0">
+            <span
+              className="block size-full rounded-full motion-safe:animate-pulse"
+              style={{ background: "radial-gradient(circle at 36% 30%, #fff 0, #dff0fd 42%, #8cc8f0 100%)", boxShadow: "0 0 0 3px #1f2340, 0 0 56px 18px rgba(255,255,255,0.65)" }}
+            />
+          </span>
           <canvas ref={canvas} aria-hidden="true" className="absolute inset-0 block h-full w-full opacity-0 transition-opacity duration-300 group-data-[scene=on]/stage:opacity-100" />
           {/* 소녀의 말풍선: 장면이 떠 있는 동안만 */}
           <div aria-live="polite" className="pointer-events-none absolute left-3 top-3 max-w-[46%] opacity-0 transition-opacity duration-300 group-data-[scene=on]/stage:opacity-100">
