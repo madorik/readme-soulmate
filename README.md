@@ -101,7 +101,7 @@ pnpm open:ios / pnpm open:android                          # Xcode·Android Stud
 2. **Apple 로그인**(iOS 출시 전): Services ID + Sign in with Apple 키로 client secret(JWT)을 만들어 `APPLE_CLIENT_ID`·`APPLE_CLIENT_SECRET`. Return URL `https://remember-you.watalabs.com/api/auth/callback/apple`.
 3. **앱 링크**: Android는 업로드 키와 Play 앱 서명 키 SHA-256이 `ANDROID_SHA256_FINGERPRINTS`에 있다(`/.well-known/*`는 요청 때 환경 변수를 읽는다). iOS는 Xcode에서 Associated Domains `applinks:remember-you.watalabs.com`, 서버에 `APPLE_TEAM_ID`.
 4. **카카오톡 공유(선택)**: JavaScript 키를 `NEXT_PUBLIC_KAKAO_JS_KEY`에, 플랫폼에 운영 도메인 등록.
-5. **서버 푸시(선택)**: Firebase 프로젝트 → `google-services.json`·APNs 키, 서비스 계정 값을 `FCM_*`에. 없으면 앱은 기기 로컬 알림만 쓴다(처리방침의 위탁 목록에 Google FCM을 더해야 한다).
+5. **서버 푸시(선택)**: Firebase 프로젝트 → `google-services.json`·APNs 키, 서비스 계정 값을 `FCM_*`에. 없으면 앱은 기기 로컬 알림만 쓴다. **웹 브라우저 푸시(선택)**: `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`(`apps/web/.env.example` 참고)를 넣으면 설정에 '이 브라우저에서 알림'이 생기고 크론(`/api/cron/reminders`)이 그 브라우저로 생일·기념일을 보낸다(앱은 기기 로컬 알림이라 크론이 보내지 않는다)(처리방침의 위탁 목록에 Google FCM을 더해야 한다).
 
 ## 아직 안 한 것
 

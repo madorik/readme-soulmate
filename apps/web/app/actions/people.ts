@@ -3,11 +3,12 @@
 import { applyAnswer, isSection, josa, QUESTIONS, sanitizeAvatar, type AvatarConfig, type DailyQuestion, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { listPeople, requireSession, sealNote, writeContactSection } from "@/lib/data";
+import { readPerson, requireSession, sealNote, writeContactSection } from "@/lib/data";
 import { LIMITS } from "@/lib/data-core";
 import { isFolderColor, isFolderIcon } from "@/lib/folders";
 import { GIFT_CATALOG } from "@/lib/gift-catalog";
 import { track } from "@/lib/track";
+import { isUuid } from "@/lib/uuid";
 import type { SaveState } from "./card";
 
 function json(v: FormDataEntryValue | null): unknown {
@@ -21,9 +22,10 @@ function json(v: FormDataEntryValue | null): unknown {
 /** 내 주소록 칸인지 확인(RLS가 내 것만 돌려준다) */
 async function ownContact(contactId: string) {
   const s = await requireSession();
-  const contact = await s.tx((q) =>
-    q.one<{ id: string; person_id: string | null }>("select id, person_id from contacts where id::text = $1", [contactId]),
-  );
+  // uuid 모양이 아니면 DB를 부르지 않는다(id = $1::uuid로 기본키 인덱스를 쓰고, 이상한 글이 오류가 되지 않게)
+  const contact = isUuid(contactId)
+    ? await s.tx((q) => q.one<{ id: string; person_id: string | null }>("select id, person_id from contacts where id = $1::uuid", [contactId]))
+    : null;
   if (!contact) redirect("/people");
   return { s, contact };
 }
@@ -85,7 +87,8 @@ export async function seeAnswers(contactId: string): Promise<void> {
 export async function deleteNote(form: FormData): Promise<void> {
   const contactId = String(form.get("contactId"));
   const { s } = await ownContact(contactId);
-  await s.tx((q) => q("delete from notes where id::text = $1 and contact_id = $2", [String(form.get("noteId")), contactId]));
+  const noteId = String(form.get("noteId"));
+  if (isUuid(noteId)) await s.tx((q) => q("delete from notes where id = $1::uuid and contact_id = $2::uuid", [noteId, contactId]));
   revalidatePath(`/people/${contactId}`);
 }
 
@@ -93,10 +96,10 @@ export async function deleteNote(form: FormData): Promise<void> {
 export async function setNickname(contactId: string, raw: string): Promise<{ ok: boolean; nickname: string }> {
   const s = await requireSession();
   const nickname = String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
-  if (typeof contactId !== "string") return { ok: false, nickname };
+  if (!isUuid(contactId)) return { ok: false, nickname };
   const row = await s.tx((q) => q.one<{ id: string }>(
       // 이어지지 않은 사람은 태그가 곧 이름이라 비울 수 없다
-      "update contacts set nickname = $2 where id::text = $1 and ($2 <> '' or person_id is not null) returning id",
+      "update contacts set nickname = $2 where id = $1::uuid and ($2 <> '' or person_id is not null) returning id",
       [contactId, nickname],
     ));
   revalidatePeople(contactId);
@@ -119,7 +122,7 @@ export async function savePersonProfile(form: FormData): Promise<void> {
   }
   await s.tx((q) =>
     // 이어지지 않은 사람은 부르는 말이 곧 이름이라 비우면 예전 이름 그대로
-    q("update contacts set avatar = $2, nickname = case when $3 = '' and person_id is null then nickname else $3 end where id::text = $1", [contactId, JSON.stringify(avatar), nickname]),
+    q("update contacts set avatar = $2, nickname = case when $3 = '' and person_id is null then nickname else $3 end where id = $1::uuid", [contactId, JSON.stringify(avatar), nickname]),
   );
   revalidatePeople(contactId);
   redirect(`/people/${contactId}`);
@@ -143,7 +146,7 @@ export async function removeContacts(contactIds: string[]): Promise<{ ok: boolea
   const ids = cleanIds(contactIds);
   if (!ids.length) return { ok: false, removed: 0 };
   try {
-    const gone = await s.tx((q) => q<{ id: string }>("delete from contacts where id::text = any($1::text[]) and user_id = $2 returning id", [ids, s.user.id]));
+    const gone = await s.tx((q) => q<{ id: string }>("delete from contacts where id = any($1::uuid[]) and user_id = $2 returning id", [ids, s.user.id]));
     revalidatePeople();
     return { ok: true, removed: gone.length };
   } catch {
@@ -159,9 +162,10 @@ export async function answerAbout(form: FormData): Promise<void> {
   const contactId = String(form.get("contactId") ?? "");
   const id = String(form.get("id")) as DailyQuestion["id"];
   const value = String(form.get("value") ?? "").trim();
-  if (!UUID.test(contactId) || !QUESTIONS.some((x) => x.id === id) || !value) return;
+  if (!isUuid(contactId) || !QUESTIONS.some((x) => x.id === id) || !value) return;
   const s = await requireSession();
-  const person = (await listPeople(s)).find((p) => p.contactId === contactId);
+  // 이 사람 한 명의 기록만 읽는다(전체를 풀지 않는다)
+  const person = await readPerson(s, contactId);
   if (!person) redirect("/home");
   await s.tx(async (q) => {
     for (const [section, data] of Object.entries(applyAnswer(person.card, id, value, s.profile.locale))) {
@@ -197,7 +201,7 @@ export async function createPerson(form: FormData): Promise<void> {
     if (birthday && typeof birthday === "object") await writeContactSection(q, s.user.id, c!.id, "dates", { birthday, anniversaries: [] });
     // 고른 폴더에 바로 넣는다(내 폴더만, DB가 확인). uuid 모양이 아니면 넣지 않는다
     const folder = String(form.get("folderId") ?? "");
-    if (UUID.test(folder)) await q("insert into contact_group_members (group_id, contact_id, user_id) values ($1, $2, $3)", [folder, c!.id, s.user.id]);
+    if (isUuid(folder)) await q("insert into contact_group_members (group_id, contact_id, user_id) values ($1, $2, $3)", [folder, c!.id, s.user.id]);
     return { id: c!.id, created: true };
   });
   // 사람 수 한도(LIMITS.people)를 넘으면 이름이 비었을 때처럼 입력 화면으로 되돌린다(화면은 error=name일 때만 문구를 보이니 새 문구는 없다)
@@ -229,10 +233,8 @@ export async function savePersonSection(_: SaveState, form: FormData): Promise<S
 
 // ── 폴더·즐겨찾기 ─────────────────────────────────
 
-const UUID = /^[0-9a-f-]{36}$/i;
-
 function cleanIds(v: unknown): string[] {
-  return Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && UUID.test(x)))].slice(0, 500) : [];
+  return Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && isUuid(x)))].slice(0, 500) : [];
 }
 
 function cleanName(v: unknown): string {
@@ -248,8 +250,8 @@ function revalidatePeople(contactId?: string) {
 /** 즐겨찾기 켜고 끄기(사람들 맨 위에 고정) */
 export async function setFavorite(contactId: string, on: boolean): Promise<{ ok: boolean }> {
   const s = await requireSession();
-  if (typeof contactId !== "string") return { ok: false };
-  const row = await s.tx((q) => q.one<{ id: string }>("update contacts set favorite = $2 where id::text = $1 returning id", [contactId, on === true]));
+  if (!isUuid(contactId)) return { ok: false };
+  const row = await s.tx((q) => q.one<{ id: string }>("update contacts set favorite = $2 where id = $1::uuid returning id", [contactId, on === true]));
   if (row && on) track("favorite", { userId: s.user.id });
   revalidatePeople(contactId);
   return { ok: !!row };
@@ -278,12 +280,12 @@ export async function createFolder(input: { name: string; icon: string; color: s
 /** 폴더 고치기: 모양·색, 직접 만든 폴더는 이름도(기본 폴더 이름은 화면 언어로 붙으니 그대로) */
 export async function updateFolder(id: string, input: { name?: string; icon: string; color: string }): Promise<{ ok: boolean }> {
   const s = await requireSession();
-  if (typeof id !== "string" || !UUID.test(id) || !isFolderIcon(input?.icon) || !isFolderColor(input?.color)) return { ok: false };
+  if (typeof id !== "string" || !isUuid(id) || !isFolderIcon(input?.icon) || !isFolderColor(input?.color)) return { ok: false };
   const name = cleanName(input?.name);
   try {
     const row = await s.tx((q) =>
       q.one<{ id: string }>(
-        "update contact_groups set icon = $2, color = $3, name = case when builtin is null and $4 <> '' then $4 else name end where id::text = $1 returning id",
+        "update contact_groups set icon = $2, color = $3, name = case when builtin is null and $4 <> '' then $4 else name end where id = $1::uuid returning id",
         [id, input.icon, input.color, name],
       ),
     );
@@ -297,9 +299,9 @@ export async function updateFolder(id: string, input: { name?: string; icon: str
 /** 직접 만든 폴더 지우기. 사람들은 그대로 남는다(기본 폴더는 DB가 막는다) */
 export async function deleteFolder(id: string): Promise<{ ok: boolean }> {
   const s = await requireSession();
-  if (typeof id !== "string" || !UUID.test(id)) return { ok: false };
+  if (!isUuid(id)) return { ok: false };
   try {
-    const row = await s.tx((q) => q.one<{ id: string }>("delete from contact_groups where id::text = $1 and builtin is null returning id", [id]));
+    const row = await s.tx((q) => q.one<{ id: string }>("delete from contact_groups where id = $1::uuid and builtin is null returning id", [id]));
     revalidatePeople();
     return { ok: !!row };
   } catch {
@@ -310,15 +312,15 @@ export async function deleteFolder(id: string): Promise<{ ok: boolean }> {
 /** 폴더에 든 사람을 이 목록으로 맞춘다(체크한 사람은 넣고, 뺀 사람은 뺀다). 내 사람만 들어간다(RLS) */
 export async function setFolderMembers(folderId: string, contactIds: string[]): Promise<{ ok: boolean }> {
   const s = await requireSession();
-  if (typeof folderId !== "string" || !UUID.test(folderId)) return { ok: false };
+  if (!isUuid(folderId)) return { ok: false };
   const ids = cleanIds(contactIds);
   try {
     const ok = await s.tx(async (q) => {
-      const f = await q.one<{ id: string }>("select id from contact_groups where id::text = $1", [folderId]);
+      const f = await q.one<{ id: string }>("select id from contact_groups where id = $1::uuid", [folderId]);
       if (!f) return false;
-      await q("delete from contact_group_members where group_id = $1 and not (contact_id::text = any($2::text[]))", [f.id, ids]);
+      await q("delete from contact_group_members where group_id = $1 and contact_id <> all($2::uuid[])", [f.id, ids]);
       await q(
-        "insert into contact_group_members (group_id, contact_id, user_id) select $1, c.id, $3 from contacts c where c.id::text = any($2::text[]) on conflict do nothing",
+        "insert into contact_group_members (group_id, contact_id, user_id) select $1, c.id, $3 from contacts c where c.id = any($2::uuid[]) on conflict do nothing",
         [f.id, ids, s.user.id],
       );
       return true;
@@ -333,7 +335,7 @@ export async function setFolderMembers(folderId: string, contactIds: string[]): 
 /** 사람 하나를 폴더에 넣기(사람들 목록에서 폴더 칸으로 끌어 놓을 때). 이미 있으면 그대로 */
 export async function addToFolder(folderId: string, contactId: string): Promise<{ ok: boolean }> {
   const s = await requireSession();
-  if (typeof folderId !== "string" || !UUID.test(folderId) || typeof contactId !== "string" || !UUID.test(contactId)) return { ok: false };
+  if (!isUuid(folderId) || !isUuid(contactId)) return { ok: false };
   try {
     await s.tx((q) => q("insert into contact_group_members (group_id, contact_id, user_id) values ($1, $2, $3) on conflict do nothing", [folderId, contactId, s.user.id]));
     revalidatePeople(contactId);
@@ -346,7 +348,7 @@ export async function addToFolder(folderId: string, contactId: string): Promise<
 /** 사람 하나를 이 폴더에서만 빼기(사람은 그대로, 다른 폴더도 그대로). 내 폴더·내 사람만 건드린다(RLS). 이미 없으면 그대로 성공 */
 export async function removeFromFolder(folderId: string, contactId: string): Promise<{ ok: boolean }> {
   const s = await requireSession();
-  if (typeof folderId !== "string" || !UUID.test(folderId) || typeof contactId !== "string" || !UUID.test(contactId)) return { ok: false };
+  if (!isUuid(folderId) || !isUuid(contactId)) return { ok: false };
   try {
     await s.tx((q) => q("delete from contact_group_members where group_id = $1 and contact_id = $2", [folderId, contactId]));
     revalidatePeople(contactId);
@@ -359,15 +361,15 @@ export async function removeFromFolder(folderId: string, contactId: string): Pro
 /** 한 사람이 든 폴더를 이 목록으로 맞춘다(사람 화면의 폴더 고르기). 내 폴더만 들어간다(RLS) */
 export async function setPersonFolders(contactId: string, folderIds: string[]): Promise<{ ok: boolean }> {
   const s = await requireSession();
-  if (typeof contactId !== "string" || !UUID.test(contactId)) return { ok: false };
+  if (!isUuid(contactId)) return { ok: false };
   const ids = cleanIds(folderIds);
   try {
     const ok = await s.tx(async (q) => {
-      const c = await q.one<{ id: string }>("select id from contacts where id::text = $1", [contactId]);
+      const c = await q.one<{ id: string }>("select id from contacts where id = $1::uuid", [contactId]);
       if (!c) return false;
-      await q("delete from contact_group_members where contact_id = $1 and not (group_id::text = any($2::text[]))", [c.id, ids]);
+      await q("delete from contact_group_members where contact_id = $1 and group_id <> all($2::uuid[])", [c.id, ids]);
       await q(
-        "insert into contact_group_members (group_id, contact_id, user_id) select g.id, $1, $3 from contact_groups g where g.id::text = any($2::text[]) on conflict do nothing",
+        "insert into contact_group_members (group_id, contact_id, user_id) select g.id, $1, $3 from contact_groups g where g.id = any($2::uuid[]) on conflict do nothing",
         [c.id, ids, s.user.id],
       );
       return true;

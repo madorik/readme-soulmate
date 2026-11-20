@@ -1,19 +1,17 @@
 import Link from "next/link";
 import { cancelInvite } from "@/app/actions/request";
-import { AppLockSetting, PendingButton, PushSetting, ReminderSetting } from "@/app/(app)/privacy/Settings";
+import { AppLockSetting, PendingButton, PushSetting, ReminderSetting, WebPushSetting } from "@/app/(app)/privacy/Settings";
 import { DeleteAccount } from "@/components/DeleteAccount";
 import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { LanguageSetting } from "@/components/LanguageSetting";
 import { Icon } from "@/components/marks";
 import { ShareAppRow } from "@/components/ShareAppRow";
-import { TossLegalRows, TossReminderSwitch } from "@/components/shell/TossSettings";
 import type { PrivacyData } from "@/lib/pages/types";
 import { qrShape } from "@/lib/qr";
-import { SHELL } from "@/lib/shell";
 import { absoluteUrl } from "@/lib/site";
 import { makeT } from "@/lib/t";
 
-export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLock, pushEnabled, reminderOffsets, ai, tossReminder }: PrivacyData) {
+export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLock, pushEnabled, reminderOffsets, ai, webPushKey }: PrivacyData) {
   const t = makeT(locale);
   // 앱 공유하기: 보는 사람 기기에 맞는 스토어로 이어 주는 주소(/get). QR은 서버에서 모양만 만들어 넘긴다
   const shareUrl = absoluteUrl("/get?from=share");
@@ -61,25 +59,20 @@ export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLoc
       <h2 className="pl-1 text-[23px] font-normal">{t("privacy.appSettings")}</h2>
       <div className="mt-2 flex flex-col">
         <LanguageSetting choice={localeChoice} back="/privacy" t={t} className="border-t-[1.5px] border-dashed border-rule" />
-        {/* 토스 미니앱에는 앱 잠금이 없고, 알림은 토스 알림 동의로 켠다(TossReminderSwitch) */}
-        {SHELL === "toss" ? null : <AppLockSetting locale={locale} enabled={appLock} />}
-        {SHELL === "toss" ? <TossReminderSwitch locale={locale} reminder={tossReminder} /> : <PushSetting locale={locale} enabled={pushEnabled} />}
+        <AppLockSetting locale={locale} enabled={appLock} />
+        <PushSetting locale={locale} enabled={pushEnabled} />
+        {pushEnabled && webPushKey ? <WebPushSetting locale={locale} publicKey={webPushKey} /> : null}
         {/* 알림을 끄면 언제 알릴지는 숨긴다 */}
-        {(SHELL === "toss" ? tossReminder?.on : pushEnabled) ? (
+        {pushEnabled ? (
           <div id="reminders" className="border-t-[1.5px] border-dashed border-rule pb-4 pt-3.5">
             <ReminderSetting locale={locale} offsets={reminderOffsets} />
           </div>
         ) : null}
-        {/* 소개 화면은 앱(웹) 것이라 토스 미니앱에는 없다 */}
-        {SHELL === "toss" ? null : (
-          <Link href={ai ? "/voice?tour=1" : "/request?tour=1"} className="flex min-h-16 items-center gap-3 border-t-[1.5px] border-dashed border-rule">
-            <span className="flex-1 pl-1 text-[21px]">{t("privacy.replayIntro")}</span>
-            <Icon name="chevron" size={20} className="mr-1 shrink-0 text-muted" />
-          </Link>
-        )}
-        {/* 토스 미니앱 안에서는 앱 설치를 권하지 않는다 */}
-        {SHELL === "toss" ? null : <ShareAppRow locale={locale} url={shareUrl} qr={qrShape(shareUrl)} />}
-        <TossLegalRows locale={locale} />
+        <Link href={ai ? "/voice?tour=1" : "/request?tour=1"} className="flex min-h-16 items-center gap-3 border-t-[1.5px] border-dashed border-rule">
+          <span className="flex-1 pl-1 text-[21px]">{t("privacy.replayIntro")}</span>
+          <Icon name="chevron" size={20} className="mr-1 shrink-0 text-muted" />
+        </Link>
+        <ShareAppRow locale={locale} url={shareUrl} qr={qrShape(shareUrl)} />
       </div>
       <Tape color="mint" className="-left-2.5 -top-1.5" />
       <Star size={20} rotate={12} color={SKY_STAR} className="-right-[5px] -top-2.5" />
@@ -88,15 +81,11 @@ export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLoc
       {/* 계정 삭제는 설정 맨 아래(로그아웃은 홈 오른쪽 위 내 얼굴 메뉴) */}
       <section aria-label={t("profile.account")} className="card relative mx-4 mt-[26px] px-4 pb-2 pt-[18px]">
       <h2 className="pl-1 text-[23px] font-normal">{t("profile.account")}</h2>
-      {/* 토스 미니앱 출시를 멈춰서(2026-11-18) '토스에서 쓰기'(TossLinkCode)는 숨겨 둔다. 다시 하면 이 자리에 넣는다 */}
       <div className="mt-2">
-        {/* 내 기록 내려받기는 우리 서버 세션이 필요해 토스 미니앱에는 없다 */}
-        {SHELL === "toss" ? null : (
-          <a href="/api/export" download="remember-you.json" className="flex min-h-[60px] items-center gap-3 border-t-[1.5px] border-dashed border-rule">
-            <span className="flex-1 pl-1 text-[21px]">{t("privacy.exportData")}</span>
-            <Icon name="up" size={20} className="mr-1 shrink-0 rotate-180 text-muted" />
-          </a>
-        )}
+        <a href="/api/export" download="remember-you.json" className="flex min-h-[60px] items-center gap-3 border-t-[1.5px] border-dashed border-rule">
+          <span className="flex-1 pl-1 text-[21px]">{t("privacy.exportData")}</span>
+          <Icon name="up" size={20} className="mr-1 shrink-0 rotate-180 text-muted" />
+        </a>
         <div className="border-t-[1.5px] border-dashed border-rule">
           <DeleteAccount locale={locale} />
         </div>

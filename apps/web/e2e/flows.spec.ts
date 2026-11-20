@@ -425,6 +425,13 @@ test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 
   await shot(jisu, "14-mine-person");
   await jisu.goto("/people");
   await expect(jisu.getByRole("link", { name: /할머니.*7일 남음/ })).toBeVisible();
+  // 생일 알림 크론은 브라우저 알림(웹 푸시 구독)이 있는 사람만 읽는다(앱은 기기 로컬 알림): 구독을 하나 등록해 둔다.
+  // 알려진 푸시 서비스 주소가 아니거나 모양이 틀린 구독은 받지 않는다
+  const pushKeys = { p256dh: "B".repeat(87), auth: "A".repeat(22) };
+  const bad = await jisu.request.post("/api/push", { data: { platform: "web", token: JSON.stringify({ endpoint: "https://evil.example/x", keys: pushKeys }) } });
+  expect(bad.status()).toBe(400);
+  const sub = await jisu.request.post("/api/push", { data: { platform: "web", token: JSON.stringify({ endpoint: "https://fcm.googleapis.com/fcm/send/e2e", keys: pushKeys }) } });
+  expect(sub.status()).toBe(200);
   expect(await cron()).toBeGreaterThanOrEqual(1);
 
   // 다른 사람은 주소를 알아도 못 본다

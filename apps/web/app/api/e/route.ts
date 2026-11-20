@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAuth } from "@/lib/auth";
+import { clientIp, memoryHit } from "@/lib/rate-limit";
 import { isBot, platformOf, trackMany, type TrackInfo } from "@/lib/track";
 import { CLIENT_EVENTS, uaInfo, type ClientEvent } from "@/lib/usage";
 
@@ -9,6 +10,8 @@ import { CLIENT_EVENTS, uaInfo, type ClientEvent } from "@/lib/usage";
 export async function POST(request: NextRequest) {
   const ua = request.headers.get("user-agent");
   if (isBot(ua)) return new NextResponse(null, { status: 204 });
+  // 같은 주소에서 1분에 600번까지(이 서버 안에서 센다). 통신사 공용 주소(CGNAT)에 사람이 많이 몰려도 닿지 않을 만큼 넉넉히 두고, 기계가 쏟아붓는 것만 막는다. 넘으면 기록하지 않는다
+  if (!memoryHit(`e:${clientIp(request.headers)}`, 600, 60_000)) return new NextResponse(null, { status: 429 });
   let body: { e?: unknown; a?: unknown; n?: unknown; i?: unknown; b?: unknown; s?: unknown } = {};
   try {
     body = JSON.parse((await request.text()).slice(0, 16_000)) as typeof body;

@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import type { Locale, YMD } from "@readme/core";
 import { aiConfigured } from "./ai";
-import { reserveAi } from "./ai-quota";
+import { refundAi, reserveAi } from "./ai-quota";
 import { open, seal } from "./crypto";
 import { displayName, folderName, listFolders, listNotes, type Person, type Session } from "./data";
 import { asSystem } from "./db";
@@ -124,6 +124,16 @@ async function askAI(body: unknown): Promise<unknown> {
 
 const model = () => process.env.OPENAI_MODEL || "gpt-6-luna";
 
+/** askAI인데 실패하면(불러 보지도 못함) 잡아 둔 하루 한도를 돌려주고 같은 오류를 던진다 */
+async function askPaidAI(s: Session, body: unknown): Promise<unknown> {
+  try {
+    return await askAI(body);
+  } catch (e) {
+    await refundAi(s.user.id, "gift");
+    throw e;
+  }
+}
+
 /** AI를 부르기 전 하루 한도 확인(사람마다·서비스 전체). 막히면 AI 없이 기록만으로 고른다 */
 async function aiAllowed(s: Session): Promise<boolean> {
   return (await reserveAi({ id: s.user.id, demo: s.user.isAnonymous || s.profile.isDemo }, "gift")) === "ok";
@@ -171,7 +181,7 @@ export async function giftIdeas(s: Session, p: Person, ctx: GiftContext, locale:
   if (!aiConfigured() || !(await aiAllowed(s))) return rules();
   let ideas: GiftIdea[] = [];
   try {
-    ideas = parseIdeas(await askAI(ideasRequest(profile, ctx, locale, model())), profile.avoid, ground);
+    ideas = parseIdeas(await askPaidAI(s, ideasRequest(profile, ctx, locale, model())), profile.avoid, ground);
   } catch (e) {
     console.warn("gift ideas failed", e instanceof Error ? e.message : e);
   }
@@ -198,7 +208,7 @@ export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, not
   let aiNote = Array.isArray(kept) ? "" : cleanNote(kept?.note);
   if (!ai.length && aiConfigured() && eligible.length && (await aiAllowed(s))) {
     try {
-      ({ picks: ai, note: aiNote } = parseCatalogPicks(await askAI(catalogRequest(profile, ctx, locale, model(), eligible)), eligible, ground));
+      ({ picks: ai, note: aiNote } = parseCatalogPicks(await askPaidAI(s, catalogRequest(profile, ctx, locale, model(), eligible)), eligible, ground));
     } catch (e) {
       console.warn("gift picks failed", e instanceof Error ? e.message : e);
     }

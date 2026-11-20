@@ -8,7 +8,7 @@ import { CheckGlyph } from "@/components/marks";
 import { Sheet } from "@/components/Sheet";
 import { nativeShare } from "@/components/ShareButtons";
 
-/** 글을 클립보드에 복사한다(막혀 있으면 옛 방식으로 한 번 더). 복사했으면 true. 토스 번들의 ShareButtons 대체 파일에는 없어 여기에 둔다 */
+/** 글을 클립보드에 복사한다(막혀 있으면 옛 방식으로 한 번 더). 복사했으면 true. */
 async function copyText(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);

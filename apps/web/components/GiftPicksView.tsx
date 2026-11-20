@@ -5,12 +5,11 @@ import { BasisTags, GiftLinkTabs } from "@/components/GiftLinkTabs";
 import { Icon } from "@/components/marks";
 import type { GiftPickData, GiftPicksData } from "@/lib/pages/gift-picks.data";
 import { makeT, type T } from "@/lib/t";
-import { SHELL } from "@/lib/shell";
 
 // 이런 선물은 어때요: 이 사람 기록 전체와 메모로 고른 선물. 쿠팡 API 키가 있으면 찾을 말마다 '왜'(이유)와 쿠팡 상품 줄,
 // 없으면(파트너스 최종 승인 전) 가격대 칩 + 미리 만든 파트너스 링크 목록에서 고른 것. 누르면 쿠팡(파트너스 링크)으로 간다.
 // 화면은 Suspense로 감싸 먼저 그리고, 이 부분만 나중에 채운다(처음엔 AI·쿠팡을 부르느라 몇 초 걸린다).
-// 고르기는 서버(lib/pages/gift-picks)가 하고 여기는 그리기만(토스 미니앱 번들도 같이 쓴다. 서버 전용 모듈을 들이지 않는다)
+// 고르기는 서버(lib/pages/gift-picks)가 하고 여기는 그리기만(서버 전용 모듈을 들이지 않는다)
 
 const SCROLLER = "flex snap-x gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
@@ -81,7 +80,7 @@ export function parseSkip(v: string | undefined): string[] {
 
 /**
  * 고른 선물 그리기(picks: lib/pages/gift-picks가 고른 것). title이 없으면 고지 없이(여러 사람 화면).
- * picks가 Promise면(웹) 여기서 기다린다: 부모 Suspense가 먼저 빈 자리를 보이고 다 고르면 채운다. 토스 미니앱은 다 읽은 값을 준다.
+ * picks가 Promise면(웹) 여기서 기다린다: 부모 Suspense가 먼저 빈 자리를 보이고 다 고르면 채운다.
  * again: 다시 고르기 주소의 앞부분(지금 화면 주소). 주면 오른쪽 위에 다시 고르기 단추(부모 section이 relative여야 한다)
  * peek: 가격대 칩 바로 위 오른쪽에 둘 것(선물 힌트 화면의 '컨닝페이퍼')
  */
@@ -121,7 +120,7 @@ export function GiftPicksBody({ picks, locale, pad = "px-6", title = true, again
           badges={{ pick: t("picks.badge.pick"), top: t("picks.badge.top") }}
           bands={bands.map((b) => ({ band: b.band, label: t(`picks.band.${b.band}` as "picks.band.1"), items: b.items }))}
         />
-        {title && SHELL === "web" ? <PicksDisclosure text={t("picks.disclosure")} pad={pad} /> : null}
+        {title ? <PicksDisclosure text={t("picks.disclosure")} pad={pad} /> : null}
       </>
     );
   }
@@ -133,7 +132,7 @@ export function GiftPicksBody({ picks, locale, pad = "px-6", title = true, again
       {data.picks.map((pick) => (
         <Row key={pick.keyword} pick={pick} pad={pad} t={t} priceOf={priceOf} />
       ))}
-      {title && SHELL === "web" ? <PicksDisclosure text={t("picks.disclosure")} pad={pad} /> : null}
+      {title ? <PicksDisclosure text={t("picks.disclosure")} pad={pad} /> : null}
     </>
   );
 }

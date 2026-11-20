@@ -14,8 +14,6 @@ const PUBLIC = [
   /^\/gifts(\/|$)/,
   /^\/admin(\/|$)/,
   /^\/api\/e$/,
-  // 토스 미니앱 API(쿠키 대신 Bearer 토큰, 화면에서 확인)
-  /^\/api\/t\//,
   /^\/(robots\.txt|sitemap\.xml|llms\.txt)$/,
   /^\/api\/auth\//,
   /^\/auth\//,
@@ -61,5 +59,5 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // _vercel: Vercel 웹 분석 스크립트·보내기(로그인 없이 연 화면에서도 모여야 한다)
-  matcher: ["/((?!_next/static|_next/image|_vercel|fonts/|favicon|icon|apple-icon|manifest|robots|og\\.png).*)"],
+  matcher: ["/((?!_next/static|_next/image|_vercel|fonts/|favicon|icon|apple-icon|manifest|robots|sw\\.js|og\\.png).*)"],
 };

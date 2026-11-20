@@ -13,6 +13,7 @@ import {
   describeShoe,
   describeTop,
   dueReminders,
+  dueWithCatchUp,
   eventTitle,
   en,
   countWord,
@@ -141,6 +142,20 @@ test("다가오는 날과 오늘 보낼 알림", () => {
   assert.equal(due.length, 1);
   assert.equal(due[0]!.event.contactId, "mom");
   assert.deepEqual(sanitizeOffsets([7, 5, 0, "3"]), [7, 0]);
+});
+
+test("알림 시점: 어제 못 보낸 것도 오늘 보내고(아직 안 지난 것만), 같은 것이 두 번 나오지 않는다(날이 바뀌어도 한 알림은 한 번)", () => {
+  const people = [{ contactId: "mom", name: "어머니", birthday: { calendar: "solar" as const, month: 12, day: 3 } }];
+  const left = (y: number, m: number, d: number) => dueWithCatchUp(people, { y, m, d }, [7, 0]).map((x) => [x.offset, x.event.date.m, x.event.date.d]);
+  // 12/3 생일의 7일 전은 11/26: 그날은 한 번만
+  assert.deepEqual(left(2026, 11, 26), [[7, 12, 3]]);
+  // 11/27(어제 크론이 못 돌았다고 치면): 어제 알렸어야 할 7일 전 알림이 오늘 나간다
+  assert.deepEqual(left(2026, 11, 27), [[7, 12, 3]]);
+  // 11/28이면 이틀 전 것이라 더는 보내지 않는다(하루만 만회)
+  assert.deepEqual(left(2026, 11, 28), []);
+  // 생일 당일은 당일 알림, 그다음 날엔 어제 당일 알림을 만회하지 않는다(이미 지난 날이다)
+  assert.deepEqual(left(2026, 12, 3), [[0, 12, 3]]);
+  assert.deepEqual(left(2026, 12, 4), []);
 });
 
 test("날짜 표기", () => {

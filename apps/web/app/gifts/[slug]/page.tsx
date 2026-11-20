@@ -14,6 +14,8 @@ import { absoluteUrl } from "@/lib/site";
 // 공개 선물 가이드(검색·AI 답변용): 먼저 답하는 몇 문장 → 가격대별 선물 다섯 → 묻고 답하기 → 기억해유로 이어 가기.
 // 구조화 데이터: 상품 목록(ItemList)·묻고 답하기(FAQPage)·위치(BreadcrumbList)
 
+// 빌드 때 한 번 그려 CDN에 둔다(generateStaticParams). 루트 레이아웃이 쿠키·헤더를 읽어서 그냥 두면 요청마다 새로 그려지므로 force-static으로 빈 값으로 읽게 한다
+export const dynamic = "force-static";
 export const dynamicParams = false;
 
 export function generateStaticParams() {

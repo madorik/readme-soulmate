@@ -12,7 +12,7 @@ import type { PageInput } from "./routes";
 
 /**
  * 선물 힌트(웹 페이지): 선물 고르기(picks)는 기다리지 않고 Promise로 둔다. 화면을 먼저 그리고 고르는 동안 빈 자리를 보이다가 채운다
- * (처음엔 AI·쿠팡을 부르느라 몇 초 걸린다). JSON이 아니므로 토스 미니앱은 loadPersonReminder로
+ * (처음엔 AI·쿠팡을 부르느라 몇 초 걸린다)
  */
 export async function startPersonReminder({ params, searchParams: sp }: PageInput): Promise<Omit<PersonReminderData, "picks"> & { picks: Promise<GiftPicksData | null> | null }> {
   const { id } = params;
@@ -71,10 +71,4 @@ export async function startPersonReminder({ params, searchParams: sp }: PageInpu
     remindOnDay: s.profile.reminderOffsets.includes(0),
     picks,
   };
-}
-
-/** 선물 힌트(토스 미니앱·JSON): 선물 고르기까지 다 읽어서 */
-export async function loadPersonReminder(input: PageInput): Promise<PersonReminderData> {
-  const d = await startPersonReminder(input);
-  return { ...d, picks: await d.picks };
 }

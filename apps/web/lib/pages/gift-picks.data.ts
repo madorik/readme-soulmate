@@ -1,5 +1,5 @@
 // 이런 선물은 어때요(선물 힌트·여러 사람 선물 화면이 같이 쓰는 조각)의 데이터 모양. lib/pages/gift-picks.ts가 만들고 components/GiftPicksView가 그린다.
-// 토스 미니앱 번들도 읽으므로 타입만 둔다(서버 전용 코드를 들이지 않는다)
+// 타입만 둔다(서버 전용 코드를 들이지 않는다)
 
 /** 쿠팡 상품 하나(lib/gift-core CoupangProduct와 같은 모양) */
 export interface GiftPickProduct {

@@ -26,5 +26,3 @@ apps/mobile/android/app/src/main/assets/public
 apps/mobile/android/app/google-services.json
 apps/mobile/ios/App/App/GoogleService-Info.plist
 
-# 토스 미니앱 번들(apps/toss, npm run build가 만든다)
-*.ait

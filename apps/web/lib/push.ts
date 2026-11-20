@@ -3,6 +3,7 @@ import { createSign } from "node:crypto";
 import { isLocale, type Locale } from "@readme/core";
 import { systemOne, systemQuery } from "@/lib/db";
 import { fcmTokenGone } from "@/lib/push-core";
+import { sendWebPush, webPushConfigured } from "@/lib/webpush";
 
 // Firebase Cloud Messaging(HTTP v1). 서비스 계정 세 값이 있을 때만 보낸다. 없으면 앱의 기기 로컬 알림만 쓴다.
 //   FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY(줄바꿈은 \n)
@@ -62,18 +63,22 @@ export async function sendPush(token: string, title: string, body: string, path:
   }
 }
 
+/** 기기 토큰 하나에 보낸다: 웹 브라우저(platform web)는 웹 푸시, 앱(안드로이드·iOS)은 FCM. 토큰이 못 쓰는 것이면 지운다. 보냈으면 true */
+export async function pushToToken(userId: string, tk: { token: string; platform: string }, title: string, body: string, path: string): Promise<boolean> {
+  const r = tk.platform === "web" ? await sendWebPush(tk.token, { title, body, path }) : await sendPush(tk.token, title, body, path);
+  if (r === "gone") await systemQuery("delete from push_tokens where user_id = $1 and token = $2", [userId, tk.token]).catch(() => {});
+  return r === true;
+}
+
 /** 한 사람의 모든 기기에 보낸다. 알림을 끈 사람이면 보내지 않는다. 실패는 조용히 넘긴다(본 동작을 막지 않게) */
 export async function notifyUser(userId: string, title: string, body: string, path: string): Promise<boolean> {
-  if (!pushConfigured()) return false;
+  if (!pushConfigured() && !webPushConfigured()) return false;
   try {
-    const tokens = await systemQuery<{ token: string }>("select t.token from push_tokens t join profiles p on p.id = t.user_id where t.user_id = $1 and p.push_enabled", [userId]);
-    const results = await Promise.all(
-      tokens.map(async (tk) => {
-        const r = await sendPush(tk.token, title, body, path);
-        if (r === "gone") await systemQuery("delete from push_tokens where user_id = $1 and token = $2", [userId, tk.token]).catch(() => {});
-        return r === true;
-      }),
+    const tokens = await systemQuery<{ token: string; platform: string }>(
+      "select t.token, t.platform from push_tokens t join profiles p on p.id = t.user_id where t.user_id = $1 and p.push_enabled",
+      [userId],
     );
+    const results = await Promise.all(tokens.map((tk) => pushToToken(userId, tk, title, body, path)));
     return results.some(Boolean);
   } catch {
     return false;
@@ -82,7 +87,7 @@ export async function notifyUser(userId: string, title: string, body: string, pa
 
 /** 받는 사람의 화면 언어로 제목·내용을 만들어 보낸다 */
 export async function notifyUserT(userId: string, make: (locale: Locale) => { title: string; body: string; path: string }): Promise<void> {
-  if (!pushConfigured()) return;
+  if (!pushConfigured() && !webPushConfigured()) return;
   try {
     const p = await systemOne<{ locale: string | null; system_locale: string | null }>("select locale, system_locale from profiles where id = $1", [userId]);
     const locale: Locale = isLocale(p?.locale) ? p!.locale : isLocale(p?.system_locale) ? p!.system_locale : "ko";

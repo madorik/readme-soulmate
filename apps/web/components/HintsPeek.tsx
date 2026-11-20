@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Icon } from "@/components/marks";
 import { useDialog } from "@/components/Sheet";
-import { APP_ICON } from "@/lib/shell";
+/** 앱 아이콘 주소(작은 아이콘) */
+const APP_ICON = "/icon.png";
 
 // 선물 힌트 화면: 힌트는 접어 두고, 앱 아이콘(컨닝페이퍼를 힐끗 보는 눈) + '컨닝페이퍼'를 누르면
 // 컨닝페이퍼가 오른쪽에서 밀려 나온다. 바깥을 누르거나 Esc·닫기로 들어간다.

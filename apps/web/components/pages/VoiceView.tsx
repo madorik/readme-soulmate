@@ -3,7 +3,6 @@ import { leaveTour } from "@/app/actions/tour";
 import { VoiceCapture } from "@/app/(app)/voice/VoiceCapture";
 import { TopBar } from "@/components/chrome";
 import { Heart, Star } from "@/components/diary";
-import { AiNotice } from "@/components/shell/AiNotice";
 import type { VoiceData } from "@/lib/pages/types";
 import { makeT } from "@/lib/t";
 
@@ -26,7 +25,6 @@ export function VoiceView({ locale, people, tour }: VoiceData) {
           ) : undefined
         }
       />
-      <AiNotice locale={locale} />
       {/* 키보드가 뜨면(적는 동안) 제목은 숨겨 적는 칸과 사람 줄이 한 화면에. 체험이면 제목 대신 아래 안내(이렇게 말해보세요) */}
       {tour ? null : (
         <div className="relative px-6 pt-2 text-center [html[data-kb]_&]:hidden">

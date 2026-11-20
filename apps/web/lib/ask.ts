@@ -7,8 +7,9 @@ import { isLockedPayload, LIMITS } from "./data-core";
 import { openContactSections, openPrefill, sealContactSections, sealPrefill, type Session } from "./data";
 import { asSystem, dbReason, systemOne } from "./db";
 import { insertInvite } from "./invites";
+import { isUuid } from "./uuid";
 
-// 물어보기 만들기·읽기·답하기의 공통 부분. 웹·앱(서버 액션 app/actions/request.ts)과 토스 미니앱(/api/t)이 같이 쓴다
+// 물어보기 만들기·읽기·답하기의 공통 부분. 웹·앱(서버 액션 app/actions/request.ts)이 쓴다
 
 export function cleanCard(input: unknown, allowed: Section[]): PartialCard {
   const card: PartialCard = {};
@@ -30,7 +31,8 @@ export async function createAsk(s: Session, input: { to?: string; name?: string;
     let prefill: PartialCard = {};
     if (to) {
       // 내 주소록 칸만(RLS). 미리 채울 값은 내 기록에서 물어보는 항목만
-      const c = await q.one<{ id: string }>("select id from contacts where id::text = $1", [to]);
+      if (!isUuid(to)) throw new Error("not_found");
+      const c = await q.one<{ id: string }>("select id from contacts where id = $1::uuid", [to]);
       if (!c) throw new Error("not_found");
       contactId = c.id;
       const r = await q.one<{ sections: unknown }>("select sections from contact_cards where contact_id = $1", [contactId]);

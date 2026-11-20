@@ -1,7 +1,7 @@
 import type { AvatarConfig, DateSpec, Locale, PartialCard, ReminderOffset, SafetyData, Section, YMD } from "@readme/core";
 
 // 화면마다 서버가 읽어 주는 데이터 모양(lib/pages/<화면>.ts가 만들고 components/pages/<화면>View가 그린다).
-// 토스 미니앱 번들도 읽으므로 타입만 둔다(서버 전용 코드를 들이지 않는다)
+// 타입만 둔다(서버 전용 코드를 들이지 않는다)
 
 export interface MeData {
   locale: Locale;
@@ -63,8 +63,8 @@ export interface PrivacyData {
   pushEnabled: boolean;
   reminderOffsets: ReminderOffset[];
   ai: boolean;
-  /** 토스 미니앱 생일·기념일 알림(템플릿 승인 전이면 null) */
-  tossReminder: { template: string; on: boolean } | null;
+  /** 브라우저 푸시 공개 키(서버에 VAPID 키가 없으면 null: 브라우저 알림 스위치를 숨긴다) */
+  webPushKey: string | null;
 }
 
 export interface AskPersonData {

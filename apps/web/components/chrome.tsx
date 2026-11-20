@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { BRAND, type Locale } from "@readme/core";
 import type { T } from "@/lib/i18n";
-import { SHELL } from "@/lib/shell";
 import { DropOrb } from "./DropOrb";
 import { Icon } from "./marks";
 
@@ -137,8 +136,7 @@ export function LegalLinks({ locale, t }: { locale: Locale; t: T }) {
       <a href={`/privacy-policy?lang=${locale}`} className="flex min-h-11 items-center underline underline-offset-2">
         {t("legal.privacy")}
       </a>
-      {/* 선물 가이드는 우리 사이트 글이라 토스 미니앱에서는 빼 둔다 */}
-      {locale === "ko" && SHELL === "web" ? (
+      {locale === "ko" ? (
         <Link href="/gifts" className="flex min-h-11 items-center underline underline-offset-2">
           선물 가이드
         </Link>

@@ -4,8 +4,8 @@ import { CEO, OPERATOR, SUPPORT_EMAIL } from "@/lib/legal-info";
 export const PRIVACY_TITLE = { ko: "개인정보 처리방침", en: "Privacy Policy" } as const;
 
 // 「개인정보 보호법」 제30조 항목을 실제로 처리하는 대로 적는다(2026-11-14 코드 기준).
-// 위탁: Vercel(호스팅), Supabase(DB, 서울), Google·Apple(로그인), OpenAI(말로 적기·선물 추천 찾을 말), Google(푸시 FCM, 2026-11-17부터), 비바리퍼블리카(토스 미니앱 로그인 확인·토스 알림, 2026-11-18부터). 토스판 말로 적기는 녹음을 서버 거쳐 OpenAI로 받아쓴다. 쿠팡에는 찾을 말만 보낸다. 위탁이 바뀌면 여기와 시행일(lib/legal-info.ts)을 같이 고친다.
-/** 본문만(웹 페이지와 토스 미니앱이 같이 쓴다). 링크는 웹 주소로 둔다 */
+// 위탁: Vercel(호스팅), Supabase(DB, 서울), Google·Apple(로그인), OpenAI(말로 적기·선물 추천 찾을 말), Google(푸시 FCM, 2026-11-17부터), Google·Apple·Mozilla·Microsoft(웹 브라우저 푸시, 2026-11-21부터). 쿠팡에는 찾을 말만 보낸다. 위탁이 바뀌면 여기와 시행일(lib/legal-info.ts)을 같이 고친다.
+/** 본문만. 링크는 웹 주소로 둔다 */
 export function PrivacyBody({ locale }: { locale: Locale }) {
   const mail = <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>;
   if (locale === "en") {
@@ -23,9 +23,6 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
             we get Apple&rsquo;s relay address. <b>Demo accounts</b> have no email or name.
           </li>
           <li>
-            <b>Using it in Toss</b>: the account is made from the user ID Toss gives this service. We don&rsquo;t receive your Toss name, phone number or email.
-          </li>
-          <li>
             <b>About me</b>: the name you go by, your avatar, foods you like and dislike, <b>allergies and foods you can&rsquo;t eat (health information)</b>, clothing and shoe sizes, gift ideas and favorite
             brands, favorites (patterns, style, celebrities, characters, teams, movies, dramas, shows, music, seasons, desserts, places, animals, books), pets (name, kind, breed, favorite treats), drinking preferences, date of birth (solar or lunar; the year is optional) and anniversaries.
           </li>
@@ -39,7 +36,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
           </li>
           <li>
             <b>Settings and device</b>: language, time zone, reminder timing, whether app lock is on, and the device language. If you allow notifications on a phone, reminders are
-            scheduled on the device itself, and we keep that phone&rsquo;s push token to tell you when someone answers your question. In Toss, if you turn on reminders they are sent through Toss.
+            scheduled on the device itself, and we keep that phone&rsquo;s push token to tell you when someone answers your question. If you turn on notifications in a web browser, we keep that browser&rsquo;s push subscription (an address and encryption keys) and send reminders and replies through the browser maker&rsquo;s push service.
           </li>
           <li>
             <b>Gift ideas</b>: gift cards you send to family (what you call the person, the upcoming date, the picked gifts) and notes you leave with Gift done.
@@ -105,7 +102,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
             </tr>
             <tr>
               <td>OpenAI, L.L.C.</td>
-              <td>Sorting a sentence you say or type in Say it into people and sections (in Toss, also turning your recording into text), and picking gift ideas from your records and notes about a person, only when you use them</td>
+              <td>Sorting a sentence you say or type in Say it into people and sections, and picking gift ideas from your records and notes about a person, only when you use them</td>
               <td>USA (sent over the network each time)</td>
             </tr>
             <tr>
@@ -114,20 +111,20 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
               <td>USA (sent over the network each time)</td>
             </tr>
             <tr>
-              <td>Google LLC</td>
-              <td>Usage statistics (Google Analytics·Tag Manager, only if enabled): screens opened, features used, device type, how you arrived</td>
+              <td>Google LLC, Apple Inc., Mozilla Corporation, Microsoft Corporation (browser push services)</td>
+              <td>Browser notifications, only if you turn them on in a web browser: the browser&rsquo;s push subscription and the notification text (for example, that Mom&rsquo;s birthday is in 7 days)</td>
               <td>USA (sent over the network each time)</td>
             </tr>
             <tr>
-              <td>Viva Republica Inc. (Toss)</td>
-              <td>Only when you use the Toss mini app: confirming sign-in (the user ID) and, if you turn on reminders, sending them (the user ID and the reminder text, for example that Mom&rsquo;s birthday is in 7 days)</td>
-              <td>South Korea</td>
+              <td>Google LLC</td>
+              <td>Usage statistics (Google Analytics·Tag Manager, only if enabled): screens opened, features used, device type, how you arrived</td>
+              <td>USA (sent over the network each time)</td>
             </tr>
           </tbody>
         </table>
         <p>
           Information is stored with these providers until you delete your account. If you don&rsquo;t want overseas transfer, you can choose not to sign up or delete your account; the service can&rsquo;t
-          run without it. In the app and on the web, voice input uses your device&rsquo;s or browser&rsquo;s speech recognition (Apple, Google, etc.); we never receive the audio. In the Toss mini app, your recording passes through our server to OpenAI only to turn it into text, and the audio is not kept. In Say it, the recognized sentence and the names of your people are
+          run without it. In the app and on the web, voice input uses your device&rsquo;s or browser&rsquo;s speech recognition (Apple, Google, etc.); we never receive the audio. In Say it, the recognized sentence and the names of your people are
           sent to OpenAI only to sort the sentence; we don&rsquo;t keep the sentence itself, only the values saved to your records. For gift ideas, what you call the person, their folders, the
           upcoming date and age, your records about them (tastes, sizes, allergies and things to avoid, gift ideas) and your private notes about them are sent to OpenAI only to pick
           gifts. Only search words (like &ldquo;camping mug&rdquo;) are sent to Coupang; opening a gift takes you to Coupang, which follows its
@@ -136,7 +133,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
 
         <h2>6. How long we keep it</h2>
         <ul>
-          <li>Until you delete your account. Deleting removes About me, people, records, notes, question links and notifications right away; database backups roll off within 7 days. In the Toss mini app, Settings &gt; Delete all records deletes the account.</li>
+          <li>Until you delete your account. Deleting removes About me, people, records, notes, question links and notifications right away; database backups roll off within 7 days.</li>
           <li>Demo accounts are deleted automatically 7 days after they are created.</li>
           <li>Unanswered question links stop working after 7 days.</li>
           <li>Answers you send stay in the asker&rsquo;s record until they delete them or their account. Deleting your own account doesn&rsquo;t remove them. To have your answer removed, ask the asker or email us.</li>
@@ -182,9 +179,6 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
           중계 이메일 주소를 받습니다. <b>데모 계정</b>은 이메일·이름 없이 만들어집니다.
         </li>
         <li>
-          <b>토스에서 쓰는 경우</b>: 토스가 이 서비스용으로 주는 사용자 식별값으로 계정을 만듭니다. 토스 회원의 이름·전화번호·이메일은 받지 않습니다.
-        </li>
-        <li>
           <b>나에 대한 기록</b>: 부를 이름, 아바타, 좋아하는·싫어하는 음식, <b>알레르기·못 먹는 음식(건강 정보)</b>, 옷·신발 사이즈, 받고 싶은 선물과 좋아하는 브랜드, 좋아하는 것들(무늬·스타일·연예인·캐릭터·응원팀·영화·드라마·TV·음악·계절·디저트·여행지·동물·책), 반려동물(이름·종류·품종·좋아하는 간식), 술 취향, 생년월일(양력·음력, 태어난 해는 선택)과 기념일
         </li>
         <li>
@@ -195,7 +189,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
           아바타가 보이고, 고르면 나에 대한 기록에도 저장됩니다.
         </li>
         <li>
-          <b>설정과 기기</b>: 언어, 시간대, 알림 시점, 앱 잠금 사용 여부, 기기 언어. 휴대폰에서 알림을 허용하면 생일 알림은 기기 안에서 예약되고, 물어보기에 답장이 오면 알려 드리려고 그 휴대폰의 푸시 토큰을 보관합니다. 토스에서 생일 알림을 받기로 하면 알림은 토스를 통해 보냅니다.
+          <b>설정과 기기</b>: 언어, 시간대, 알림 시점, 앱 잠금 사용 여부, 기기 언어. 휴대폰에서 알림을 허용하면 생일 알림은 기기 안에서 예약되고, 물어보기에 답장이 오면 알려 드리려고 그 휴대폰의 푸시 토큰을 보관합니다. 웹 브라우저에서 알림을 켜면 그 브라우저의 푸시 구독 정보(주소와 암호 키)를 보관하고, 생일·기념일 알림과 답장 알림을 브라우저 제공사의 푸시 서비스를 거쳐 보냅니다.
         </li>
         <li>
           <b>선물 추천</b>: 가족에게 보낸 선물 카드(부르는 말, 챙길 날, 고른 선물 목록), 선물 완료로 남긴 메모
@@ -260,7 +254,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
           </tr>
           <tr>
             <td>OpenAI, L.L.C.</td>
-            <td>말로 적기에서 말하거나 적은 문장을 사람·항목으로 나누기(토스 미니앱에서는 녹음을 글로 바꾸기도), 선물 추천에서 그 사람 기록·메모로 선물 고르기(쓸 때만)</td>
+            <td>말로 적기에서 말하거나 적은 문장을 사람·항목으로 나누기, 선물 추천에서 그 사람 기록·메모로 선물 고르기(쓸 때만)</td>
             <td>미국(쓸 때마다 네트워크로 전송)</td>
           </tr>
           <tr>
@@ -269,20 +263,20 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
             <td>미국(쓸 때마다 네트워크로 전송)</td>
           </tr>
           <tr>
-            <td>Google LLC</td>
-            <td>이용 통계(구글 애널리틱스·태그 매니저, 켠 경우만): 연 화면, 쓴 기능, 기기 종류, 들어온 경로</td>
+            <td>Google LLC, Apple Inc., Mozilla Corporation, Microsoft Corporation(브라우저 푸시 서비스)</td>
+            <td>브라우저 알림(웹 브라우저에서 알림을 켠 경우만): 브라우저의 푸시 구독 정보와 알림 문구(예: 엄마 생일이 7일 남았다는 것)</td>
             <td>미국(쓸 때마다 네트워크로 전송)</td>
           </tr>
           <tr>
-            <td>주식회사 비바리퍼블리카(토스)</td>
-            <td>토스 미니앱에서 쓰는 경우만: 로그인 확인(사용자 식별값), 알림을 받기로 한 경우 알림 보내기(사용자 식별값과 알림 문구, 예: 엄마 생일이 7일 남았다는 것)</td>
-            <td>대한민국</td>
+            <td>Google LLC</td>
+            <td>이용 통계(구글 애널리틱스·태그 매니저, 켠 경우만): 연 화면, 쓴 기능, 기기 종류, 들어온 경로</td>
+            <td>미국(쓸 때마다 네트워크로 전송)</td>
           </tr>
         </tbody>
       </table>
       <p>
         보유 기간은 회원 탈퇴 때까지입니다. 국외 이전을 원하지 않으면 가입하지 않거나 계정을 삭제할 수 있으며, 이 경우 서비스를 쓸 수 없습니다. 앱·웹의 말로 입력하기는 기기·브라우저의 음성
-        인식(Apple·Google 등)을 쓰며 운영자는 음성을 받지 않습니다. 토스 미니앱에서는 녹음한 음성을 글로 바꾸는 데만 운영자 서버를 거쳐 OpenAI에 보내고, 음성은 보관하지 않습니다. 말로 적기에서는 글로 바뀐 문장과 내 사람들의 이름을 문장을 나누는 데만 OpenAI에 보내고, 운영자는 문장 자체는 보관하지 않고 기록에 넣은 값만
+        인식(Apple·Google 등)을 쓰며 운영자는 음성을 받지 않습니다. 말로 적기에서는 글로 바뀐 문장과 내 사람들의 이름을 문장을 나누는 데만 OpenAI에 보내고, 운영자는 문장 자체는 보관하지 않고 기록에 넣은 값만
         저장합니다. 선물 추천에서는 부르는 말, 든 폴더, 다가오는 날과 나이, 그 사람에 대한 기록(취향·사이즈·알레르기 같은 피할 것·해주고 싶은 선물)과 그 사람 메모를 선물을
         고르는 데만 OpenAI에 보냅니다. 쿠팡에는 찾을 말(예: 캠핑 머그컵)만 보내며, 선물을 누르면 쿠팡으로 이동해 쿠팡의 개인정보처리방침을 따릅니다.
         카카오톡 등 다른 앱으로 보내기는 링크만 그 앱에 넘깁니다.
@@ -290,7 +284,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
 
       <h2>6. 보유 기간과 파기</h2>
       <ul>
-        <li>계정을 삭제할 때까지 보관합니다. 삭제하면 기억해유·사람들·기록·메모·물어보기 링크·알림을 바로 지우고, 데이터베이스 백업에서도 7일 안에 사라집니다. 토스 미니앱에서는 설정 &gt; 기록 모두 지우기로 계정을 지웁니다.</li>
+        <li>계정을 삭제할 때까지 보관합니다. 삭제하면 기억해유·사람들·기록·메모·물어보기 링크·알림을 바로 지우고, 데이터베이스 백업에서도 7일 안에 사라집니다.</li>
         <li>데모 계정은 만든 지 7일 뒤 자동으로 지웁니다.</li>
         <li>답하지 않은 물어보기 링크는 7일 뒤 열리지 않습니다.</li>
         <li>내가 보낸 답은 물어본 사람이 지우거나 탈퇴할 때까지 그 사람의 기록에 남습니다. 내 계정을 지워도 지워지지 않습니다. 지우고 싶으면 물어본 사람에게 말하거나 메일로 알려 주세요.</li>

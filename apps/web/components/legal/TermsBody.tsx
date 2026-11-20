@@ -4,7 +4,7 @@ import { CEO, OPERATOR, SUPPORT_EMAIL } from "@/lib/legal-info";
 
 export const TERMS_TITLE = { ko: "이용약관", en: "Terms of Use" } as const;
 
-/** 본문만(웹 페이지와 토스 미니앱이 같이 쓴다). 링크는 웹 주소로 둔다 */
+/** 본문만. 링크는 웹 주소로 둔다 */
 export function TermsBody({ locale }: { locale: Locale }) {
   const mail = <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>;
   if (locale === "en") {
@@ -22,7 +22,7 @@ export function TermsBody({ locale }: { locale: Locale }) {
 
         <h2>2. Accounts</h2>
         <ul>
-          <li>Sign in with Google or Apple. In the Toss mini app, a separate account is made from the user ID Toss gives us. You are responsible for your account and device.</li>
+          <li>Sign in with Google or Apple. You are responsible for your account and device.</li>
           <li>Demo accounts are for trying the app and are deleted after 7 days.</li>
           <li>You must be 14 or older to use Remember You.</li>
         </ul>
@@ -53,7 +53,7 @@ export function TermsBody({ locale }: { locale: Locale }) {
 
         <h2>6. Leaving</h2>
         <p>
-          You can delete your account at any time in the app (Sharing &gt; Delete account; in the Toss mini app, Settings &gt; Delete all records). See <Link href="/delete-account?lang=en">Delete Account</Link> for details.
+          You can delete your account at any time in the app (Sharing &gt; Delete account). See <Link href="/delete-account?lang=en">Delete Account</Link> for details.
         </p>
 
         <h2>7. Liability</h2>
@@ -82,7 +82,7 @@ export function TermsBody({ locale }: { locale: Locale }) {
 
       <h2>2. 계정</h2>
       <ul>
-        <li>Google 또는 Apple로 로그인합니다. 토스 미니앱에서는 토스가 주는 사용자 식별값으로 따로 계정이 만들어집니다. 계정과 기기 관리는 본인 책임입니다.</li>
+        <li>Google 또는 Apple로 로그인합니다. 계정과 기기 관리는 본인 책임입니다.</li>
         <li>데모 계정은 둘러보기용이며 7일 뒤 지워집니다.</li>
         <li>만 14세 이상만 쓸 수 있습니다.</li>
       </ul>
@@ -114,7 +114,7 @@ export function TermsBody({ locale }: { locale: Locale }) {
 
       <h2>6. 탈퇴</h2>
       <p>
-        앱에서 언제든 계정을 삭제할 수 있습니다(나 &gt; 프로필 고치기 &gt; 계정 삭제, 토스 미니앱에서는 설정 &gt; 기록 모두 지우기). 자세한 내용은 <Link href="/delete-account?lang=ko">계정 삭제 안내</Link>를 보세요.
+        앱에서 언제든 계정을 삭제할 수 있습니다(나 &gt; 프로필 고치기 &gt; 계정 삭제). 자세한 내용은 <Link href="/delete-account?lang=ko">계정 삭제 안내</Link>를 보세요.
       </p>
 
       <h2>7. 책임의 한계</h2>

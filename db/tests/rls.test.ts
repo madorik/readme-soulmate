@@ -356,3 +356,48 @@ describe("계정 삭제", () => {
     assert.equal((await rows(carol, "select 1 from contact_cards where contact_id = $1", [c])).length, 1);
   });
 });
+
+describe("속도 제한(rate_hit)", () => {
+  const hit = async (key: string, windowSec = 60, max = 3) => (await pool.query("select rate_hit($1, $2, $3) as ok", [key, windowSec, max])).rows[0].ok as boolean;
+  const keys: string[] = [];
+  const fresh = () => {
+    const k = `test:${randomUUID()}`;
+    keys.push(k);
+    return k;
+  };
+  after(async () => {
+    await pool.query("delete from rate_hits where key = any ($1)", [keys]);
+  });
+
+  test("창 안에서 max번까지만 통과하고, 키마다 따로 센다", async () => {
+    const key = fresh();
+    assert.deepEqual([await hit(key), await hit(key), await hit(key), await hit(key), await hit(key)], [true, true, true, false, false]);
+    assert.equal(await hit(fresh()), true);
+  });
+
+  test("창이 끝나면 처음부터 다시 센다", async () => {
+    const key = fresh();
+    assert.deepEqual([await hit(key, 60, 1), await hit(key, 60, 1)], [true, false]);
+    await pool.query("update rate_hits set reset_at = now() - interval '1 second' where key = $1", [key]);
+    assert.equal(await hit(key, 60, 1), true);
+    assert.equal((await pool.query("select n from rate_hits where key = $1", [key])).rows[0].n, 1);
+  });
+
+  test("동시에 와도 한도를 넘어 통과하지 못한다", async () => {
+    const key = fresh();
+    const results = await Promise.all(Array.from({ length: 12 }, () => hit(key, 60, 3)));
+    assert.equal(results.filter(Boolean).length, 3);
+  });
+
+  test("앱 역할은 표도 함수도 못 쓴다", async () => {
+    await rejects(rows(alice, "select rate_hit('x', 60, 3)"), /permission denied/);
+    await rejects(rows(alice, "select * from rate_hits"), /permission denied/);
+  });
+});
+
+describe("토스 정리", () => {
+  test("토스 연결 코드 표와 토스 알림 칸은 없다", async () => {
+    assert.equal((await pool.query("select to_regclass('public.toss_link_codes') as t")).rows[0].t, null);
+    assert.equal((await pool.query("select 1 from information_schema.columns where table_name = 'profiles' and column_name = 'toss_reminders'")).rowCount, 0);
+  });
+});

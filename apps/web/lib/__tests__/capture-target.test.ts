@@ -4,7 +4,7 @@ import { sanitizeSection } from "@readme/core";
 import { cleanCaptureItems, type CaptureItem, type CapturePerson } from "../capture-ai";
 import { makeT } from "../t";
 import { personHint } from "../summary";
-import { firstPick, matchPeople, resolveCapture, resolveSaved, retarget, sameTarget, siblingCount, tidyName, whoOf, type CaptureTarget } from "../capture-target";
+import { firstPick, matchPeople, resolveCapture, resolveSaved, retarget, sameSectionValue, sameTarget, siblingCount, tidyName, whoOf, type CaptureTarget } from "../capture-target";
 
 const person = (id: string, name: string, nickname = ""): CapturePerson => ({ id, name, nickname });
 const item = (who: CaptureItem["who"], extra: Partial<CaptureItem> = {}): CaptureItem => ({ who, target: "favorites.flowers", op: "add", text: "수국", codes: null, number: null, date: null, label: null, ...extra });
@@ -193,3 +193,17 @@ test("이름이 같은 사람을 가리는 힌트: 알레르기·입맛처럼 �
   assert.match(both, /알레르기/);
   assert.ok(personHint({ taste: sanitizeSection("taste", { likes: ["가".repeat(60)] }) }, "ko", t).length <= 30);
 });
+
+test("되돌리기 판단: 지금 값이 말로 적은 값 그대로일 때만 되돌린다(그 뒤에 직접 고쳤으면 그대로 둔다)", () => {
+  const written = { ...sanitizeSection("favorites", {}), flowers: "수국" };
+  // 그대로: 되돌려도 된다(저장·읽기를 거쳐 모양이 조금 달라도 같은 값이면 같다)
+  assert.equal(sameSectionValue("favorites", { flowers: "수국" }, written), true);
+  assert.equal(sameSectionValue("favorites", JSON.parse(JSON.stringify(written)), written), true);
+  // 그 뒤에 직접 고쳤다: 되돌리면 그 고친 내용이 사라지니 건드리지 않는다
+  assert.equal(sameSectionValue("favorites", { ...written, flowers: "장미" }, written), false);
+  assert.equal(sameSectionValue("favorites", { ...written, scent: "우디" }, written), false);
+  // 지금 비어 있다(누가 항목을 지웠다)면 적은 값과 다르다. 둘 다 비면 같다
+  assert.equal(sameSectionValue("favorites", null, written), false);
+  assert.equal(sameSectionValue("favorites", undefined, null), true);
+});
+

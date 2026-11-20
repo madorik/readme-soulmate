@@ -5,7 +5,7 @@ import type { Person, Session } from "@/lib/data";
 import type { GiftContext } from "@/lib/gift-core";
 import { loadGiftPicks } from "@/lib/pages/gift-picks";
 
-// 이런 선물은 어때요(서버에서 고르고 바로 그리기). 고르기는 lib/pages/gift-picks, 그리기는 components/GiftPicksView(토스 미니앱도 같이 쓴다).
+// 이런 선물은 어때요(서버에서 고르고 바로 그리기). 고르기는 lib/pages/gift-picks, 그리기는 components/GiftPicksView.
 // 화면은 Suspense로 감싸 먼저 그리고, 이 부분만 나중에 채운다(처음엔 AI·쿠팡을 부르느라 몇 초 걸린다).
 // 고르는 동안엔 PicksStage가 꼬마 마법사 장면을 보이고, 다 고르면 번쩍임 뒤에 PicksContent가 드러난다
 

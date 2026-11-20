@@ -9,8 +9,7 @@ import { answerAsk, createAsk } from "@/lib/ask";
 import { getSession, requireSession, writeSection } from "@/lib/data";
 import { notifyUserT } from "@/lib/push";
 import { absoluteUrl } from "@/lib/site";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid } from "@/lib/uuid";
 
 function json(v: FormDataEntryValue | null): unknown {
   try {
@@ -57,7 +56,7 @@ export async function cancelInvite(form: FormData): Promise<void> {
   const id = String(form.get("id"));
   const back = String(form.get("back") ?? "");
   // uuid 모양이 아니면 DB를 부르지 않는다(::uuid가 터져 500이 되지 않게)
-  if (UUID.test(id)) await s.tx((q) => q("select cancel_invite($1::uuid)", [id]));
+  if (isUuid(id)) await s.tx((q) => q("select cancel_invite($1::uuid)", [id]));
   revalidatePath("/privacy");
   revalidatePath("/people", "layout");
   redirect(/^\/(privacy|people\/[0-9a-f-]{36})$/.test(back) ? back : "/privacy");

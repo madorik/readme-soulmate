@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/data";
 import { revokeApple } from "@/lib/apple";
-import { createLinkCode } from "@/lib/toss";
 
 const PREFS = ["app_lock", "push_enabled"] as const;
 
@@ -36,11 +35,4 @@ export async function deleteAccount(form: FormData): Promise<void> {
   const jar = await cookies();
   for (const c of jar.getAll()) if (c.name.includes("better-auth")) jar.delete(c.name);
   redirect("/");
-}
-
-/** 설정 > 토스에서 쓰기: 토스 미니앱에서 이 계정으로 들어갈 코드(10분). 데모 계정은 안 된다 */
-export async function createTossLinkCode(): Promise<{ code: string; expiresAt: string } | null> {
-  const s = await requireSession();
-  if (s.user.isAnonymous) return null;
-  return createLinkCode(s.user.id);
 }

@@ -1,10 +1,11 @@
 "use server";
 
 import { createHash, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isAdminAccount } from "@/lib/admin";
 import { getSession } from "@/lib/data";
+import { clientIp, dbHit } from "@/lib/rate-limit";
 
 // 우리 통계(/admin) 들어가기: ① 관리자 계정(ADMIN_EMAILS)으로 로그인해 있으면 앱 프로필 메뉴의 '관리자'로 바로, ② 아니면 관리자 키(ADMIN_KEY)를 한 번 넣으면 30일 동안 쿠키로. 둘 다 없으면 통계 화면이 없다
 
@@ -32,6 +33,8 @@ export async function isAdmin(): Promise<boolean> {
 export async function adminLogin(form: FormData): Promise<void> {
   const key = process.env.ADMIN_KEY;
   const given = String(form.get("key") ?? "").trim();
+  // 키 알아맞히기를 막는다: 같은 주소에서 15분에 8번까지(DB로 모든 서버가 같이 센다). 세지 못하면(DB 오류) 들여보내지 않는다
+  if (!(await dbHit(`admin:${clientIp(await headers())}`, 15 * 60, 8, { failClosed: true }))) redirect("/admin?wrong=1");
   if (key && given && same(given, key)) {
     (await cookies()).set(COOKIE, stamp(key), { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/admin", maxAge: 60 * 60 * 24 * 30 });
     redirect("/admin");

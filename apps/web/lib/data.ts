@@ -25,6 +25,7 @@ import { cache } from "react";
 import { getAuth } from "./auth";
 import { aad, open, seal, sealSection } from "./crypto";
 import { isLockedPayload } from "./data-core";
+import { isUuid } from "./uuid";
 import { asUser, type Q, type Row } from "./db";
 import { detectLocale, type T } from "./i18n";
 import { isFolderColor, isFolderIcon, type FolderColor, type FolderIcon, type FolderView } from "./folders";
@@ -43,8 +44,6 @@ export interface Profile {
   appLock: boolean;
   /** 설정 > 알림 받기 */
   pushEnabled: boolean;
-  /** 토스 미니앱: 토스 알림에 동의해 생일·기념일 알림을 토스로 받는다 */
-  tossReminders: boolean;
   isDemo: boolean;
   onboardedAt: string | null;
 }
@@ -67,7 +66,6 @@ function toProfile(row: Row, detected: Locale): Profile {
     reminderOffsets: Array.isArray(row.reminder_offsets) ? sanitizeOffsets(row.reminder_offsets) : DEFAULT_OFFSETS,
     appLock: row.app_lock === true,
     pushEnabled: row.push_enabled !== false,
-    tossReminders: row.toss_reminders === true,
     isDemo: row.is_demo === true,
     onboardedAt: iso(row.onboarded_at),
   };
@@ -115,8 +113,8 @@ function openSection(section: Section, payload: unknown, scope: string): CardDat
   return data == null ? null : sanitizeSection(section, data);
 }
 
-export async function readCard(q: Q, ownerId: string): Promise<{ card: PartialCard; updatedAt: string | null }> {
-  const rows = await q<{ section: string; payload: unknown; updated_at: Date }>("select section, payload, updated_at from card_sections where owner_id = $1", [ownerId]);
+export async function readCard(q: Q, ownerId: string, lock = false): Promise<{ card: PartialCard; updatedAt: string | null }> {
+  const rows = await q<{ section: string; payload: unknown; updated_at: Date }>(`select section, payload, updated_at from card_sections where owner_id = $1${lock ? " for update" : ""}`, [ownerId]);
   const card: PartialCard = {};
   let updatedAt: string | null = null;
   for (const row of rows) {
@@ -253,13 +251,17 @@ type PersonRow = {
   folder_ids: string[] | null;
 };
 
-async function loadPeople(q: Q, me: string): Promise<Person[]> {
+/**
+ * opts.contactId: 그 사람 한 명만. opts.cards=false: 기록(card)은 풀지 않고 빈 객체로(이름·폴더·물어보기 상태만 필요한 곳 — 암호문을 가져오지도, 풀지도 않는다)
+ */
+async function loadPeople(q: Q, me: string, opts: { contactId?: string; cards?: boolean } = {}): Promise<Person[]> {
+  const withCards = opts.cards !== false;
   // 한 클라이언트(트랜잭션)에서 Promise.all로 여러 쿼리를 보내도 pg가 줄 세워 하나씩 보내므로, 왕복 한 번짜리 쿼리 하나로 모은다.
   // 물어보기는 사람마다 가장 최근 한 줄, 폴더는 들어간 순서대로. RLS는 조인한 표마다 그대로 적용된다
   const rows = await q<PersonRow>(
     `select c.id, c.person_id, c.nickname, c.favorite, c.avatar,
             p.id as p_id, p.display_name as p_display_name, p.avatar as p_avatar,
-            cc.sections as cc_sections, cc.answered as cc_answered, cc.updated_at as cc_updated_at,
+            ${withCards ? "cc.sections" : "null::jsonb"} as cc_sections, cc.answered as cc_answered, cc.updated_at as cc_updated_at,
             a.id as a_id, a.sections as a_sections, a.expires_at as a_expires_at, a.used_at as a_used_at, a.canceled_at as a_canceled_at,
             (select array_agg(m.group_id::text order by m.created_at) from contact_group_members m where m.contact_id = c.id and m.user_id = $1) as folder_ids
        from contacts c
@@ -268,9 +270,9 @@ async function loadPeople(q: Q, me: string): Promise<Person[]> {
        left join lateral (
          select i.id, i.sections, i.expires_at, i.used_at, i.canceled_at from invites i where i.contact_id = c.id order by i.created_at desc limit 1
        ) a on true
-      where c.user_id = $1
+      where c.user_id = $1 and ($2::uuid is null or c.id = $2::uuid)
       order by c.created_at`,
-    [me],
+    [me, opts.contactId ?? null],
   );
 
   return rows.map((c) => {
@@ -305,6 +307,24 @@ async function loadPeople(q: Q, me: string): Promise<Person[]> {
 
 /** 요청 하나 안에서는 한 번만 읽는다(레이아웃의 알림 예약과 화면이 같이 쓴다) */
 export const listPeople = cache((s: Session) => s.tx((q) => loadPeople(q, s.user.id)));
+
+/**
+ * 사람 목록인데 기록(card)을 안 푼 것(card는 늘 {}): 이름으로 사람을 찾거나 누구인지만 알면 되는 곳(말로 적기 대상 찾기 등)에서, 모든 사람의 기록을 복호화하는 비용을 아낀다.
+ * 기록이 필요하면 readPerson·readContactCard로 필요한 사람만 읽는다
+ */
+export const listPeopleLite = cache((s: Session) => s.tx((q) => loadPeople(q, s.user.id, { cards: false })));
+
+/** 사람 한 명(기록까지). 내 사람이 아니면 null. contactId는 uuid 모양이어야 한다 */
+export async function readPerson(s: Session, contactId: string): Promise<Person | null> {
+  if (!isUuid(contactId)) return null;
+  return (await s.tx((q) => loadPeople(q, s.user.id, { contactId })))[0] ?? null;
+}
+
+/** 내 사람 한 명의 기록만(풀어서). lock이면 다른 쓰기가 끝날 때까지 기다리고 그 사이 못 고치게 잠근다(읽고 합쳐 쓰는 저장 때). 없으면 빈 기록 */
+export async function readContactCard(q: Q, me: string, contactId: string, lock = false): Promise<PartialCard> {
+  const r = await q.one<{ sections: unknown }>(`select sections from contact_cards where contact_id = $1 and author_id = $2${lock ? " for update" : ""}`, [contactId, me]);
+  return r?.sections ? openContactSections(me, contactId, r.sections) : {};
+}
 
 // 부를 이름은 화면(토스 번들)도 쓰므로 lib/person에 둔다
 export { displayName } from "./person";

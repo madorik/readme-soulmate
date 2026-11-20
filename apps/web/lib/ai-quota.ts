@@ -27,3 +27,17 @@ export async function reserveAi(user: { id: string; demo: boolean }, kind: AiKin
     return "error";
   }
 }
+
+/**
+ * OpenAI를 불러 보지도 못하고 실패했을 때(시간 초과·서버 오류) 잡아 둔 자리를 돌려준다: 이 사람의 가장 최근 호출 한 줄을 지운다.
+ * 이미 불러서 답을 받았거나(비용이 났다) 쓸모 있는 답이 없었던 경우에는 부르지 않는다. 실패해도 조용히 넘긴다
+ */
+export async function refundAi(userId: string, kind: AiKind): Promise<void> {
+  try {
+    await asSystem((q) =>
+      q("delete from public.ai_calls where id = (select id from public.ai_calls where user_id = $1 and kind = $2 order by at desc limit 1)", [userId, kind]),
+    );
+  } catch (e) {
+    console.warn("ai refund failed", e instanceof Error ? e.message : e);
+  }
+}

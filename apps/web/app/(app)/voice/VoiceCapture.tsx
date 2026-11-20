@@ -16,7 +16,6 @@ import type { CaptureItem } from "@/lib/capture-ai";
 import { firstPick, retarget, siblingCount, whoOf, type CaptureTarget } from "@/lib/capture-target";
 import { insertMention, mentionAt, mentionLabel, resolveMentions, type MentionPerson } from "@/lib/mention";
 import { matchesPerson } from "@/lib/search";
-import { shellDictation } from "@/lib/dictation";
 import { startListenGuard, type ListenGuard, type StopReason } from "@/lib/listen-guard";
 import { commonPrefix, nextTyped, startDictation, type Dictation, type NativeSpeech } from "@/lib/speech";
 
@@ -402,7 +401,7 @@ const MIN_SCENE_MS = 600;
 export function VoiceCapture({ locale, labels, people = [], tour = null }: { locale: Locale; labels: Labels; people?: MentionOption[]; tour?: VoiceTour | null }) {
   const canListen = useSyncExternalStore(
     () => () => {},
-    () => !!webCtor() || !!nativeSpeech() || !!shellDictation,
+    () => !!webCtor() || !!nativeSpeech(),
     () => false,
   );
   const [text, setText] = useState("");
@@ -803,17 +802,14 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
     }
     const lang = locale === "ko" ? "ko-KR" : "en-US";
     const plugin = nativeSpeech();
-    if (plugin || shellDictation) {
+    if (plugin) {
       try {
-        if (plugin) {
-          const perm = await plugin.requestPermissions();
-          if (perm.speechRecognition !== "granted") throw new Error("denied");
-          // 기기가 알려 주는 중간 결과(partialResults)로 말이 멈춘 때를 잰다. 녹음했다가 서버가 글로 바꾸는 쪽(토스)은 중간 결과가 없어 재지 않는다
-          guard.current = startListenGuard({ onStop: onGuardStop });
-        }
+        const perm = await plugin.requestPermissions();
+        if (perm.speechRecognition !== "granted") throw new Error("denied");
+        // 기기가 알려 주는 중간 결과(partialResults)로 말이 멈춘 때를 잰다
+        guard.current = startListenGuard({ onStop: onGuardStop });
         setListening(true);
-        // 말이 끝나 기기가 스스로 멈추거나 멈춤을 누르면, 마지막 말까지 받은 뒤 받아 적은 말로 나눠 적는다.
-        // 토스 미니앱은 녹음했다가 멈추면 서버가 글로 바꾼다(lib/dictation)
+        // 말이 끝나 기기가 스스로 멈추거나 멈춤을 누르면, 마지막 말까지 받은 뒤 받아 적은 말로 나눠 적는다
         const options = {
           language: lang,
           onText: (t: string) => {
@@ -836,7 +832,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
             afterListening();
           },
         };
-        native.current = plugin ? await startDictation(plugin, options) : await shellDictation!(options);
+        native.current = await startDictation(plugin, options);
       } catch {
         endGuard();
         native.current = null;
@@ -1206,7 +1202,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
             disabled={pending || settling || !canListen}
             className="shrink-0 rounded-full transition-transform active:scale-95 disabled:active:scale-100"
           >
-            <WaterDrop active={listening || settling} measure={!nativeSpeech() && !shellDictation} cue={cue} beat={shown.length} />
+            <WaterDrop active={listening || settling} measure={!nativeSpeech()} cue={cue} beat={shown.length} />
           </button>
           {/* 아직 아무 말도 안 했을 때: 구슬을 가리키는 화살표(누르면 사라진다) */}
           {cue ? <PointArrow w={76} className="cue-nudge left-[166px] top-[166px]" /> : null}

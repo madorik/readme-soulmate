@@ -6,7 +6,7 @@ import { displayName, listOpenInvites, listPeople, requireSession } from "@/lib/
 import { makeT } from "@/lib/t";
 import { personHint } from "@/lib/summary";
 import { tourTotal } from "@/lib/tour";
-import { tossReminderTemplate } from "@/lib/toss";
+import { webPushPublicKey } from "@/lib/webpush";
 import type { PageInput } from "./routes";
 import type { PrivacyData, RequestData, VoiceData } from "./types";
 
@@ -14,7 +14,6 @@ import type { PrivacyData, RequestData, VoiceData } from "./types";
 export async function loadPrivacy(): Promise<PrivacyData> {
   const s = await requireSession();
   const invites = await s.tx((q) => listOpenInvites(q));
-  const template = tossReminderTemplate();
   return {
     locale: s.profile.locale,
     isAnonymous: s.user.isAnonymous,
@@ -24,7 +23,7 @@ export async function loadPrivacy(): Promise<PrivacyData> {
     pushEnabled: s.profile.pushEnabled,
     reminderOffsets: s.profile.reminderOffsets,
     ai: aiConfigured(),
-    tossReminder: template ? { template, on: s.profile.tossReminders } : null,
+    webPushKey: webPushPublicKey(),
   };
 }
 

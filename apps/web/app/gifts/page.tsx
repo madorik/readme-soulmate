@@ -13,6 +13,10 @@ import { absoluteUrl } from "@/lib/site";
 const TITLE = "선물 추천 가이드 · 누구에게, 얼마로";
 const DESCRIPTION = "부모님·연인·친구·직장 동료 선물과 등산·골프·캠핑·커피 좋아하는 분께 줄 선물을 1만원대부터 10만원 이상까지 가격대별로 골랐어요.";
 
+// 한국어 하나뿐인 공개 글이라 빌드 때 한 번 그려 CDN에 둔다. 루트 레이아웃이 로그인·언어(쿠키·헤더)를 읽어서 그냥 두면 요청마다 새로 그려지므로,
+// force-static으로 그 값들을 빈 값으로 읽게 한다(이 화면은 로그인 상태와 상관없다)
+export const dynamic = "force-static";
+
 export const metadata: Metadata = { ...ogMetadata("ko", `${TITLE} | 기억해유`, DESCRIPTION), alternates: { canonical: "/gifts" }, keywords: ["선물 추천", "부모님 선물", "생일 선물", "기념일 선물", "가격대별 선물", "5만원대 선물"] };
 
 // 카드마다 돌아가며 붙이는 테이프 색과 기울기

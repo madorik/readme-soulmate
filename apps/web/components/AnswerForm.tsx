@@ -72,7 +72,6 @@ export function AnswerForm({
   mine,
   signedIn,
   submit,
-  embedded,
 }: {
   locale: Locale;
   token: string;
@@ -84,10 +83,8 @@ export function AnswerForm({
   /** 로그인하고 답할 때 내 리드미 값(물어본 사람이 모르는 항목의 처음 값) */
   mine: PartialCard;
   signedIn: boolean;
-  /** 보내기: 웹·앱은 서버 액션(submitAnswer), 토스 미니앱은 API 부르기 */
+  /** 보내기(서버 액션 submitAnswer) */
   submit: (prev: AnswerState, form: FormData) => Promise<AnswerState>;
-  /** 다른 틀(토스 미니앱) 안에서: 로그인 안내를 빼고, 보낸 뒤 화면은 done이 그린다 */
-  embedded?: { done: (sent: Section[]) => React.ReactNode };
 }) {
   const t = useT(locale);
   const [answers, setAnswers] = useState<PartialCard>(() => Object.fromEntries(sections.map((s) => [s, prefill[s] ?? mine[s] ?? emptySection(s)])) as PartialCard);
@@ -131,7 +128,6 @@ export function AnswerForm({
 
   if (state.sent) {
     const sent = sections.filter((x) => modes[x] != null);
-    if (embedded) return embedded.done(sent);
     // 답한 뒤: 나도 그 사람에게 물어보기. 웹에서는 앱 받기(기기에 맞는 스토어, 아이폰은 아직 웹으로 이어서), 앱 안에서는 바로 물어보기(로그인 안 했으면 로그인부터)
     const askBack = `/request?name=${encodeURIComponent(from)}`;
     const here = signedIn ? askBack : `/?next=${encodeURIComponent(askBack)}`;
@@ -247,7 +243,7 @@ export function AnswerForm({
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <h1 className="text-[27px] font-normal leading-[1.25]">{highlightCount(t("answer.title", { from, n: sections.length }))}</h1>
             {message ? <p className="-rotate-[0.8deg] whitespace-pre-line rounded-[3px] bg-postit px-3.5 pb-[11px] pt-2.5 text-[18px] leading-[1.45] shadow-[0_6px_12px_-9px_rgb(31_35_64/0.45)]">{message}</p> : null}
-            {signedIn || embedded ? null : (
+            {signedIn ? null : (
               // 앱을 쓰는 사람이 로그인 안 된 브라우저에서 열었으면: 로그인하고 답하면 내 리드미 값이 미리 채워지고, 물어본 사람 목록에 내 얼굴로 보인다
               <Link href={`/?next=${encodeURIComponent(`/r/${token}`)}`} className="flex min-h-11 items-center gap-1 self-start text-[18px] text-accent underline decoration-[1.5px] underline-offset-4">
                 {t("answer.signInFirst")}

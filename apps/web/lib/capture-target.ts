@@ -1,6 +1,6 @@
 // 말로 적기 초안: 줄마다 '누구의 이야기인지'(대상)를 정한다. 서버(나누기·저장)와 화면(대상 바꾸기)이 같이 쓰는 순수 로직이라 서버 전용 모듈을 들이지 않는다.
 // 대상은 나 / 내 사람(contactId) / 새 사람(이름) / 아직 못 정함(같은 이름이 여럿이라 고르기 전)
-import { clip, findByRelation, sameRelation } from "@readme/core";
+import { clip, findByRelation, sameRelation, sanitizeSection, type Section } from "@readme/core";
 import type { CaptureItem, CapturePerson } from "./capture-ai";
 
 export type CaptureTarget = { kind: "me" } | { kind: "person"; id: string } | { kind: "new"; name: string } | { kind: "pick" };
@@ -185,3 +185,13 @@ export function retarget<T extends TargetRow>(rows: readonly T[], key: number, t
 export function firstPick<T extends TargetRow>(rows: readonly T[]): T | undefined {
   return rows.find((r) => r.target.kind === "pick");
 }
+
+/**
+ * 되돌리기 판단: 항목의 지금 값이 말로 적은 값(after) 그대로인지. 그대로여야 옛 값으로 되돌린다 — 그 사이에 직접 고쳤으면 그 내용을 덮어쓰지 않는다.
+ * 둘 다 항목 모양(sanitizeSection)으로 맞춰 견주고, 비어 있음(null·undefined)은 같은 것으로 본다
+ */
+export function sameSectionValue(section: Section, a: unknown, b: unknown): boolean {
+  const norm = (v: unknown) => JSON.stringify(v == null ? null : sanitizeSection(section, v));
+  return norm(a) === norm(b);
+}
+

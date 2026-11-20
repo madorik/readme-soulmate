@@ -7,7 +7,6 @@ import { Icon } from "@/components/marks";
 import { SectionIcon } from "@/components/SectionIcon";
 
 // 편집기(여덟 가지)는 항목을 펼칠 때만 쓴다. 따로 받아 오고, 목록이 뜨면 바로 미리 받아 둬서 누를 때 기다리지 않게
-// (next/dynamic 대신 React.lazy: 토스 미니앱 번들도 이 목록을 그려서 Next 전용 모듈을 들이지 않는다)
 const loadForm = () => import("@/components/editors/SectionForm").then((m) => ({ default: m.SectionForm }));
 const SectionForm = lazy(loadForm);
 

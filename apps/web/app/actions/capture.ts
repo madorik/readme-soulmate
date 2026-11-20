@@ -5,9 +5,11 @@ import { captureField, clip, describeCapture, isSection, mergeCapture, sanitizeS
 import { revalidatePath } from "next/cache";
 import { aiConfigured, classifyCapture, type CaptureItem } from "@/lib/ai";
 import { cleanCaptureItems, type CapturePerson } from "@/lib/capture-ai";
-import { nameKey, resolveCapture, resolveSaved, whoOf, type CaptureTarget, type ResolvedCapture } from "@/lib/capture-target";
-import { reserveAi } from "@/lib/ai-quota";
-import { displayName, listNotes, listPeople, readCard, requireSession, sealNote, writeContactSection, writeSection, type Note, type Person, type Session } from "@/lib/data";
+import { nameKey, resolveCapture, resolveSaved, sameSectionValue, whoOf, type CaptureTarget, type ResolvedCapture } from "@/lib/capture-target";
+import { refundAi, reserveAi } from "@/lib/ai-quota";
+import { displayName, listNotes, listPeopleLite, readCard, readContactCard, requireSession, sealNote, writeContactSection, writeSection, type Note, type Person, type Session } from "@/lib/data";
+import { LIMITS } from "@/lib/data-core";
+import { isUuid } from "@/lib/uuid";
 import { resolveMentions } from "@/lib/mention";
 
 /** 화면에 보일 한 줄: "아내 · 요즘 마시는 것 · 바닐라라떼" */
@@ -26,9 +28,12 @@ export interface CaptureLine {
   href: string;
 }
 
-/** 되돌리기에 쓰는 것(적은 순서대로). 내 것만 고치므로 값은 화면에서 받아도 된다(RLS가 내 줄만 허락) */
+/**
+ * 되돌리기에 쓰는 것(적은 순서대로). 내 것만 고치므로 값은 화면에서 받아도 된다(RLS가 내 줄만 허락).
+ * section의 after는 이 말이 적은 값: 되돌릴 때 지금 값이 그것과 다르면(그 뒤에 직접 고쳤다) 그 항목은 건드리지 않는다
+ */
 export type UndoOp =
-  | { type: "section"; who: "me" | string; section: Section; before: unknown }
+  | { type: "section"; who: "me" | string; section: Section; before: unknown; after?: unknown }
   | { type: "note"; contactId: string; id: string }
   | { type: "contact"; contactId: string };
 
@@ -80,8 +85,8 @@ async function classify(raw: string, aboutId?: string, picked?: { id: string; la
   const said = clip(String(raw ?? "").replace(/\s+/g, " ").trim(), 500).trim();
   if (!said) return failed("nothing");
   if (!aiConfigured()) return failed("ai_off");
-  // 사람 목록과 하루 한도(사람마다·서비스 전체)는 서로 상관없어 같이 확인한다. 한도에 막히면 OpenAI를 부르지 않는다
-  const [people, gate] = await Promise.all([listPeople(s), reserveAi({ id: s.user.id, demo: s.user.isAnonymous || s.profile.isDemo }, "capture")]);
+  // 사람 목록(이름만, 기록은 풀지 않는다)과 하루 한도(사람마다·서비스 전체)는 서로 상관없어 같이 확인한다. 한도에 막히면 OpenAI를 부르지 않는다
+  const [people, gate] = await Promise.all([listPeopleLite(s), reserveAi({ id: s.user.id, demo: s.user.isAnonymous || s.profile.isDemo }, "capture")]);
   if (gate === "user_limit" || gate === "global_limit") return failed("limit");
   if (gate !== "ok") return failed("failed");
   const pickedOk = (Array.isArray(picked) ? picked : [])
@@ -98,6 +103,8 @@ async function classify(raw: string, aboutId?: string, picked?: { id: string; la
   try {
     items = await classifyCapture(text, people.map(asCapture), locale, about ? asCapture(about) : null, mentioned.map(asCapture));
   } catch {
+    // 불러 보지도 못하고 실패했으니 하루 한도는 돌려준다
+    await refundAi(s.user.id, "capture");
     return failed("failed");
   }
   if (!items.length) return failed("nothing");
@@ -120,12 +127,22 @@ async function apply(s: Session, people: Person[], rows: ResolvedCapture[], writ
   const undo: UndoOp[] = [];
   const me = translate(locale, "voice.me");
   await s.tx(async (q) => {
-    const mine = (await readCard(q, s.user.id)).card;
-    // 같은 말 안에서 같은 칸을 여러 번 고쳐도 차례로 합쳐지게 지금 값을 들고 다닌다
-    const cards = new Map<string, PartialCard>([["me", { ...mine }], ...people.map((p) => [p.contactId, { ...p.card }] as [string, PartialCard])]);
+    // 저장은 사람마다 한 번에 하나씩(같은 사람이 동시에 두 번 적어도 서로 덮어쓰지 않게), 저장하는 사람의 기록은 읽을 때 잠가서 그 사이 다른 저장이 못 끼어들게 한다
+    if (write) await q("select pg_advisory_xact_lock(hashtext($1))", [`capture:${s.user.id}`]);
+    const mine = (await readCard(q, s.user.id, write)).card;
+    // 같은 말 안에서 같은 칸을 여러 번 고쳐도 차례로 합쳐지게 지금 값을 들고 다닌다. 사람의 기록은 처음 건드릴 때 읽는다(목록은 기록을 풀지 않은 것)
+    const known = new Set(people.map((p) => p.contactId));
+    const cards = new Map<string, PartialCard>([["me", { ...mine }]]);
     const names = new Map<string, string>([["me", me], ...people.map((p) => [p.contactId, displayName(p)] as [string, string])]);
+    const cardOf = async (id: string): Promise<PartialCard> => {
+      let card = cards.get(id);
+      if (!card) cards.set(id, (card = await readContactCard(q, s.user.id, id, write)));
+      return card;
+    };
     const created = new Map<string, string>(); // 새 사람 이름(nameKey) → contactId(초안에서는 아직 없는 사람이라 이름표 new:이름)
     const touched = new Set<string>();
+    // 사람 수 한도(LIMITS.people): 사람 더하기·물어보기와 같다. 처음 새 사람이 나올 때 한 번 세고 더할 때마다 올린다
+    let total: number | null = null;
     // 사람마다 메모는 이 말 안에서 한 번만 읽고, 새로 남긴 것은 목록에 보탠다
     const notes = new Map<string, Note[]>();
     const notesOf = async (id: string): Promise<Note[]> => {
@@ -139,14 +156,17 @@ async function apply(s: Session, people: Person[], rows: ResolvedCapture[], writ
       let who: string;
       if (target.kind === "me") who = "me";
       else if (target.kind === "person") {
-        if (!cards.has(target.id) || target.id === "me") continue; // 내 사람이 아니면 어디에도 적지 않는다
+        if (!known.has(target.id) || target.id === "me") continue; // 내 사람이 아니면 어디에도 적지 않는다
         who = target.id;
       } else if (target.kind === "new") {
         const key = nameKey(target.name);
-        const known = created.get(key);
-        if (known) who = known;
+        const existing = created.get(key);
+        if (existing) who = existing;
         else {
           if (write) {
+            total ??= (await q.one<{ n: number }>("select count(*)::int as n from contacts where user_id = $1", [s.user.id]))?.n ?? 0;
+            if (total >= LIMITS.people) continue; // 사람이 너무 많으면 새 사람은 더하지 않는다(사람 더하기와 같다)
+            total++;
             const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname) values ($1, $2) returning id", [s.user.id, target.name]);
             await q("insert into contact_cards (contact_id, author_id) values ($1, $2)", [c!.id, s.user.id]);
             who = c!.id;
@@ -177,6 +197,7 @@ async function apply(s: Session, people: Person[], rows: ResolvedCapture[], writ
         // 같은 말을 또 하면 메모를 두 번 남기지 않는다
         const kept = await notesOf(who);
         if (kept.some((n) => n.body.trim() === body)) continue;
+        if (write && kept.length >= LIMITS.notes) continue; // 메모가 너무 많으면 더하지 않는다(메모 더하기와 같다)
         if (write) {
           const n = await q.one<{ id: string }>("insert into notes (author_id, contact_id, label, payload) values ($1, $2, '', $3) returning id", [
             s.user.id,
@@ -192,7 +213,7 @@ async function apply(s: Session, people: Person[], rows: ResolvedCapture[], writ
 
       const field = captureField(item.target);
       if (!field) continue;
-      const card = cards.get(who)!;
+      const card = await cardOf(who);
       const op = item.op;
       const merged = mergeCapture(field, card[field.section], item, op);
       // 내 리드미의 선물 목록은 '받고 싶은 것', 다른 사람 기록에서는 '해주고 싶은 선물'
@@ -206,7 +227,11 @@ async function apply(s: Session, people: Person[], rows: ResolvedCapture[], writ
       const key = `${who}:${field.section}`;
       if (!touched.has(key)) {
         touched.add(key);
-        undo.push({ type: "section", who, section: field.section, before: card[field.section] ?? null });
+        undo.push({ type: "section", who, section: field.section, before: card[field.section] ?? null, after: merged });
+      } else {
+        // 같은 항목을 이 말에서 또 고쳤다: 되돌릴 때 비교할 '적은 값'을 마지막 값으로
+        const first = undo.find((u) => u.type === "section" && u.who === who && u.section === field.section);
+        if (first && first.type === "section") first.after = merged;
       }
       if (write) {
         if (who === "me") await writeSection(q, s.user.id, field.section, merged);
@@ -231,7 +256,7 @@ function committed(s: Session) {
 const plain = (l: CaptureDraftLine): CaptureLine => ({ who: l.who, isNew: l.isNew, op: l.op, same: l.same, field: l.field, value: l.value, href: l.href });
 
 /**
- * 말(글) 한 번을 나눠 바로 사람 기록·내 리드미·메모에 넣는다(되돌리기로 취소). 그 사람 화면의 한 줄 적기·토스가 쓴다
+ * 말(글) 한 번을 나눠 바로 사람 기록·내 리드미·메모에 넣는다(되돌리기로 취소). 그 사람 화면의 한 줄 적기가 쓴다
  * aboutId·picked는 classify와 같다
  */
 export async function captureNote(raw: string, aboutId?: string, picked?: { id: string; label: string }[]): Promise<CaptureState> {
@@ -277,7 +302,7 @@ export async function saveCapture(raw: unknown): Promise<CaptureState> {
   if (!items.length) return { lines: [], undo: [], error: "nothing" };
   let done;
   try {
-    const people = await listPeople(s);
+    const people = await listPeopleLite(s);
     done = await apply(s, people, resolveSaved(items, people.map(asCapture)), true);
   } catch {
     return { lines: [], undo: [], error: "failed" };
@@ -296,7 +321,7 @@ export async function previewCapture(raw: unknown): Promise<CapturePreview> {
   const items = cleanCaptureItems(raw);
   if (!items.length) return { ok: false, lines: [] };
   try {
-    const people = await listPeople(s);
+    const people = await listPeopleLite(s);
     const done = await apply(s, people, resolveSaved(items, people.map(asCapture)), false);
     return { ok: true, lines: done.lines.map((l) => ({ idx: l.idx, same: !!l.same })) };
   } catch {
@@ -304,22 +329,32 @@ export async function previewCapture(raw: unknown): Promise<CapturePreview> {
   }
 }
 
-/** 방금 말로 적은 것 되돌리기(거꾸로) */
+/**
+ * 방금 말로 적은 것 되돌리기(거꾸로). 항목은 그 뒤에 직접 고치지 않았을 때만 되돌린다(지금 값이 말로 적은 값 그대로일 때):
+ * 그 사이에 고친 내용을 옛 값으로 덮어쓰지 않으려고, 달라졌으면 그 항목은 그대로 둔다
+ */
 export async function undoCapture(ops: UndoOp[]): Promise<{ ok: boolean }> {
   const s = await requireSession();
   if (!Array.isArray(ops)) return { ok: false };
   try {
     await s.tx(async (q) => {
+      await q("select pg_advisory_xact_lock(hashtext($1))", [`capture:${s.user.id}`]);
+      const mine = (await readCard(q, s.user.id, true)).card;
       for (const op of [...ops].reverse()) {
-        if (op?.type === "note" && typeof op.id === "string") await q("delete from notes where id::text = $1", [op.id]);
-        else if (op?.type === "contact" && typeof op.contactId === "string") await q("delete from contacts where id::text = $1", [op.contactId]);
-        else if (op?.type === "section" && isSection(op.section) && typeof op.who === "string") {
+        if (op?.type === "note" && isUuid(op.id)) await q("delete from notes where id = $1::uuid", [op.id]);
+        else if (op?.type === "contact" && isUuid(op.contactId)) await q("delete from contacts where id = $1::uuid", [op.contactId]);
+        else if (op?.type === "section" && isSection(op.section) && typeof op.who === "string" && (op.who === "me" || isUuid(op.who))) {
           const section = op.section;
+          // 적은 뒤에 직접 고쳤으면(지금 값 ≠ 적은 값) 건드리지 않는다. after가 없는 옛 요청은 예전처럼 되돌린다
+          if (op.after !== undefined) {
+            const now = op.who === "me" ? mine[section] : (await readContactCard(q, s.user.id, op.who, true))[section];
+            if (!sameSectionValue(section, now, op.after)) continue;
+          }
           if (op.who === "me") {
             if (op.before == null) await q("delete from card_sections where owner_id = $1 and section = $2", [s.user.id, section]);
             else await writeSection(q, s.user.id, section, sanitizeSection(section, op.before) as CardData[Section]);
           } else if (op.before == null) {
-            await q("update contact_cards set sections = sections - $2::text where contact_id::text = $1", [op.who, section]);
+            await q("update contact_cards set sections = sections - $2::text where contact_id = $1::uuid", [op.who, section]);
           } else {
             await writeContactSection(q, s.user.id, op.who, section, sanitizeSection(section, op.before));
           }

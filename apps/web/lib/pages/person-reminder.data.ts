@@ -36,5 +36,5 @@ export interface PersonReminderData {
   picks: GiftPicksData | null;
 }
 
-/** 화면이 받는 것: 웹은 picks를 기다리지 않고 Promise로 넘긴다(화면을 먼저 그리고 Suspense로 채운다). 토스 미니앱은 다 읽은 값 */
+/** 화면이 받는 것: 웹은 picks를 기다리지 않고 Promise로 넘긴다(화면을 먼저 그리고 Suspense로 채운다). */
 export type PersonReminderProps = Omit<PersonReminderData, "picks"> & { picks: GiftPicksData | null | Promise<GiftPicksData | null> };

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Locale, ReminderOffset } from "@readme/core";
-import { useOptimistic, useState } from "react";
+import { useEffect, useOptimistic, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { setPreference } from "@/app/actions/account";
 import { saveOffsets } from "@/app/actions/card";
@@ -112,5 +112,112 @@ export function ReminderSetting({ locale, offsets }: { locale: Locale; offsets: 
       ) : null}
       {dirty ? <PendingButton className="btn-primary !h-11 !text-[18px]">{t("common.save")}</PendingButton> : null}
     </form>
+  );
+}
+
+/** 브라우저 공개 키(base64url)를 구독에 넘길 바이트로 */
+function keyBytes(base64Url: string): Uint8Array<ArrayBuffer> {
+  const pad = "=".repeat((4 - (base64Url.length % 4)) % 4);
+  const raw = atob((base64Url + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  const out = new Uint8Array(new ArrayBuffer(raw.length));
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function saveSubscription(sub: PushSubscription): Promise<boolean> {
+  const res = await fetch("/api/push", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: JSON.stringify(sub.toJSON()), platform: "web" }) }).catch(() => null);
+  return !!res?.ok;
+}
+
+/**
+ * 이 브라우저에서 알림 받기(웹 푸시): 앱이 아니고, 브라우저가 지원하고, 서버에 푸시 키가 있을 때만 보인다.
+ * 켜면 알림 권한을 묻고 구독을 서버에 저장한다(생일·기념일, 물어보기 답장). 끄면 구독을 지운다.
+ * 이미 구독돼 있으면 열 때 서버에도 다시 저장해 둔다(알림 받기를 껐다 켠 사이에 지워졌을 수 있다)
+ */
+export function WebPushSetting({ locale, publicKey }: { locale: Locale; publicKey: string }) {
+  const t = useT(locale);
+  const native = useIsNative();
+  const [state, setState] = useState<"unknown" | "unsupported" | "off" | "on" | "blocked">("unknown");
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (native) return;
+    let gone = false;
+    void (async () => {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return void (!gone && setState("unsupported"));
+      if (Notification.permission === "denied") return void (!gone && setState("blocked"));
+      const reg = await navigator.serviceWorker.getRegistration("/sw.js").catch(() => undefined);
+      const sub = await reg?.pushManager.getSubscription().catch(() => null);
+      if (sub) void saveSubscription(sub);
+      if (!gone) setState(sub ? "on" : "off");
+    })();
+    return () => {
+      gone = true;
+    };
+  }, [native]);
+
+  if (native || state === "unknown" || state === "unsupported") return null;
+  const on = state === "on";
+
+  async function turnOn() {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return setState(perm === "denied" ? "blocked" : "off");
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) }));
+    if (!(await saveSubscription(sub))) {
+      await sub.unsubscribe().catch(() => {});
+      throw new Error("save");
+    }
+    setState("on");
+  }
+
+  async function turnOff() {
+    const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+    const sub = await reg?.pushManager.getSubscription();
+    if (sub) {
+      await fetch("/api/push", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: JSON.stringify(sub.toJSON()), platform: "web" }) }).catch(() => {});
+      await sub.unsubscribe().catch(() => {});
+    }
+    setState("off");
+  }
+
+  const label = t("privacy.webPush");
+  return (
+    <div className="flex min-h-16 flex-col justify-center border-t-[1.5px] border-dashed border-rule">
+      <div className="flex items-center gap-3">
+        <div className="flex flex-1 flex-col gap-0.5 pl-1">
+          <span className="text-[21px]">{label}</span>
+          {state === "blocked" ? <span className="text-[15px] text-muted">{t("privacy.webPushBlocked")}</span> : null}
+        </div>
+        <button
+          type="button"
+          disabled={busy || state === "blocked"}
+          aria-label={label}
+          aria-pressed={on}
+          aria-busy={busy}
+          onClick={async () => {
+            setBusy(true);
+            setFailed(false);
+            try {
+              await (on ? turnOff() : turnOn());
+            } catch {
+              setFailed(true);
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className={`flex h-11 w-16 shrink-0 items-center justify-end disabled:opacity-40 ${busy ? "motion-safe:animate-pulse" : ""}`}
+        >
+          <SwitchLook on={on} />
+        </button>
+      </div>
+      {failed ? (
+        <p role="alert" className="pb-2 pl-1 text-[16px] text-red">
+          {t("common.error")}
+        </p>
+      ) : null}
+    </div>
   );
 }
