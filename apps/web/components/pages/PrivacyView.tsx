@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { cancelInvite } from "@/app/actions/request";
 import { AppLockSetting, PendingButton, PushSetting, ReminderSetting } from "@/app/(app)/privacy/Settings";
-import { TabBar } from "@/components/chrome";
 import { DeleteAccount } from "@/components/DeleteAccount";
 import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { LanguageSetting } from "@/components/LanguageSetting";
@@ -107,7 +106,6 @@ export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLoc
       </section>
 
       <div className="h-8" />
-      <TabBar active="privacy" t={t} voice={ai} />
     </>
   );
 }

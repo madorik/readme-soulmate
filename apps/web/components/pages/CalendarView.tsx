@@ -3,7 +3,6 @@ import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { HandCircle, Heart, Sparkle, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { FaceStack } from "@/components/FaceStack";
-import { TabBar } from "@/components/chrome";
 import { Icon } from "@/components/marks";
 import type { Person } from "@/lib/data";
 import { eventName, eventsFor } from "@/lib/events";
@@ -20,7 +19,7 @@ const shift = (v: Month, n: number): Month => {
 const hintHref = (e: UpcomingEvent) => `/people/${e.contactId}/reminder?kind=${e.kind}${e.label ? `&label=${encodeURIComponent(e.label)}` : ""}`;
 
 // 월별 달력: 챙길 날의 '이번 주'를 누르면 온다. 위는 달력(음력, 오늘, 챙길 날엔 그 사람 얼굴), 아래는 이 달의 챙길 날 목록
-export function CalendarView({ locale, today, cur, people, ai }: CalendarData) {
+export function CalendarView({ locale, today, cur, people }: CalendarData) {
   const t = makeT(locale);
   const isThisMonth = cur.y === today.y && cur.m === today.m;
   const first: YMD = { y: cur.y, m: cur.m, d: 1 };
@@ -165,7 +164,6 @@ export function CalendarView({ locale, today, cur, people, ai }: CalendarData) {
       </section>
 
       <div className="h-6" />
-      <TabBar active="home" t={t} voice={ai} />
     </>
   );
 }

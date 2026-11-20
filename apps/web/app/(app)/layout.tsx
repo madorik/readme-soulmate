@@ -1,8 +1,10 @@
 import { translate } from "@readme/core";
 import { headers } from "next/headers";
+import { AppTabBar } from "@/components/AppTabBar";
 import { NativeBridge } from "@/components/native";
 import { ResumeRefresh } from "@/components/ResumeRefresh";
 import { SwipeTabs } from "@/components/SwipeTabs";
+import { aiConfigured } from "@/lib/ai";
 import { listPeople, requireSession, todayFor } from "@/lib/data";
 import { eventsFor } from "@/lib/events";
 import { pushConfigured } from "@/lib/push";
@@ -17,8 +19,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // 설정에서 알림을 끄면 기기 로컬 알림도 예약하지 않는다(이미 예약된 것은 NativeBridge가 지운다)
   const reminders = nativeUa && s.profile.pushEnabled ? localReminders(eventsFor(await listPeople(s), todayFor(s.profile)), s.profile.reminderOffsets, locale) : [];
   return (
-    <main className="screen !pb-0 overflow-x-clip">
+    <main className="screen !pb-0 overflow-x-clip" data-tabs="">
       {children}
+      {/* 하단 메뉴는 어느 화면에서도 보인다(화면 틀에 한 번만) */}
+      <AppTabBar locale={locale} voice={aiConfigured()} />
       <SwipeTabs />
       <ResumeRefresh />
       <NativeBridge

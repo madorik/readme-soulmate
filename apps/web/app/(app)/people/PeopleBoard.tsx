@@ -2,7 +2,7 @@
 
 import type { AvatarConfig, Locale } from "@readme/core";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { addToFolder, removeContacts, setFolderMembers } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";
 import { FolderArt, FolderMini } from "@/components/FolderArt";
@@ -139,7 +139,6 @@ export function PeopleBoard({
   initialGift,
   labels,
   sheet,
-  tabBar,
 }: {
   locale: Locale;
   rows: PersonRow[];
@@ -151,8 +150,6 @@ export function PeopleBoard({
   initialGift: boolean;
   labels: Labels;
   sheet: FolderSheetLabels;
-  /** 아래 탭 막대. 사람을 고르면 이 자리에 동작 막대가 들어서므로 여기서 갈아 끼운다 */
-  tabBar: ReactNode;
 }) {
   const canPick = rows.length > 0;
   // 처음 상태: 주소에서 읽는다. 기기 뒤로가기로 돌아오면 Next가 예전 화면을 다시 쓰는데, 그때도 주소(고르던 체크)는 맞으므로
@@ -244,6 +241,13 @@ export function PeopleBoard({
       .filter((r): r is PersonRow => !!r)
       .map((r) => ({ key: r.contactId, avatar: r.avatar, label: r.name }));
   const ready = picked.length > 0;
+  // 사람을 고르면 하단 메뉴 자리에 동작 막대가 들어선다: 화면 틀의 하단 메뉴는 <html data-bar-swap>으로 숨긴다(globals.css)
+  const swapBar = picking && ready;
+  useEffect(() => {
+    const root = document.documentElement;
+    root.toggleAttribute("data-bar-swap", swapBar);
+    return () => root.removeAttribute("data-bar-swap");
+  }, [swapBar]);
   // 고른 사람을 폴더 하나에 한꺼번에: 넣는 즉시 화면에서 넣고(서버가 다시 그리면 그 값으로), 실패하면 되돌린다
   const putIn = (f: FolderView) => {
     const current = membersOf(f);
@@ -575,7 +579,7 @@ export function PeopleBoard({
         </div>
       ) : null}
       <div className="h-5" />
-      {/* 한 명이라도 고르면 탭 막대 자리에 동작 막대가 들어선다: 지우기(작은 빨간 단추) · 폴더에 넣기 · 메뉴 고르기(주). 아무도 안 골랐으면 탭 막대 그대로 */}
+      {/* 한 명이라도 고르면 하단 메뉴(화면 틀에 있다)를 숨기고 그 자리에 동작 막대가 들어선다: 지우기(작은 빨간 단추) · 폴더에 넣기 · 메뉴 고르기(주). 아무도 안 골랐으면 하단 메뉴 그대로 */}
       {picking && ready ? (
         <div
           role="toolbar"
@@ -603,9 +607,7 @@ export function PeopleBoard({
             </Link>
           </div>
         </div>
-      ) : (
-        tabBar
-      )}
+      ) : null}
       {making ? <FolderSheet labels={sheet} onClose={() => setMaking(false)} /> : null}
       {removeOpen ? (
         <Sheet

@@ -1,4 +1,6 @@
+import type { Locale } from "@readme/core";
 import { useEffect, useState } from "react";
+import { AppTabBar } from "@/components/AppTabBar";
 import { SwipeTabs } from "@/components/SwipeTabs";
 import type { RoutePattern } from "@/lib/pages/routes";
 import { api, ApiError } from "./api";
@@ -13,6 +15,9 @@ type PageOk = { pattern: RoutePattern; data: Record<string, unknown> };
 type PageResult = PageOk | { redirect: string } | { notFound: true };
 
 const cache = new Map<string, PageOk>();
+// 하단 메뉴에 필요한 언어·말로 적기(마이크) 여부: 홈 같은 탭 화면 데이터에 들어 있어서, 안쪽 화면에서도 마지막으로 본 값을 쓴다
+let tabLocale: Locale = "ko";
+let tabVoice = false;
 
 export function PageScreen({ path }: { path: string }) {
   const nav = useNav();
@@ -62,9 +67,13 @@ export function PageScreen({ path }: { path: string }) {
       </main>
     );
   }
+  const seen = page.data as { locale?: Locale; ai?: boolean };
+  if (seen.locale) tabLocale = seen.locale;
+  if (typeof seen.ai === "boolean") tabVoice = seen.ai;
   return (
-    <main className="screen !pb-0 overflow-x-clip">
+    <main className="screen !pb-0 overflow-x-clip" data-tabs="">
       <View {...page.data} />
+      <AppTabBar locale={tabLocale} voice={tabVoice} />
       <SwipeTabs />
     </main>
   );

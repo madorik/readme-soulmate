@@ -1,7 +1,6 @@
 import { SECTIONS_BY_IMPORTANCE } from "@readme/core";
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
-import { TabBar } from "@/components/chrome";
 import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
 import { SectionBody } from "@/components/SectionBody";
@@ -10,7 +9,7 @@ import type { MeData } from "@/lib/pages/types";
 import { makeT } from "@/lib/t";
 
 // 나: 적어 둔 것을 미리보기로(사람 화면과 같은 모양). 고치기는 /me/edit에서 항목을 펼쳐서
-export function MeView({ locale, name, avatar, card, today, ai }: MeData) {
+export function MeView({ locale, name, avatar, card, today }: MeData) {
   const t = makeT(locale);
   // 적어 둔 항목만(중요한 순서)
   const filled = SECTIONS_BY_IMPORTANCE.map((section) => ({ section, body: SectionBody({ section, card, today, locale, t }) })).filter((x) => x.body != null);
@@ -73,7 +72,6 @@ export function MeView({ locale, name, avatar, card, today, ai }: MeData) {
       </section>
 
       <div className="h-8" />
-      <TabBar active="me" t={t} voice={ai} />
     </>
   );
 }

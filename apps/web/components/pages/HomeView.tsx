@@ -3,7 +3,7 @@ import Link from "next/link";
 import { answerAbout } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";
 import { ChiliMeter } from "@/components/Chili";
-import { TabBar, Wordmark } from "@/components/chrome";
+import { Wordmark } from "@/components/chrome";
 import { EmptyPortrait, EventPortrait, EventPortraits } from "@/components/EventArt";
 import { FaceStack } from "@/components/FaceStack";
 import { HolidayPortrait } from "@/components/HolidayArt";
@@ -32,7 +32,7 @@ function memoOf(p: Person | null): string {
     .slice(0, 3)
     .join(" · ");
 }
-export function HomeView({ locale, avatar, today, people, question: asked, questionSkip, answers, answered, ai, isAdmin }: HomeData) {
+export function HomeView({ locale, avatar, today, people, question: asked, questionSkip, answers, answered, isAdmin }: HomeData) {
   const t = makeT(locale);
   // 물어보기에 온 답장(아직 안 본 것)은 오른쪽 위 종에 모은다. 누르면 그 사람 화면, 열면 읽은 것으로
   const rtf = new Intl.RelativeTimeFormat(locale === "ko" ? "ko" : "en", { numeric: "auto" });
@@ -421,7 +421,6 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
       </section>
 
       <div className="h-4" />
-      <TabBar active="home" t={t} voice={ai} />
     </>
   );
 }

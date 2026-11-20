@@ -401,13 +401,13 @@ test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 
   await jisu.getByRole("button", { name: "만들기", exact: true }).click();
   await expect(jisu.getByRole("heading", { name: "할머니" })).toBeVisible();
   // 아무것도 없으면 미리 보기 대신 '적기' 하나
-  await expect(jisu.getByRole("link", { name: "적기" })).toBeVisible();
+  await expect(jisu.getByRole("link", { name: "적기", exact: true })).toBeVisible();
   const personUrl = new URL(jisu.url()).pathname;
 
   // 생일을 오늘부터 7일 뒤로(기본 알림 시점이 7일 전·당일)
   const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date()).split("-").map(Number);
   const in7 = new Date(Date.UTC(y, m - 1, d + 7));
-  await jisu.getByRole("link", { name: "적기" }).click();
+  await jisu.getByRole("link", { name: "적기", exact: true }).click();
   // 빈 사람의 '적기'는 생일과 기념일 칸이 열린 채로 간다
   await expect(jisu).toHaveURL(/\/edit\?open=dates$/);
   await expect(jisu.getByRole("button", { name: /^생일과 기념일/ })).toHaveAttribute("aria-expanded", "true");
@@ -1141,6 +1141,8 @@ test("통계: 이용 기록을 받고, 관리자 키로 들어가 기간을 바�
   }
   // 기간을 바꿔도 보던 탭 그대로, 탭을 옮겨도 고른 기간 그대로
   await tabs.getByRole("link", { name: "선물", exact: true }).click();
+  // 탭이 바뀐 뒤에 기간을 누른다(이동이 끝나기 전에 누르면 옛 탭 주소로 간다)
+  await expect(tabs.getByRole("link", { name: "선물", exact: true })).toHaveAttribute("aria-current", "page");
   await page.getByRole("link", { name: "7일", exact: true }).click();
   await expect(page).toHaveURL(/tab=gifts&range=7/);
   await expect(page.getByText(/\(7일\)/)).toBeVisible();

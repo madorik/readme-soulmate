@@ -72,7 +72,7 @@ const TAB_ICONS = {
 
 /** 아래쪽 탭 막대: 종이색 막대에 가는 윗선, 지금 탭은 망고 알약. fab: 막대 바로 위 오른쪽에 떠 있는 버튼(사람들 화면의 직접 적기 등) */
 /** voice: 가운데 마이크(말로 적기). AI 키가 있을 때만 화면이 aiConfigured()로 켠다(이 파일은 클라이언트에서도 불려서 서버 전용 모듈을 못 들인다) */
-export function TabBar({ active, t, fab, voice = false }: { active: "home" | "people" | "me" | "privacy"; t: T; fab?: React.ReactNode; voice?: boolean }) {
+export function TabBar({ active, t, fab, voice = false }: { active: "home" | "people" | "me" | "privacy" | null; t: T; fab?: React.ReactNode; voice?: boolean }) {
   const tabs = [
     { key: "home", href: "/home", label: t("nav.home") },
     { key: "people", href: "/people", label: t("nav.people") },

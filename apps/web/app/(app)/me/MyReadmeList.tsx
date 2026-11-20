@@ -51,7 +51,7 @@ export function MyReadmeList({
   contactId?: string;
   /** 펼친 항목 머리가 붙을 위치(기본: 상태바 바로 아래) */
   stickyTop?: string;
-  /** 저장 상태 줄이 붙을 아래 위치(기본: 화면 맨 아래. 탭 막대가 있는 화면은 ABOVE_TAB_BAR) */
+  /** 저장 상태 줄이 붙을 아래 위치(기본: 하단 메뉴·키보드 바로 위) */
   stickTo?: string;
 }) {
   const [open, setOpen] = useState<Section | null>(initialOpen);

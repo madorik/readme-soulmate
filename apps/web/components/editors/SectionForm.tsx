@@ -17,10 +17,8 @@ import { useT } from "@/components/editors/shared";
 import { Heart, MarginLine, Squiggle, SKY_STAR, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
 
-// 저장 상태 줄이 붙을 아래 위치. 기본은 화면 맨 아래(휴대폰 아래 막대·키보드 위): 고치기 화면들은 탭 막대가 없다.
-// 탭 막대가 떠 있는 화면에서 쓰면 stickTo={ABOVE_TAB_BAR}로(위 여백 12 + 막대 66 바로 위)
-const ABOVE_BOTTOM = "max(var(--sab), var(--kb, 0px))";
-export const ABOVE_TAB_BAR = "calc(var(--tab-h) + var(--pb-tab))";
+// 저장 상태 줄이 붙을 아래 위치: 하단 메뉴가 늘 떠 있으니 그 바로 위, 키보드가 뜨면 키보드 위
+export const ABOVE_TAB_BAR = "max(var(--kb, 0px), calc(var(--tab-h) + var(--pb-tab)))";
 
 /** 지금 글자를 적고 있는 칸인지(이때는 칸을 벗어날 때 저장한다) */
 function typingInField(): boolean {
@@ -43,7 +41,7 @@ export function SectionForm<S extends Section>({
   contactId,
   inline = false,
   autoSave = false,
-  stickTo = ABOVE_BOTTOM,
+  stickTo = ABOVE_TAB_BAR,
 }: {
   section: S;
   initial: CardData[S] | null;
@@ -51,7 +49,7 @@ export function SectionForm<S extends Section>({
   contactId?: string;
   inline?: boolean;
   autoSave?: boolean;
-  /** inline일 때 저장 상태 줄이 붙을 아래 위치(기본: 화면 맨 아래. 탭 막대가 있으면 ABOVE_TAB_BAR) */
+  /** inline일 때 저장 상태 줄이 붙을 아래 위치(기본: 하단 메뉴·키보드 바로 위) */
   stickTo?: string;
 }) {
   const t = useT(locale);

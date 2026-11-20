@@ -307,6 +307,22 @@
 :root[data-kb] .bottom-bar {
   padding-bottom: 12px;
 }
+/* 앱 화면((app) 레이아웃, <main data-tabs>)은 하단 메뉴가 늘 떠 있다: 아래 버튼 줄은 그 바로 위에(키보드가 뜨면 키보드 위로), 화면 끝 여백은 줄인다.
+   버튼 줄이 main의 바로 아래 자식이면 남는 빈자리는 그 줄이 먹어서(mt-auto) 하단 메뉴 바로 위에 붙는다 */
+.screen[data-tabs] .bottom-bar {
+  bottom: max(var(--kb, 0px), calc(var(--tab-h) + var(--pb-tab)));
+  padding-bottom: 12px;
+}
+.screen[data-tabs] .page-end {
+  padding-bottom: 20px;
+}
+.screen[data-tabs]:has(> .bottom-bar) > nav[data-tabbar] {
+  margin-top: 0;
+}
+/* 사람들 화면에서 사람을 고르면 하단 메뉴 자리에 동작 막대가 들어선다(PeopleBoard) */
+:root[data-bar-swap] .screen[data-tabs] > nav[data-tabbar] {
+  display: none;
+}
 /* 시트(components/Sheet.tsx) 아래 버튼 줄: 아래 막대 가림 띠 위로, 키보드가 떠 있으면 조금만 */
 .sheet-foot {
   padding-bottom: max(var(--pb), 16px);
