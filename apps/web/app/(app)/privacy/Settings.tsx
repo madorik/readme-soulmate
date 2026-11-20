@@ -137,7 +137,7 @@ async function saveSubscription(sub: PushSubscription): Promise<boolean> {
 export function WebPushSetting({ locale, publicKey }: { locale: Locale; publicKey: string }) {
   const t = useT(locale);
   const native = useIsNative();
-  const [state, setState] = useState<"unknown" | "unsupported" | "off" | "on" | "blocked">("unknown");
+  const [state, setState] = useState<"unknown" | "unsupported" | "install" | "off" | "on" | "blocked">("unknown");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -145,7 +145,11 @@ export function WebPushSetting({ locale, publicKey }: { locale: Locale; publicKe
     if (native) return;
     let gone = false;
     void (async () => {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return void (!gone && setState("unsupported"));
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+        // 아이폰·아이패드의 사파리는 홈 화면에 추가한 웹앱에서만 웹 푸시를 준다(iOS 16.4부터): 설치 전에는 PushManager가 없다
+        const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        return void (!gone && setState(ios ? "install" : "unsupported"));
+      }
       if (Notification.permission === "denied") return void (!gone && setState("blocked"));
       const reg = await navigator.serviceWorker.getRegistration("/sw.js").catch(() => undefined);
       const sub = await reg?.pushManager.getSubscription().catch(() => null);
@@ -190,10 +194,11 @@ export function WebPushSetting({ locale, publicKey }: { locale: Locale; publicKe
         <div className="flex flex-1 flex-col gap-0.5 pl-1">
           <span className="text-[21px]">{label}</span>
           {state === "blocked" ? <span className="text-[15px] text-muted">{t("privacy.webPushBlocked")}</span> : null}
+          {state === "install" ? <span className="text-[15px] text-muted">{t("privacy.webPushInstall")}</span> : null}
         </div>
         <button
           type="button"
-          disabled={busy || state === "blocked"}
+          disabled={busy || state === "blocked" || state === "install"}
           aria-label={label}
           aria-pressed={on}
           aria-busy={busy}

@@ -10,7 +10,10 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: { "/api/cron/migrate": ["../../db/migrations/*.sql"] },
   // 탭 막대가 미리 받아 둔 탭 화면은 1분 동안 다시 받지 않는다(서버 액션으로 고치면 바로 새로 받는다).
   // 그냥 본 화면(dynamic)은 기억하지 않는다: 온보딩 전 '홈 → 온보딩' 넘기기 같은 결과를 다시 쓰면 안 된다
-  experimental: { staleTimes: { static: 60 } },
+  // 운영 번들(Turbopack) 쪼개는 기준: 기본값(minChunkSize 50000)에선 작은 조각을 큰 조각에 합치면서 공용 모듈(@readme/core의 번역 사전 등 43KB)이
+  // 합쳐진 조각마다 복사돼, 한 화면에서 같은 사전을 세 번 받았다(gzip 57KB, 첫 화면 238KB 중 약 24%). 기준을 낮춰 합치기를 줄이면 한 번만 받는다
+  // (홈 첫 화면 gzip 238KB → 203KB, 모든 조각의 gzip 합 657KB → 529KB, 요청은 16개 → 23개). 기능은 그대로고 쪼개는 방식만 다르다
+  experimental: { staleTimes: { static: 60 }, turbopackChunking: { minChunkSize: 20000 } },
   async headers() {
     // 기억해유는 개인 정보 화면이라 다른 사이트 안에 넣지 못하게 하고, 검색에도 안 나오게 한다.
     // 검색에 열어 두는 곳: 시작 화면·선물 가이드(/gifts)·약관류·robots·sitemap·llms.txt(가족에게 보낸 카드 /g·통계 /admin은 닫는다)
