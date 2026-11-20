@@ -6,13 +6,18 @@ import { DeleteAccount } from "@/components/DeleteAccount";
 import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { LanguageSetting } from "@/components/LanguageSetting";
 import { Icon } from "@/components/marks";
+import { ShareAppRow } from "@/components/ShareAppRow";
 import { TossLegalRows, TossReminderSwitch } from "@/components/shell/TossSettings";
 import type { PrivacyData } from "@/lib/pages/types";
+import { qrShape } from "@/lib/qr";
 import { SHELL } from "@/lib/shell";
+import { absoluteUrl } from "@/lib/site";
 import { makeT } from "@/lib/t";
 
 export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLock, pushEnabled, reminderOffsets, ai, tossReminder }: PrivacyData) {
   const t = makeT(locale);
+  // 앱 공유하기: 보는 사람 기기에 맞는 스토어로 이어 주는 주소(/get). QR은 서버에서 모양만 만들어 넘긴다
+  const shareUrl = absoluteUrl("/get?from=share");
 
   return (
     <>
@@ -73,6 +78,8 @@ export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLoc
             <Icon name="chevron" size={20} className="mr-1 shrink-0 text-muted" />
           </Link>
         )}
+        {/* 토스 미니앱 안에서는 앱 설치를 권하지 않는다 */}
+        {SHELL === "toss" ? null : <ShareAppRow locale={locale} url={shareUrl} qr={qrShape(shareUrl)} />}
         <TossLegalRows locale={locale} />
       </div>
       <Tape color="mint" className="-left-2.5 -top-1.5" />

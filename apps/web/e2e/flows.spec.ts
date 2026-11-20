@@ -468,6 +468,28 @@ test("설정: 알림 받기를 끄면 언제 알릴지가 숨고, 다시 켜면 
   await expect(doyun.locator("#reminders")).toBeVisible();
 });
 
+test("설정: 앱 공유하기는 다운로드 QR과 보내기·링크 복사를 보여 주고, 링크는 기기에 맞는 스토어로 간다", async ({ browser }) => {
+  const doyun = await as(browser, "doyun");
+  await doyun.goto("/privacy");
+  await doyun.getByRole("button", { name: "앱 공유하기" }).click();
+  const sheet = doyun.getByRole("dialog", { name: "앱 공유하기" });
+  await expect(sheet.getByRole("img", { name: "앱 다운로드 QR 코드" })).toBeVisible();
+  // QR 칸이 실제로 그려졌다(켜진 칸이 있는 경로)
+  expect(await sheet.getByRole("img", { name: "앱 다운로드 QR 코드" }).locator("path").evaluate((p) => (p.getAttribute("d") ?? "").length)).toBeGreaterThan(500);
+  // 링크 글자는 보이지 않고 보내기·링크 복사 단추만 있다
+  await expect(sheet.getByRole("textbox")).toHaveCount(0);
+  await expect(sheet.getByRole("button", { name: "보내기" })).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "링크 복사" })).toBeVisible();
+  await shot(doyun, "20-share-app");
+  // 이 링크: 아이폰은 App Store, 안드로이드는 Play 스토어
+  const store = async (ua: string) => (await doyun.request.get("/get?from=share", { headers: { "user-agent": ua }, maxRedirects: 0 })).headers().location ?? "";
+  expect(await store("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148")).toBe("https://apps.apple.com/kr/app/id6834970170");
+  expect(await store("Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile Safari/537.36")).toMatch(/^https:\/\/play\.google\.com\/store\/apps\/details\?id=kr\.readme\.app&referrer=utm_source%3Dshare/);
+  // 닫으면 설정 화면으로 돌아온다
+  await sheet.getByRole("button", { name: "닫기" }).click();
+  await expect(sheet).toHaveCount(0);
+});
+
 test("계정 삭제: 내 리드미는 지워지고, 나에게 물어본 사람의 기록은 그 사람 것이라 남는다", async ({ browser }) => {
   const doyun = await as(browser, "doyun");
   const res = await doyun.request.get("/api/export");
@@ -649,8 +671,11 @@ test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴
   await expect(jisu.getByRole("link", { name: /^가족 / })).toBeVisible();
 
   // 폴더 안: 가족에 단짝도 넣는다
-  await jisu.getByRole("link", { name: /^가족 / }).click();
-  await expect(jisu.getByRole("heading", { name: "가족" })).toBeVisible();
+  // 찾기 칸을 비운 직후엔 목록이 다시 그려지는 중이라 첫 클릭이 빗나갈 수 있어, 폴더 화면이 열릴 때까지 다시 누른다
+  await expect(async () => {
+    if (!/\/people\/folder\//.test(jisu.url())) await jisu.getByRole("link", { name: /^가족 / }).click();
+    await expect(jisu.getByRole("heading", { name: "가족" })).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 20000 });
   await expect(jisu.getByRole("link", { name: /아빠/ })).toBeVisible();
   await jisu.getByRole("link", { name: "사람 넣기" }).click();
   await jisu.getByRole("dialog").getByRole("button", { name: /단짝/ }).click();

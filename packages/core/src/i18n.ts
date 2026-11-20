@@ -612,6 +612,9 @@ export const ko = {
   "privacy.signOut": "로그아웃",
   "privacy.exportData": "내 기록 내려받기",
   "privacy.replayIntro": "소개 다시 보기",
+  "privacy.shareApp": "앱 공유하기",
+  "privacy.shareAppQr": "앱 다운로드 QR 코드",
+  "privacy.shareAppText": "소중한 사람들의 컨닝페이퍼, 기억해U 같이 써요",
 
   "me.title": "나에 대한 기록",
   "me.face": "프로필 수정",
@@ -1296,6 +1299,9 @@ export const en: Messages = {
   "privacy.signOut": "Sign out",
   "privacy.exportData": "Download my data",
   "privacy.replayIntro": "Replay the intro",
+  "privacy.shareApp": "Share the app",
+  "privacy.shareAppQr": "App download QR code",
+  "privacy.shareAppText": "Remember You, a cheat sheet for the people you love. Try it with me",
 
   "me.title": "About me",
   "me.face": "Edit profile",
