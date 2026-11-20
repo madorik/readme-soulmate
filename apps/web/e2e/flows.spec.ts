@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext } from "@playwright/test";
-import { lunarToSolar, nextOccurrence, todayIn } from "@readme/core";
+import { holidayKey, ko, lunarToSolar, nextHoliday, nextOccurrence, todayIn } from "@readme/core";
 import { ADMIN_KEY, CRON_SECRET, onboard, signIn } from "./helpers";
 
 // 흐름을 실제로 눌러 본다: 가입·온보딩 → 물어보기·앱 없이 답하기(답이 내 기록에) → 받은 답 고치기 → 다시 물어보기 → 로그인하고 답하기 → 영어
@@ -56,8 +56,12 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   await onboard(page, { name: "지수", allergy: "새우", dislike: "오이", lunar: { month: 10, day: 12 } });
   await expect(page).toHaveURL(/\/home/);
   await expect(page.getByRole("heading", { name: "내 사람들" })).toBeVisible();
-  // 챙길 사람이 아직 없으면 챙길 날 카드가 비어 있으니, 그 안에서 바로 사람을 더하게 이끈다
-  await expect(page.getByRole("region", { name: "다가오는 날" }).getByRole("link", { name: "사람 추가하기" })).toBeVisible();
+  // 챙길 사람이 아직 없으면 사람 기념일 대신 30일 안의 명절·챙기는 날(없으면 '새 친구 추가해 봐요')을 보이고, 그 안에서 바로 사람을 더하게 이끈다
+  const upcoming = page.getByRole("region", { name: "다가오는 날" });
+  const holiday = nextHoliday(todayIn("Asia/Seoul"));
+  await expect(upcoming.getByText(holiday ? ko[holidayKey(holiday.id)] : "새 친구 추가해 봐요")).toBeVisible();
+  await expect(upcoming.getByRole("link", { name: "사람 추가하기" })).toBeVisible();
+  await expect(upcoming.getByText("두 달 동안은 조용해요")).toHaveCount(0);
   // 오늘의 질문은 등록한 사람에 대한 것이라, 사람이 없으면 카드 자체가 없다
   await expect(page.getByRole("region", { name: "오늘의 질문" })).toHaveCount(0);
 

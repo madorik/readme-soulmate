@@ -4,23 +4,19 @@ import { Avatar } from "@/components/Avatar";
 import { Heart, Polaroid } from "@/components/diary";
 
 // 홈 '다가오는 날' 왼쪽 그림: 그 사람 얼굴을 끼운 폴라로이드(이름 + 하트). 같은 날 여럿이면 폴라로이드를 겹치고,
-// 다가오는 날이 없으면 점선 사진 칸에 불 안 붙인 케이크를 둔다.
+// 다가오는 날이 없으면 점선 사진 칸에 사람 + 더하기(새 친구)를 둔다. 명절 그림은 HolidayArt.
 
 const QUIET = "#C3C7D4";
 
-const ICING = "M9 29.5 C11 29.5 11.4 32.6 13.6 32.6 C15.8 32.6 15.8 28.8 18.4 28.8 C21 28.8 21 33 23.6 33 C26.2 33 26.2 28.8 28.8 28.8 C31.2 28.8 31.4 32 33.4 32 C35.4 32 35.6 29.5 39 29.5";
-
-/** 초 하나 꽂은 케이크의 연한 선(다가오는 날이 없는 빈 사진 칸) */
-function QuietCake({ size = 48 }: { size?: number }) {
+/** 사람 하나 + 더하기의 연한 선(챙길 날이 없을 때 '새 친구'를 부르는 빈 사진 칸) */
+function QuietFriend({ size = 48 }: { size?: number }) {
   return (
     <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true" className="block">
       <g fill="none" stroke={QUIET} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M5 42.5 H43" />
-        <rect x="9" y="23" width="30" height="16" rx="2.5" />
-        <path d={ICING} />
-        <rect x="22" y="13" width="4" height="10" rx="1" />
-        <path d="M24 13 V10" />
+        <circle cx="20" cy="18" r="7.5" />
+        <path d="M6 41 C6 31 12 27.5 20 27.5 C28 27.5 34 31 34 41" />
       </g>
+      <path d="M38 8 V20 M32 14 H44" fill="none" stroke="#E09A12" strokeWidth="2.4" strokeLinecap="round" />
     </svg>
   );
 }
@@ -62,12 +58,12 @@ export function EventPortraits({ faces }: { faces: { avatar: AvatarConfig | null
   );
 }
 
-/** 다가오는 날이 없을 때: 점선 사진 칸과 불 안 붙인 케이크 */
+/** 챙길 날이 없을 때: 점선 사진 칸과 사람 + 더하기 */
 export function EmptyPortrait() {
   return (
     <span aria-hidden="true" className="block shrink-0 py-2 pl-1 pr-2">
       <Polaroid rotate={-4} dashed>
-        <QuietCake />
+        <QuietFriend />
       </Polaroid>
     </span>
   );

@@ -1,4 +1,4 @@
-import { aboutPrompt, addDays, canAnswerOwn, countWord, formatDayFull, formatMonthDay, formatSpec, NONE, NONE_LABEL, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
+import { aboutPrompt, addDays, canAnswerOwn, countWord, formatDayFull, formatMonthDay, formatSpec, holidayKey, nextHoliday, NONE, NONE_LABEL, sameYmd, solarToLunar, weekday, weekdayNames } from "@readme/core";
 import Link from "next/link";
 import { answerAbout } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";
@@ -6,6 +6,7 @@ import { ChiliMeter } from "@/components/Chili";
 import { TabBar, Wordmark } from "@/components/chrome";
 import { EmptyPortrait, EventPortrait, EventPortraits } from "@/components/EventArt";
 import { FaceStack } from "@/components/FaceStack";
+import { HolidayPortrait } from "@/components/HolidayArt";
 import { NotificationBell, type BellItem } from "@/components/NotificationBell";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { HandCircle, Heart, MarginLine, Sparkle, SKY_STAR, Squiggle, Stamp, Star, Tape } from "@/components/diary";
@@ -18,6 +19,7 @@ import { makeT } from "@/lib/t";
 
 // 다이어리 v2: 다이어리 머리(연도·날짜·월~일 줄) → 다가오는 날(테이프 붙인 종이, 폴라로이드 얼굴, D-day 도장) → 이번 주(오늘은 손그림 동그라미, 챙길 날엔 그 사람 얼굴 + 하트)
 // → 줄노트에 적힌 오늘의 질문 → 내 사람들(가로 줄). 장식은 components/diary.tsx
+// 다가오는 날: 사람 기념일이 두 달 안에 있으면 그 사람 카드. 하나도 없을 때만 30일 안의 명절·챙기는 날(그림 폴라로이드), 그것도 없으면 '새 친구 추가해 봐요'.
 
 /** '기억해 둔 것' 포스트잇에 적을 말: 사람 기록에서 꽃·마실 것·간식·좋아하는 것·향·갖고 싶은 것 중 셋까지 */
 function memoOf(p: Person | null): string {
@@ -51,8 +53,10 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
   // 같은 날 챙길 날이 여럿이면 모두 보인다. 얼굴·선물 힌트는 사람마다 하나
   const nextGroup = next ? events.filter((e) => e.daysUntil === next.daysUntil) : [];
   const nextFaces = [...new Map(nextGroup.map((e) => [e.contactId, e])).values()];
-  // 두 달 안에는 없지만 그 뒤에 있는 날(빈 화면에서 '다음은 …'으로 알려 준다)
-  const later = next ? null : (events[0] ?? null);
+  // 사람 기념일이 두 달 안에 하나도 없을 때만: 30일 안에 오는 명절·챙기는 날 중 가장 가까운 하나
+  const holiday = next ? null : nextHoliday(today);
+  const stampDays = next ? next.daysUntil : (holiday?.daysUntil ?? null);
+  const holidayTitle = holiday ? t(holidayKey(holiday.id)) : "";
   // 오늘의 질문: 내가 등록한 사람 중 아직 답이 없는 칸 하나. 답은 그 사람 기록에 들어간다
   const question = asked?.q ?? null;
   const askedPerson = asked ? personOf(asked.contactId) : null;
@@ -115,20 +119,20 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
 
       <section aria-label={t("home.upcoming")} className="card relative mx-4 mt-[26px] flex -rotate-[0.7deg] flex-col px-5 pb-5 pt-[26px]">
         <Tape color="mango" w={108} h={26} rotate={-3} alpha={0.62} className="-top-[13px] left-1/2 -ml-[54px]" />
-        {next ? (
-          <Stamp className="right-4 top-4" fontSize={next.daysUntil === 0 && locale !== "ko" ? 21 : 27}>
-            {next.daysUntil === 0 ? t("start.today") : `D-${next.daysUntil}`}
+        {stampDays !== null ? (
+          <Stamp className="right-4 top-4" fontSize={stampDays === 0 && locale !== "ko" ? 21 : 27}>
+            {stampDays === 0 ? t("start.today") : `D-${stampDays}`}
           </Stamp>
         ) : null}
         <span className="text-[16px] text-accent">{t("home.upcoming")}</span>
+        {/* 눈으로는 도장(D-2)이 알리니 읽어 줄 때만 '2 일 뒤' */}
+        {stampDays !== null && stampDays > 0 ? (
+          <span className="sr-only">
+            {stampDays} {stampDays === 1 ? t("home.dayToGo") : t("home.daysToGo")}
+          </span>
+        ) : null}
         {next ? (
           <>
-            {/* 눈으로는 도장(D-2)이 알리니 읽어 줄 때만 '2 일 뒤' */}
-            {next.daysUntil > 0 ? (
-              <span className="sr-only">
-                {next.daysUntil} {next.daysUntil === 1 ? t("home.dayToGo") : t("home.daysToGo")}
-              </span>
-            ) : null}
             <div className="mt-[26px] flex items-center gap-2">
               {nextFaces.length > 1 ? (
                 <EventPortraits faces={nextFaces.map((e) => ({ avatar: personOf(e.contactId)?.avatar ?? null, name: e.name }))} kind={next.kind} />
@@ -182,28 +186,51 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
               </Link>
             )}
           </>
+        ) : holiday ? (
+          <>
+            <div className="mt-[26px] flex items-center gap-2">
+              <HolidayPortrait id={holiday.id} />
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <span className={`leading-[1.25] ${holidayTitle.length > 7 ? "text-[24px]" : "text-[29px]"}`}>
+                  <span className="hl">{holidayTitle}</span>
+                </span>
+                {/* 양력 날짜(요일까지)를 먼저, 음력 날이면 음력도 작게 */}
+                <span className="flex flex-col text-[17px] leading-[1.35] text-muted">
+                  {formatDayFull(holiday.date, locale)}
+                  {holiday.spec.calendar === "lunar" ? <span className="text-[15px]">{formatSpec(holiday.spec, locale)}</span> : null}
+                </span>
+              </div>
+            </div>
+            {/* 사람이 있으면 그 중 골라 선물 힌트로(사람들 고르기), 없으면 먼저 사람부터 */}
+            {people.length ? (
+              <Link href="/people?pick=1&me=0" className="btn-primary mt-[18px]">
+                {t("plan.gift")}
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </Link>
+            ) : (
+              <Link href="/people/new" className="btn-primary mt-[18px]">
+                {t("home.addPerson")}
+              </Link>
+            )}
+          </>
         ) : (
           <>
             <div className="mt-[26px] flex items-center gap-2">
               <EmptyPortrait />
-              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <span className="text-[24px] leading-[1.25]">{later ? t("home.quietTitle") : t("home.noUpcomingTitle")}</span>
-                {later ? <span className="text-[16px] leading-[1.45] text-muted">{t("home.quietBody", { event: eventName(later, t, locale), date: formatDayFull(later.date, locale) })}</span> : null}
-              </div>
+              <span className="min-w-0 flex-1 text-[24px] leading-[1.25]">{t("home.newFriend")}</span>
             </div>
-            {later ? null : people.length === 0 ? (
-              // 챙길 사람이 아직 없을 때: 사람부터 더하게 큰 버튼
-              <div className="pt-[18px]">
-                <Link href="/people/new" className="btn-primary w-full">
-                  {t("home.addPerson")}
-                </Link>
-              </div>
-            ) : (
-              <Link href="/request" className="mt-[18px] flex min-h-[52px] items-center justify-between border-t-[1.5px] border-dashed border-rule text-[18px]">
+            <Link href="/people/new" className="btn-primary mt-[18px]">
+              {t("home.addPerson")}
+            </Link>
+            {/* 사람은 있는데 날짜를 아는 사람이 없으면 생일·기념일을 물어볼 수도 있다 */}
+            {people.length && !events.length ? (
+              <Link href="/request" className="mt-1.5 flex min-h-[52px] items-center justify-between border-t-[1.5px] border-dashed border-rule pt-1 text-[18px]">
                 {t("home.askDates")}
                 <Icon name="chevron" size={18} strokeWidth={1.8} className="text-muted" />
               </Link>
-            )}
+            ) : null}
           </>
         )}
         {/* 낙서 */}
