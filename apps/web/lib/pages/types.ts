@@ -93,6 +93,6 @@ export interface RequestData {
 
 export interface VoiceData {
   locale: Locale;
-  people: { id: string; name: string; tag: string; avatar: AvatarConfig | null }[];
+  people: { id: string; name: string; tag: string; avatar: AvatarConfig | null; hint: string }[];
   tour: TourInfo | null;
 }

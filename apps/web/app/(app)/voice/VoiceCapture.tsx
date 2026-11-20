@@ -1,17 +1,19 @@
 "use client";
 
-import { captureField, describeCapture, parseCaptureEdit, type AvatarConfig, type Locale } from "@readme/core";
+import { CAPTURE_FIELDS, SECTIONS, captureField, describeCapture, parseCaptureEdit, type AvatarConfig, type Locale, type Section } from "@readme/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { draftCapture, saveCapture, type CaptureDraft, type CaptureDraftLine, type CaptureState } from "@/app/actions/capture";
+import { draftCapture, previewCapture, saveCapture, type CaptureDraft, type CaptureDraftLine, type CaptureState } from "@/app/actions/capture";
 import { trackTour } from "@/app/actions/tour";
 import { Avatar } from "@/components/Avatar";
 import { Heart, MarginLine, PointArrow, Sparkle, SKY_STAR, Squiggle, Star, Tape, TourNote } from "@/components/diary";
 import { Icon } from "@/components/marks";
 import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/CaptureBadge";
+import { CaptureTargetSheet, type TargetSheetLabels } from "@/components/CaptureTargetSheet";
 import { OrganizeScene } from "@/components/OrganizeScene";
 import { TagChip } from "@/components/PersonRow";
 import type { CaptureItem } from "@/lib/capture-ai";
+import { firstPick, retarget, siblingCount, whoOf, type CaptureTarget } from "@/lib/capture-target";
 import { insertMention, mentionAt, mentionLabel, resolveMentions, type MentionPerson } from "@/lib/mention";
 import { matchesPerson } from "@/lib/search";
 import { shellDictation } from "@/lib/dictation";
@@ -19,7 +21,7 @@ import { startListenGuard, type ListenGuard, type StopReason } from "@/lib/liste
 import { commonPrefix, nextTyped, startDictation, type Dictation, type NativeSpeech } from "@/lib/speech";
 
 /** @로 부를 수 있는 사람(즐겨찾기가 먼저) */
-export type MentionOption = MentionPerson & { avatar: AvatarConfig | null };
+export type MentionOption = MentionPerson & { avatar: AvatarConfig | null; /** 이름이 같은 사람을 가려 볼 때 곁에 붙이는 기록 요약 */ hint?: string };
 
 // 음성 인식: 브라우저는 Web Speech API, 앱(Capacitor)은 SpeechRecognition 플러그인이 있으면 그것.
 // 둘 다 없으면 글로 적는다(휴대폰 키보드의 받아쓰기 마이크로도 말할 수 있다).
@@ -329,6 +331,15 @@ type Labels = CaptureBadgeLabels & {
   /** 잘못 나뉜 줄 빼기 */
   removeLine: string;
   isNew: string;
+  /** 줄 대상 바꾸기 시트 */
+  target: TargetSheetLabels;
+  /** 줄 항목 바꾸기(고르는 칸의 이름) */
+  changeField: string;
+  /** 항목 이름: 메모, 내 리드미에서 선물 목록 */
+  memo: string;
+  wishMe: string;
+  /** 항목 고르기의 묶음 이름(칸 묶음별) */
+  sections: Record<Section, string>;
   more: string;
   aiOff: string;
   failed: string;
@@ -348,14 +359,41 @@ export interface VoiceTour {
   next: string;
 }
 
-/** 확인 화면의 한 줄: AI가 나눈 줄(line)과 고치는 중인 항목(item)·입력 글(input). bad는 고친 글을 값으로 읽을 수 없을 때 */
+/**
+ * 확인 화면의 한 줄: AI가 나눈 줄(line)과 고치는 중인 항목(item)·입력 글(input). bad는 고친 글을 값으로 읽을 수 없을 때.
+ * target은 누구의 이야기로 적을지(못 정했으면 pick: 고르기 전에는 저장할 수 없다), spoken은 말한 이름, candidates는 같은 이름 후보.
+ * same은 지금 대상·항목에 이미 그대로 적혀 있는지(바꿀 때마다 서버가 다시 따진다), rev는 줄을 바꿀 때마다 오르는 번호(늦게 온 답이 옛 줄에 얹히지 않게)
+ */
 interface DraftRow {
   key: number;
   line: CaptureDraftLine;
   item: CaptureItem;
   input: string;
   bad: boolean;
-  edited: boolean;
+  target: CaptureTarget;
+  spoken: string;
+  candidates: string[];
+  same: boolean;
+  rev: number;
+}
+
+/** 칸 고르기: 칸 묶음별 */
+const FIELD_GROUPS = SECTIONS.map((section) => ({ section, fields: CAPTURE_FIELDS.filter((f) => f.section === section) }));
+
+/** 줄 대상 칩의 동그란 얼굴: 내 사람은 얼굴, 새 사람은 사람 더하기, 못 정함은 물음표 */
+function TargetFace({ target, avatar, name }: { target: CaptureTarget; avatar: AvatarConfig | null; name: string }) {
+  if (target.kind === "person") return <Avatar config={avatar} size={26} label={name} decorative />;
+  if (target.kind === "new")
+    return (
+      <span aria-hidden="true" className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-sky-soft text-accent shadow-[0_0_0_1.5px_var(--color-ink)]">
+        <Icon name="personAdd" size={14} strokeWidth={2.2} />
+      </span>
+    );
+  return (
+    <span aria-hidden="true" className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-dashed border-mango-deep bg-white text-[17px] text-accent">
+      ?
+    </span>
+  );
 }
 
 /** 첫 문구가 번쩍 사라지지 않게, 나누기가 아무리 빨라도 이 시간(ms)은 정리하는 화면을 보인다 */
@@ -578,13 +616,14 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
       if (wait > 0) await new Promise((done) => setTimeout(done, wait));
       if (!alive.current) return;
       setSaveError(null);
-      setRows(r.lines.map((line, key) => ({ key, line, item: line.item, input: line.value, bad: false, edited: false })));
+      setRows(r.lines.map((line, key) => ({ key, line, item: line.item, input: line.value, bad: false, target: line.target, spoken: line.spoken, candidates: line.candidates, same: !!line.same, rev: 0 })));
       setResult(r);
       if (tour && r.error) void trackTour("fail", r.error);
     });
   };
 
-  // 고친 값 글자를 칸의 값으로 읽어 그 줄의 항목에 반영한다. 못 읽으면 그 줄은 틀린 값으로 보이고 저장할 수 없다
+  // 고친 값 글자를 칸의 값으로 읽어 그 줄의 항목에 반영한다. 못 읽으면 그 줄은 틀린 값으로 보이고 저장할 수 없다.
+  // 값을 고치면 '이미 알고 있어요'는 내려 둔다(다음에 대상·항목을 바꿀 때 서버가 다시 따진다)
   const editRow = (key: number, input: string) =>
     setRows((all) =>
       all.map((r) => {
@@ -592,7 +631,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
         const f = r.item.target === "memo" ? null : captureField(r.item.target);
         const text = input.replace(/\s+/g, " ").trim();
         const next = f ? parseCaptureEdit(f, input, locale, r.item) : text ? { text } : null;
-        return next ? { ...r, input, bad: false, edited: true, item: { ...r.item, ...next } } : { ...r, input, bad: true, edited: true };
+        return next ? { ...r, input, bad: false, same: false, rev: r.rev + 1, item: { ...r.item, ...next } } : { ...r, input, bad: true, same: false, rev: r.rev + 1 };
       }),
     );
   // 칸을 벗어나면 읽은 값 그대로의 글로 정리한다(245mm → 245)
@@ -606,9 +645,72 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
     );
   const removeRow = (key: number) => setRows((all) => all.filter((r) => r.key !== key));
 
+  // 대상·항목을 바꾼 줄들을 서버에 물어 '이미 알고 있어요'를 다시 그린다(저장도 AI도 아니다). 늦게 온 답은 그새 또 바뀐 줄에는 얹지 않는다
+  const recheck = (list: DraftRow[]) => {
+    const sent = list.filter((r) => r.target.kind !== "pick" && !r.bad);
+    if (!sent.length) return;
+    const revs = new Map(sent.map((r) => [r.key, r.rev]));
+    void previewCapture(sent.map((r) => ({ ...r.item, who: whoOf(r.target, r.spoken) }))).then((res) => {
+      if (!res.ok || !alive.current) return;
+      const same = new Map(res.lines.map((l) => [sent[l.idx]?.key, l.same]));
+      setRows((all) =>
+        all.map((r) => {
+          if (revs.get(r.key) !== r.rev) return r;
+          // 줄이 안 돌아왔다: 메모는 그 사람에게 이미 같은 메모가 있는 것, 그 밖에는 저장해도 적히지 않는 줄
+          if (!same.has(r.key)) return r.item.target === "memo" ? { ...r, same: true } : { ...r, bad: true };
+          return { ...r, same: same.get(r.key)! };
+        }),
+      );
+    });
+  };
+  const touch = (r: DraftRow): DraftRow => ({ ...r, same: false, rev: r.rev + 1 });
+
+  // 대상 바꾸기: 같은 이름 줄도 같이(all)나 그 줄만. 바꾼 대상 기준으로 '이미 알고 있어요'를 다시 따진다
+  const [targetOf, setTargetOf] = useState<number | null>(null);
+  const changeTarget = (key: number, to: CaptureTarget, all: boolean) => {
+    const { rows: next, changed } = retarget(rows, key, to, all);
+    const list = next.map((r) => (changed.includes(r.key) ? touch(r) : r));
+    setRows(list);
+    setTargetOf(null);
+    recheck(list);
+  };
+
+  // 항목 바꾸기: 고친 값 글자를 새 항목 기준으로 다시 읽는다(안 맞으면 틀린 값 표시). 반려동물 칸끼리는 이름을 가져간다
+  const changeField = (key: number, to: string) => {
+    const cur = rows.find((r) => r.key === key);
+    if (!cur || to === cur.item.target) return;
+    const from = cur.item.target === "memo" ? null : captureField(cur.item.target);
+    const f = to === "memo" ? null : captureField(to);
+    const text = cur.input.replace(/\s+/g, " ").trim();
+    const carry = from && f && from.kind === "pet" && f.kind === "pet" ? { label: cur.item.label } : {};
+    const next = f ? parseCaptureEdit(f, cur.input, locale, carry) : text ? { text } : null;
+    const item: CaptureItem = { who: cur.item.who, target: to as CaptureItem["target"], op: to === "memo" ? "add" : cur.item.op, text: null, codes: null, number: null, date: null, label: null, ...next };
+    const list = rows.map((r) => (r.key === key ? { ...touch(r), item, bad: !next } : r));
+    setRows(list);
+    recheck(list);
+  };
+
+  // 저장을 눌렀는데 대상을 못 정한 줄이 있다: 그 줄로 가서 칩을 반짝인다
+  const [flashKey, setFlashKey] = useState<number | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (flashTimer.current && clearTimeout(flashTimer.current)), []);
+  const jumpTo = (key: number) => {
+    const el = document.getElementById(`draft-who-${key}`);
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el?.scrollIntoView({ block: "center", behavior: still ? "auto" : "smooth" });
+    el?.focus({ preventScroll: true });
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    setFlashKey(null);
+    requestAnimationFrame(() => {
+      setFlashKey(key);
+      flashTimer.current = setTimeout(() => setFlashKey(null), 1600);
+    });
+  };
+
   const backToStart = () => {
     setResult(null);
     setRows([]);
+    setTargetOf(null);
     setText("");
     setTagged([]);
     heard.current = "";
@@ -621,9 +723,12 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
       if (more) backToStart();
       return;
     }
+    // 같은 이름이 여럿이라 누구인지 못 정한 줄이 있으면 저장하지 않고 그 줄로
+    const pick = firstPick(rows);
+    if (pick) return jumpTo(pick.key);
     setSaveError(null);
     startSave(async () => {
-      const r = await saveCapture(rows.map((x) => x.item)).catch((): CaptureState => ({ lines: [], undo: [], error: "failed" }));
+      const r = await saveCapture(rows.map((x) => ({ ...x.item, who: whoOf(x.target, x.spoken) }))).catch((): CaptureState => ({ lines: [], undo: [], error: "failed" }));
       if (r.error) {
         setSaveError(r.error);
         if (tour) void trackTour("fail", r.error);
@@ -795,15 +900,69 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
           </h2>
           <ul className="flex flex-col">
             {rows.map((r) => {
-              const l = { ...r.line, same: r.edited ? false : r.line.same };
+              const l = { ...r.line, op: r.item.op, same: r.same };
+              const me = r.target.kind === "me";
+              const person = r.target.kind === "person" ? people.find((p) => p.id === (r.target as { id: string }).id) : undefined;
+              const who = me ? r.line.who : r.target.kind === "new" ? r.target.name : r.target.kind === "pick" ? r.spoken : person ? person.tag || person.name : r.line.who;
+              const memo = r.item.target === "memo";
+              const spec = memo ? null : captureField(r.item.target);
+              const fieldLabel = memo ? labels.memo : me && spec?.key === "gifts.wishlist" ? labels.wishMe : (spec?.label[locale] ?? r.line.field);
+              const pick = r.target.kind === "pick";
               return (
                 <li key={r.key} className="flex items-start gap-1 border-t border-dashed border-rule py-1.5">
-                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 pt-1">
-                    <span className="flex flex-wrap items-center gap-1.5 text-[17px] text-muted">
-                      {l.who}
-                      {l.isNew ? <span className="chip-on rounded-full px-2.5 pb-px text-[15px]">{labels.isNew}</span> : null}
+                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+                    <span className="flex flex-wrap items-center gap-x-1.5 text-[17px] text-muted">
+                      {me ? (
+                        <span className="py-2.5">{who}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          id={`draft-who-${r.key}`}
+                          disabled={locked}
+                          aria-haspopup="dialog"
+                          onClick={() => setTargetOf(r.key)}
+                          className="flex min-h-11 max-w-full items-center text-ink disabled:opacity-60"
+                        >
+                          <span
+                            className={`flex h-[34px] max-w-full items-center gap-1.5 rounded-full pl-1 pr-2 text-[18px] ${
+                              pick ? "bg-sky-soft shadow-[inset_0_0_0_2px_var(--color-mango-deep)]" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"
+                            } ${flashKey === r.key ? "chip-flash" : ""}`}
+                          >
+                            <TargetFace target={r.target} avatar={person?.avatar ?? null} name={who} />
+                            <span className="min-w-0 truncate">{who}</span>
+                            {r.target.kind === "new" ? <span className="chip-on shrink-0 rounded-full px-2 pb-px text-[14px]">{labels.isNew}</span> : null}
+                            {pick ? <span className="shrink-0 text-[15px] text-accent">{labels.target.sameName.replace("{n}", String(r.candidates.length))}</span> : null}
+                            <Icon name="chevron" size={14} strokeWidth={2.4} className="shrink-0 rotate-90 text-muted" />
+                          </span>
+                        </button>
+                      )}
                       <span aria-hidden="true">·</span>
-                      {l.field}
+                      {r.line.value ? (
+                        <span className="relative inline-flex min-h-11 items-center gap-0.5">
+                          {fieldLabel}
+                          <Icon name="chevron" size={13} strokeWidth={2.4} className="shrink-0 rotate-90" />
+                          <select
+                            aria-label={`${labels.changeField}: ${fieldLabel}`}
+                            value={r.item.target}
+                            disabled={locked}
+                            onChange={(e) => changeField(r.key, e.target.value)}
+                            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                          >
+                            {FIELD_GROUPS.map((g) => (
+                              <optgroup key={g.section} label={labels.sections[g.section]}>
+                                {g.fields.map((f) => (
+                                  <option key={f.key} value={f.key}>
+                                    {me && f.key === "gifts.wishlist" ? labels.wishMe : f.label[locale]}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                            {me ? null : <option value="memo">{labels.memo}</option>}
+                          </select>
+                        </span>
+                      ) : (
+                        <span className="py-2.5">{fieldLabel}</span>
+                      )}
                       <CaptureBadge line={l} labels={labels} />
                     </span>
                     {l.value ? (
@@ -822,7 +981,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
                           maxLength={200}
                           enterKeyHint="done"
                           disabled={locked}
-                          aria-label={`${l.who} · ${l.field}`}
+                          aria-label={`${who} · ${fieldLabel}`}
                           aria-invalid={r.bad}
                           className={`peer block min-h-11 w-full resize-none border-0 border-b-[1.5px] border-dashed bg-transparent py-[7px] pl-0 pr-8 text-[23px] leading-[1.35] outline-none [field-sizing:content] focus:border-solid ${
                             r.bad ? "border-red text-red" : `border-rule-strong focus:border-ink ${struck(l)}`
@@ -834,7 +993,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
                   </div>
                   <button
                     type="button"
-                    aria-label={`${labels.removeLine}: ${l.who} · ${l.field}`}
+                    aria-label={`${labels.removeLine}: ${who} · ${fieldLabel}`}
                     title={labels.removeLine}
                     disabled={locked}
                     onClick={() => removeRow(r.key)}
@@ -876,6 +1035,22 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
             {labels.confirm}
           </button>
         </div>
+        {(() => {
+          const row = rows.find((x) => x.key === targetOf);
+          if (!row) return null;
+          return (
+            <CaptureTargetSheet
+              people={people}
+              current={row.target}
+              candidates={row.candidates}
+              spoken={row.spoken}
+              siblings={siblingCount(rows, row.key)}
+              labels={labels.target}
+              onPick={(to, all) => changeTarget(row.key, to, all)}
+              onClose={() => setTargetOf(null)}
+            />
+          );
+        })()}
       </div>
     );
   }

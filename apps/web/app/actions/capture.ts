@@ -1,10 +1,11 @@
 "use server";
 
 import { track } from "@/lib/track";
-import { captureField, clip, describeCapture, findByRelation, isSection, mergeCapture, sanitizeSection, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
+import { captureField, clip, describeCapture, isSection, mergeCapture, sanitizeSection, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { aiConfigured, classifyCapture, type CaptureItem } from "@/lib/ai";
-import { cleanCaptureItems } from "@/lib/capture-ai";
+import { cleanCaptureItems, type CapturePerson } from "@/lib/capture-ai";
+import { nameKey, resolveCapture, resolveSaved, whoOf, type CaptureTarget, type ResolvedCapture } from "@/lib/capture-target";
 import { reserveAi } from "@/lib/ai-quota";
 import { displayName, listNotes, listPeople, readCard, requireSession, sealNote, writeContactSection, writeSection, type Note, type Person, type Session } from "@/lib/data";
 import { resolveMentions } from "@/lib/mention";
@@ -37,9 +38,24 @@ export interface CaptureState {
   error: "ai_off" | "failed" | "nothing" | "limit" | null;
 }
 
-/** 확인 화면의 한 줄: 화면에 보일 한 줄 + 그 줄이 된 항목(고친 값은 이 항목을 고쳐 저장 단계로 되돌려 보낸다) */
+/**
+ * 확인 화면의 한 줄: 화면에 보일 한 줄 + 그 줄이 된 항목(고친 값은 이 항목을 고쳐 저장 단계로 되돌려 보낸다)
+ * target: 누구의 이야기로 정했나(같은 이름이 여럿이라 못 정했으면 pick). spoken: 말한 이름. candidates: 같은 이름 후보(contactId)
+ * idx: 이 줄이 된 항목이 보낸 목록에서 몇 번째인가(미리 보기가 줄을 항목에 맞춰 돌려준다)
+ */
 export interface CaptureDraftLine extends CaptureLine {
   item: CaptureItem;
+  idx: number;
+  target: CaptureTarget;
+  spoken: string;
+  candidates: string[];
+}
+
+/** 대상·항목을 바꾼 줄을 다시 따져 본 결과(이미 알고 있어요 표시만). 줄이 빠졌으면 저장해도 아무것도 안 적히는 줄이다 */
+export interface CapturePreview {
+  /** false면 따져 보지 못했다(그대로 둔다) */
+  ok: boolean;
+  lines: { idx: number; same: boolean }[];
 }
 
 /** 나누기만 한 초안(아직 아무것도 저장하지 않았다) */
@@ -56,6 +72,8 @@ const failed = (error: NonNullable<CaptureState["error"]>) => ({ error }) as con
  * picked: 글로 적기에서 @로 고른 사람(글에 '@부름'이 남아 있는 것만 쓴다). 직접 적은 @낱말도 이름·태그로 찾는다.
  *   한 사람만 짚으면 그 사람 화면에서 적은 것처럼, 여럿이면 짚은 이름 뒤의 말을 그 사람 이야기로 본다
  */
+const asCapture = (p: Person): CapturePerson => ({ id: p.contactId, name: p.name, nickname: p.nickname });
+
 async function classify(raw: string, aboutId?: string, picked?: { id: string; label: string }[]) {
   const s = await requireSession();
   const { locale } = s.profile;
@@ -74,7 +92,6 @@ async function classify(raw: string, aboutId?: string, picked?: { id: string; la
     people.map((p) => ({ id: p.contactId, name: p.name, tag: p.nickname })),
     pickedOk,
   );
-  const asCapture = (p: Person) => ({ id: p.contactId, name: p.name, nickname: p.nickname });
   const mentioned = ids.map((id) => people.find((p) => p.contactId === id)).filter((p): p is Person => !!p);
   const about = aboutId ? people.find((p) => p.contactId === aboutId) : mentioned.length === 1 ? mentioned[0] : undefined;
   let items;
@@ -84,14 +101,20 @@ async function classify(raw: string, aboutId?: string, picked?: { id: string; la
     return failed("failed");
   }
   if (!items.length) return failed("nothing");
-  return { s, people, items };
+  // 사람이 직접 짚은 사람(@부름·그 사람 화면)은 이름이 겹쳐도 그 사람으로 확정이다
+  const certain = new Set([...(about ? [about.contactId] : []), ...mentioned.map((p) => p.contactId)]);
+  return { s, people, items, certain };
 }
 
+/** 아직 없는 사람(초안의 새 사람·못 정한 줄)이라 contactId 자리에 쓰는 이름표 */
+const ghost = (id: string) => id.startsWith("new:") || id.startsWith("pick:");
+
 /**
- * 나눈 항목을 사람 기록·내 리드미·메모에 넣는다(write). 없는 사람은 새로 더한다.
- * write가 false면 같은 길을 가되 아무것도 쓰지 않고(새 사람도 만들지 않는다) 어떻게 적힐지 줄만 돌려준다 — 확인 화면의 초안
+ * 대상이 정해진 항목을 사람 기록·내 리드미·메모에 넣는다(write). 새 사람은 같은 이름당 한 명만 새로 더한다.
+ * write가 false면 같은 길을 가되 아무것도 쓰지 않고(새 사람도 만들지 않는다) 어떻게 적힐지 줄만 돌려준다 — 확인 화면의 초안·미리 보기.
+ * 대상이 내 사람이 아니거나(사람 목록에 없다) 저장인데 아직 못 정한 줄(pick)은 건너뛴다
  */
-async function apply(s: Session, people: Person[], items: CaptureItem[], write: boolean): Promise<{ lines: CaptureDraftLine[]; undo: UndoOp[] }> {
+async function apply(s: Session, people: Person[], rows: ResolvedCapture[], write: boolean): Promise<{ lines: CaptureDraftLine[]; undo: UndoOp[] }> {
   const { locale } = s.profile;
   const lines: CaptureDraftLine[] = [];
   const undo: UndoOp[] = [];
@@ -101,46 +124,51 @@ async function apply(s: Session, people: Person[], items: CaptureItem[], write: 
     // 같은 말 안에서 같은 칸을 여러 번 고쳐도 차례로 합쳐지게 지금 값을 들고 다닌다
     const cards = new Map<string, PartialCard>([["me", { ...mine }], ...people.map((p) => [p.contactId, { ...p.card }] as [string, PartialCard])]);
     const names = new Map<string, string>([["me", me], ...people.map((p) => [p.contactId, displayName(p)] as [string, string])]);
-    const created = new Map<string, string>(); // 새 사람 이름 → contactId(초안에서는 아직 없는 사람이라 이름표 new:이름)
+    const created = new Map<string, string>(); // 새 사람 이름(nameKey) → contactId(초안에서는 아직 없는 사람이라 이름표 new:이름)
     const touched = new Set<string>();
     // 사람마다 메모는 이 말 안에서 한 번만 읽고, 새로 남긴 것은 목록에 보탠다
     const notes = new Map<string, Note[]>();
     const notesOf = async (id: string): Promise<Note[]> => {
       let list = notes.get(id);
-      if (!list) notes.set(id, (list = id.startsWith("new:") ? [] : await listNotes(q, s.user.id, id)));
+      if (!list) notes.set(id, (list = ghost(id) ? [] : await listNotes(q, s.user.id, id)));
       return list;
     };
 
-    for (const item of items) {
+    for (const row of rows) {
+      const { target } = row;
       let who: string;
-      if (item.who.type === "me") who = "me";
-      else if (item.who.type === "existing" && item.who.contactId && cards.has(item.who.contactId) && item.who.contactId !== "me") who = item.who.contactId;
-      else {
-        const name = clip((item.who.name ?? "").replace(/\s+/g, " ").trim(), 40).trim();
-        if (!name) continue;
-        // 같은 이름 → 같은 부름말("와이프" ↔ "아내", "엄마" ↔ "어머니")로 이미 있는 사람을 먼저 찾는다. 이름이 다른 사람끼리는 합치지 않는다
-        const callNames = (p: Person) => [p.nickname, p.name].filter(Boolean);
-        const known =
-          created.get(name) ??
-          people.find((p) => p.nickname === name || p.name === name)?.contactId ??
-          findByRelation([...created], name, ([n]) => [n])?.[1] ??
-          findByRelation(people, name, callNames)?.contactId;
+      if (target.kind === "me") who = "me";
+      else if (target.kind === "person") {
+        if (!cards.has(target.id) || target.id === "me") continue; // 내 사람이 아니면 어디에도 적지 않는다
+        who = target.id;
+      } else if (target.kind === "new") {
+        const key = nameKey(target.name);
+        const known = created.get(key);
         if (known) who = known;
         else {
           if (write) {
-            const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname) values ($1, $2) returning id", [s.user.id, name]);
+            const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname) values ($1, $2) returning id", [s.user.id, target.name]);
             await q("insert into contact_cards (contact_id, author_id) values ($1, $2)", [c!.id, s.user.id]);
             who = c!.id;
             undo.push({ type: "contact", contactId: who });
-          } else who = `new:${name}`;
-          created.set(name, who);
+          } else who = `new:${target.name}`;
+          created.set(key, who);
           cards.set(who, {});
           notes.set(who, []);
-          names.set(who, name);
+          names.set(who, target.name);
         }
+      } else {
+        if (write) continue; // 못 정한 줄은 저장하지 않는다
+        who = `pick:${row.idx}`;
+        cards.set(who, {});
+        notes.set(who, []);
+        names.set(who, row.spoken);
       }
+      // 화면이 줄과 함께 되돌려 받는 것: 대상까지 반영한 항목과 대상·말한 이름·후보
+      const item = { ...row.item, who: whoOf(target, row.spoken) };
+      const extra = { item, idx: row.idx, target, spoken: row.spoken, candidates: row.candidates };
       const isNew = [...created.values()].includes(who);
-      const href = who === "me" ? "/me" : who.startsWith("new:") ? "" : `/people/${who}`;
+      const href = who === "me" ? "/me" : ghost(who) ? "" : `/people/${who}`;
 
       if (item.target === "memo") {
         if (item.op !== "add") continue; // 메모를 고치거나 지우는 건 메모 칸에서
@@ -158,7 +186,7 @@ async function apply(s: Session, people: Person[], items: CaptureItem[], write: 
           kept.unshift({ id: n!.id, label: "", body, createdAt: new Date().toISOString() });
           undo.push({ type: "note", contactId: who, id: n!.id });
         } else kept.unshift({ id: "", label: "", body, createdAt: new Date().toISOString() });
-        lines.push({ who: names.get(who)!, isNew, op: "add", field: translate(locale, "voice.memo"), value: body, href, item });
+        lines.push({ who: names.get(who)!, isNew, op: "add", field: translate(locale, "voice.memo"), value: body, href, ...extra });
         continue;
       }
 
@@ -169,7 +197,7 @@ async function apply(s: Session, people: Person[], items: CaptureItem[], write: 
       const merged = mergeCapture(field, card[field.section], item, op);
       // 내 리드미의 선물 목록은 '받고 싶은 것', 다른 사람 기록에서는 '해주고 싶은 선물'
       const label = who === "me" && field.key === "gifts.wishlist" ? translate(locale, "gift.wishTitle") : field.label[locale];
-      const line = { who: names.get(who)!, isNew, op, field: label, value: describeCapture(field, item, locale), href, item };
+      const line = { who: names.get(who)!, isNew, op, field: label, value: describeCapture(field, item, locale), href, ...extra };
       if (!merged) {
         // 이미 그대로 적혀 있으면 '이미 알고 있어요', 지울 게 없으면 '이미 없어요'(값이 틀린 더하기·바꾸기는 버린다)
         if (op === "remove" || mergeCapture(field, null, item, op)) lines.push({ ...line, same: true });
@@ -211,7 +239,7 @@ export async function captureNote(raw: string, aboutId?: string, picked?: { id: 
   if ("error" in c) return { lines: [], undo: [], error: c.error };
   let done;
   try {
-    done = await apply(c.s, c.people, c.items, true);
+    done = await apply(c.s, c.people, resolveCapture(c.items, c.people.map(asCapture), { detect: false }), true);
   } catch {
     return { lines: [], undo: [], error: "failed" };
   }
@@ -229,7 +257,8 @@ export async function draftCapture(raw: string, aboutId?: string, picked?: { id:
   if ("error" in c) return { lines: [], error: c.error };
   let done;
   try {
-    done = await apply(c.s, c.people, c.items, false);
+    // 같은 이름이 여럿이면 어느 쪽인지 고르게(pick) 하고, 후보를 같이 돌려준다
+    done = await apply(c.s, c.people, resolveCapture(c.items, c.people.map(asCapture), { detect: true, certain: c.certain }), false);
   } catch {
     return { lines: [], error: "failed" };
   }
@@ -238,8 +267,9 @@ export async function draftCapture(raw: string, aboutId?: string, picked?: { id:
 }
 
 /**
- * 말로 적기 2단계 — 저장: 초안에서 고치고 뺀 항목들을 실제 기록에 넣는다(기존 합치기·'이미 알고 있어요' 판단·새 사람 더하기를 그대로).
- * 화면에서 온 값이라 모양을 다시 맞추고, AI는 부르지 않는다. 내 기록만 고칠 수 있다(RLS)
+ * 말로 적기 2단계 — 저장: 초안에서 대상을 정하고 값을 고치고 줄을 뺀 항목들을 실제 기록에 넣는다(기존 합치기·'이미 알고 있어요' 판단·새 사람 더하기를 그대로).
+ * 항목의 who가 정해진 대상이다: 내 사람(contactId)이거나 새 사람(이름). contactId가 내 사람이 아니면 그 줄은 건너뛰고(새 사람으로 둔갑시키지 않는다),
+ * 새 사람은 같은 이름당 한 명만 만든다. 화면에서 온 값이라 모양을 다시 맞추고, AI는 부르지 않는다. 내 기록만 고칠 수 있다(RLS)
  */
 export async function saveCapture(raw: unknown): Promise<CaptureState> {
   const s = await requireSession();
@@ -247,13 +277,31 @@ export async function saveCapture(raw: unknown): Promise<CaptureState> {
   if (!items.length) return { lines: [], undo: [], error: "nothing" };
   let done;
   try {
-    done = await apply(s, await listPeople(s), items, true);
+    const people = await listPeople(s);
+    done = await apply(s, people, resolveSaved(items, people.map(asCapture)), true);
   } catch {
     return { lines: [], undo: [], error: "failed" };
   }
   if (!done.lines.length) return { lines: [], undo: [], error: "nothing" };
   committed(s);
   return { lines: done.lines.map(plain), undo: done.undo, error: null };
+}
+
+/**
+ * 초안에서 줄의 대상·항목을 바꾼 뒤 '이미 알고 있어요'를 다시 따진다(아무것도 저장하지 않고, AI도 부르지 않는다).
+ * 보낸 항목 순서대로 idx를 돌려주고, 줄이 안 오면 저장해도 적히지 않는 줄이다
+ */
+export async function previewCapture(raw: unknown): Promise<CapturePreview> {
+  const s = await requireSession();
+  const items = cleanCaptureItems(raw);
+  if (!items.length) return { ok: false, lines: [] };
+  try {
+    const people = await listPeople(s);
+    const done = await apply(s, people, resolveSaved(items, people.map(asCapture)), false);
+    return { ok: true, lines: done.lines.map((l) => ({ idx: l.idx, same: !!l.same })) };
+  } catch {
+    return { ok: false, lines: [] };
+  }
 }
 
 /** 방금 말로 적은 것 되돌리기(거꾸로) */

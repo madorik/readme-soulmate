@@ -3,6 +3,8 @@ import { SECTIONS, type Section } from "@readme/core";
 import { notFound } from "next/navigation";
 import { aiConfigured } from "@/lib/ai";
 import { displayName, listOpenInvites, listPeople, requireSession } from "@/lib/data";
+import { makeT } from "@/lib/t";
+import { personHint } from "@/lib/summary";
 import { tourTotal } from "@/lib/tour";
 import { tossReminderTemplate } from "@/lib/toss";
 import type { PageInput } from "./routes";
@@ -55,9 +57,10 @@ export async function loadRequest({ searchParams }: PageInput): Promise<RequestD
 export async function loadVoice({ searchParams }: PageInput): Promise<VoiceData> {
   if (!aiConfigured()) notFound();
   const s = await requireSession();
-  // @로 부를 사람: 이름과 내가 붙인 태그(부르는 말), 즐겨찾기가 먼저
+  // @로 부를 사람: 이름과 내가 붙인 태그(부르는 말), 즐겨찾기가 먼저. hint는 이름이 같은 사람을 가려 볼 때 곁에 붙이는 기록 요약
+  const t = makeT(s.profile.locale);
   const people = [...(await listPeople(s))]
     .sort((a, b) => Number(b.favorite) - Number(a.favorite))
-    .map((p) => ({ id: p.contactId, name: p.name, tag: p.nickname && p.nickname !== p.name ? p.nickname : "", avatar: p.avatar }));
+    .map((p) => ({ id: p.contactId, name: p.name, tag: p.nickname && p.nickname !== p.name ? p.nickname : "", avatar: p.avatar, hint: personHint(p.card, s.profile.locale, t) }));
   return { locale: s.profile.locale, people, tour: searchParams.tour ? { n: 1, total: tourTotal() } : null };
 }

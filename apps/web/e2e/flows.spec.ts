@@ -1167,6 +1167,189 @@ test("말로 적기: 정리하는 동안 단계 문구가 바뀌고, 나눈 결�
   await expect(page.getByText("장미")).toHaveCount(0);
 });
 
+/**
+ * 말로 적기 초안의 AI 나누기(draftCapture 서버 액션 응답)를 정해 둔 줄로 바꿔 끼운다. 저장·미리 보기 같은 다른 서버 액션은 그대로 서버로 간다.
+ * 돌려주는 함수에 줄을 넘기면 다음 '기억해 두기'가 그 줄을 받는다
+ */
+interface FakeLine {
+  spoken: string;
+  target: { kind: "me" } | { kind: "person"; id: string } | { kind: "new"; name: string } | { kind: "pick" };
+  key: string;
+  field: string;
+  text: string;
+  candidates?: string[];
+}
+async function fakeDrafts(page: import("@playwright/test").Page) {
+  let next: FakeLine[] = [];
+  await page.route("**/voice", async (route) => {
+    const req = route.request();
+    const args = req.method() === "POST" && req.headers()["next-action"] ? (JSON.parse(req.postData() ?? "[]") as unknown[]) : null;
+    // draftCapture만(첫 인자가 말한 글). saveCapture·previewCapture는 첫 인자가 항목 배열이다
+    if (!args || typeof args[0] !== "string") return route.continue();
+    const lines = next.map((l, idx) => {
+      const name = l.target.kind === "new" ? l.target.name : l.spoken;
+      const who = l.target.kind === "new" ? { type: "new", contactId: null, name } : l.target.kind === "person" ? { type: "existing", contactId: l.target.id, name: null } : l.target.kind === "me" ? { type: "me", contactId: null, name: null } : { type: "new", contactId: null, name };
+      return {
+        who: name,
+        isNew: l.target.kind === "new",
+        op: "add",
+        field: l.field,
+        value: l.text,
+        href: "",
+        item: { who, target: l.key, op: "add", text: l.text, codes: null, number: null, date: null, label: null },
+        idx,
+        target: l.target,
+        spoken: l.spoken,
+        candidates: l.candidates ?? [],
+      };
+    });
+    return route.fulfill({
+      status: 200,
+      headers: { "content-type": "text/x-component" },
+      body: `0:{"a":"$@1","f":"","q":"","i":true,"b":"development"}\n1:${JSON.stringify({ lines, error: null })}\n`,
+    });
+  });
+  return (lines: FakeLine[]) => {
+    next = lines;
+  };
+}
+
+/** 글로 적고 '기억해 두기' → 초안이 뜰 때까지 */
+async function draftText(page: import("@playwright/test").Page, text: string) {
+  await page.goto("/voice");
+  const toText = page.getByRole("radio", { name: "글로" });
+  if (await toText.count()) await toText.click();
+  await page.getByRole("textbox", { name: /예:/ }).fill(text);
+  await page.getByRole("button", { name: "기억해 두기" }).click();
+  await expect(page.getByRole("heading", { name: "이렇게 기억해 둘게요" })).toBeVisible({ timeout: 60_000 });
+}
+
+/** 사람들 화면(폴더가 없으면 목록)의 사람 id와 이름 줄 */
+async function personLinks(page: import("@playwright/test").Page) {
+  await page.goto("/people");
+  const all = await page.locator('a[href^="/people/"]').evaluateAll((as) => as.map((a) => ({ href: a.getAttribute("href") ?? "", text: a.textContent ?? "" })));
+  return all.filter((a) => /^\/people\/[0-9a-f-]{36}$/.test(a.href)).map((a) => ({ id: a.href.split("/").pop()!, text: a.text }));
+}
+
+test("말로 적기: 줄의 사람 칩을 눌러 '새로'로 잡힌 줄을 내 사람으로 돌리면 새 사람이 안 생기고 그 사람에게 값이 들어간다(같은 이름 줄은 함께, 한 줄만도 가능)", async ({ browser }) => {
+  const page = await newPage(browser);
+  await page.goto("/");
+  await signIn(page);
+  await onboard(page, { name: "하나" });
+  const fake = await fakeDrafts(page);
+  const save = page.getByRole("button", { name: "저장", exact: true });
+
+  // 지수를 먼저 만들어 둔다(새 사람 줄을 그대로 저장)
+  fake([{ spoken: "지수", target: { kind: "new", name: "지수" }, key: "sizes.top", field: "상의", text: "M" }]);
+  await draftText(page, "지수는 상의 M");
+  await save.click();
+  await expect(page).toHaveURL(/\/home$/);
+
+  // 없는 이름 '와이프'로 적은 두 줄: 둘 다 새로. 첫 줄만 바꾸려고 '같은 이름 줄 모두 바꾸기'를 끄고 지수를 고른다
+  fake([
+    { spoken: "와이프", target: { kind: "new", name: "와이프" }, key: "favorites.flowers", field: "꽃", text: "수국" },
+    { spoken: "와이프", target: { kind: "new", name: "와이프" }, key: "sizes.bottom", field: "하의", text: "L" },
+  ]);
+  await draftText(page, "와이프는 수국을 좋아하고 하의는 L");
+  const fresh = page.getByRole("button", { name: /^와이프 새로/ });
+  await expect(fresh).toHaveCount(2);
+  await shot(page, "target-1-new");
+  await fresh.first().click();
+  const sheet = page.getByRole("dialog", { name: "누구 이야기예요?" });
+  await expect(sheet).toBeVisible();
+  const all = sheet.getByRole("checkbox", { name: "같은 이름 줄 모두 바꾸기" });
+  await expect(all).toHaveAttribute("aria-checked", "true");
+  await all.click();
+  await shot(page, "target-2-sheet");
+  await sheet.getByRole("button", { name: /^지수/ }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^와이프 새로/ })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /^지수/ })).toHaveCount(1);
+  // 남은 줄을 열면 같은 이름 줄이 더 없어 '모두 바꾸기'가 안 보인다. 지수를 고르면 새로 표시가 모두 없어진다
+  await page.getByRole("button", { name: /^와이프 새로/ }).click();
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole("checkbox")).toHaveCount(0);
+  await sheet.getByRole("button", { name: /^지수/ }).click();
+  await expect(page.getByRole("button", { name: /^지수/ })).toHaveCount(2);
+  await expect(page.getByText("새로", { exact: true })).toHaveCount(0);
+  await shot(page, "target-3-picked");
+  await save.click();
+  await expect(page).toHaveURL(/\/home$/);
+
+  // 와이프라는 새 사람은 없고, 지수 한 명에게 두 값이 다 들어갔다
+  const people = await personLinks(page);
+  expect(people.filter((p) => /와이프/.test(p.text))).toHaveLength(0);
+  const jisu = people.filter((p) => /지수/.test(p.text));
+  expect(jisu).toHaveLength(1);
+  await page.goto(`/people/${jisu[0]!.id}`);
+  await expect(page.getByText("수국").first()).toBeVisible();
+  await expect(page.getByText("L", { exact: true }).first()).toBeVisible();
+});
+
+test("말로 적기: 같은 이름이 둘이면 고르기 전에는 저장할 수 없고(그 줄로 가서 칩이 반짝), 고르면 고른 사람에게만 들어간다", async ({ browser }) => {
+  const page = await newPage(browser);
+  await page.goto("/");
+  await signIn(page);
+  await onboard(page, { name: "하나" });
+  const fake = await fakeDrafts(page);
+  const save = page.getByRole("button", { name: "저장", exact: true });
+
+  // 같은 이름 두 명 만들기: 새 사람 줄의 칩에서 '새 사람으로'에 이름을 적는다(이미 있는 이름이어도 사람이 정한 대로 새로 만든다)
+  for (const food of ["소고기", "국수"]) {
+    fake([{ spoken: "처제", target: { kind: "new", name: "처제" }, key: "taste.likes", field: "좋아하는 음식", text: food }]);
+    await draftText(page, `처제는 ${food}를 좋아해`);
+    await page.getByRole("button", { name: /^처제 새로/ }).click();
+    await page.locator("#capture-new-name").fill("지수");
+    await page.getByRole("dialog").getByRole("button", { name: "새 사람으로" }).click();
+    await expect(page.getByRole("button", { name: /^지수 새로/ })).toBeVisible();
+    await save.click();
+    await expect(page).toHaveURL(/\/home$/);
+  }
+  const twins = (await personLinks(page)).filter((p) => /지수/.test(p.text));
+  expect(twins).toHaveLength(2);
+  const [first, second] = [twins[0]!.id, twins[1]!.id];
+
+  // 같은 이름 '지수' 두 줄: AI가 누구인지 못 정했다(후보 둘)
+  fake([
+    { spoken: "지수", target: { kind: "pick" }, key: "favorites.flowers", field: "꽃", text: "수국", candidates: [first, second] },
+    { spoken: "지수", target: { kind: "pick" }, key: "sizes.top", field: "상의", text: "M", candidates: [first, second] },
+  ]);
+  await draftText(page, "지수는 수국을 좋아하고 상의는 M");
+  const chips = page.getByRole("button", { name: /^지수 같은 이름 2명/ });
+  await expect(chips).toHaveCount(2);
+  await shot(page, "target-4-pick");
+  // 고르기 전 저장은 막힌다: 화면은 그대로고 첫 줄로 가서 칩이 반짝인다
+  await save.click();
+  await expect(page.getByRole("heading", { name: "이렇게 기억해 둘게요" })).toBeVisible();
+  await expect(chips.first().locator("span").first()).toHaveClass(/chip-flash/);
+  await expect(chips.first()).toBeFocused();
+  await shot(page, "target-5-blocked");
+  await page.getByRole("button", { name: "더 말하기" }).click();
+  await expect(page.getByRole("heading", { name: "이렇게 기억해 둘게요" })).toBeVisible();
+
+  // 시트: 후보 두 명이 위에, 같은 이름 줄은 함께 바뀐다(기본)
+  await chips.first().click();
+  const sheet = page.getByRole("dialog", { name: "누구 이야기예요?" });
+  await expect(sheet.getByText("같은 이름 2명")).toBeVisible();
+  const rows = sheet.locator("li button");
+  await expect(rows.nth(0)).toContainText("소고기");
+  await expect(rows.nth(1)).toContainText("국수");
+  await shot(page, "target-6-candidates");
+  await rows.nth(1).click();
+  await expect(page.getByRole("button", { name: /같은 이름 2명/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^지수/ })).toHaveCount(2);
+  await shot(page, "target-7-resolved");
+  await save.click();
+  await expect(page).toHaveURL(/\/home$/);
+
+  // 고른 사람(국수 지수)에게만 들어갔다
+  await page.goto(`/people/${second}`);
+  await expect(page.getByText("수국").first()).toBeVisible();
+  await page.goto(`/people/${first}`);
+  await expect(page.getByText("소고기").first()).toBeVisible();
+  await expect(page.getByText("수국")).toHaveCount(0);
+});
+
 test("가입 직후 체험: 글로 사람을 적어 보고(예시 문장) 적힌 걸 본 뒤, 물어보기 링크까지 만들면 홈으로 끝난다", async ({ browser }) => {
   const page = await newPage(browser);
   await page.goto("/");

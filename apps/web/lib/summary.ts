@@ -1,4 +1,4 @@
-import { NONE, PET_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DISLIKES, MUSIC_GENRES, PATTERNS, SEASONS, SPICY_LEVELS, formatSpec, formatSpecFull, labelOf, type CardData, type Locale, type Section } from "@readme/core";
+import { NONE, PET_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DISLIKES, MUSIC_GENRES, PATTERNS, SEASONS, SPICY_LEVELS, clip, formatSpec, formatSpecFull, labelOf, type CardData, type Locale, type PartialCard, type Section } from "@readme/core";
 import type { T } from "./i18n";
 
 /** 내 리드미 목록에 보일 한 줄 요약 */
@@ -77,4 +77,13 @@ export function summarize(section: Section, data: CardData[Section] | undefined,
       return [d.birthday ? `${t("dates.birthday")} ${formatSpecFull(d.birthday, locale)}` : "", ...d.anniversaries.map((a) => `${a.label} ${formatSpec(a.spec, locale)}`)].filter(Boolean).join(and);
     }
   }
+}
+
+/** 이름이 같은 사람을 가려 볼 때 곁에 작게 붙이는, 그 사람 기록의 첫 줄 요약(없으면 ""). 알레르기·입맛처럼 사람마다 다른 것부터 본다 */
+export function personHint(card: PartialCard, locale: Locale, t: T): string {
+  for (const section of ["safety", "taste", "favorites", "dates", "sizes", "gifts", "culture", "life", "pets"] as const) {
+    const line = summarize(section, card[section], locale, t).trim();
+    if (line) return clip(line, 30);
+  }
+  return "";
 }

@@ -1,3 +1,4 @@
+import { SECTIONS, type Section } from "@readme/core";
 import { leaveTour } from "@/app/actions/tour";
 import { VoiceCapture } from "@/app/(app)/voice/VoiceCapture";
 import { TopBar } from "@/components/chrome";
@@ -71,6 +72,19 @@ export function VoiceView({ locale, people, tour }: VoiceData) {
           steps: [t("voice.step1"), t("voice.step2"), t("voice.step3")],
           removeLine: t("voice.removeLine"),
           isNew: t("voice.newPerson"),
+          target: {
+            title: t("voice.pickTitle"),
+            close: t("common.close"),
+            search: t("people.search"),
+            empty: t("people.searchEmpty"),
+            sameName: t("voice.sameName"),
+            asNew: t("voice.asNew"),
+            all: t("voice.applyAll"),
+          },
+          changeField: t("voice.changeField"),
+          memo: t("voice.memo"),
+          wishMe: t("gift.wishTitle"),
+          sections: Object.fromEntries(SECTIONS.map((x) => [x, t(`section.${x}`)])) as Record<Section, string>,
           more: t("voice.more"),
           aiOff: t("voice.aiOff"),
           failed: t("voice.failed"),
