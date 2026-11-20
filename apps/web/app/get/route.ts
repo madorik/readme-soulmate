@@ -11,7 +11,7 @@ import { isBot, platformOf, track } from "@/lib/track";
 
 const escape = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string);
 
-/** 링크 미리보기 로봇에게 주는 페이지: 앱 소개(제목·설명·이미지)와 스토어 두 곳 링크. 사람은 이 페이지를 거치지 않고 바로 스토어로 간다 */
+/** 링크 미리보기 로봇에게 주는 페이지(같은 주소를 사람은 스토어 이동으로 받으므로 캐시하면 안 된다): 앱 소개(제목·설명·이미지)와 스토어 두 곳 링크. 사람은 이 페이지를 거치지 않고 바로 스토어로 간다 */
 function sharePreview(request: NextRequest): NextResponse {
   const locale: Locale = /^en/i.test(request.headers.get("accept-language") ?? "") ? "en" : "ko";
   const title = BRAND[locale].title;
@@ -36,7 +36,7 @@ function sharePreview(request: NextRequest): NextResponse {
 <meta name="twitter:description" content="${escape(description)}">
 <meta name="twitter:image" content="${escape(image)}">
 </head><body><p><a href="${escape(APP_STORE_URL)}">App Store</a> · <a href="${escape(playUrl("share"))}">Google Play</a></p></body></html>`;
-  return new NextResponse(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "public, max-age=300, s-maxage=300" } });
+  return new NextResponse(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", vary: "User-Agent" } });
 }
 
 export function GET(request: NextRequest) {
