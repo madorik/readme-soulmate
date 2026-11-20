@@ -60,7 +60,8 @@ export default async function Start({ searchParams }: { searchParams: Promise<{ 
           },
         ]}
       />
-      <div className="flex items-center justify-between pl-5 pr-2">
+      {/* 큰 로고의 U 위 점이 글줄 위로 5px쯤 나온다. 상태바·화면 위 끝에 붙어 잘리지 않게 위를 비워 둔다 */}
+      <div className="flex items-center justify-between pl-5 pr-2 pt-4">
         <Wordmark size={35} locale={locale} />
         <form action={setLocale}>
           <input type="hidden" name="locale" value={locale === "ko" ? "en" : "ko"} />
