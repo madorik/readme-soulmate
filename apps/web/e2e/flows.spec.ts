@@ -1485,3 +1485,24 @@ test("가입 직후 체험: 글로 사람을 적어 보고(예시 문장) 적힌
   await expect(page).toHaveURL(/\/home$/);
   await expect(page.getByRole("link", { name: /엄마/ }).first()).toBeVisible();
 });
+
+test("키보드가 화면을 줄이면(안드로이드 앱처럼) 하단 메뉴를 접고 아래 단추 줄이 키보드 바로 위에 온다", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  await page.goto("/request");
+  const nav = page.locator("nav[data-tabbar]");
+  const field = page.getByPlaceholder("이름이나 태그로 찾기");
+  await expect(nav).toBeVisible();
+  // 칸을 누르면 키보드가 뜨며 화면 높이가 줄어든다: 메뉴는 적는 칸을 가리지 않게 접힌다
+  await field.focus();
+  await page.setViewportSize({ width: 360, height: 440 });
+  await expect(nav).toBeHidden();
+  const bar = await page.locator(".bottom-bar").boundingBox();
+  expect(Math.round(bar!.y + bar!.height)).toBe(440);
+  // 키보드가 내려가면 메뉴가 다시 보인다
+  await page.setViewportSize({ width: 360, height: 780 });
+  await field.blur();
+  await expect(nav).toBeVisible();
+});

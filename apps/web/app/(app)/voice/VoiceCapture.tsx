@@ -1128,7 +1128,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
             autoFocus={canListen}
             placeholder={labels.placeholderText}
             aria-label={labels.placeholderText}
-            className="block min-h-40 w-full resize-none border-0 bg-transparent p-0 text-[22px] leading-8 outline-none placeholder:text-muted/80 [html[data-kb]_&]:min-h-32"
+            className="block min-h-40 w-full resize-none border-0 bg-transparent p-0 text-[22px] leading-8 outline-none placeholder:text-muted/80 [html[data-kb]_&]:h-32 [html[data-kb]_&]:min-h-32"
           />
           <Heart size={26} rotate={16} className="-right-2 top-[34px]" />
           <Star size={20} rotate={-12} className="-left-[7px] bottom-7" />

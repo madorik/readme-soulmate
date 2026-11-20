@@ -62,6 +62,8 @@
     --pb-tab: max(calc(var(--sab) + 12px), 22px);
     /* 아래 탭 막대(TabBar) 높이(아래 여백 --pb-tab 제외): 탭 막대 위에 얹는 것들이 이만큼 띄운다 */
     --tab-h: 78px;
+    /* 아래 단추 줄·저장 상태 줄이 바닥에서 띄울 높이: 하단 메뉴 바로 위. 키보드가 떠 있으면(data-kb) 메뉴가 접히니 키보드 바로 위 */
+    --above-tab: calc(var(--tab-h) + var(--pb-tab));
     /* 망고: 큰 덩어리(크림 → 망고 그라데이션)와 버튼(단색 + 아래 진한 망고 그림자로 눌리는 3D) */
     --grad-hero: linear-gradient(140deg, #fff6dd 0%, #ffe7a6 55%, #ffd36b 100%);
     --grad-btn: #ffc23d;
@@ -309,8 +311,11 @@
 }
 /* 앱 화면((app) 레이아웃, <main data-tabs>)은 하단 메뉴가 늘 떠 있다: 아래 버튼 줄은 그 바로 위에(키보드가 뜨면 키보드 위로), 화면 끝 여백은 줄인다.
    버튼 줄이 main의 바로 아래 자식이면 남는 빈자리는 그 줄이 먹어서(mt-auto) 하단 메뉴 바로 위에 붙는다 */
+:root[data-kb] {
+  --above-tab: var(--kb, 0px);
+}
 .screen[data-tabs] .bottom-bar {
-  bottom: max(var(--kb, 0px), calc(var(--tab-h) + var(--pb-tab)));
+  bottom: var(--above-tab);
   padding-bottom: 12px;
 }
 .screen[data-tabs] .page-end {
@@ -319,8 +324,9 @@
 .screen[data-tabs]:has(> .bottom-bar) > nav[data-tabbar] {
   margin-top: 0;
 }
-/* 사람들 화면에서 사람을 고르면 하단 메뉴 자리에 동작 막대가 들어선다(PeopleBoard) */
-:root[data-bar-swap] .screen[data-tabs] > nav[data-tabbar] {
+/* 하단 메뉴를 접는 때: 사람들 화면에서 사람을 고르면 그 자리에 동작 막대가 들어서고(PeopleBoard), 키보드가 떠 있으면 적는 칸을 가리지 않게 접는다 */
+:root[data-bar-swap] .screen[data-tabs] > nav[data-tabbar],
+:root[data-kb] .screen[data-tabs] > nav[data-tabbar] {
   display: none;
 }
 /* 시트(components/Sheet.tsx) 아래 버튼 줄: 아래 막대 가림 띠 위로, 키보드가 떠 있으면 조금만 */

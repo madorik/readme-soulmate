@@ -18,7 +18,7 @@ import { Heart, MarginLine, Squiggle, SKY_STAR, Star, Tape } from "@/components/
 import { Icon } from "@/components/marks";
 
 // 저장 상태 줄이 붙을 아래 위치: 하단 메뉴가 늘 떠 있으니 그 바로 위, 키보드가 뜨면 키보드 위
-export const ABOVE_TAB_BAR = "max(var(--kb, 0px), calc(var(--tab-h) + var(--pb-tab)))";
+export const ABOVE_TAB_BAR = "var(--above-tab)";
 
 /** 지금 글자를 적고 있는 칸인지(이때는 칸을 벗어날 때 저장한다) */
 function typingInField(): boolean {
