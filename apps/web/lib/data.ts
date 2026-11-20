@@ -74,7 +74,7 @@ function toProfile(row: Row, detected: Locale): Profile {
 }
 
 export interface Session {
-  user: { id: string; email: string; isAnonymous: boolean };
+  user: { id: string; email: string; emailVerified: boolean; isAnonymous: boolean };
   profile: Profile;
   /** 이 사람 권한(RLS)으로 트랜잭션 하나 */
   tx: <T>(fn: (q: Q) => Promise<T>) => Promise<T>;
@@ -90,7 +90,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
   if (!row) return null;
   const detected = await detectLocale();
   return {
-    user: { id: uid, email: s.user.email, isAnonymous: (s.user as { isAnonymous?: boolean | null }).isAnonymous === true },
+    user: { id: uid, email: s.user.email, emailVerified: s.user.emailVerified === true, isAnonymous: (s.user as { isAnonymous?: boolean | null }).isAnonymous === true },
     profile: toProfile(row, detected),
     tx: (fn) => asUser(uid, fn),
   };

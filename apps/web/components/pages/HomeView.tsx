@@ -31,7 +31,7 @@ function memoOf(p: Person | null): string {
     .slice(0, 3)
     .join(" · ");
 }
-export function HomeView({ locale, avatar, today, people, question: asked, questionSkip, answers, answered, ai }: HomeData) {
+export function HomeView({ locale, avatar, today, people, question: asked, questionSkip, answers, answered, ai, isAdmin }: HomeData) {
   const t = makeT(locale);
   // 물어보기에 온 답장(아직 안 본 것)은 오른쪽 위 종에 모은다. 누르면 그 사람 화면, 열면 읽은 것으로
   const rtf = new Intl.RelativeTimeFormat(locale === "ko" ? "ko" : "en", { numeric: "auto" });
@@ -88,7 +88,7 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
         <Wordmark locale={locale} />
         <div className="flex items-center gap-0.5">
           <NotificationBell items={bellItems} labels={{ title: t("notif.title"), empty: t("notif.empty") }} />
-          <ProfileMenu avatar={avatar} labels={{ menu: t("home.profileMenu"), profile: t("profile.title"), signOut: t("privacy.signOut") }} />
+          <ProfileMenu avatar={avatar} admin={isAdmin} labels={{ menu: t("home.profileMenu"), profile: t("profile.title"), admin: t("home.adminMenu"), signOut: t("privacy.signOut") }} />
         </div>
       </div>
 

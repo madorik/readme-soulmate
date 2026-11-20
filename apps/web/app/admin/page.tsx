@@ -185,9 +185,12 @@ function Login({ wrong }: { wrong: boolean }) {
 }
 
 export default async function Admin({ searchParams }: { searchParams: Promise<{ wrong?: string; from?: string; to?: string; range?: string }> }) {
-  if (!process.env.ADMIN_KEY) notFound();
   const sp = await searchParams;
-  if (!(await isAdmin())) return <Login wrong={!!sp.wrong} />;
+  if (!(await isAdmin())) {
+    // 관리자 키가 없으면 키 칸도 없다(관리자 계정만 들어온다)
+    if (!process.env.ADMIN_KEY) notFound();
+    return <Login wrong={!!sp.wrong} />;
+  }
 
   const period = parsePeriod(sp);
   const st = await loadStats(period);

@@ -18,4 +18,6 @@ export interface HomeData {
   /** 오늘의 질문에 막 답했다(?answered=1) */
   answered: boolean;
   ai: boolean;
+  /** 관리자 계정이면 프로필 메뉴에 '관리자'가 보인다 */
+  isAdmin: boolean;
 }

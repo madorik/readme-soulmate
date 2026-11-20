@@ -1,4 +1,5 @@
 import "server-only";
+import { isAdminAccount } from "@/lib/admin";
 import { aiConfigured } from "@/lib/ai";
 import { questionForPeople } from "@readme/core";
 import { listPeople, requireSession, todayFor, unreadAnswers } from "@/lib/data";
@@ -24,5 +25,6 @@ export async function loadHome({ searchParams }: PageInput): Promise<HomeData> {
     answers,
     answered: !!searchParams.answered,
     ai: aiConfigured(),
+    isAdmin: isAdminAccount(s.user),
   };
 }

@@ -3,8 +3,10 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isAdminAccount } from "@/lib/admin";
+import { getSession } from "@/lib/data";
 
-// 우리 통계(/admin) 들어가기: 관리자 키(ADMIN_KEY)를 한 번 넣으면 30일 동안 쿠키로. 키가 없으면 통계 화면이 없다
+// 우리 통계(/admin) 들어가기: ① 관리자 계정(ADMIN_EMAILS)으로 로그인해 있으면 앱 프로필 메뉴의 '관리자'로 바로, ② 아니면 관리자 키(ADMIN_KEY)를 한 번 넣으면 30일 동안 쿠키로. 둘 다 없으면 통계 화면이 없다
 
 const COOKIE = "rm_admin";
 
@@ -18,8 +20,9 @@ function same(a: string, b: string): boolean {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 
-/** 쿠키가 지금 키와 맞는지 */
+/** 관리자 계정으로 로그인해 있거나, 쿠키가 지금 키와 맞는지 */
 export async function isAdmin(): Promise<boolean> {
+  if (isAdminAccount((await getSession())?.user)) return true;
   const key = process.env.ADMIN_KEY;
   if (!key) return false;
   const v = (await cookies()).get(COOKIE)?.value ?? "";

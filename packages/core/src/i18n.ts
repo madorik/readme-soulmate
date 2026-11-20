@@ -239,6 +239,7 @@ export const ko = {
 
   "home.myCard": "나에 대한 기록",
   "home.profileMenu": "내 프로필 메뉴",
+  "home.adminMenu": "관리자",
   "home.event.birthday": "{name} 생일",
   "home.event.anniversary": "{name} {label}",
   "home.event.milestone": "{name} {milestone}",
@@ -927,6 +928,7 @@ export const en: Messages = {
 
   "home.myCard": "About me",
   "home.profileMenu": "Profile menu",
+  "home.adminMenu": "Admin",
   "home.event.birthday": "{name}'s birthday",
   "home.event.anniversary": "{name}: {label}",
   "home.event.milestone": "{name}'s {milestone}",

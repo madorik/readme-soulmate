@@ -790,6 +790,8 @@ test("챙길 날 오른쪽 위 내 얼굴: 내 프로필(닉네임·프로필 �
   await jisu.goto("/home");
   await jisu.getByRole("button", { name: "내 프로필 메뉴" }).click();
   await expect(jisu.getByRole("menuitem", { name: "로그아웃" })).toBeVisible();
+  // '관리자'는 관리자 계정(ADMIN_EMAILS의 이메일로 로그인)에만 보인다. 일반 계정에는 없다
+  await expect(jisu.getByRole("menuitem", { name: "관리자" })).toHaveCount(0);
   await jisu.getByRole("menuitem", { name: "내 프로필" }).click();
   await expect(jisu).toHaveURL(/\/me\/avatar$/);
   await expect(jisu.getByRole("heading", { name: "내 프로필" })).toBeVisible();

@@ -7,10 +7,10 @@ import { signOut } from "@/app/actions/auth";
 import { Avatar } from "@/components/Avatar";
 
 /**
- * 홈 오른쪽 위 내 얼굴: 누르면 내 프로필 / 로그아웃 메뉴. 바깥을 누르거나 Esc면 닫힌다.
+ * 홈 오른쪽 위 내 얼굴: 누르면 내 프로필 / (관리자 계정이면 관리자) / 로그아웃 메뉴. 바깥을 누르거나 Esc면 닫힌다.
  * 열면 첫 항목으로 포커스가 가고, ↑↓·Home·End로 옮기며, Esc·Tab으로 닫으면 얼굴 단추로 돌아온다
  */
-export function ProfileMenu({ avatar, labels }: { avatar: AvatarConfig | null; labels: { menu: string; profile: string; signOut: string } }) {
+export function ProfileMenu({ avatar, admin = false, labels }: { avatar: AvatarConfig | null; admin?: boolean; labels: { menu: string; profile: string; admin: string; signOut: string } }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -72,6 +72,12 @@ export function ProfileMenu({ avatar, labels }: { avatar: AvatarConfig | null; l
           <Link role="menuitem" href="/me/avatar" onClick={() => setOpen(false)} className="flex min-h-12 items-center px-4 text-[17px]">
             {labels.profile}
           </Link>
+          {/* 관리자 계정(ADMIN_EMAILS)만. 우리 통계 화면(/admin)으로 간다 */}
+          {admin ? (
+            <Link role="menuitem" href="/admin" prefetch={false} onClick={() => setOpen(false)} className="flex min-h-12 items-center border-t border-rule px-4 text-[17px]">
+              {labels.admin}
+            </Link>
+          ) : null}
           <form action={signOut} className="border-t border-rule">
             <button role="menuitem" className="flex min-h-12 w-full items-center px-4 text-left text-[17px]">
               {labels.signOut}
