@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PEOPLE_MAX, captureRequest, capturePeople, cleanDate, parseCapture, type CapturePerson } from "../capture-ai";
+import { PEOPLE_MAX, captureRequest, capturePeople, cleanCaptureItems, cleanDate, parseCapture, type CapturePerson } from "../capture-ai";
 
 const NOW = new Date(2026, 10, 18); // 2026-11-18
 
@@ -97,4 +97,18 @@ test("요청 몸: 사람 목록은 한도 안", () => {
   assert.ok(!req.input.includes("민감한 값"));
   assert.ok(req.input.includes("ABOUT: "));
   assert.ok(req.input.endsWith("NOTE: 엄마는 커피를 좋아해"));
+});
+
+test("저장 단계로 되돌아온 항목은 모양을 다시 맞춘다: 모르는 칸은 메모, 이상한 값은 비우고, 12개까지만", () => {
+  assert.deepEqual(cleanCaptureItems(null), []);
+  assert.deepEqual(cleanCaptureItems("x"), []);
+  const [a] = cleanCaptureItems([{ who: { type: "boss", contactId: 5, name: "x".repeat(60) }, op: "delete", target: "no.such", text: "y".repeat(300), codes: ["a", 3], number: "7", date: { calendar: "solar", month: 13, day: 1 }, label: 9 }], NOW);
+  assert.deepEqual(a, { who: { type: "new", contactId: null, name: "x".repeat(40) }, target: "memo", op: "add", text: "y".repeat(200), codes: ["a"], number: null, date: null, label: null });
+  // 쓸 수 있는 값은 그대로(고친 글을 읽은 값)
+  const good = { who: { type: "existing", contactId: "p1", name: null }, op: "replace", target: "sizes.shoe", text: null, codes: null, number: 245, date: null, label: null };
+  assert.deepEqual(cleanCaptureItems([good], NOW), [good]);
+  assert.deepEqual(cleanCaptureItems([{ ...good, target: "dates.birthday", number: null, date: { calendar: "lunar", month: 3, day: 5 } }], NOW)[0]?.date, { calendar: "lunar", month: 3, day: 5 });
+  assert.equal(cleanCaptureItems(Array.from({ length: 30 }, () => good), NOW).length, 12);
+  // 값이 없는 줄이나 객체가 아닌 줄도 죽지 않는다
+  assert.equal(cleanCaptureItems([null, 3, {}], NOW).length, 3);
 });

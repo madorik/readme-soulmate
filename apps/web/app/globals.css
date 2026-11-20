@@ -649,6 +649,226 @@
   }
 }
 
+/* 기억해 두기를 누른 뒤 정리하는 동안(components/OrganizeScene.tsx): 적은 문장이 낱말 조각으로 나뉘어 아래 카드로 날아가 쌓이고, 연필이 줄을 쓴다.
+   단계(data-step 0·1·2): 분류(조각이 날아간다) → 적기(연필이 나타난다) → 정리(카드가 가지런해지고 반짝). 움직임 줄이기를 켜면 모두 멈춘 그림 */
+.organize-chip {
+  padding: 1px 11px 3px;
+  border-radius: 9999px;
+  background: var(--color-paper);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+  font-size: 18px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.organize-chip:nth-child(3n + 2) {
+  background: var(--color-sky-soft);
+}
+.organize-chip:nth-child(3n) {
+  background: var(--color-postit);
+}
+.organize-card {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  height: 62px;
+  padding: 11px 16px 0;
+  border-radius: 10px;
+  background: var(--color-paper);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink), 0 6px 12px -8px rgb(31 35 64 / 0.4);
+  rotate: var(--rot, 0deg);
+  transition: rotate 0.6s cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+.organize-card:nth-child(2) {
+  background: var(--color-postit);
+}
+.organize-card:nth-child(3) {
+  background: var(--color-sky-soft);
+}
+.organize[data-step="2"] .organize-card {
+  rotate: 0deg;
+}
+.organize-line {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-ink);
+  opacity: 0.75;
+  transform-origin: left center;
+}
+.organize-pencil {
+  position: absolute;
+  left: 52px;
+  top: -8px;
+  display: block;
+  color: var(--color-ink);
+  opacity: 0;
+  rotate: -18deg;
+  transition: opacity 0.4s;
+}
+.organize[data-step="1"] .organize-pencil,
+.organize[data-step="2"] .organize-pencil {
+  opacity: 1;
+}
+.organize-sparkle {
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.organize[data-step="2"] .organize-sparkle {
+  opacity: 1;
+}
+.organize-dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 4px;
+  padding-top: 12px;
+}
+.organize-dots i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: var(--color-ink);
+}
+@keyframes organize-chip {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.85);
+  }
+  10% {
+    opacity: 1;
+    transform: none;
+  }
+  32% {
+    opacity: 1;
+    transform: translateY(2px) rotate(var(--r, 0deg));
+  }
+  64% {
+    opacity: 1;
+    transform: translate(var(--dx, 0), 96px) scale(0.78);
+  }
+  76%,
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0), 112px) scale(0.4);
+  }
+}
+@keyframes organize-bump {
+  0%,
+  60%,
+  100% {
+    translate: 0 0;
+  }
+  70% {
+    translate: 0 -5px;
+  }
+  82% {
+    translate: 0 1px;
+  }
+}
+@keyframes organize-write {
+  0% {
+    transform: scaleX(0);
+    opacity: 0.75;
+  }
+  58%,
+  90% {
+    transform: scaleX(1);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+@keyframes organize-pencil {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: 46px 5px;
+  }
+  50% {
+    translate: 92px 0;
+  }
+  75% {
+    translate: 46px 7px;
+  }
+}
+@keyframes organize-step {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes organize-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+@keyframes organize-spark {
+  0%,
+  100% {
+    transform: scale(0.6) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.15) rotate(20deg);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .organize-chip {
+    animation: organize-chip 2.8s ease-in-out infinite both;
+    animation-delay: calc(var(--i, 0) * 0.16s);
+  }
+  .organize-card {
+    animation: organize-bump 2.8s ease-in-out infinite;
+    animation-delay: calc(var(--k, 0) * 0.12s);
+  }
+  .organize-line {
+    animation: organize-write 2.8s ease-in-out infinite;
+    animation-delay: calc(var(--k, 0) * 0.4s + var(--l, 0) * 0.3s);
+  }
+  .organize-pencil {
+    animation: organize-pencil 1.5s ease-in-out infinite;
+  }
+  .organize-step {
+    animation: organize-step 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .organize-dots i {
+    animation: organize-dot 1.2s ease-in-out infinite;
+  }
+  .organize-dots i:nth-child(2) {
+    animation-delay: 0.16s;
+  }
+  .organize-dots i:nth-child(3) {
+    animation-delay: 0.32s;
+  }
+  .organize[data-step="2"] .organize-sparkle {
+    animation: organize-spark 1.2s ease-in-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .organize-card,
+  .organize-pencil,
+  .organize-sparkle {
+    transition: none;
+  }
+}
+
 /* 이런 선물은 어때요: 가격대를 넘기면 옆에서 들어오고, 고르는 동안 문구가 살짝 바뀐다 */
 @keyframes picks-in-right {
   from {

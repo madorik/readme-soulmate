@@ -170,30 +170,37 @@ export function cleanDate(d: unknown, now: Date = new Date()): DateSpec | null {
   return isValidSpec(base) ? base : null;
 }
 
+/** 항목 하나의 모양을 맞춘다(AI 응답이든 화면에서 고쳐 되돌려 보낸 것이든) */
+function cleanItem(raw: unknown, now: Date): CaptureItem {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const who = (r.who && typeof r.who === "object" ? r.who : {}) as Record<string, unknown>;
+  const date = cleanDate(r.date, now);
+  return {
+    who: {
+      type: who.type === "me" || who.type === "existing" ? who.type : "new",
+      contactId: typeof who.contactId === "string" ? who.contactId : null,
+      name: typeof who.name === "string" ? clip(who.name, 40) : null,
+    },
+    target: (CAPTURE_TARGETS as readonly string[]).includes(String(r.target)) ? (r.target as CaptureItem["target"]) : "memo",
+    op: r.op === "replace" || r.op === "remove" ? r.op : "add",
+    text: typeof r.text === "string" ? clip(r.text, 200) : null,
+    codes: Array.isArray(r.codes) ? r.codes.filter((c): c is string => typeof c === "string") : null,
+    number: typeof r.number === "number" ? r.number : null,
+    date,
+    label: typeof r.label === "string" ? clip(r.label, 40) : null,
+  };
+}
+
+/** 항목 목록(최대 12개)의 모양을 맞춘다. 배열이 아니면 빈 목록 */
+export function cleanCaptureItems(items: unknown, now: Date = new Date()): CaptureItem[] {
+  return Array.isArray(items) ? items.slice(0, 12).map((raw) => cleanItem(raw, now)) : [];
+}
+
 /** 응답에서 항목을 꺼내 모양을 맞춘다 */
 export function parseCapture(body: unknown, now: Date = new Date()): CaptureItem[] {
   const text = outputText(body);
   // 길이 한도에 걸려 끊긴 응답은 '이해 못 함'이 아니라 실패다(다시 해 보면 된다)
   if (!text && (body as { status?: unknown } | null)?.status === "incomplete") throw new Error("ai_incomplete");
   const parsed = JSON.parse(text || "{}") as { items?: unknown };
-  const items = Array.isArray(parsed.items) ? parsed.items : [];
-  return items.slice(0, 12).map((raw) => {
-    const r = raw as Record<string, unknown>;
-    const who = (r.who ?? {}) as Record<string, unknown>;
-    const date = cleanDate(r.date, now);
-    return {
-      who: {
-        type: who.type === "me" || who.type === "existing" ? who.type : "new",
-        contactId: typeof who.contactId === "string" ? who.contactId : null,
-        name: typeof who.name === "string" ? clip(who.name, 40) : null,
-      },
-      target: (CAPTURE_TARGETS as readonly string[]).includes(String(r.target)) ? (r.target as CaptureItem["target"]) : "memo",
-      op: r.op === "replace" || r.op === "remove" ? r.op : "add",
-      text: typeof r.text === "string" ? clip(r.text, 200) : null,
-      codes: Array.isArray(r.codes) ? r.codes.filter((c): c is string => typeof c === "string") : null,
-      number: typeof r.number === "number" ? r.number : null,
-      date,
-      label: typeof r.label === "string" ? clip(r.label, 40) : null,
-    };
-  });
+  return cleanCaptureItems(parsed.items, now);
 }

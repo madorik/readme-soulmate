@@ -1055,6 +1055,53 @@ test("말로 적기: 들어오면 누르라는 표시, 듣는 중 표시, 말이
   await expect(page.getByRole("button", { name: "기억해 두기" })).toBeDisabled();
 });
 
+test("말로 적기: 정리하는 동안 단계 문구가 바뀌고, 나눈 결과는 저장 전에 값을 고치고 줄을 뺄 수 있으며, 저장해야 사람 화면에 고친 값이 들어간다", async ({ browser }) => {
+  const page = await newPage(browser);
+  await page.goto("/");
+  await signIn(page);
+  await onboard(page, { name: "하나" });
+  await page.goto("/voice");
+  await page.getByRole("radio", { name: "글로" }).click();
+  await page.getByRole("textbox", { name: /예:/ }).fill("엄마는 장미꽃을 좋아하고 아빠는 막걸리를 좋아해");
+  // AI 나누기를 몇 초 늦춰 단계 문구를 본다
+  let slow = true;
+  await page.route("**/voice", async (route) => {
+    if (slow && route.request().method() === "POST" && route.request().headers()["next-action"]) {
+      slow = false;
+      await new Promise((done) => setTimeout(done, 4000));
+    }
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "기억해 두기" }).click();
+  const step = page.locator(".organize").getByRole("status");
+  await expect(step).toHaveText("분류하고 있어요");
+  await expect(step).toHaveText("적고 있어요");
+  await expect(step).toHaveText("정리하고 있어요");
+  await shot(page, "voice-organize");
+
+  // 초안: 아직 저장 전. 엄마 값은 고치고, 아빠 줄은 뺀다
+  await expect(page.getByRole("heading", { name: "이렇게 기억해 둘게요" })).toBeVisible({ timeout: 60_000 });
+  const save = page.getByRole("button", { name: "저장", exact: true });
+  await expect(save).toBeEnabled();
+  const mom = page.getByRole("textbox", { name: /^엄마/ }).first();
+  await expect(mom).toBeVisible();
+  await mom.fill("수국");
+  const dad = page.getByRole("button", { name: /^이 줄 빼기: 아빠/ });
+  while (await dad.count()) await dad.first().click();
+  await expect(page.getByRole("textbox", { name: /^아빠/ })).toHaveCount(0);
+  await shot(page, "voice-draft");
+  await save.click();
+  await expect(page).toHaveURL(/\/home$/);
+
+  // 저장한 것만 기록에 있다: 엄마는 고친 값(수국), 줄을 뺀 아빠는 사람으로도 만들지 않았다
+  await page.goto("/people");
+  await expect(page.getByRole("link", { name: /엄마/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /아빠/ })).toHaveCount(0);
+  await page.getByRole("link", { name: /엄마/ }).first().click();
+  await expect(page.getByText("수국").first()).toBeVisible();
+  await expect(page.getByText("장미")).toHaveCount(0);
+});
+
 test("가입 직후 체험: 글로 사람을 적어 보고(예시 문장) 적힌 걸 본 뒤, 물어보기 링크까지 만들면 홈으로 끝난다", async ({ browser }) => {
   const page = await newPage(browser);
   await page.goto("/");
@@ -1066,14 +1113,13 @@ test("가입 직후 체험: 글로 사람을 적어 보고(예시 문장) 적힌
   await expect(page.getByRole("heading", { name: "이렇게 써보세요" })).toBeVisible();
   await page.getByRole("textbox", { name: "엄마는 장미꽃을 좋아해" }).fill("엄마는 장미꽃을 좋아해");
   await page.getByRole("button", { name: "기억해 두기" }).click();
-  // 자동으로 사람이 등록된 걸 보여 준다(엄마 · 새로 · 장미꽃)
+  // 나눈 결과는 저장 전 초안으로 보인다(엄마 · 새로 · 장미꽃). 값은 그 자리에서 고칠 수 있다. 값 글자는 AI가 나누는 거라 "장미"로 적힐 때도 있다
   await expect(page.getByRole("heading", { name: "이렇게 기억해 둘게요" })).toBeVisible({ timeout: 60_000 });
-  const saved = page.getByRole("link", { name: /엄마/ });
-  await expect(saved.first()).toBeVisible();
-  // 값 글자는 AI가 나누는 거라 "장미"로 적힐 때도 있다
-  await expect(page.getByText(/장미/).first()).toBeVisible();
-  // 다음: 방금 적은 엄마에게 물어보기로(사람이 정해져 있다)
-  await page.getByRole("link", { name: "다음" }).click();
+  const draft = page.getByRole("textbox", { name: /^엄마/ });
+  await expect(draft.first()).toBeVisible();
+  await expect(draft.first()).toHaveValue(/장미/);
+  // 저장을 눌러야 기록에 들어가고, 체험은 방금 적은 엄마에게 물어보기로 이어진다(사람이 정해져 있다)
+  await page.getByRole("button", { name: "저장", exact: true }).click();
   await expect(page).toHaveURL(/\/request\?tour=2&to=[0-9a-f-]{36}/);
   await expect(page.getByText("2 / 2")).toBeVisible();
   await expect(page.getByRole("heading", { name: /엄마/ })).toBeVisible();

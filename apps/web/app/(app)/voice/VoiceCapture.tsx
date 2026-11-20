@@ -1,15 +1,17 @@
 "use client";
 
-import type { AvatarConfig, Locale } from "@readme/core";
-import Link from "next/link";
+import { captureField, describeCapture, parseCaptureEdit, type AvatarConfig, type Locale } from "@readme/core";
+import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
-import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
+import { draftCapture, saveCapture, type CaptureDraft, type CaptureDraftLine, type CaptureState } from "@/app/actions/capture";
 import { trackTour } from "@/app/actions/tour";
 import { Avatar } from "@/components/Avatar";
 import { Heart, MarginLine, PointArrow, Sparkle, SKY_STAR, Squiggle, Star, Tape, TourNote } from "@/components/diary";
 import { Icon } from "@/components/marks";
 import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/CaptureBadge";
+import { OrganizeScene } from "@/components/OrganizeScene";
 import { TagChip } from "@/components/PersonRow";
+import type { CaptureItem } from "@/lib/capture-ai";
 import { insertMention, mentionAt, mentionLabel, resolveMentions, type MentionPerson } from "@/lib/mention";
 import { matchesPerson } from "@/lib/search";
 import { shellDictation } from "@/lib/dictation";
@@ -268,16 +270,6 @@ function WaterDrop({ active, measure, cue = false, beat = 0, size = 210 }: { act
   );
 }
 
-/** 기억해 두기 단추 안: 저장하는 동안은 돌아가는 고리(움직임 줄이기를 켜면 멈춘 고리)를 글자 앞에 붙인다 */
-function SaveLabel({ pending, children }: { pending: boolean; children: React.ReactNode }) {
-  return (
-    <>
-      {pending ? <span aria-hidden="true" className="h-4 w-4 shrink-0 rounded-full border-2 border-current border-t-transparent motion-safe:animate-spin" /> : null}
-      {children}
-    </>
-  );
-}
-
 /**
  * 받아 적는 글을 한 글자씩 타자 치듯(on일 때만, 기기는 말을 덩어리로 보낸다). 고쳐 들어 앞이 달라지면 같은 앞부분까지 바로 지우고 다시 친다.
  * 움직임 줄이기를 켠 사람에게는 바로 보인다
@@ -324,13 +316,20 @@ type Labels = CaptureBadgeLabels & {
   placeholderText: string;
   mention: string;
   mentionList: string;
+  /** 기억해 두기(나누기를 시작하는 단추) */
   save: string;
+  /** 나눈 결과 위 제목(이렇게 기억해 둘게요) */
   saved: string;
+  /** 나눈 결과를 실제로 저장하는 단추 */
+  confirm: string;
+  /** 저장하고 더 말하러 돌아왔을 때 */
+  savedDone: string;
+  /** 정리하는 동안 바뀌는 문구(분류하고 있어요 → 적고 있어요 → 정리하고 있어요) */
+  steps: string[];
+  /** 잘못 나뉜 줄 빼기 */
+  removeLine: string;
   isNew: string;
-  undo: string;
-  undone: string;
   more: string;
-  done: string;
   aiOff: string;
   failed: string;
   limit: string;
@@ -349,6 +348,19 @@ export interface VoiceTour {
   next: string;
 }
 
+/** 확인 화면의 한 줄: AI가 나눈 줄(line)과 고치는 중인 항목(item)·입력 글(input). bad는 고친 글을 값으로 읽을 수 없을 때 */
+interface DraftRow {
+  key: number;
+  line: CaptureDraftLine;
+  item: CaptureItem;
+  input: string;
+  bad: boolean;
+  edited: boolean;
+}
+
+/** 첫 문구가 번쩍 사라지지 않게, 나누기가 아무리 빨라도 이 시간(ms)은 정리하는 화면을 보인다 */
+const MIN_SCENE_MS = 600;
+
 export function VoiceCapture({ locale, labels, people = [], tour = null }: { locale: Locale; labels: Labels; people?: MentionOption[]; tour?: VoiceTour | null }) {
   const canListen = useSyncExternalStore(
     () => () => {},
@@ -362,9 +374,17 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
   const [micError, setMicError] = useState(false);
   // 말이 멈춰 스스로 끈 뒤 받아 적은 글이 남았다(저장은 하지 않는다): 기억해 두기를 누를 차례
   const [ready, setReady] = useState(false);
-  const [result, setResult] = useState<CaptureState | null>(null);
-  const [undone, setUndone] = useState(false);
+  // 나누기(draftCapture)가 돌려준 초안과, 화면에서 고치고 뺀 줄들. 저장(saveCapture)을 눌러야 실제 기록에 들어간다
+  const [result, setResult] = useState<CaptureDraft | null>(null);
+  const [rows, setRows] = useState<DraftRow[]>([]);
+  const [saveError, setSaveError] = useState<CaptureState["error"]>(null);
+  // 저장하고 더 말하러 돌아왔다 / 저장을 마치고 다음 화면으로 가는 중
+  const [flash, setFlash] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [pending, start] = useTransition();
+  const [saving, startSave] = useTransition();
+  const router = useRouter();
+  const via = useRef<"voice" | "text">("text");
   // 말로 적는 동안(듣기·최종 결과 기다리기·나눠 적기) 받아 적은 글은 한 글자씩
   const shown = useTyped(text, listening || settling || pending);
   const web = useRef<WebRecognition | null>(null);
@@ -489,6 +509,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
     "aria-activedescendant": listOpen ? `mention-${options[activeIndex]!.id}` : undefined,
   };
   const onType = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setFlash(false);
     setText(e.target.value);
     setCaret(e.target.selectionStart);
     setDismissed(false);
@@ -543,16 +564,81 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
     void trackTour("view", "voice");
   }, [tour]);
 
-  // via: 말로(마이크) 적었나 글로 적었나. 체험이면 결과(적음·실패 이유)를 이용 기록에 남긴다
-  const submit = (value: string, via: "voice" | "text") => {
+  // how: 말로(마이크) 적었나 글로 적었나. 나누기만 하고 저장은 confirm에서 한다. 체험이면 실패 이유는 여기서, 적음은 저장할 때 이용 기록에 남긴다
+  const submit = (value: string, how: "voice" | "text") => {
     const v = value.trim();
     if (!v || pending) return;
     setReady(false);
+    setFlash(false);
+    via.current = how;
     start(async () => {
-      setUndone(false);
-      const r = await captureNote(v, undefined, tagged);
+      const began = Date.now();
+      const r = await draftCapture(v, undefined, tagged).catch((): CaptureDraft => ({ lines: [], error: "failed" }));
+      const wait = MIN_SCENE_MS - (Date.now() - began);
+      if (wait > 0) await new Promise((done) => setTimeout(done, wait));
+      if (!alive.current) return;
+      setSaveError(null);
+      setRows(r.lines.map((line, key) => ({ key, line, item: line.item, input: line.value, bad: false, edited: false })));
       setResult(r);
-      if (tour) void trackTour(r.error ? "fail" : "capture", r.error ?? via);
+      if (tour && r.error) void trackTour("fail", r.error);
+    });
+  };
+
+  // 고친 값 글자를 칸의 값으로 읽어 그 줄의 항목에 반영한다. 못 읽으면 그 줄은 틀린 값으로 보이고 저장할 수 없다
+  const editRow = (key: number, input: string) =>
+    setRows((all) =>
+      all.map((r) => {
+        if (r.key !== key) return r;
+        const f = r.item.target === "memo" ? null : captureField(r.item.target);
+        const text = input.replace(/\s+/g, " ").trim();
+        const next = f ? parseCaptureEdit(f, input, locale, r.item) : text ? { text } : null;
+        return next ? { ...r, input, bad: false, edited: true, item: { ...r.item, ...next } } : { ...r, input, bad: true, edited: true };
+      }),
+    );
+  // 칸을 벗어나면 읽은 값 그대로의 글로 정리한다(245mm → 245)
+  const tidyRow = (key: number) =>
+    setRows((all) =>
+      all.map((r) => {
+        if (r.key !== key || r.bad) return r;
+        const f = r.item.target === "memo" ? null : captureField(r.item.target);
+        return { ...r, input: f ? describeCapture(f, r.item, locale) : (r.item.text ?? r.input) };
+      }),
+    );
+  const removeRow = (key: number) => setRows((all) => all.filter((r) => r.key !== key));
+
+  const backToStart = () => {
+    setResult(null);
+    setRows([]);
+    setText("");
+    setTagged([]);
+    heard.current = "";
+  };
+
+  // 저장: 고치고 뺀 줄들을 기록에 넣는다. 끝나면 완료로(체험이면 다음 단계로), more면 새로 말하러 돌아간다
+  const confirm = (more: boolean) => {
+    if (saving || leaving || rows.some((r) => r.bad)) return;
+    if (!rows.length) {
+      if (more) backToStart();
+      return;
+    }
+    setSaveError(null);
+    startSave(async () => {
+      const r = await saveCapture(rows.map((x) => x.item)).catch((): CaptureState => ({ lines: [], undo: [], error: "failed" }));
+      if (r.error) {
+        setSaveError(r.error);
+        if (tour) void trackTour("fail", r.error);
+        return;
+      }
+      if (tour) void trackTour("capture", via.current);
+      if (more) {
+        backToStart();
+        setFlash(true);
+        return;
+      }
+      setLeaving(true);
+      // 체험: 방금 적은 사람이 있으면 그 사람에게 물어보기로(없으면 사람 고르기부터)
+      const first = r.lines.map((l) => /^\/people\/([0-9a-f-]{36})$/i.exec(l.href)?.[1]).find(Boolean);
+      router.push(tour ? `/request?tour=2${first ? `&to=${first}` : ""}` : "/home");
     });
   };
 
@@ -603,6 +689,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
     pressedStop.current = false;
     setMicError(false);
     setReady(false);
+    setFlash(false);
     setResult(null);
     heard.current = prefix.current;
     if (!prefix.current) {
@@ -688,78 +775,106 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
     r.start();
   };
 
-  const error = result?.error === "ai_off" ? labels.aiOff : result?.error === "failed" ? labels.failed : result?.error === "limit" ? labels.limit : result?.error === "nothing" ? labels.nothing : micError ? labels.micError : "";
+  const errorOf = (code: CaptureState["error"]) => (code === "ai_off" ? labels.aiOff : code === "failed" ? labels.failed : code === "limit" ? labels.limit : code === "nothing" ? labels.nothing : "");
+  const error = errorOf(result?.error ?? null) || (micError ? labels.micError : "");
 
-  // 체험: 방금 적은 사람이 있으면 그 사람에게 물어보기로(없으면 사람 고르기부터)
-  const firstPerson = result?.lines.map((l) => /^\/people\/([0-9a-f-]{36})$/i.exec(l.href)?.[1]).find(Boolean);
-  const nextHref = `/request?tour=2${firstPerson ? `&to=${firstPerson}` : ""}`;
+  // 정리하는 중: 버튼 안 스피너 대신 적은 문장이 조각으로 나뉘어 카드에 쌓이는 그림과 단계 문구(분류하고 있어요 → 적고 있어요 → 정리하고 있어요)
+  if (pending) return <OrganizeScene text={text.trim()} steps={labels.steps} />;
 
-  // 적은 뒤: 어디에 들어갔는지 한 줄씩, 아래에 되돌리기·더 말하기
+  // 나눈 뒤: 아직 저장하지 않은 초안. 값 글자를 그 자리에서 고치고, 잘못 나뉜 줄은 빼고, 저장을 눌러야 기록에 들어간다. 아래에는 더 말하기·저장
   if (result && !result.error) {
+    const bad = rows.some((r) => r.bad);
+    const locked = saving || leaving;
     return (
       <div className="flex flex-1 flex-col">
-        <section className="card relative mx-4 mt-6 -rotate-[0.4deg] px-5 pb-2 pt-[22px]" aria-live="polite">
+        <section className="card relative mx-4 mt-6 -rotate-[0.4deg] px-5 pb-2 pt-[22px]" aria-live="polite" aria-relevant="additions text">
           <Tape color="mango" w={104} h={26} rotate={-3} alpha={0.62} className="-top-3 left-1/2 -ml-[52px]" />
           <h2 className="flex items-center gap-2 pb-2 text-[22px] font-normal">
-            <Icon name="check" size={22} strokeWidth={2.4} className="text-accent" />
-            {undone ? labels.undone : labels.saved}
+            <Icon name="pencil" size={21} strokeWidth={2.2} className="text-accent" />
+            {labels.saved}
           </h2>
-          <ul className={`flex flex-col ${undone ? "opacity-40" : ""}`}>
-            {result.lines.map((l, i) => (
-              <li key={i} className="border-t border-dashed border-rule">
-                <Link href={l.href} className="flex min-h-16 flex-col justify-center gap-0.5 py-2">
-                  <span className="flex flex-wrap items-center gap-1.5 text-[17px] text-muted">
-                    {l.who}
-                    {l.isNew ? <span className="chip-on rounded-full px-2.5 pb-px text-[15px]">{labels.isNew}</span> : null}
-                    <span aria-hidden="true">·</span>
-                    {l.field}
-                    <CaptureBadge line={l} labels={labels} />
-                  </span>
-                  {l.value ? <span className={`text-[23px] leading-[1.35] ${struck(l)}`}>{l.value}</span> : null}
-                </Link>
-              </li>
-            ))}
+          <ul className="flex flex-col">
+            {rows.map((r) => {
+              const l = { ...r.line, same: r.edited ? false : r.line.same };
+              return (
+                <li key={r.key} className="flex items-start gap-1 border-t border-dashed border-rule py-1.5">
+                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 pt-1">
+                    <span className="flex flex-wrap items-center gap-1.5 text-[17px] text-muted">
+                      {l.who}
+                      {l.isNew ? <span className="chip-on rounded-full px-2.5 pb-px text-[15px]">{labels.isNew}</span> : null}
+                      <span aria-hidden="true">·</span>
+                      {l.field}
+                      <CaptureBadge line={l} labels={labels} />
+                    </span>
+                    {l.value ? (
+                      <div className="relative">
+                        <textarea
+                          value={r.input}
+                          onChange={(e) => editRow(r.key, e.target.value)}
+                          onBlur={() => tidyRow(r.key)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                              e.preventDefault();
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          rows={1}
+                          maxLength={200}
+                          enterKeyHint="done"
+                          disabled={locked}
+                          aria-label={`${l.who} · ${l.field}`}
+                          aria-invalid={r.bad}
+                          className={`peer block min-h-11 w-full resize-none border-0 border-b-[1.5px] border-dashed bg-transparent py-[7px] pl-0 pr-8 text-[23px] leading-[1.35] outline-none [field-sizing:content] focus:border-solid ${
+                            r.bad ? "border-red text-red" : `border-rule-strong focus:border-ink ${struck(l)}`
+                          }`}
+                        />
+                        <Icon name="pencil" size={16} strokeWidth={2} className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-muted peer-focus:opacity-0" />
+                      </div>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={`${labels.removeLine}: ${l.who} · ${l.field}`}
+                    title={labels.removeLine}
+                    disabled={locked}
+                    onClick={() => removeRow(r.key)}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted active:bg-fill disabled:opacity-40"
+                  >
+                    <Icon name="close" size={18} strokeWidth={2.2} />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
           <Heart size={28} rotate={16} className="-right-2 top-[30px]" />
           <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[7px] bottom-9" />
           <Squiggle w={54} width={2.4} className="-bottom-2 right-[30px]" />
         </section>
-        {/* 되돌리기(아이콘) · 더 말하기(마이크·연필 아이콘, 적는 화면으로) · 완료(홈으로). 체험이면 더 말하기 대신 다음(방금 적은 사람에게 물어보기로) */}
+        <div className="flex min-h-8 items-center justify-center px-4 pt-3">
+          {saveError ? (
+            <p role="alert" className="text-center text-[17px] text-red">
+              {errorOf(saveError)}
+            </p>
+          ) : null}
+        </div>
+        {/* 더 말하기(마이크·연필 아이콘: 저장하고 새로 말하러) · 저장(망고 주 버튼). 체험이면 더 말하기 없이 저장하면 다음(방금 적은 사람에게 물어보기로) */}
         <div className="bottom-bar mt-auto flex items-center gap-2.5 bg-bg px-5 pt-3.5">
-          <button
-            type="button"
-            aria-label={undone ? labels.undone : labels.undo}
-            title={labels.undo}
-            disabled={undone || pending || !result.undo.length}
-            onClick={() =>
-              start(async () => {
-                const r = await undoCapture(result.undo);
-                if (r.ok) setUndone(true);
-              })
-            }
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:bg-fill disabled:opacity-40"
-          >
-            <Icon name="undo" size={22} strokeWidth={2} />
-          </button>
           {tour ? null : (
             <button
               type="button"
               aria-label={labels.more}
               title={labels.more}
-              onClick={() => {
-                setResult(null);
-                setText("");
-                setTagged([]);
-              }}
-              className="flex h-14 shrink-0 items-center justify-center gap-1 rounded-full bg-white px-4 text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:bg-fill"
+              disabled={locked || bad}
+              onClick={() => confirm(true)}
+              className="flex h-14 shrink-0 items-center justify-center gap-1 rounded-full bg-white px-4 text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:bg-fill disabled:opacity-40"
             >
               <Icon name="mic" size={21} strokeWidth={2} />
               <Icon name="pencil" size={19} strokeWidth={2} />
             </button>
           )}
-          <Link href={tour ? nextHref : "/home"} className="btn-primary flex-1 !min-h-14 !text-[21px]">
-            {tour ? tour.next : labels.done}
-          </Link>
+          <button type="button" disabled={locked || bad || !rows.length} aria-busy={locked} onClick={() => confirm(false)} className="btn-primary flex-1 !min-h-14 !text-[21px]">
+            {labels.confirm}
+          </button>
         </div>
       </div>
     );
@@ -802,6 +917,11 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
   const errorLine = error ? (
     <p role="alert" className="text-center text-[17px] text-red">
       {error}
+    </p>
+  ) : flash ? (
+    <p role="status" className="flex items-center justify-center gap-1.5 text-center text-[19px]">
+      <Icon name="check" size={18} strokeWidth={2.6} className="text-accent" />
+      {labels.savedDone}
     </p>
   ) : null;
 
@@ -882,7 +1002,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
             </div>
           ) : null}
           <button disabled={pending || !text.trim()} aria-busy={pending} className="btn-primary w-full !min-h-14 !text-[21px]">
-            <SaveLabel pending={pending}>{labels.save}</SaveLabel>
+            {labels.save}
           </button>
         </div>
       </form>
@@ -945,7 +1065,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
         />
         {mentionList("box")}
         <div className="flex h-8 items-center">
-          {error ? (
+          {error || flash ? (
             errorLine
           ) : idle ? (
             <button type="button" onClick={() => setText("")} className="relative text-[18px] text-muted underline underline-offset-4 before:absolute before:-inset-x-3 before:-inset-y-3.5">
@@ -976,7 +1096,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
           </button>
         ) : null}
         <button disabled={pending || listening || settling || !text.trim()} aria-busy={pending} className={`btn-primary flex-1 !min-h-14 !text-[21px] ${nudgeSave ? "save-ready" : ""}`}>
-          <SaveLabel pending={pending}>{labels.save}</SaveLabel>
+          {labels.save}
         </button>
       </div>
     </form>

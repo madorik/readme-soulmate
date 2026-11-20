@@ -4,6 +4,7 @@ import { ALCOHOL_KINDS, ALCOHOL_LEVELS, ALLERGENS, COLORS, DIETS, DISLIKES, META
 import { emptySection, sanitizeSection, type CardData, type Pet, type Section } from "./card";
 import { isValidSpec, type DateSpec } from "./calendar";
 import type { Locale } from "./locale";
+import { clip } from "./text";
 
 /**
  * 칸의 종류
@@ -401,5 +402,102 @@ export function describeCapture(field: CaptureField, value: CaptureValue, locale
     }
     default:
       return (value.text ?? "").trim();
+  }
+}
+
+// ── 화면에서 고친 값 글자 → 칸의 값(describeCapture의 거꾸로) ─────────────────────────────
+
+const catalogCode = (field: CaptureField, piece: string): string | null => {
+  const y = squash(piece);
+  if (!y) return null;
+  return field.catalog?.find((x) => squash(x.code) === y || squash(x.label.ko) === y || squash(x.label.en) === y)?.code ?? null;
+};
+
+const DATE_IN_TEXT = /(?:(\d{4})\s*(?:년|[./-])\s*)?(\d{1,2})\s*(?:월|\/|[.-])\s*(\d{1,2})\s*일?/;
+
+/** 글에서 날짜(3월 5일 · 3/5 · 2024.3.5, 앞뒤에 음력/Lunar)를 찾는다. 날짜를 뺀 나머지 글을 같이 돌려준다 */
+function dateIn(input: string, current: DateSpec | null | undefined): { date: DateSpec; rest: string } | null {
+  const lunar = /음력|lunar/i.test(input);
+  const plain = input.replace(/음력|lunar/gi, " ");
+  const m = DATE_IN_TEXT.exec(plain);
+  if (!m) return null;
+  const base: DateSpec = { calendar: lunar ? "lunar" : "solar", month: Number(m[2]), day: Number(m[3]) };
+  // 연도를 적지 않았으면 그 줄에 있던 연도를 그대로(맞는 날짜일 때만)
+  const year = m[1] ? Number(m[1]) : current?.year;
+  const withYear = year !== undefined ? { ...base, year } : null;
+  const date = withYear && isValidSpec(withYear) ? withYear : base;
+  if (!isValidSpec(date)) return null;
+  return { date, rest: `${plain.slice(0, m.index)} ${plain.slice(m.index + m[0].length)}`.replace(/\s+/g, " ").trim() };
+}
+
+/**
+ * 화면에서 고친 값 글자를 다시 칸의 값으로 읽는다(describeCapture의 거꾸로). current는 바뀌지 않는 나머지(반려동물 이름 등)를 가져온다.
+ * 못 읽으면(빈 글·목록에 없는 선택지·범위 밖 수·없는 날짜) null — 화면은 그 줄을 틀린 값으로 보인다
+ */
+export function parseCaptureEdit(field: CaptureField, input: string, locale: Locale, current: CaptureValue = {}): CaptureValue | null {
+  void locale;
+  const raw = input.replace(/\s+/g, " ").trim();
+  if (!raw) return null;
+  const pieces = raw.split(/\s*,\s*/).filter(Boolean);
+  switch (field.kind) {
+    case "text":
+    case "list":
+      return { ...current, text: raw };
+    case "tags": {
+      const codes: string[] = [];
+      const rest: string[] = [];
+      for (const p of pieces) {
+        const c = catalogCode(field, p);
+        if (!c) rest.push(p);
+        else if (!codes.includes(c)) codes.push(c);
+      }
+      return { ...current, codes: codes.length ? codes : null, text: rest.length ? rest.join(", ") : null };
+    }
+    case "codes": {
+      const codes = pieces.map((p) => catalogCode(field, p));
+      if (codes.some((c) => !c)) return null;
+      return { ...current, codes: [...new Set(codes as string[])], text: null };
+    }
+    case "code": {
+      const c = catalogCode(field, raw);
+      return c ? { ...current, codes: [c], text: null } : null;
+    }
+    case "number": {
+      let n: number | null = null;
+      if (field.key === "taste.spicy") {
+        const i = SPICY_LEVELS.findIndex((l) => squash(l.ko) === squash(raw) || squash(l.en) === squash(raw));
+        if (i >= 0) n = i;
+      }
+      if (n === null) {
+        const m = /-?\d+(?:\.\d+)?/.exec(raw);
+        n = m ? Math.round(Number(m[0])) : null;
+      }
+      const [min, max] = field.range ?? [-Infinity, Infinity];
+      if (n === null || !Number.isFinite(n) || n < min || n > max) return null;
+      return { ...current, number: n };
+    }
+    case "date": {
+      const d = dateIn(raw, current.date);
+      return d ? { ...current, date: d.date } : null;
+    }
+    case "anniversary": {
+      const d = dateIn(raw, current.date);
+      return d && d.rest ? { ...current, label: clip(d.rest, 40), date: d.date } : null;
+    }
+    case "pet": {
+      // "이름 · 종류 · 품종" / "이름 · 글": 이름이 있던 줄은 첫 조각이 이름
+      const parts = raw.split(/\s*·\s*/).filter(Boolean);
+      const hadName = !!(current.label ?? "").trim();
+      const name = hadName && parts.length > 1 ? parts.shift()! : (current.label ?? "").trim();
+      if (field.key !== "pets.pet") return parts.length ? { ...current, label: name || null, text: parts.join(", ") } : null;
+      let kind: string | null = null;
+      const breed: string[] = [];
+      for (const p of parts) {
+        const code: string | null = kind ? null : catalogCode(field, p);
+        if (code) kind = code;
+        else breed.push(p);
+      }
+      return { ...current, label: name || null, codes: kind ? [kind] : null, text: breed.length ? breed.join(", ") : null };
+    }
   }
 }
