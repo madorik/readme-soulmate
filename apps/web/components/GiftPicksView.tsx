@@ -83,7 +83,7 @@ export function parseSkip(v: string | undefined): string[] {
  * 고른 선물 그리기(picks: lib/pages/gift-picks가 고른 것). title이 없으면 고지 없이(여러 사람 화면).
  * picks가 Promise면(웹) 여기서 기다린다: 부모 Suspense가 먼저 빈 자리를 보이고 다 고르면 채운다. 토스 미니앱은 다 읽은 값을 준다.
  * again: 다시 고르기 주소의 앞부분(지금 화면 주소). 주면 오른쪽 위에 다시 고르기 단추(부모 section이 relative여야 한다)
- * peek: 가격대 칩 바로 위 오른쪽에 둘 것(선물 힌트 화면의 '컨닝페이퍼 힐끗 보기')
+ * peek: 가격대 칩 바로 위 오른쪽에 둘 것(선물 힌트 화면의 '컨닝페이퍼')
  */
 export function GiftPicksBody({ picks, locale, pad = "px-6", title = true, again, peek }: { picks: GiftPicksData | null | Promise<GiftPicksData | null>; locale: Locale; pad?: string; title?: boolean; again?: string; peek?: React.ReactNode }) {
   const data = picks instanceof Promise ? use(picks) : picks;
@@ -118,6 +118,7 @@ export function GiftPicksBody({ picks, locale, pad = "px-6", title = true, again
           share={share ?? undefined}
           source={source}
           label={t("picks.bands")}
+          badges={{ pick: t("picks.badge.pick"), top: t("picks.badge.top") }}
           bands={bands.map((b) => ({ band: b.band, label: t(`picks.band.${b.band}` as "picks.band.1"), items: b.items }))}
         />
         {title && SHELL === "web" ? <PicksDisclosure text={t("picks.disclosure")} pad={pad} /> : null}

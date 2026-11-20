@@ -7,6 +7,7 @@ import { PICKS_PER_BAND } from "../gift-core";
 import {
   ageWord,
   bandPicks,
+  badgeItems,
   basisCorpus,
   basisSummary,
   catalogBasis,
@@ -303,4 +304,33 @@ test("반려동물: 키우는 아이와 좋아하는 간식이 힌트에 들고,
   const dog = picks.find((x) => GIFT_CATALOG.find((g) => g.id === x.id)?.tags.includes("강아지"));
   assert.ok(dog, "강아지 간식이 골라진다");
   assert.ok(dog!.basis.includes("강아지"));
+});
+
+test("고른 선물 라벨: 가격대마다 추천 하나, 5만·10만원대는 강력추천도 하나(첫 번째가 강력추천)", () => {
+  const five = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  assert.deepEqual(badgeItems("1", five).map((x) => (x as { badge?: string }).badge), ["pick", undefined, undefined]);
+  assert.deepEqual(badgeItems("3", five).map((x) => (x as { badge?: string }).badge), ["pick", undefined, undefined]);
+  assert.deepEqual(badgeItems("5", five).map((x) => (x as { badge?: string }).badge), ["top", "pick", undefined]);
+  assert.deepEqual(badgeItems("10", five).map((x) => (x as { badge?: string }).badge), ["top", "pick", undefined]);
+  // 하나뿐이면 5만·10만원대는 강력추천만, 비어 있으면 그대로
+  assert.deepEqual(badgeItems("5", [{ id: "a" }]).map((x) => (x as { badge?: string }).badge), ["top"]);
+  assert.deepEqual(badgeItems("10", []), []);
+  // 원래 값은 바꾸지 않는다
+  assert.equal("badge" in five[0]!, false);
+});
+
+test("bandPicks: 모든 가격대에 라벨이 붙고 라벨은 맨 위 둘에만", () => {
+  const eligible = eligibleCatalog(GIFT_CATALOG, { name: "x" } as PartialCard, { call: "친구", folders: [], occasion: null, age: 30 });
+  const rules = ruleCatalogPicks({ name: "x" } as PartialCard, { call: "친구", folders: [], occasion: null, age: 30 }, "ko", eligible);
+  const bands = bandPicks([], rules, eligible);
+  assert.equal(bands.length, PRICE_BANDS.length);
+  for (const b of bands) {
+    const badges = b.items.map((i) => i.badge);
+    const top = b.band === "5" || b.band === "10";
+    assert.equal(badges.filter((x) => x === "pick").length, 1, `${b.band}: 추천 하나`);
+    assert.equal(badges.filter((x) => x === "top").length, top ? 1 : 0, `${b.band}: 강력추천 ${top ? "하나" : "없음"}`);
+    assert.equal(badges[0], top ? "top" : "pick");
+    if (top) assert.equal(badges[1], "pick");
+    assert.ok(badges.slice(2).every((x) => x === undefined));
+  }
 });

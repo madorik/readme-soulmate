@@ -28,7 +28,7 @@ export type GiftPicksData =
       /** 목록 방식(쿠팡 API 키가 없을 때): 가격대 칩 + 파트너스 링크 목록 */
       kind: "links";
       /** 가격대마다 고른 것(basis는 뻔한 말을 뺀 것) */
-      bands: { band: string; items: { id: string; title: string; reason: string; url: string; image: string; basis: string[] }[] }[];
+      bands: { band: string; items: { id: string; title: string; reason: string; url: string; image: string; basis: string[]; badge?: "pick" | "top" }[] }[];
       initial: string;
       /** 무엇을 보고 골랐는지 한두 문장 */
       note: string;

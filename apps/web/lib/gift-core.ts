@@ -391,10 +391,16 @@ export interface CatalogPick {
   basis: string[];
 }
 
+/** 고른 선물에 붙는 라벨: pick = 추천, top = 강력추천 */
+export type GiftBadge = "pick" | "top";
+
 export interface BandPicks {
   band: PriceBand;
-  items: (CatalogGift & { reason: string; basis: string[] })[];
+  items: (CatalogGift & { reason: string; basis: string[]; badge?: GiftBadge })[];
 }
+
+/** 강력추천도 함께 두는 가격대(5만원·10만원대) */
+export const TOP_BANDS: readonly PriceBand[] = ["5", "10"];
 
 const GENERIC_WORDS = new Set(["선물세트", "세트", "선물", "키트"]);
 
@@ -592,8 +598,20 @@ export function bandPicks(ai: CatalogPick[], rules: CatalogPick[], eligible: Cat
       if (!x || x.band !== band || items.some((i) => i.id === x.id) || items.length >= PICKS_PER_BAND) continue;
       items.push({ ...x, reason: p.reason, basis: p.basis.length ? p.basis : fill(x) });
     }
-    return { band, items };
+    return { band, items: badgeItems(band, items) };
   }).filter((b) => b.items.length);
+}
+
+/**
+ * 가격대마다 추천 하나, 5만·10만원대는 강력추천도 하나. 가격대 안은 이미 이 사람에게 잘 맞는 순서(AI가 고른 것 먼저, 그다음 기록 점수순)라
+ * 첫 번째가 가장 잘 맞는 것이다: 1만·3만원대는 첫 번째가 추천, 5만·10만원대는 첫 번째가 강력추천이고 두 번째가 추천(하나뿐이면 강력추천만)
+ */
+export function badgeItems<T extends object>(band: PriceBand, items: T[]): (T & { badge?: GiftBadge })[] {
+  const top = TOP_BANDS.includes(band);
+  return items.map((x, i) => {
+    const badge: GiftBadge | undefined = top ? (i === 0 ? "top" : i === 1 ? "pick" : undefined) : i === 0 ? "pick" : undefined;
+    return badge ? { ...x, badge } : x;
+  });
 }
 
 // ── 쿠팡 파트너스 ──────────────────────────────────────────────

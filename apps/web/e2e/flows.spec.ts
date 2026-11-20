@@ -880,6 +880,20 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   await expect(picks.getByRole("tab")).toHaveText(["1만원대", "3만원대", "5만원대", "10만원 이상"], { timeout: 45_000 });
   await expect(picks.getByRole("tab", { name: "5만원대" })).toHaveAttribute("aria-selected", "true");
   await expect(picks.getByRole("tabpanel").getByRole("link")).toHaveCount(5);
+  // 가격대마다 추천 하나, 5만·10만원대는 강력추천도 하나(이 사람에게 가장 잘 맞는 것이 맨 위)
+  const panel = picks.getByRole("tabpanel");
+  await expect(panel.locator('[data-badge="top"]')).toHaveCount(1);
+  await expect(panel.locator('[data-badge="pick"]')).toHaveCount(1);
+  // 라벨은 상품 정보 안이 아니라 박스 모서리의 스티커(링크 바깥)
+  await expect(panel.locator("li").first()).toContainText("강력추천");
+  await expect(panel.locator("li").nth(1)).toContainText("추천");
+  await expect(panel.getByRole("link").first()).not.toContainText("강력추천");
+  for (const [name, top] of [["1만원대", 0], ["3만원대", 0], ["10만원 이상", 1]] as const) {
+    await picks.getByRole("tab", { name }).click();
+    await expect(panel.locator('[data-badge="pick"]')).toHaveCount(1);
+    await expect(panel.locator('[data-badge="top"]')).toHaveCount(top);
+  }
+  await picks.getByRole("tab", { name: "5만원대" }).click();
   // 무엇을 보고 어떻게 골랐는지 풀어 쓴 한두 문장
   await expect(picks.locator("[data-note]")).toHaveText(/\S{2,}.*요\.?$/);
   await expect(picks.locator("[data-note]")).not.toContainText("아내");
@@ -921,9 +935,9 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   await expect(page.getByText(new RegExp(`^${first}[을를] 선물했어요$`))).toBeVisible();
   await expect(page.getByRole("button", { name: /선물 완료 · .* · 다시 적기/ })).toBeVisible();
 
-  // 힌트는 접혀 있다가, 앱 아이콘 + 컨닝페이퍼 힐끗 보기를 누르면 오른쪽에서 나온다
+  // 힌트는 접혀 있다가, 앱 아이콘 + '컨닝페이퍼'를 누르면 오른쪽에서 나온다
   await expect(page.getByText("튤립", { exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "컨닝페이퍼 힐끗 보기" }).click();
+  await page.getByRole("button", { name: "컨닝페이퍼", exact: true }).click();
   const peek = page.getByRole("dialog", { name: "아내를 위한 힌트" });
   await expect(peek.getByText("튤립", { exact: true })).toBeVisible();
   await peek.getByRole("button", { name: "닫기" }).click();

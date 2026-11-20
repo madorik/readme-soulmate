@@ -38,7 +38,7 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
   ];
   const hasHints = !!(favHint || styleHint || taste?.dessert || life?.hobbies.length || fav?.flowers || fav?.scent || fav?.places?.length || gifts?.wishlist.length || gifts?.skip.length || meal.length || taste?.spicy != null || notes.length || sizes?.shoe);
 
-  // 컨닝페이퍼 힐끗 보기: 앱 아이콘 + 한 줄. 누르면 오른쪽에서 힌트가 나온다. 가격대 칩 바로 위 오른쪽에 둔다
+  // 컨닝페이퍼 단추: 앱 아이콘 + 한 줄. 누르면 오른쪽에서 힌트가 나온다. 가격대 칩 바로 위 오른쪽에 둔다
   const peek = (
     <HintsPeek label={t("reminder.peek")} title={t("reminder.hints", { name })} closeLabel={t("common.close")}>
       {!hasHints ? <p className="row text-[18px] leading-[1.5] text-muted">{t("reminder.noHints", { name })}</p> : null}
@@ -106,7 +106,7 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
           <Star size={20} rotate={-12} color={SKY_STAR} className="-left-2 top-[330px]" />
           <Squiggle w={54} width={2.4} className="-bottom-2 left-[30px]" />
           {/* 아래(채워지면) 무엇을 보고 골랐는지 풀어 쓴 한두 문장. 오른쪽 위 다시 고르기 단추 자리는 float라 첫 두 줄만 비켜 가고 아래 줄은 전체 폭을 쓴다 */}
-          {/* 고르는 동안엔 컨닝페이퍼 힐끗 보기가 제목 줄 오른쪽 끝에(.picks-peek-top), 다 고르면 그 자리는 다시 고르기 단추(.picks-again-slot) */}
+          {/* 고르는 동안엔 컨닝페이퍼 단추가 제목 줄 오른쪽 끝에(.picks-peek-top), 다 고르면 그 자리는 다시 고르기 단추(.picks-again-slot) */}
           <div className="flow-root min-h-10 px-[18px]">
             <span aria-hidden="true" className="picks-again-slot float-right h-10 w-28" />
             <span className="picks-peek-top float-right -mt-0.5">{peek}</span>

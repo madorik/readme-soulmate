@@ -49,7 +49,7 @@ async function pickGifts(
     if (skip.length) track("gift_reroll", { userId: s.user.id });
     return {
       kind: "links",
-      bands: bands.map((b) => ({ band: b.band, items: b.items.map((i) => ({ id: i.id, title: i.q, reason: i.reason, url: i.url, image: i.image, basis: i.basis.filter((w) => !isGenericBasis(w, ctx)) })) })),
+      bands: bands.map((b) => ({ band: b.band, items: b.items.map((i) => ({ id: i.id, title: i.q, reason: i.reason, url: i.url, image: i.image, basis: i.basis.filter((w) => !isGenericBasis(w, ctx)), badge: i.badge })) })),
       initial,
       note,
       next,
