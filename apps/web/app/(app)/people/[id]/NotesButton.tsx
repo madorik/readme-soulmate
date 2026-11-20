@@ -25,7 +25,8 @@ function AddButton({ label }: { label: string }) {
 }
 
 /**
- * 사람 화면 이름 오른쪽 '메모' 버튼: 누르면 아래에서 시트가 올라와 나만 보는 메모를 보고 적는다.
+ * 사람 화면 프로필 줄(폴더 칩 줄) 오른쪽 끝 '메모' 버튼: 누르면 아래에서 시트가 올라와 나만 보는 메모를 보고 적는다.
+ * 폴더 칩이 한 줄에 들어가게 글자와 개수만 두는 작은 알약(연필 그림은 이름 옆 얼굴 고치기와 헷갈려 뺐다)
  * 적으면 서버가 사람 화면을 다시 그려 목록이 바로 바뀐다(시트는 열린 채로).
  * 지우면 목록에서는 바로 사라지고, 5초 동안 '되돌리기'를 누르면 돌아온다(서버에서 지우는 건 그 뒤에)
  */
@@ -73,9 +74,8 @@ export function NotesButton({
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-white pl-[13px] pr-3 text-[18px] shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:scale-95"
+        className="-mt-[5px] flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-white pl-[14px] pr-3 text-[18px] shadow-[inset_0_0_0_1.5px_var(--color-edge)] active:scale-95"
       >
-        <Icon name="pencil" size={15} strokeWidth={2} />
         {labels.button}
         {shown.length ? <span className="num flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-sky px-[5px] text-[15px] leading-none text-ink">{shown.length}</span> : null}
       </button>

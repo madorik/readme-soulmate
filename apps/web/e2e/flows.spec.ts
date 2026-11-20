@@ -361,7 +361,7 @@ test("나만 보는 메모: 사람 화면에 남는다", async ({ browser }) => 
   const jisu = await as(browser, "jisu");
   await jisu.goto("/people");
   await jisu.getByRole("link", { name: /도윤/ }).first().click();
-  // 이름 오른쪽 '메모'를 누르면 시트에서 보고 적는다(적어도 시트는 열린 채로, 버튼에 개수)
+  // 프로필 줄 오른쪽 끝 '메모'를 누르면 시트에서 보고 적는다(적어도 시트는 열린 채로, 버튼에 개수)
   await jisu.getByRole("button", { name: /^메모/ }).click();
   const sheet = jisu.getByRole("dialog", { name: "나만 보는 메모" });
   await sheet.getByLabel("메모", { exact: true }).fill("목도리 줬음. 잘 하고 다님");
@@ -412,11 +412,17 @@ test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 
   await doyun.goto(personUrl);
   await expect(doyun.getByText("할머니")).toHaveCount(0);
 
-  // 지우기는 사람 화면이 아니라 프로필 고치기 맨 아래. 지우면 목록에서 사라진다
+  // 지우기는 사람 화면 위 줄 오른쪽(즐겨찾기 별 옆 휴지통)과 프로필 고치기 맨 아래 두 곳. 누르면 확인 시트가 뜨고, 취소하면 그대로, 지우면 목록에서 사라진다
   await jisu.goto(personUrl);
-  await expect(jisu.getByText("사람들에서 지우기", { exact: true })).toHaveCount(0);
   await jisu.getByRole("link", { name: "프로필 수정" }).click();
-  await jisu.getByText("사람들에서 지우기", { exact: true }).click();
+  await expect(jisu.getByText("사람들에서 지우기", { exact: true })).toBeVisible();
+  await jisu.goto(personUrl);
+  await jisu.getByRole("button", { name: "사람들에서 지우기" }).click();
+  await expect(jisu.getByRole("dialog", { name: "할머니를 지울까요?" })).toBeVisible();
+  await jisu.getByRole("button", { name: "취소", exact: true }).click();
+  await expect(jisu.getByRole("dialog")).toHaveCount(0);
+  await expect(jisu).toHaveURL(personUrl);
+  await jisu.getByRole("button", { name: "사람들에서 지우기" }).click();
   await jisu.getByRole("button", { name: "지우기", exact: true }).last().click();
   await expect(jisu).toHaveURL(/\/people$/);
   await expect(jisu.getByRole("link", { name: /할머니/ })).toHaveCount(0);

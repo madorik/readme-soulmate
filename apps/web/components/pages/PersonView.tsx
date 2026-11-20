@@ -10,6 +10,7 @@ import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
 import { Heart, Sparkle, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
+import { RemovePersonButton } from "@/components/RemovePersonButton";
 import { SectionBody } from "@/components/SectionBody";
 import { SectionIcon } from "@/components/SectionIcon";
 import { SeeAnswers } from "@/components/SeeAnswers";
@@ -29,17 +30,16 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
         label={t("common.back")}
         right={
           <div className="flex items-center gap-2 pr-1.5">
-            {/* 나만 보는 메모: 누르면 아래에서 올라오는 시트에서 보고 적는다. 위 줄에 두어 이름 자리를 넓게 */}
-            <NotesButton
+            {/* 사람들에서 지우기: 누르면 누구를 지우는지 한 번 더 묻고, 지우면 사람들 화면으로 */}
+            <RemovePersonButton
+              variant="icon"
               contactId={p.contactId}
-              notes={notes.map((n) => ({ id: n.id, body: n.body, when: n.label || formatMonthDay(parseYmd(n.createdAt.slice(0, 10)) ?? today, locale) }))}
               labels={{
-                button: t("person.memo"),
-                title: t("person.notes"),
-                add: t("person.addNote"),
-                placeholder: t("person.noteBodyPlaceholder"),
-                body: t("person.noteBody"),
-                del: t("common.delete"),
+                open: t("person.remove"),
+                title: t("person.removeTitle", { name: p.name || name }),
+                body: t("person.removeBody", { name: p.name || name }),
+                remove: t("common.delete"),
+                cancel: t("common.cancel"),
                 close: t("common.close"),
               }}
             />
@@ -85,23 +85,38 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
               }}
             />
           ) : null}
-          {/* 든 폴더(여러 개) + 폴더 고르기 */}
-          <div>
-            <PersonFolders
+          {/* 든 폴더(여러 개) + 폴더 고르기, 같은 줄 오른쪽 끝에 나만 보는 메모(누르면 아래에서 올라오는 시트에서 보고 적는다) */}
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <PersonFolders
+                contactId={p.contactId}
+                name={name}
+                folders={folders}
+                mine={p.folderIds}
+                labels={{
+                  put: t("folder.put"),
+                  title: t("folder.of", { name: "{name}" }),
+                  done: t("folder.done"),
+                  newFolder: t("folder.new"),
+                  namePlaceholder: t("folder.namePlaceholder"),
+                  create: t("folder.create"),
+                  count: t("folder.count", { n: "{n}" }),
+                  close: t("common.close"),
+                  error: t("common.error"),
+                }}
+              />
+            </div>
+            <NotesButton
               contactId={p.contactId}
-              name={name}
-              folders={folders}
-              mine={p.folderIds}
+              notes={notes.map((n) => ({ id: n.id, body: n.body, when: n.label || formatMonthDay(parseYmd(n.createdAt.slice(0, 10)) ?? today, locale) }))}
               labels={{
-                put: t("folder.put"),
-                title: t("folder.of", { name: "{name}" }),
-                done: t("folder.done"),
-                newFolder: t("folder.new"),
-                namePlaceholder: t("folder.namePlaceholder"),
-                create: t("folder.create"),
-                count: t("folder.count", { n: "{n}" }),
+                button: t("person.memo"),
+                title: t("person.notes"),
+                add: t("person.addNote"),
+                placeholder: t("person.noteBodyPlaceholder"),
+                body: t("person.noteBody"),
+                del: t("common.delete"),
                 close: t("common.close"),
-                error: t("common.error"),
               }}
             />
           </div>
