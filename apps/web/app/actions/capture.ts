@@ -5,7 +5,7 @@ import { captureField, clip, describeCapture, isSection, mergeCapture, sanitizeS
 import { revalidatePath } from "next/cache";
 import { aiConfigured, classifyCapture, type CaptureItem } from "@/lib/ai";
 import { cleanCaptureItems, type CapturePerson } from "@/lib/capture-ai";
-import { nameKey, resolveCapture, resolveSaved, sameSectionValue, whoOf, type CaptureTarget, type ResolvedCapture } from "@/lib/capture-target";
+import { holdsForConfirm, nameKey, resolveCapture, resolveSaved, sameSectionValue, whoOf, type CaptureTarget, type ResolvedCapture } from "@/lib/capture-target";
 import { refundAi, reserveAi } from "@/lib/ai-quota";
 import { displayName, listNotes, listPeopleLite, readCard, readContactCard, requireSession, sealNote, writeContactSection, writeSection, type Note, type Person, type Session } from "@/lib/data";
 import { LIMITS } from "@/lib/data-core";
@@ -41,6 +41,11 @@ export interface CaptureState {
   lines: CaptureLine[];
   undo: UndoOp[];
   error: "ai_off" | "failed" | "nothing" | "limit" | null;
+  /**
+   * 바로 적지 않고 한 번 더 확인받을 줄: 알레르기·못 먹는 것·식단을 지우거나 바꾸는 말(holdsForConfirm).
+   * 화면이 확인을 받으면 이 줄의 item을 saveCapture로 보낸다(그때 되돌리기도 생긴다)
+   */
+  held?: CaptureDraftLine[];
 }
 
 /**
@@ -263,14 +268,20 @@ export async function captureNote(raw: string, aboutId?: string, picked?: { id: 
   const c = await classify(raw, aboutId, picked);
   if ("error" in c) return { lines: [], undo: [], error: c.error };
   let done;
+  let held: CaptureDraftLine[] = [];
   try {
-    done = await apply(c.s, c.people, resolveCapture(c.items, c.people.map(asCapture), { detect: false }), true);
+    const rows = resolveCapture(c.items, c.people.map(asCapture), { detect: false });
+    // 알레르기·못 먹는 것·식단을 지우거나 바꾸는 말은 바로 적지 않는다: 말을 잘못 알아들으면 알레르기가 조용히 사라질 수 있다. 나머지는 바로 적는다
+    const hold = rows.filter((r) => holdsForConfirm(r.item));
+    done = await apply(c.s, c.people, rows.filter((r) => !hold.includes(r)), true);
+    // 확인받을 줄은 아무것도 쓰지 않고 어떻게 바뀔지만 만든다(이미 그렇게 되어 있는 줄은 확인할 게 없다)
+    if (hold.length) held = (await apply(c.s, c.people, hold, false)).lines.filter((l) => !l.same);
   } catch {
     return { lines: [], undo: [], error: "failed" };
   }
-  if (!done.lines.length) return { lines: [], undo: [], error: "nothing" };
-  committed(c.s);
-  return { lines: done.lines.map(plain), undo: done.undo, error: null };
+  if (!done.lines.length && !held.length) return { lines: [], undo: [], error: "nothing" };
+  if (done.lines.length) committed(c.s);
+  return { lines: done.lines.map(plain), undo: done.undo, error: null, ...(held.length ? { held } : {}) };
 }
 
 /**

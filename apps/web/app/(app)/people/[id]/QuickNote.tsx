@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
+import { captureNote, saveCapture, undoCapture, type CaptureDraftLine, type CaptureState } from "@/app/actions/capture";
 import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/CaptureBadge";
 import { MarginLine, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
@@ -15,11 +15,13 @@ export function QuickNote({
   labels,
 }: {
   contactId: string;
-  labels: CaptureBadgeLabels & { placeholder: string; save: string; undo: string; undone: string; failed: string; limit: string; nothing: string; aiOff: string };
+  labels: CaptureBadgeLabels & { placeholder: string; save: string; undo: string; undone: string; failed: string; limit: string; nothing: string; aiOff: string; holdTitle: string; holdApply: string; holdCancel: string };
 }) {
   const [text, setText] = useState("");
   const [result, setResult] = useState<CaptureState | null>(null);
   const [undone, setUndone] = useState(false);
+  // 알레르기·못 먹는 것을 지우거나 바꾸는 줄: 바로 적지 않고 확인을 받는다
+  const [held, setHeld] = useState<CaptureDraftLine[]>([]);
   const [pending, start] = useTransition();
   const self = `/people/${contactId}`;
 
@@ -29,8 +31,20 @@ export function QuickNote({
     start(async () => {
       const r = await captureNote(v, contactId).catch((): CaptureState => ({ lines: [], undo: [], error: "failed" }));
       setResult(r);
+      setHeld(r.held ?? []);
       setUndone(false);
       if (!r.error) setText("");
+    });
+  };
+
+  // 확인을 받으면 그 줄들을 저장한다(되돌리기도 생긴다). 저장할 게 이미 없어졌으면 '이미'로 알려 준다
+  const confirmHeld = () => {
+    if (!held.length || pending) return;
+    start(async () => {
+      const r = await saveCapture(held.map((l) => l.item)).catch((): CaptureState => ({ lines: [], undo: [], error: "failed" }));
+      setResult(r);
+      setHeld([]);
+      setUndone(false);
     });
   };
 
@@ -73,7 +87,7 @@ export function QuickNote({
         </button>
       </form>
 
-      {result ? (
+      {result && (result.lines.length > 0 || error) ? (
         <div role="status" aria-live="polite" className="mx-2 border-t border-rule pb-0.5 pt-1.5">
           {error ? (
             <p className="py-2 text-[16px] text-red">{error}</p>
@@ -106,6 +120,27 @@ export function QuickNote({
               ) : null}
             </div>
           )}
+        </div>
+      ) : null}
+      {held.length ? (
+        <div role="group" aria-label={labels.holdTitle} className="mx-2 border-t border-rule pb-0.5 pt-1.5">
+          <p className="text-[16px] text-muted">{labels.holdTitle}</p>
+          <ul className="flex flex-col py-1">
+            {held.map((l, i) => (
+              <li key={i} className="flex min-h-8 items-center gap-2 text-[17px]">
+                <span className="shrink-0 text-muted">{l.href === self ? l.field : `${l.who} · ${l.field}`}</span>
+                <span className={`min-w-0 flex-1 truncate ${struck(l)}`}>{l.value}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="flex items-center justify-end gap-1">
+            <button type="button" disabled={pending} onClick={() => setHeld([])} className="flex min-h-11 items-center px-3 text-[17px] text-muted disabled:opacity-60">
+              {labels.holdCancel}
+            </button>
+            <button type="button" disabled={pending} onClick={confirmHeld} className="btn-primary !h-11 !px-5 !text-[18px] disabled:opacity-60">
+              {labels.holdApply}
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

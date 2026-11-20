@@ -5,6 +5,15 @@ import type { CaptureItem, CapturePerson } from "./capture-ai";
 
 export type CaptureTarget = { kind: "me" } | { kind: "person"; id: string } | { kind: "new"; name: string } | { kind: "pick" };
 
+/**
+ * 바로 적지 않고 사람에게 한 번 더 확인받아야 하는 항목인가: 알레르기·못 먹는 것·식단(safety.*)을 지우거나 바꾸는 것.
+ * 더하는 건 안전한 쪽(조심할 게 늘 뿐)이라 바로 적고, 지우거나 바꾸는 건 틀리면 건강에 관련된 기록이 조용히 사라져서 확인을 거친다.
+ * 확인 단계(말로 적기 화면의 초안, 한 줄 적기의 '바꿀까요')는 이 검사를 거치지 않고 saveCapture로 저장한다
+ */
+export function holdsForConfirm(item: Pick<CaptureItem, "target" | "op">): boolean {
+  return item.target.startsWith("safety.") && item.op !== "add";
+}
+
 /** 새 사람 이름 길이 위쪽 한도 */
 export const NEW_NAME_MAX = 40;
 

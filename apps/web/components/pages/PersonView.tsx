@@ -156,6 +156,9 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
             limit: t("voice.limit"),
             nothing: t("person.quickNothing"),
             aiOff: t("voice.aiOff"),
+            holdTitle: t("quick.holdTitle"),
+            holdApply: t("quick.holdApply"),
+            holdCancel: t("common.cancel"),
           }}
         />
       ) : null}

@@ -4,7 +4,7 @@ import { sanitizeSection } from "@readme/core";
 import { cleanCaptureItems, type CaptureItem, type CapturePerson } from "../capture-ai";
 import { makeT } from "../t";
 import { personHint } from "../summary";
-import { firstPick, matchPeople, resolveCapture, resolveSaved, retarget, sameSectionValue, sameTarget, siblingCount, tidyName, whoOf, type CaptureTarget } from "../capture-target";
+import { firstPick, holdsForConfirm, matchPeople, resolveCapture, resolveSaved, retarget, sameSectionValue, sameTarget, siblingCount, tidyName, whoOf, type CaptureTarget } from "../capture-target";
 
 const person = (id: string, name: string, nickname = ""): CapturePerson => ({ id, name, nickname });
 const item = (who: CaptureItem["who"], extra: Partial<CaptureItem> = {}): CaptureItem => ({ who, target: "favorites.flowers", op: "add", text: "수국", codes: null, number: null, date: null, label: null, ...extra });
@@ -205,5 +205,19 @@ test("되돌리기 판단: 지금 값이 말로 적은 값 그대로일 때만 �
   // 지금 비어 있다(누가 항목을 지웠다)면 적은 값과 다르다. 둘 다 비면 같다
   assert.equal(sameSectionValue("favorites", null, written), false);
   assert.equal(sameSectionValue("favorites", undefined, null), true);
+});
+
+test("바로 적지 않고 확인받을 것: 알레르기·못 먹는 것·식단을 지우거나 바꾸는 것만(더하기·다른 칸은 바로)", () => {
+  const hold = (target: CaptureItem["target"], op: CaptureItem["op"]) => holdsForConfirm({ target, op });
+  // 안전 칸의 지우기·바꾸기는 확인을 거친다(전체 비우기도 같은 remove)
+  for (const t of ["safety.allergens", "safety.dislikes", "safety.diets", "safety.allergyNote"] as const) {
+    assert.equal(hold(t, "remove"), true, `${t} remove`);
+    assert.equal(hold(t, "replace"), true, `${t} replace`);
+    assert.equal(hold(t, "add"), false, `${t} add`);
+  }
+  // 안전 칸이 아니면 예전처럼 바로
+  for (const t of ["favorites.flowers", "taste.drinks", "memo", "dates.birthday"] as const) {
+    for (const op of ["add", "replace", "remove"] as const) assert.equal(hold(t as CaptureItem["target"], op), false, `${t} ${op}`);
+  }
 });
 
