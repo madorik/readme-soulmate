@@ -2,7 +2,7 @@
 
 import type { AvatarConfig, Locale } from "@readme/core";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { addToFolder, removeContacts, setFolderMembers } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";
 import { FolderArt, FolderMini } from "@/components/FolderArt";
@@ -29,9 +29,12 @@ interface Labels {
   cancel: string;
   withMe: string;
   meName: string;
-  selected: string;
-  pickSome: string;
+  /** 고르는 중 머리 제목: "{n}명 선택" */
+  pickedTitle: string;
+  selectAll: string;
+  selectNone: string;
   menu: string;
+  /** 홈 기념일 카드에서 선물을 고르러 왔을 때만 메뉴 고르기 자리에 */
   gift: string;
   avatarOf: string;
   pickOne: string;
@@ -121,7 +124,8 @@ const LAZY_ROW = "[content-visibility:auto] [contain-intrinsic-size:auto_71px]";
 /**
  * 내 사람들: 위에 폴더 칸(누르면 그 폴더, 맨 끝은 새 폴더), 아래에 아직 폴더에 없는 사람(즐겨찾기 먼저).
  * 아래 사람을 길게 눌러(마우스는 끌어) 위 폴더 칸에 놓으면 그 폴더에 들어간다.
- * "선택"을 누르면 사람을 고르는 모드가 되고(폴더 칩으로 그 폴더 사람을 한 번에), 고른 사람으로 메뉴 고르기·선물 고르기를 한다.
+ * "선택"을 누르면 사람을 고르는 모드가 되고(머리가 ✕ · N명 선택 · 전체 선택으로 바뀌고, 칩 한 줄로 나도 같이·폴더 사람을 한 번에, 줄 어디를 눌러도 체크),
+ * 한 명이라도 고르면 탭 막대 자리에 동작 막대(지우기 · 폴더에 넣기 · 메뉴 고르기)가 들어선다.
  * 고른 상태는 주소(pick=1&with=…&me=…)로 오가서, 메뉴 화면에서 뒤로 와도 그대로다.
  */
 export function PeopleBoard({
@@ -132,8 +136,10 @@ export function PeopleBoard({
   initialPick,
   initial,
   initialMe,
+  initialGift,
   labels,
   sheet,
+  tabBar,
 }: {
   locale: Locale;
   rows: PersonRow[];
@@ -142,23 +148,28 @@ export function PeopleBoard({
   initialPick: boolean;
   initial: string[];
   initialMe: boolean;
+  initialGift: boolean;
   labels: Labels;
   sheet: FolderSheetLabels;
+  /** 아래 탭 막대. 사람을 고르면 이 자리에 동작 막대가 들어서므로 여기서 갈아 끼운다 */
+  tabBar: ReactNode;
 }) {
   const canPick = rows.length > 0;
   // 처음 상태: 주소에서 읽는다. 기기 뒤로가기로 돌아오면 Next가 예전 화면을 다시 쓰는데, 그때도 주소(고르던 체크)는 맞으므로
   const [start] = useState(() => {
     if (typeof window !== "undefined" && SHELL === "web" && window.location.pathname === "/people") {
       const q = new URLSearchParams(window.location.search);
-      return { pick: q.get("pick") === "1", ids: (q.get("with") ?? "").split(",").filter(Boolean), me: q.get("me") !== "0" };
+      return { pick: q.get("pick") === "1", ids: (q.get("with") ?? "").split(",").filter(Boolean), me: q.get("me") !== "0", gift: q.get("to") === "gift" };
     }
-    return { pick: initialPick, ids: initial, me: initialMe };
+    return { pick: initialPick, ids: initial, me: initialMe, gift: initialGift };
   });
   const [pickOn, setPicking] = useState(start.pick && canPick);
   // 다 지워서 고를 사람이 없어지면 고르기도 같이 끝난다
   const picking = pickOn && canPick;
   const [picked, setPicked] = useState<string[]>(start.ids.filter((id) => rows.some((r) => r.contactId === id)));
   const [withMe, setWithMe] = useState(start.me);
+  // 홈 기념일 카드의 '선물 고르기'로 들어온 경우(?to=gift): 동작 막대의 큰 단추가 메뉴 대신 선물 고르기
+  const forGift = start.gift;
   // 고른 사람을 폴더에 넣은 결과(알림 줄에 잠깐)
   const [putMsg, setPutMsg] = useState<{ text: string; error: boolean } | null>(null);
   const [putOpen, setPutOpen] = useState(false);
@@ -182,7 +193,7 @@ export function PeopleBoard({
   q.set("me", withMe ? "1" : "0");
   const query = `?${q.toString()}`;
   // 지금 상태를 주소에 적어 둔다: 상세로 갔다가 뒤로(버튼·기기 뒤로가기) 와도 고르던 체크가 그대로다
-  const here = picking ? `/people${query}&pick=1` : "/people";
+  const here = picking ? `/people${query}&pick=1${forGift ? "&to=gift" : ""}` : "/people";
   // 토스 미니앱은 웹뷰 주소를 바꾸지 않는다(토스 정책). 그 대신 뒤로 오면 고르던 것은 처음으로
   useEffect(() => {
     if (SHELL !== "web") return;
@@ -195,6 +206,13 @@ export function PeopleBoard({
   const found = searching ? ordered.filter((r) => matchesPerson(find, r.name, r.tag)) : ordered;
   // 찾은 사람이 없으면 그 이름으로 새로 적으러 간다
   const newName = find.replace(/\s+/g, " ").trim().slice(0, 40);
+  // 전체 선택: 지금 보이는 사람 모두(찾는 중이면 찾은 사람). 모두 골랐으면 같은 단추가 선택 해제
+  const visibleIds = found.map((r) => r.contactId);
+  const allOn = visibleIds.length > 0 && visibleIds.every((id) => picked.includes(id));
+  const toggleAll = () => toggleMany(visibleIds, !allOn);
+  // 머리 제목 "3명 선택": 첫 낱말(3명)에만 형광펜
+  const [pickedHead = "", ...pickedTail] = labels.pickedTitle.replace("{n}", String(picked.length)).split(" ");
+  const pickedRest = pickedTail.join(" ");
 
   // 끌어 놓기: 놓는 즉시 화면에서 넣고(서버가 다시 그리면 그 값으로), 실패하면 되돌린다
   // 화면에서 먼저 넣은 것은 서버가 새 목록(rows)을 주면 버린다
@@ -271,16 +289,9 @@ export function PeopleBoard({
       }
     });
   };
-  const action = (href: string, label: string) =>
-    ready ? (
-      <Link href={href} className="btn-primary">
-        {label}
-      </Link>
-    ) : (
-      <span aria-disabled="true" className="btn-primary ![background:#e4e6ee] !text-[#6b7089] !shadow-none">
-        {label}
-      </span>
-    );
+  // 같이 뭐할지(메뉴 고르기). 홈 기념일 카드에서 선물을 고르러 온 경우에만 선물 고르기가 그 자리에 온다
+  const planHref = `${forGift ? "/plan/gift" : "/plan/menu"}${query}`;
+  const planLabel = forGift ? labels.gift : labels.menu;
   const favCount = rows.filter((r) => r.favorite).length;
   // 정렬 칩(이름순 · 생일 가까운 순 · 최근 추가순). 즐겨찾기는 늘 맨 위
   const sortChips = (
@@ -302,15 +313,34 @@ export function PeopleBoard({
 
   return (
     <>
-      <div className="relative flex items-end justify-between gap-2 pl-5 pr-4 pt-4">
-        <Star size={20} rotate={14} className="left-[150px] top-[18px]" />
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <h1 className="text-[32px] font-normal leading-[1.1]">{labels.title}</h1>
-          {rows.length ? <span className="text-[16px] text-muted">{labels.summary.replace("{n}", String(rows.length)).replace("{f}", String(favCount))}</span> : null}
+      {picking ? (
+        <div className="relative flex items-center gap-2.5 pl-3.5 pr-4 pt-4">
+          <Star size={18} rotate={14} className="left-[150px] top-[10px]" />
+          <button
+            type="button"
+            aria-label={labels.cancel}
+            onClick={() => setPicking(false)}
+            className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)] transition-transform active:scale-95"
+          >
+            <Icon name="close" size={22} strokeWidth={2} />
+          </button>
+          <h1 aria-live="polite" className="min-w-0 flex-1 truncate text-[30px] font-normal leading-[1.1]">
+            <span className="hl">{pickedHead}</span>
+            {pickedRest ? ` ${pickedRest}` : ""}
+          </h1>
+          <button type="button" onClick={toggleAll} className="pill relative shrink-0 !text-[17px]">
+            {allOn ? labels.selectNone : labels.selectAll}
+          </button>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {/* 직접 적기: 사람 아이콘 + (선택 중에는 숨긴다) */}
-          {picking ? null : (
+      ) : (
+        <div className="relative flex items-end justify-between gap-2 pl-5 pr-4 pt-4">
+          <Star size={20} rotate={14} className="left-[150px] top-[18px]" />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <h1 className="text-[32px] font-normal leading-[1.1]">{labels.title}</h1>
+            {rows.length ? <span className="text-[16px] text-muted">{labels.summary.replace("{n}", String(rows.length)).replace("{f}", String(favCount))}</span> : null}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {/* 직접 적기: 사람 아이콘 + */}
             <Link
               href="/people/new"
               aria-label={labels.add}
@@ -318,21 +348,15 @@ export function PeopleBoard({
             >
               <Icon name="personAdd" size={22} strokeWidth={1.9} />
             </Link>
-          )}
-          {canPick ? (
-            <button type="button" aria-pressed={picking} onClick={() => setPicking(!picking)} className={`pill relative shrink-0 !gap-1.5 !pl-[13px] !pr-4 !text-[18px] ${picking ? "grad !shadow-none" : ""}`}>
-              {picking ? (
-                labels.cancel
-              ) : (
-                <>
-                  <Icon name="check" size={19} strokeWidth={2} />
-                  {labels.pick}
-                </>
-              )}
-            </button>
-          ) : null}
+            {canPick ? (
+              <button type="button" onClick={() => setPicking(true)} className="pill relative shrink-0 !gap-1.5 !pl-[13px] !pr-4 !text-[18px]">
+                <Icon name="check" size={19} strokeWidth={2} />
+                {labels.pick}
+              </button>
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
 
       {rows.length ? (
         <div className="relative px-4 pt-4">
@@ -376,64 +400,66 @@ export function PeopleBoard({
       )}
 
       {picking ? (
-        <div className="flex flex-col px-4 pt-3">
-          <div className="card px-3.5">
-            <button type="button" aria-pressed={withMe} onClick={() => setWithMe(!withMe)} className="flex min-h-[64px] w-full items-center gap-3 text-left">
-              <Avatar config={meAvatar} size={44} label={labels.meName} />
-              <span className="flex-1 text-[19px]">{labels.withMe}</span>
-              <DrawnCheck on={withMe} />
+        <div className="flex flex-col px-4">
+          {/* 빠른 고르기 칩 한 줄: 나도 같이(켜고 끈다) + 폴더 모두 선택. 정렬 칩은 고르는 동안 뺀다 */}
+          <div role="group" aria-label={labels.folders} className="-mx-4 -mb-[3px] flex gap-2 overflow-x-auto px-4 pb-[3px] pt-3 [scrollbar-width:none]">
+            <button
+              type="button"
+              aria-pressed={withMe}
+              onClick={() => setWithMe(!withMe)}
+              className={`relative flex h-[38px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-2 pr-3.5 text-[17px] before:absolute before:-inset-y-[3px] before:inset-x-0 before:content-[''] ${withMe ? "chip-on" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
+            >
+              <Avatar config={meAvatar} size={24} label={labels.meName} decorative />
+              {labels.withMe}
             </button>
+            {filled.map((f) => {
+              const ids = f.memberIds.filter((id) => byId.has(id));
+              const all = ids.every((id) => picked.includes(id));
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-pressed={all}
+                  aria-label={labels.pickFolder.replace("{name}", f.name)}
+                  onClick={() => toggleMany(ids, !all)}
+                  className={`relative flex h-[38px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-3 pr-3.5 text-[17px] before:absolute before:-inset-y-[3px] before:inset-x-0 before:content-[''] ${all ? "chip-on" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
+                >
+                  <FolderMini color={f.color} size={18} />
+                  {f.name}
+                  <span className="num text-[15px] text-muted">{ids.length}</span>
+                </button>
+              );
+            })}
           </div>
-          {filled.length ? (
-            <div role="group" aria-label={labels.folders} className="-mx-4 -mb-[3px] flex gap-2 overflow-x-auto px-4 pb-[3px] pt-3 [scrollbar-width:none]">
-              {filled.map((f) => {
-                const ids = f.memberIds.filter((id) => byId.has(id));
-                const all = ids.every((id) => picked.includes(id));
-                return (
-                  <button
-                    key={f.id}
-                    type="button"
-                    aria-pressed={all}
-                    aria-label={labels.pickFolder.replace("{name}", f.name)}
-                    onClick={() => toggleMany(ids, !all)}
-                    className={`relative flex h-[38px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full pl-3 pr-3.5 text-[17px] before:absolute before:-inset-y-[3px] before:inset-x-0 before:content-[''] ${all ? "chip-on" : "bg-white shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
-                  >
-                    <FolderMini color={f.color} size={18} />
-                    {f.name}
-                    <span className="num text-[15px] text-muted">{ids.length}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
           {searching && !found.length ? (
             <div className="flex flex-col gap-3 px-2 pt-5">
               <p className="text-[16px] text-muted">{labels.searchEmpty}</p>
               {newName ? <NewNamed href={`/people/new?name=${encodeURIComponent(newName)}`} label={labels.addNamed.replace("{name}", newName)} /> : null}
             </div>
           ) : null}
-          {found.length > 1 && !searching ? <div className="pt-3">{sortChips}</div> : null}
-          <ul className={`card mt-3 flex flex-col px-3.5 ${found.length ? "" : "hidden"}`}>
-            {found.map((r) => {
-              const on = picked.includes(r.contactId);
-              return (
-                <li key={r.contactId} className={`flex items-center border-t border-dashed border-rule first:border-t-0 ${lazyRow}`}>
-                  <Link href={`/people/${r.contactId}?back=${encodeURIComponent(here)}`} className="flex min-h-[72px] min-w-0 flex-1 items-center gap-3">
-                    <RowBody row={r} avatarLabel={labels.avatarOf.replace("{name}", r.name)} />
-                  </Link>
-                  <button
-                    type="button"
-                    aria-pressed={on}
-                    aria-label={labels.pickOne.replace("{name}", r.tag ? `${r.name} ${r.tag}` : r.name)}
-                    onClick={() => toggle(r.contactId)}
-                    className="flex h-[70px] w-12 shrink-0 items-center justify-end"
-                  >
-                    <DrawnCheck on={on} />
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          {/* 체크는 왼쪽, 줄 어디를 눌러도 고른다. 고른 줄은 연한 망고 */}
+          <div className={`card relative mt-5 ${found.length ? "" : "hidden"}`}>
+            <Tape color="pink" w={54} h={18} rotate={-34} className="-left-2 -top-[9px]" />
+            <ul className="flex flex-col">
+              {found.map((r) => {
+                const on = picked.includes(r.contactId);
+                return (
+                  <li key={r.contactId} className={`border-t border-dashed border-rule first:rounded-t-[10px] first:border-t-0 last:rounded-b-[10px] ${on ? "bg-sky-soft" : ""} ${lazyRow}`}>
+                    <button
+                      type="button"
+                      aria-pressed={on}
+                      aria-label={labels.pickOne.replace("{name}", r.tag ? `${r.name} ${r.tag}` : r.name)}
+                      onClick={() => toggle(r.contactId)}
+                      className="flex min-h-[72px] w-full items-center gap-3 px-3.5 text-left"
+                    >
+                      <DrawnCheck on={on} />
+                      <RowBody row={r} avatarLabel={labels.avatarOf.replace("{name}", r.name)} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </div>
       ) : searching ? (
         found.length ? (
@@ -540,31 +566,45 @@ export function PeopleBoard({
         </div>
       )}
 
-      {picking ? (
-        <div className="sticky mt-auto flex flex-col gap-2 bg-bg/95 px-5 pb-3 pt-3 backdrop-blur" style={{ bottom: "calc(var(--tab-h) + var(--pb-tab))" }}>
-          <div className="flex items-center justify-between gap-3">
-            <span role="status" className={`min-w-0 text-[15px] ${putMsg?.error ? "text-red" : "text-muted"}`}>
-              {putMsg ? putMsg.text : ready ? labels.selected.replace("{n}", String(picked.length)) : labels.pickSome}
-            </span>
-            <div className="flex shrink-0 items-center gap-2">
-              {/* 고른 사람을 지우기(확인 시트를 거친다) */}
-              <button type="button" disabled={!ready} aria-haspopup="dialog" onClick={() => setRemoveOpen(true)} className="pill shrink-0 !text-red disabled:opacity-40">
-                {labels.remove}
-              </button>
-              {/* 고른 사람을 폴더에 한꺼번에 */}
-              <button type="button" disabled={!ready} onClick={() => setPutOpen(true)} className="pill shrink-0 !gap-1.5 disabled:opacity-40">
-                <FolderMini color="mango" size={18} />
-                {labels.put}
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {action(`/plan/menu${query}`, labels.menu)}
-            {action(`/plan/gift${query}`, labels.gift)}
+      {/* 고른 사람을 폴더에 넣은 결과·오류(막대 위에 잠깐, 다음에 사람을 누르면 사라진다) */}
+      {picking && putMsg ? (
+        <div className="sticky z-20 flex justify-center px-5 py-2" style={{ bottom: "calc(var(--tab-h) + var(--pb-tab))" }}>
+          <span role="status" className={`card px-4 py-2 text-[16px] ${putMsg.error ? "text-red" : ""}`}>
+            {putMsg.text}
+          </span>
+        </div>
+      ) : null}
+      <div className="h-5" />
+      {/* 한 명이라도 고르면 탭 막대 자리에 동작 막대가 들어선다: 지우기(작은 빨간 단추) · 폴더에 넣기 · 메뉴 고르기(주). 아무도 안 골랐으면 탭 막대 그대로 */}
+      {picking && ready ? (
+        <div
+          role="toolbar"
+          aria-label={labels.pick}
+          data-tabbar=""
+          className="sticky bottom-0 z-30 mt-auto bg-paper px-4 pt-2 shadow-[inset_0_1.5px_0_rgb(31_35_64/0.12)]"
+          style={{ paddingBottom: "var(--pb-tab)" }}
+        >
+          <div className="flex h-[70px] items-center gap-2.5">
+            <button
+              type="button"
+              aria-label={labels.remove}
+              aria-haspopup="dialog"
+              onClick={() => setRemoveOpen(true)}
+              className="flex h-[52px] w-14 shrink-0 items-center justify-center rounded-2xl bg-red-soft text-red shadow-[inset_0_0_0_1.5px_var(--color-red),0_4px_0_rgb(200_40_58/0.3)] transition-transform active:translate-y-0.5"
+            >
+              <Icon name="trash" size={24} strokeWidth={1.9} />
+            </button>
+            <button type="button" onClick={() => setPutOpen(true)} className="btn-outline btn-outline-lift min-w-0 flex-1 whitespace-nowrap !gap-1.5">
+              <FolderMini color="mango" size={22} />
+              {labels.put}
+            </button>
+            <Link href={planHref} className="btn-primary min-w-0 flex-1 whitespace-nowrap">
+              {planLabel}
+            </Link>
           </div>
         </div>
       ) : (
-        <div className="h-5" />
+        tabBar
       )}
       {making ? <FolderSheet labels={sheet} onClose={() => setMaking(false)} /> : null}
       {removeOpen ? (

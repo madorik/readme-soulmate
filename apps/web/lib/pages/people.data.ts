@@ -15,5 +15,7 @@ export interface PeopleData {
   initial: string[];
   /** 주소 ?me=0이 아니면 나도 같이 */
   initialMe: boolean;
+  /** 주소 ?to=gift: 홈 기념일 카드에서 선물을 고르러 왔다(동작 막대의 큰 단추가 선물 고르기) */
+  initialGift: boolean;
   ai: boolean;
 }

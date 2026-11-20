@@ -941,18 +941,29 @@ test("사람들 > 고르기: 사람을 고르면 알레르기를 빼고 메뉴�
   await shot(page, "17-people-fab");
   await page.getByRole("button", { name: "선택" }).click();
   await expect(page.getByRole("link", { name: "직접 적기" })).toHaveCount(0);
+  // 머리가 ✕ · N명 선택 · 전체 선택으로 바뀐다. 아무도 안 골랐으면 아래는 탭 막대 그대로(동작 막대 없음)
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("0명 선택");
+  await expect(page.getByRole("toolbar")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "사람들", exact: true })).toBeVisible();
+  // 줄 어디를 눌러도 고른다(사람 화면으로 가지 않는다). 한 명이라도 고르면 탭 막대 자리에 동작 막대: 지우기 · 폴더에 넣기 · 메뉴 고르기
   await page.getByRole("button", { name: "아내 선택" }).click();
   await page.getByRole("button", { name: "단짝 선택" }).click();
-  // 고르는 중에 사람을 누르면 상세로 가고, 뒤로(화면 버튼·브라우저 뒤로가기) 오면 체크가 그대로
-  await page.getByRole("link", { name: /아내/ }).click();
-  await expect(page).toHaveURL(/\/people\/[0-9a-f-]+\?back=/);
-  await page.getByRole("link", { name: "뒤로" }).click();
-  await expect(page.getByRole("button", { name: "아내 선택" })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("link", { name: /단짝/ }).click();
-  await expect(page).toHaveURL(/\/people\/[0-9a-f-]+\?back=/);
-  await page.goBack();
-  await expect(page.getByRole("button", { name: "단짝 선택" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("button", { name: "아내 선택" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(/\/people\?.*pick=1/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("2명 선택");
+  const bar = page.getByRole("toolbar");
+  await expect(bar.getByRole("button", { name: "지우기", exact: true })).toBeVisible();
+  await expect(bar.getByRole("button", { name: "폴더에 넣기" })).toBeVisible();
+  await expect(bar.getByRole("link", { name: "메뉴 고르기" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "선물 고르기" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "사람들", exact: true })).toHaveCount(0);
+  // 전체 선택은 보이는 사람 모두, 한 번 더 누르면(선택 해제) 모두 빠진다
+  await page.getByRole("button", { name: "전체 선택" }).click();
+  await expect(page.getByRole("button", { name: "선택 해제" })).toBeVisible();
+  await page.getByRole("button", { name: "선택 해제" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("0명 선택");
+  await expect(page.getByRole("toolbar")).toHaveCount(0);
+  await page.getByRole("button", { name: "아내 선택" }).click();
+  await page.getByRole("button", { name: "단짝 선택" }).click();
   await page.getByRole("link", { name: "메뉴 고르기" }).click();
   await expect(page.getByRole("heading", { name: "다 같이 먹을 메뉴" })).toBeVisible();
   await expect(page.getByText(/새우, 게, 땅콩은 빼 주세요/)).toBeVisible();
@@ -966,6 +977,14 @@ test("사람들 > 고르기: 사람을 고르면 알레르기를 빼고 메뉴�
 
   await page.getByRole("link", { name: "뒤로" }).click();
   await expect(page).toHaveURL(/\/people\?.*pick=1/);
+  // 돌아와도 고른 사람이 그대로
+  await expect(page.getByRole("button", { name: "아내 선택" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "단짝 선택" })).toHaveAttribute("aria-pressed", "true");
+  // 선물 고르기는 선택 모드에 없다. 홈 기념일 카드에서 오면(?to=gift) 같은 자리의 큰 단추가 선물 고르기
+  const giftUrl = new URL(page.url());
+  giftUrl.searchParams.set("to", "gift");
+  await page.goto(giftUrl.toString());
+  await expect(page.getByRole("link", { name: "메뉴 고르기" })).toHaveCount(0);
   await page.getByRole("link", { name: "선물 고르기" }).click();
   await expect(page.getByText(/캠핑용 접이식 의자/)).toBeVisible();
   await expect(page.getByRole("button", { name: "공유하기" })).toBeVisible();
@@ -977,9 +996,9 @@ test("사람들 > 고르기: 고른 사람을 한꺼번에 지운다(확인 시�
   await expect(page).toHaveURL(/\/home/);
   await page.getByRole("link", { name: "사람들" }).click();
   await page.getByRole("button", { name: "선택" }).click();
-  // 아무도 안 골랐을 땐 지우기가 막혀 있다
-  const remove = page.getByRole("button", { name: "지우기", exact: true });
-  await expect(remove).toBeDisabled();
+  // 아무도 안 골랐을 땐 동작 막대가 없어서 지우기도 없다
+  const remove = page.getByRole("toolbar").getByRole("button", { name: "지우기", exact: true });
+  await expect(remove).toHaveCount(0);
   await page.getByRole("button", { name: "아내 선택" }).click();
   await page.getByRole("button", { name: "단짝 선택" }).click();
   await remove.click();

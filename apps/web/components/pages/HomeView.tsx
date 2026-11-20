@@ -203,7 +203,7 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
             </div>
             {/* 사람이 있으면 그 중 골라 선물 힌트로(사람들 고르기), 없으면 먼저 사람부터 */}
             {people.length ? (
-              <Link href="/people?pick=1&me=0" className="btn-primary mt-[18px]">
+              <Link href="/people?pick=1&me=0&to=gift" className="btn-primary mt-[18px]">
                 {t("plan.gift")}
                 <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14M13 6l6 6-6 6" />

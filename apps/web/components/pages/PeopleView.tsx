@@ -4,8 +4,8 @@ import { folderSheetLabels } from "@/lib/folders";
 import type { PeopleData } from "@/lib/pages/people.data";
 import { makeT } from "@/lib/t";
 
-// 내 사람들: 폴더 칸 + 폴더 없는 사람(끌어서 폴더에 넣는다). 오른쪽 위에 사람 더하기(직접 적기)와 선택(사람을 골라 메뉴 고르기·선물 고르기)
-export function PeopleView({ locale, rows, folders, meAvatar, initialPick, initial, initialMe, ai }: PeopleData) {
+// 내 사람들: 폴더 칸 + 폴더 없는 사람(끌어서 폴더에 넣는다). 오른쪽 위에 사람 더하기(직접 적기)와 선택(사람을 골라 메뉴 고르기·폴더에 넣기·지우기)
+export function PeopleView({ locale, rows, folders, meAvatar, initialPick, initial, initialMe, initialGift, ai }: PeopleData) {
   const t = makeT(locale);
   return (
     <>
@@ -17,6 +17,8 @@ export function PeopleView({ locale, rows, folders, meAvatar, initialPick, initi
         initialPick={initialPick}
         initial={initial}
         initialMe={initialMe}
+        initialGift={initialGift}
+        tabBar={<TabBar active="people" t={t} voice={ai} />}
         sheet={folderSheetLabels(t)}
         labels={{
           title: t("home.people"),
@@ -28,8 +30,9 @@ export function PeopleView({ locale, rows, folders, meAvatar, initialPick, initi
           cancel: t("people.pickCancel"),
           withMe: t("plan.withMe"),
           meName: t("plan.me"),
-          selected: t("plan.selected", { n: "{n}" }),
-          pickSome: t("plan.pickSome"),
+          pickedTitle: t("people.pickedTitle", { n: "{n}" }),
+          selectAll: t("people.selectAll"),
+          selectNone: t("people.selectNone"),
           menu: t("plan.menu"),
           gift: t("plan.gift"),
           avatarOf: t("avatar.of", { name: "{name}" }),
@@ -59,7 +62,6 @@ export function PeopleView({ locale, rows, folders, meAvatar, initialPick, initi
           error: t("common.error"),
         }}
       />
-      <TabBar active="people" t={t} voice={ai} />
     </>
   );
 }

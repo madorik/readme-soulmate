@@ -14,8 +14,10 @@ export interface PlanPick {
 }
 
 /** 고르기 모드인 '사람들' 화면으로 돌아가는 주소 */
-export function pickBack(query: string): string {
-  return `/people${query ? `${query}&pick=1` : "?pick=1"}`;
+export function pickBack(query: string, to?: "gift"): string {
+  // 선물 고르기로 왔던 길(홈 기념일 카드)이면 돌아가서도 선물 고르기 모드
+  const extra = to ? `&to=${to}` : "";
+  return `/people${query ? `${query}&pick=1${extra}` : `?pick=1${extra}`}`;
 }
 
 export function planQuery(ids: string[], includeMe: boolean): string {
