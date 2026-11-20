@@ -38,10 +38,13 @@ function Badge({ kind, labels }: { kind: "pick" | "top"; labels: BadgeLabels }) 
   );
 }
 
-/** 선물 박스 오른쪽 위 모서리에 스티커처럼 붙은 라벨(박스 안 정보와 섞이지 않게 바깥쪽에 걸친다). 누르는 건 박스가 받는다 */
-function Sticker({ kind, labels }: { kind: "pick" | "top"; labels: BadgeLabels }) {
+/** 라벨 자리 폭만큼 상품명 오른쪽을 비운다(제목이 스티커 밑으로 들어가지 않게) */
+const STICKER_ROOM = { top: "pr-[96px]", pick: "pr-[60px]" } as const;
+
+/** 선물 박스의 제목 줄 오른쪽 끝에 스티커처럼 붙은 라벨(상품 정보와 따로 얹힌다). 누르는 건 박스가 받는다 */
+function Sticker({ kind, labels, className }: { kind: "pick" | "top"; labels: BadgeLabels; className: string }) {
   return (
-    <span className="pointer-events-none absolute -top-3.5 right-3 z-10 rotate-[4deg] drop-shadow-[0_2px_2px_rgb(31_35_64/0.28)]">
+    <span className={`pointer-events-none absolute z-10 rotate-[3deg] drop-shadow-[0_2px_2px_rgb(31_35_64/0.28)] ${className}`}>
       <Badge kind={kind} labels={labels} />
     </span>
   );
@@ -134,12 +137,12 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label, badges, shar
           role="tabpanel"
           aria-label={cur.label}
           style={dx ? { transform: `translateX(${dx}px)` } : undefined}
-          className={`flex flex-col ${paper ? "gap-3.5 pt-3.5" : "gap-2.5 pt-4"} ${pad} ${dx ? "" : "transition-transform duration-200"} ${enter === "right" ? "motion-safe:animate-[picks-in-right_240ms_ease-out]" : enter === "left" ? "motion-safe:animate-[picks-in-left_240ms_ease-out]" : ""}`}
+          className={`flex flex-col ${paper ? "gap-3.5 pt-3" : "gap-2 pt-2.5"} ${pad} ${dx ? "" : "transition-transform duration-200"} ${enter === "right" ? "motion-safe:animate-[picks-in-right_240ms_ease-out]" : enter === "left" ? "motion-safe:animate-[picks-in-left_240ms_ease-out]" : ""}`}
         >
           {cur.items.map((it, n) =>
             paper ? (
               <li key={it.id} className={`relative ${n % 2 ? "[transform:rotate(0.4deg)]" : "[transform:rotate(-0.4deg)]"}`}>
-                {it.badge && badges ? <Sticker kind={it.badge} labels={badges} /> : null}
+                {it.badge && badges ? <Sticker kind={it.badge} labels={badges} className="right-3.5 top-[17px]" /> : null}
                 <a
                   href={it.url}
                   target="_blank"
@@ -159,17 +162,17 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label, badges, shar
                     </span>
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col gap-1 pt-0.5">
-                    <span className="truncate text-[22px] leading-[1.2]">{it.title}</span>
+                    <span className={`truncate text-[22px] leading-[1.2] ${it.badge && badges ? STICKER_ROOM[it.badge] : ""}`}>{it.title}</span>
                     {it.name ? <span className="line-clamp-2 text-[16px] leading-[1.4] text-muted">{it.name}</span> : null}
                   </span>
                 </a>
               </li>
             ) : (
               <li key={it.id} className="relative">
-                {it.badge && badges ? <Sticker kind={it.badge} labels={badges} /> : null}
+                {it.badge && badges ? <Sticker kind={it.badge} labels={badges} className="right-3 top-[13px]" /> : null}
                 <a href={it.url} target="_blank" rel="sponsored noopener noreferrer" draggable={false} onClick={() => beacon("gift_click", { i: it.id, b: cur.band, s: source })} className="flex flex-col gap-2.5 rounded-[10px] bg-white p-3 shadow-[inset_0_0_0_1.5px_var(--color-ink)] active:bg-fill">
                   {/* 상품명은 한 줄(넘치면 …), 그 밑에 사진과 오른쪽에 근거·설명. 박스 전체가 쿠팡 링크라 따로 이동 단추는 없다 */}
-                  <span className="truncate text-[20px] leading-[1.25]">{it.title}</span>
+                  <span className={`truncate text-[20px] leading-[1.25] ${it.badge && badges ? STICKER_ROOM[it.badge] : ""}`}>{it.title}</span>
                   <span className="flex items-start gap-3">
                     <span aria-hidden="true" className="h-[76px] w-[76px] shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-rule">
                       {it.image ? (
