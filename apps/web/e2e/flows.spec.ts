@@ -412,10 +412,10 @@ test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 
   await doyun.goto(personUrl);
   await expect(doyun.getByText("할머니")).toHaveCount(0);
 
-  // 지우기는 사람 화면 위 줄 오른쪽(즐겨찾기 별 옆 휴지통)과 프로필 고치기 맨 아래 두 곳. 누르면 확인 시트가 뜨고, 취소하면 그대로, 지우면 목록에서 사라진다
+  // 지우기는 사람 화면 위 줄 오른쪽(즐겨찾기 별 옆 휴지통) 한 곳뿐(프로필 고치기에는 없다). 누르면 확인 시트가 뜨고, 취소하면 그대로, 지우면 목록에서 사라진다
   await jisu.goto(personUrl);
   await jisu.getByRole("link", { name: "프로필 수정" }).click();
-  await expect(jisu.getByText("사람들에서 지우기", { exact: true })).toBeVisible();
+  await expect(jisu.getByText("사람들에서 지우기", { exact: true })).toHaveCount(0);
   await jisu.goto(personUrl);
   await jisu.getByRole("button", { name: "사람들에서 지우기" }).click();
   await expect(jisu.getByRole("dialog", { name: "할머니를 지울까요?" })).toBeVisible();
