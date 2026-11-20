@@ -121,7 +121,7 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
             />
           </div>
         </div>
-        <Star size={22} rotate={14} className="right-6 top-2" />
+        <Heart size={22} rotate={14} className="right-6 top-2" />
         <Heart size={24} rotate={-14} className="left-[92px] top-[98px]" />
       </div>
 
