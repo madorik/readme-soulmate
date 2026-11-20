@@ -735,8 +735,11 @@ test("폴더에서 사람 빼기: 폴더 화면은 줄 오른쪽 버튼으로, �
   await expect(jisu.getByRole("link", { name: "가족", exact: true })).toBeVisible();
   await expect(toast).toBeVisible();
   await shot(jisu, "19d-person-removed-toast");
+  // 칩은 서버가 답하기 전에 먼저 돌아온다(낙관적 표시). 서버 액션이 끝난 뒤에 새로고침해야 한다
+  const undone = jisu.waitForResponse((r) => r.request().method() === "POST" && !!r.request().headers()["next-action"]);
   await jisu.getByRole("button", { name: "되돌리기" }).click();
   await expect(jisu.getByRole("link", { name: "본가", exact: true })).toBeVisible();
+  await undone;
   await jisu.reload();
   await expect(jisu.getByRole("link", { name: "본가", exact: true })).toBeVisible();
 
