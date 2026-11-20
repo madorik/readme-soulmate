@@ -20,7 +20,7 @@ import { makeT } from "@/lib/t";
 // 다이어리 v2: 다이어리 머리(연도·날짜·월~일 줄) → 다가오는 날(테이프 붙인 종이, 폴라로이드 얼굴, D-day 도장) → 이번 주(오늘은 손그림 동그라미, 챙길 날엔 그 사람 얼굴 + 하트)
 // → 줄노트에 적힌 오늘의 질문 → 내 사람들(가로 줄). 장식은 components/diary.tsx
 // 다가오는 날: 사람 기념일이 두 달 안에 있으면 그 사람 카드. 하나도 없을 때만 30일 안의 명절·챙기는 날(그림 폴라로이드), 그것도 없으면 '새 친구 추가해 봐요'.
-// 사람이 하나도 없는 연말(크리스마스 45일 전~당일)엔 휑하지 않게 크리스마스 트리 + 연말에 챙길 사람 추가 + 물어보고 선물 챙기기로 채운다.
+// 연말(크리스마스 45일 전~당일)엔 더 가까운 사람 기념일이 없으면(사람이 하나도 없을 때 포함) 크리스마스 트리 + 감성 문구 + '받고 싶은 선물, 살짝 물어보기'로 채운다.
 
 /** '기억해 둔 것' 포스트잇에 적을 말: 사람 기록에서 꽃·마실 것·간식·좋아하는 것·향·갖고 싶은 것 중 셋까지 */
 function memoOf(p: Person | null): string {
@@ -43,7 +43,11 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
     return rtf.format(-Math.round(min / (60 * 24)), "day");
   };
   const events = eventsFor(people, today);
-  const next = events.find((e) => e.daysUntil <= 60) ?? null;
+  const nearest = events.find((e) => e.daysUntil <= 60) ?? null;
+  // 연말(크리스마스 45일 전~당일): 사람이 있든 없든 더 가까운 사람 기념일이 없으면 크리스마스 카드(D-day는 크리스마스까지)
+  const xmasAt = yearEnd(today);
+  const xmas = xmasAt && (!nearest || xmasAt.daysUntil < nearest.daysUntil) ? xmasAt : null;
+  const next = xmas ? null : nearest;
   const personOf = (contactId: string) => people.find((p) => p.contactId === contactId) ?? null;
   const bellItems: BellItem[] = answers.map((a) => {
     const who = personOf(a.contactId);
@@ -55,8 +59,6 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
   const nextGroup = next ? events.filter((e) => e.daysUntil === next.daysUntil) : [];
   const nextFaces = [...new Map(nextGroup.map((e) => [e.contactId, e])).values()];
   // 사람 기념일이 두 달 안에 하나도 없을 때만: 30일 안에 오는 명절·챙기는 날 중 가장 가까운 하나
-  // 사람이 하나도 없는 연말이면 명절 대신 크리스마스 카드(D-day는 크리스마스까지)
-  const xmas = people.length ? null : yearEnd(today);
   const holiday = next || xmas ? null : nextHoliday(today);
   const stampDays = next ? next.daysUntil : ((xmas ?? holiday)?.daysUntil ?? null);
   const holidayTitle = holiday ? t(holidayKey(holiday.id)) : "";

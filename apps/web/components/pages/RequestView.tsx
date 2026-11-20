@@ -7,7 +7,7 @@ import { makeT } from "@/lib/t";
 
 // 물어보기: 주소록 사람에게(찾아서 고르거나 사람 화면에서 to로), 또는 새 사람(이름을 적어 새로)에게.
 // 아는 사람이면 아직 안 적힌 항목을 먼저 고르고, 받은 답은 그 사람 기록에 들어간다
-export function RequestView({ locale, people, fixed, initialName, defaults, initialMessage, tour }: RequestData) {
+export function RequestView({ locale, people, fixed, initialName, defaults, xmas, initialMessage, tour }: RequestData) {
   const t = makeT(locale);
   return (
     <div className="flex flex-1 flex-col">
@@ -37,7 +37,7 @@ export function RequestView({ locale, people, fixed, initialName, defaults, init
           <Star size={22} rotate={14} className="left-[150px] top-0.5" />
         </div>
       )}
-      <RequestForm locale={locale} people={people} fixed={fixed?.id ?? null} initialName={initialName} defaults={defaults} initialMessage={initialMessage} tour={!!tour} />
+      <RequestForm locale={locale} people={people} fixed={fixed?.id ?? null} initialName={initialName} defaults={defaults} xmas={xmas} initialMessage={initialMessage} tour={!!tour} />
     </div>
   );
 }

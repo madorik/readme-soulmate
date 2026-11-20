@@ -1506,3 +1506,27 @@ test("키보드가 화면을 줄이면(안드로이드 앱처럼) 하단 메뉴�
   await field.blur();
   await expect(nav).toBeVisible();
 });
+
+test("연말엔 사람이 있어도 가까운 기념일이 없으면 크리스마스 카드가 그대로고, 그 물어보기는 누구를 골라도 선물을 먼저 묻는다", async ({ page }) => {
+  await page.goto("/");
+  await signIn(page);
+  await onboard(page, { name: "수아" });
+  // 날짜 없는 사람 하나: 가까운 기념일이 없다
+  await page.goto("/people/new");
+  await page.getByLabel("이름이나 부르는 말").fill("할머니");
+  await page.getByRole("button", { name: "만들기", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "할머니" })).toBeVisible();
+  // 사람이 생겼다고 '새 친구 추가해 봐요'로 돌아가지 않는다(연말이면)
+  await page.goto("/home");
+  if (yearEnd(todayIn("Asia/Seoul"))) {
+    const upcoming = page.getByRole("region", { name: "다가오는 날" });
+    await expect(upcoming.getByText(ko["home.yearEnd"])).toBeVisible();
+    await expect(upcoming.getByRole("link", { name: ko["home.yearEndAsk"] })).toHaveAttribute("href", "/request?xmas=1");
+    await expect(page.getByText("새 친구 추가해 봐요")).toHaveCount(0);
+  }
+  // 있는 사람을 골라도 선물 쪽이 켜져 있다(그 사람의 빈 칸인 생일·기념일이 아니라)
+  await page.goto("/request?xmas=1");
+  await page.getByRole("button", { name: "할머니" }).click();
+  await expect(page.getByRole("button", { name: ko["request.topic.gifts"] })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: ko["request.topic.dates"] })).toHaveAttribute("aria-pressed", "false");
+});
