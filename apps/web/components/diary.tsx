@@ -123,6 +123,19 @@ export function HandCircle({ w = 40, h = 36, stroke = 2.2, className = "" }: { w
   );
 }
 
+/** 누를 곳(가운데 구슬)을 가리키는 손그림 화살표: 끝이 왼쪽 위를 향한다. 부모는 relative, 자리는 className으로 */
+export function PointArrow({ w = 76, className = "" }: { w?: number; className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 72 72" width={w} height={w} fill="none" strokeLinecap="round" strokeLinejoin="round" className={`${PLACE} ${className}`}>
+      <g stroke={INK} strokeWidth="2.8">
+        <path d="M60 66 C 66 46 52 30 26 22" />
+        <path d="M35 36 L25 22 L41 19" />
+      </g>
+      <path d="M52 18 L58 12 M60 26 L68 24" stroke={MANGO_DEEP} strokeWidth="2.6" />
+    </svg>
+  );
+}
+
 /** 글자 둘레에 손으로 두른 가로로 긴 동그라미(양력·음력 고르기). 부모는 relative */
 export function HandOval({ w = 72, h = 40, className = "" }: { w?: number; h?: number; className?: string }) {
   return (

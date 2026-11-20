@@ -972,6 +972,83 @@ test("통계: 이용 기록을 받고, 관리자 키로 들어가 기간을 바�
   await expect(page.getByText(/\(7일\)/)).toBeVisible();
 });
 
+test("말로 적기: 들어오면 누르라는 표시, 듣는 중 표시, 말이 멈추면 저장 없이 스스로 끄고 기억해 두기를 강조하며, 아무 말이 없으면 8초 뒤 다시 누르라는 표시", async ({ browser }) => {
+  const page = await newPage(browser);
+  // 브라우저 음성 인식 흉내: 시작·멈춤·받아 적은 말(중간 결과)을 테스트가 흘려 보낸다. 크로미움에는 진짜 SpeechRecognition이 있어 둘 다 바꾼다
+  await page.addInitScript(() => {
+    const log = { starts: 0, stops: 0, last: null as null | { onresult: ((e: unknown) => void) | null } };
+    (window as unknown as { __sr: typeof log }).__sr = log;
+    class Fake {
+      running = false;
+      onstart: (() => void) | null = null;
+      onresult: ((e: unknown) => void) | null = null;
+      onerror: ((e: unknown) => void) | null = null;
+      onend: (() => void) | null = null;
+      constructor() {
+        log.last = this;
+      }
+      start() {
+        this.running = true;
+        log.starts++;
+        setTimeout(() => this.onstart?.(), 40);
+      }
+      stop() {
+        if (!this.running) return;
+        this.running = false;
+        log.stops++;
+        setTimeout(() => this.onend?.(), 60);
+      }
+    }
+    Object.assign(window, { SpeechRecognition: Fake, webkitSpeechRecognition: Fake });
+    (window as unknown as { __say: (t: string) => void }).__say = (t) => log.last!.onresult!({ results: [[{ transcript: t }]] });
+  });
+  await page.goto("/");
+  await signIn(page);
+  await onboard(page, { name: "하나" });
+  await page.goto("/voice");
+  const cue = page.getByText("구슬을 누르고 말해 보세요");
+  const stops = () => page.evaluate(() => (window as unknown as { __sr: { stops: number } }).__sr.stops);
+  const say = (t: string) => page.evaluate((x) => (window as unknown as { __say: (t: string) => void }).__say(x), t);
+
+  // 들어오면: 구슬 아래 한 줄과 맥박 고리
+  await expect(cue).toBeVisible();
+  expect(await page.locator(".cue-ring").count()).toBeGreaterThan(0);
+  // 누르면: 표시가 사라지고 '듣고 있어요', 구슬·마이크가 멈추기(눌린 상태)로 바뀐다
+  await page.getByRole("button", { name: "말하기" }).first().click();
+  await expect(page.getByText("듣고 있어요")).toBeVisible();
+  await expect(cue).toHaveCount(0);
+  const stopBtns = page.getByRole("button", { name: "멈추기" });
+  await expect(stopBtns).toHaveCount(2);
+  await expect(stopBtns.nth(1)).toHaveAttribute("aria-pressed", "true");
+  // 말하는 동안(결과가 계속 들어오는 동안)은 멈추지 않는다
+  await say("와이프는");
+  await page.waitForTimeout(1000);
+  await say("와이프는 바닐라라떼를 좋아해");
+  await expect(page.locator("textarea")).toHaveValue("와이프는 바닐라라떼를 좋아해");
+  await page.waitForTimeout(1000);
+  expect(await stops()).toBe(0);
+  // 새 결과가 1.8초 없으면 스스로 끈다: 글은 그대로, 저장은 안 하고, 기억해 두기가 강조된다
+  await expect(page.getByText("다 들었어요")).toBeVisible({ timeout: 6000 });
+  expect(await stops()).toBe(1);
+  const save = page.getByRole("button", { name: "기억해 두기" });
+  await expect(save).toBeEnabled();
+  await expect(save).toHaveClass(/save-ready/);
+  await page.waitForTimeout(1500);
+  await expect(page.getByRole("heading", { name: "이렇게 기억해 둘게요" })).toHaveCount(0);
+  await expect(page.locator("textarea")).toHaveValue("와이프는 바닐라라떼를 좋아해");
+
+  // 아무 말도 없으면 시작하고 8초 뒤 스스로 끄고, 다시 누르라는 표시
+  await page.getByRole("button", { name: "지우기" }).click();
+  await expect(cue).toBeVisible();
+  await page.getByRole("button", { name: "말하기" }).first().click();
+  await expect(page.getByText("듣고 있어요")).toBeVisible();
+  await page.waitForTimeout(6000);
+  await expect(page.getByText("듣고 있어요")).toBeVisible();
+  await expect(cue).toBeVisible({ timeout: 6000 });
+  expect(await stops()).toBe(2);
+  await expect(page.getByRole("button", { name: "기억해 두기" })).toBeDisabled();
+});
+
 test("가입 직후 체험: 글로 사람을 적어 보고(예시 문장) 적힌 걸 본 뒤, 물어보기 링크까지 만들면 홈으로 끝난다", async ({ browser }) => {
   const page = await newPage(browser);
   await page.goto("/");

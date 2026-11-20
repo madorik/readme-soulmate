@@ -68,7 +68,7 @@ export function CheckGlyph({ size = 14 }: { size?: number }) {
 
 type IconName =
   | "back" | "close" | "lock" | "alert" | "mic" | "camera" | "link" | "share" | "gift" | "external" | "bell"
-  | "plus" | "check" | "calendar" | "people" | "card" | "globe" | "personAdd" | "chevron" | "trash" | "pick" | "map" | "eye" | "settings" | "star" | "pencil" | "up" | "undo" | "arrow";
+  | "plus" | "check" | "calendar" | "people" | "card" | "globe" | "personAdd" | "chevron" | "trash" | "pick" | "map" | "eye" | "settings" | "star" | "pencil" | "up" | "undo" | "arrow" | "stop";
 
 const ICONS: Record<IconName, React.ReactNode> = {
   back: <path d="M15 18l-6-6 6-6" />,
@@ -151,6 +151,7 @@ const ICONS: Record<IconName, React.ReactNode> = {
   ),
   chevron: <path d="M9 18l6-6-6-6" />,
   arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
+  stop: <rect x="6" y="6" width="12" height="12" rx="3" fill="currentColor" />,
   pencil: <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />,
   trash: <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />,
   pick: (

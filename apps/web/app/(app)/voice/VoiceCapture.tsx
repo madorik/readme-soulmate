@@ -6,13 +6,14 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, use
 import { captureNote, undoCapture, type CaptureState } from "@/app/actions/capture";
 import { trackTour } from "@/app/actions/tour";
 import { Avatar } from "@/components/Avatar";
-import { Heart, MarginLine, Sparkle, SKY_STAR, Squiggle, Star, Tape, TourNote } from "@/components/diary";
+import { Heart, MarginLine, PointArrow, Sparkle, SKY_STAR, Squiggle, Star, Tape, TourNote } from "@/components/diary";
 import { Icon } from "@/components/marks";
 import { CaptureBadge, struck, type CaptureBadgeLabels } from "@/components/CaptureBadge";
 import { TagChip } from "@/components/PersonRow";
 import { insertMention, mentionAt, mentionLabel, resolveMentions, type MentionPerson } from "@/lib/mention";
 import { matchesPerson } from "@/lib/search";
 import { shellDictation } from "@/lib/dictation";
+import { startListenGuard, type ListenGuard, type StopReason } from "@/lib/listen-guard";
 import { commonPrefix, nextTyped, startDictation, type Dictation, type NativeSpeech } from "@/lib/speech";
 
 /** @로 부를 수 있는 사람(즐겨찾기가 먼저) */
@@ -26,6 +27,7 @@ type WebRecognition = {
   continuous: boolean;
   start: () => void;
   stop: () => void;
+  onstart: (() => void) | null;
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
   onend: (() => void) | null;
@@ -50,6 +52,7 @@ function nativeSpeech(): NativeSpeech | null {
  * 브라우저는 마이크 소리 크기(AnalyserNode)를, 잴 수 없는 곳(앱의 기기 인식)은 듣는 동안 부드럽게 오르내리는 값을 쓴다.
  * 듣는 동안에는 물방울에서 물결 고리가 퍼져 나가고(소리가 클수록 진하게), 밑에 음성 막대가 소리 크기에 맞춰 오르내린다.
  * 소리를 잴 수 없는 앱에서는 받아 적은 글자가 들어올 때마다(beat) 출렁인다.
+ * 처음 들어와 아직 아무 말도 안 했을 때(cue)는 망고빛 고리가 천천히 퍼져 "여기를 누르세요"를 알린다(움직임 줄이기면 멈춘 고리 하나).
  * 움직임 줄이기를 켠 사람에게는 멈춘다. 값은 그릴 때마다 DOM에 바로 넣는다(화면을 다시 그리지 않게).
  * 듣는 동안(active)에만 프레임 루프를 돌리고, 가만히 있을 때는 한 번 그리고 멈춘다. 음성 막대는 높이 대신 scaleY(합성만)로 오르내린다
  */
@@ -59,7 +62,7 @@ const BAR_ROW = 36;
 const BAR_MAX = 34;
 const BAR_MIN = 6;
 
-function WaterDrop({ active, measure, beat = 0, size = 210 }: { active: boolean; measure: boolean; beat?: number; size?: number }) {
+function WaterDrop({ active, measure, cue = false, beat = 0, size = 210 }: { active: boolean; measure: boolean; cue?: boolean; beat?: number; size?: number }) {
   const body = useRef<HTMLDivElement>(null);
   const slosh = useRef<HTMLDivElement>(null);
   const shine = useRef<HTMLDivElement>(null);
@@ -169,6 +172,12 @@ function WaterDrop({ active, measure, beat = 0, size = 210 }: { active: boolean;
                 boxShadow: "0 0 16px rgba(120,195,250,0.4), inset 0 0 20px rgba(140,205,250,0.3)",
               }}
             />
+          ))}
+        </div>
+      ) : cue ? (
+        <div className="pointer-events-none absolute left-0 top-0" style={{ width: size, height: size }}>
+          {[0, 1.3].map((delay) => (
+            <span key={delay} className="cue-ring" style={{ "--d": `${delay}s` } as React.CSSProperties} />
           ))}
         </div>
       ) : null}
@@ -304,7 +313,13 @@ type Labels = CaptureBadgeLabels & {
   modeText: string;
   speak: string;
   clear: string;
+  /** 처음 들어왔을 때 구슬 아래 한 줄 */
+  cue: string;
   listening: string;
+  /** 자동으로 멈춘 뒤 상태 줄 */
+  heard: string;
+  /** 듣는 동안 마이크 단추의 이름(멈추기) */
+  stop: string;
   placeholder: string;
   placeholderText: string;
   mention: string;
@@ -345,6 +360,8 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
   // 앱: 멈춘 뒤 마지막 말까지 든 최종 결과를 기다리는 중(길어야 1.5초)
   const [settling, setSettling] = useState(false);
   const [micError, setMicError] = useState(false);
+  // 말이 멈춰 스스로 끈 뒤 받아 적은 글이 남았다(저장은 하지 않는다): 기억해 두기를 누를 차례
+  const [ready, setReady] = useState(false);
   const [result, setResult] = useState<CaptureState | null>(null);
   const [undone, setUndone] = useState(false);
   const [pending, start] = useTransition();
@@ -354,6 +371,12 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
   const native = useRef<Dictation | null>(null);
   const alive = useRef(true);
   const heard = useRef("");
+  // 말이 멈추는 때를 재는 타이머(lib/listen-guard). 웹 브라우저·앱 모두 같은 규칙
+  const guard = useRef<ListenGuard | null>(null);
+  // 사람이 구슬·마이크를 눌러 멈췄다: 끝나면 바로 적는다. 스스로 멈춘 것(조용해짐·시간 다 됨·기기가 끝냄)이면 글만 남기고 기억해 두기를 기다린다
+  const pressedStop = useRef(false);
+  // 스스로 멈춘 글에 이어 말하면 그 뒤에 이어 붙인다
+  const prefix = useRef("");
   // 말로(물방울) / 글로(적는 칸). 마지막에 고른 방식을 기억한다(이 기기에서만). 음성 인식을 못 쓰는 기기는 글로만
   const stored = useSyncExternalStore(
     () => () => {},
@@ -505,6 +528,8 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
     alive.current = true;
     return () => {
       alive.current = false;
+      guard.current?.dispose();
+      guard.current = null;
       web.current?.stop();
       native.current?.cancel();
     };
@@ -522,6 +547,7 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
   const submit = (value: string, via: "voice" | "text") => {
     const v = value.trim();
     if (!v || pending) return;
+    setReady(false);
     start(async () => {
       setUndone(false);
       const r = await captureNote(v, undefined, tagged);
@@ -530,20 +556,59 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
     });
   };
 
-  // 웹은 멈추면 최종 결과 뒤에 onend가 온다. 앱은 최종 결과를 기다렸다가 onDone(lib/speech)
-  const stopListening = async () => {
-    if (web.current) web.current.stop();
+  // 멈춘 뒤 받아 적은 글이 있으면: 사람이 멈췄으면 바로 적고, 스스로 멈췄으면 글만 남기고 기억해 두기를 기다린다
+  const afterListening = () => {
+    if (!heard.current.trim()) return;
+    if (pressedStop.current) submit(heard.current, "voice");
+    else setReady(true);
+  };
+
+  const endGuard = () => {
+    guard.current?.dispose();
+    guard.current = null;
+  };
+
+  // 멈추기: 웹은 멈추면 최종 결과 뒤에 onend가 온다. 앱은 최종 결과를 기다렸다가 onDone(lib/speech)
+  const halt = () => {
+    endGuard();
+    web.current?.stop();
     native.current?.stop();
+  };
+  // 사람이 누른 멈춤
+  const stopListening = async () => {
+    pressedStop.current = true;
+    halt();
+  };
+  // 아무 말도 없어 끄는 앱 듣기는 기다릴 최종 결과가 없으니 바로 끝낸다(멈춘 뒤 최종 결과를 1.5초까지 기다리지 않고)
+  const discardListening = () => {
+    endGuard();
+    native.current?.cancel();
+    native.current = null;
+    setListening(false);
+    setSettling(false);
+    // 이어 말하려던 앞선 글이 있으면 그대로 남기고 기억해 두기를 기다린다
+    if (heard.current.trim()) setReady(true);
+  };
+  // 타이머가 멈추라고 한다(조용해짐·아무 말 없음·시간 다 됨): 사람이 멈춘 게 아니라서 끝나도 저장하지 않는다
+  const onGuardStop = (reason: StopReason) => {
+    if (reason === "no-speech" && native.current) return discardListening();
+    halt();
   };
 
   const listen = async () => {
     if (settling) return;
     if (listening) return stopListening();
+    // 스스로 멈추고 글이 남았으면 이어 말한 것을 그 뒤에 붙인다. 아니면 새로 시작
+    prefix.current = ready && text.trim() ? `${text.trim()} ` : "";
+    pressedStop.current = false;
     setMicError(false);
+    setReady(false);
     setResult(null);
-    heard.current = "";
-    setText("");
-    setTagged([]);
+    heard.current = prefix.current;
+    if (!prefix.current) {
+      setText("");
+      setTagged([]);
+    }
     const lang = locale === "ko" ? "ko-KR" : "en-US";
     const plugin = nativeSpeech();
     if (plugin || shellDictation) {
@@ -551,6 +616,8 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
         if (plugin) {
           const perm = await plugin.requestPermissions();
           if (perm.speechRecognition !== "granted") throw new Error("denied");
+          // 기기가 알려 주는 중간 결과(partialResults)로 말이 멈춘 때를 잰다. 녹음했다가 서버가 글로 바꾸는 쪽(토스)은 중간 결과가 없어 재지 않는다
+          guard.current = startListenGuard({ onStop: onGuardStop });
         }
         setListening(true);
         // 말이 끝나 기기가 스스로 멈추거나 멈춤을 누르면, 마지막 말까지 받은 뒤 받아 적은 말로 나눠 적는다.
@@ -558,24 +625,28 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
         const options = {
           language: lang,
           onText: (t: string) => {
-            heard.current = t;
-            setText(t);
+            heard.current = prefix.current + t;
+            setText(heard.current);
+            guard.current?.heard(t);
           },
           onSettling: () => {
+            endGuard();
             setListening(false);
             setSettling(true);
           },
           onDone: (t: string) => {
             native.current = null;
+            endGuard();
             if (!alive.current) return;
             setSettling(false);
-            if (t) heard.current = t;
+            if (t) heard.current = prefix.current + t;
             setText(heard.current);
-            if (heard.current.trim()) submit(heard.current, "voice");
+            afterListening();
           },
         };
         native.current = plugin ? await startDictation(plugin, options) : await shellDictation!(options);
       } catch {
+        endGuard();
         native.current = null;
         setListening(false);
         setSettling(false);
@@ -589,19 +660,28 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
     r.lang = lang;
     r.interimResults = true;
     r.continuous = true;
+    // 듣기가 실제로 시작된 때부터 잰다(브라우저의 마이크 허락을 기다리는 동안은 세지 않는다)
+    const arm = () => {
+      if (!guard.current && web.current === r) guard.current = startListenGuard({ onStop: onGuardStop });
+    };
+    r.onstart = arm;
     r.onresult = (e) => {
-      heard.current = Array.from(e.results)
+      const fresh = Array.from(e.results)
         .map((res) => res[0]?.transcript ?? "")
         .join(" ");
+      heard.current = prefix.current + fresh;
       setText(heard.current);
+      arm();
+      guard.current?.heard(fresh);
     };
     r.onerror = (e) => {
       if (e.error !== "aborted" && e.error !== "no-speech") setMicError(true);
     };
     r.onend = () => {
-      web.current = null;
+      endGuard();
+      if (web.current === r) web.current = null;
       setListening(false);
-      if (heard.current.trim()) submit(heard.current, "voice");
+      afterListening();
     };
     web.current = r;
     setListening(true);
@@ -688,6 +768,10 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
   // 말로: 가운데 물방울(누르면 듣기·멈추기), 바로 밑에 받아 적는 글, 아래 둥근 마이크 · 기억해 두기
   // 글로: 적는 칸 하나와 기억해 두기
   const idle = !!text && !listening && !settling && !pending;
+  // 처음 들어와(또는 말이 없어 꺼져) 아직 아무 말도 안 했다: 구슬·마이크를 누르라는 표시. 누르면(듣기 시작) 사라진다
+  const cue = canListen && !listening && !settling && !pending && !text.trim() && !micError;
+  // 스스로 멈춘 뒤 글이 남았다: 기억해 두기를 누를 차례
+  const nudgeSave = ready && !!text.trim() && !listening && !settling && !pending;
   const toggle = canListen ? (
     <div role="radiogroup" aria-label={labels.mode} className="relative z-10 mx-auto mt-4 flex w-fit shrink-0 rounded-full bg-white p-[3px] shadow-[inset_0_0_0_1.5px_var(--color-ink)]">
       {(["voice", "text"] as const).map((m) => (
@@ -818,16 +902,36 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
       <div className="relative flex flex-1 flex-col items-center justify-center px-5 pb-4">
         <Star size={24} rotate={12} color={SKY_STAR} className="right-[38px] top-[42px]" />
         <Sparkle size={18} className="left-11 top-[150px]" />
-        <button
-          type="button"
-          onClick={() => void listen()}
-          aria-pressed={listening}
-          aria-label={listening ? labels.listening : labels.speak}
-          disabled={pending || settling || !canListen}
-          className="shrink-0 rounded-full transition-transform active:scale-95 disabled:active:scale-100"
-        >
-          <WaterDrop active={listening || settling} measure={!nativeSpeech() && !shellDictation} beat={shown.length} />
-        </button>
+        <div className="relative flex shrink-0">
+          <button
+            type="button"
+            onClick={() => void listen()}
+            aria-pressed={listening}
+            aria-label={listening ? labels.stop : labels.speak}
+            disabled={pending || settling || !canListen}
+            className="shrink-0 rounded-full transition-transform active:scale-95 disabled:active:scale-100"
+          >
+            <WaterDrop active={listening || settling} measure={!nativeSpeech() && !shellDictation} cue={cue} beat={shown.length} />
+          </button>
+          {/* 아직 아무 말도 안 했을 때: 구슬을 가리키는 화살표(누르면 사라진다) */}
+          {cue ? <PointArrow w={76} className="cue-nudge left-[166px] top-[166px]" /> : null}
+        </div>
+        {/* 상태 줄: 처음엔 누르라는 한 줄, 듣는 동안 '듣고 있어요', 스스로 멈추면 '다 들었어요'(스크린리더에도 읽힌다) */}
+        <p role="status" aria-live="polite" className="mt-1 flex h-9 items-center justify-center gap-2 text-[22px] leading-none text-ink">
+          {listening ? (
+            <>
+              <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-mango-deep motion-safe:animate-pulse" />
+              {labels.listening}
+            </>
+          ) : settling || nudgeSave ? (
+            <>
+              <Icon name="check" size={20} strokeWidth={2.6} className="text-accent" />
+              {labels.heard}
+            </>
+          ) : cue ? (
+            <span className="hl px-1">{labels.cue}</span>
+          ) : null}
+        </p>
         <textarea
           ref={box}
           value={shown}
@@ -857,16 +961,21 @@ export function VoiceCapture({ locale, labels, people = [], tour = null }: { loc
             type="button"
             onClick={() => void listen()}
             aria-pressed={listening}
-            aria-label={listening ? labels.listening : labels.speak}
+            aria-label={listening ? labels.stop : labels.speak}
             disabled={pending || settling}
             className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-colors ${listening ? "bg-ink text-white" : "bg-white text-ink shadow-[inset_0_0_0_1.5px_var(--color-edge)]"}`}
           >
-            {/* 듣는 동안 마이크 둘레로 퍼지는 고리 */}
-            {listening || settling ? <span aria-hidden="true" className="absolute inset-0 rounded-full border-2 border-sky opacity-0 motion-safe:animate-[drop-ripple_1.8s_ease-out_infinite]" /> : null}
-            <Icon name="mic" size={24} strokeWidth={2} className="relative" />
+            {/* 듣는 동안 마이크 둘레로 퍼지는 고리. 처음 들어왔을 때는 망고빛 맥박 */}
+            {listening || settling ? (
+              <span aria-hidden="true" className="absolute inset-0 rounded-full border-2 border-sky opacity-0 motion-safe:animate-[drop-ripple_1.8s_ease-out_infinite]" />
+            ) : cue ? (
+              <span aria-hidden="true" className="cue-ring" style={{ "--to": 1.4 } as React.CSSProperties} />
+            ) : null}
+            {/* 듣는 동안은 멈춤(네모), 아니면 마이크 */}
+            <Icon name={listening ? "stop" : "mic"} size={listening ? 22 : 24} strokeWidth={2} className="relative" />
           </button>
         ) : null}
-        <button disabled={pending || listening || settling || !text.trim()} aria-busy={pending} className="btn-primary flex-1 !min-h-14 !text-[21px]">
+        <button disabled={pending || listening || settling || !text.trim()} aria-busy={pending} className={`btn-primary flex-1 !min-h-14 !text-[21px] ${nudgeSave ? "save-ready" : ""}`}>
           <SaveLabel pending={pending}>{labels.save}</SaveLabel>
         </button>
       </div>
