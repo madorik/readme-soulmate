@@ -23,9 +23,12 @@ const config: CapacitorConfig = {
   ios: { contentInset: "never", appendUserAgent: "ReadmeApp (ios)" },
   android: { appendUserAgent: "ReadmeApp (android)" },
   plugins: {
-    // 화면 끝까지 그리고(웹이 안전 영역만큼 띄운다), 상태바·아래 막대 아이콘은 흰 바탕에 맞춰 어둡게
+    // 화면 끝까지 그리고(웹이 안전 영역만큼 띄운다), 상태바·아래 막대 아이콘은 밝은 바탕에 맞춰 어둡게
     SystemBars: { insetsHandling: "css", style: "LIGHT", initialViewportFitValueHint: "cover" },
-    SplashScreen: { launchShowDuration: 1500, launchAutoHide: true, backgroundColor: "#FFFFFF", showSpinner: false },
+    // 실행 화면: 크림 바탕 + 가운데 기억해U 로고 정지판(iOS LaunchScreen.storyboard, 안드로이드 styles.xml의 splash_icon).
+    // 웹이 첫 화면(움직이는 로딩 덮개, apps/web/components/LaunchOverlay.tsx)을 그리기 시작하면 웹이 SplashScreen.hide()로 바로 걷는다.
+    // launchShowDuration은 그 신호가 안 올 때(웹이 늦거나 못 불러올 때)를 위한 상한일 뿐이다: 안드로이드는 이 시간이 지나야 웹을 그리기 시작하니 너무 길면 안 된다
+    SplashScreen: { launchShowDuration: 4000, launchAutoHide: true, launchFadeOutDuration: 200, backgroundColor: "#FBF6EA", showSpinner: false },
     LocalNotifications: { smallIcon: "ic_stat_notify", iconColor: "#F2A900" },
     PushNotifications: { presentationOptions: ["banner", "sound"] },
   },

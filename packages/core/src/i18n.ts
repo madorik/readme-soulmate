@@ -6,6 +6,7 @@ import type { Locale } from "./locale";
 export const ko = {
   "app.name": "기억해유",
   "app.tagline": "소울메이트 컨닝페이퍼",
+  "app.loading": "불러오는 중",
   "lang.other": "English",
 
   "common.back": "뒤로",
@@ -689,6 +690,7 @@ export type Messages = Record<MessageKey, string>;
 export const en: Messages = {
   "app.name": "Remember You",
   "app.tagline": "Soulmate Cheat Sheet",
+  "app.loading": "Loading",
   "lang.other": "한국어",
 
   "common.back": "Back",

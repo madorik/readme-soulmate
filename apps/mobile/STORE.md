@@ -100,7 +100,7 @@ Vercel 운영에 `FCM_PROJECT_ID`·`FCM_CLIENT_EMAIL`·`FCM_PRIVATE_KEY`(줄바�
 
 ## 그래픽 다시 만들기
 
-- 아이콘·스플래시·그래픽 이미지: `node apps/mobile/scripts/make-assets.mjs`(READ / ME, ME에 빨간 펜 동그라미). 앱 화면은 2026-11-14에 시안 C2(먹색·Manrope·가는 선)로 바뀌어서, 아이콘·그래픽·스크린샷은 다시 만들어 올려야 톤이 맞는다
+- 아이콘·실행 화면·그래픽 이미지: `node apps/mobile/scripts/make-assets.mjs`. 아이콘은 C안 '흘끔 다이어리'(크림 바탕, 망고 눈꺼풀 눈 둘 + 테이프 붙은 종이 쪽지, iOS 다크·틴트·안드로이드 테마 단색 포함), 실행 화면은 크림 #FBF6EA 단색 + 가운데 기억해U 로고 정지판(iOS LaunchScreen.storyboard·안드로이드 splash_icon), 그래픽 이미지는 같은 톤. 앱을 켜면 웹이 같은 자리에서 움직이는 로딩 덮개(apps/web/components/LaunchOverlay.tsx)로 이어받으니, 로고를 고치면 스크립트의 logoStack과 웹 .ry-* 스타일을 같이 고친다
 - 스크린샷 1080×1920(한/영 6장씩, 운영 사이트 데모 계정): `node apps/mobile/scripts/store-screens.mjs`
 
 ## iOS App Store (2026-11-17 첫 심사 제출)

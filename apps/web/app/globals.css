@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
-/* 다이어리 v2: 크림 종이 + 점 모눈 바탕 위에 종이색 카드, 남색 글자와 선. 망고 노랑(#FFC23D, 위 글자는 남색)은 주 버튼(눌리는 3D)·고른 칩·오늘에,
+/* 다이어리 v2: 크림 단색 바탕 위에 종이색 카드, 남색 글자와 선. 망고 노랑(#FFC23D, 위 글자는 남색)은 주 버튼(눌리는 3D)·고른 칩·오늘에,
    테이프(망고·분홍·민트)·별·하트·물결선은 장식(components/diary.tsx). 고른 것은 망고 바탕 + 남색 테두리, 강조 글자는 진한 망고 갈색.
    빨강은 진짜 경고(알레르기·지우기·오류)와 일요일에만. 색 이름(sky…)은 쓰는 곳이 많아 그대로 둔다 */
 @theme {
   /* 종이 카드 */
   --color-paper: #fffdf7;
-  /* 크림 바탕(점 모눈은 html에) */
+  /* 크림 바탕(단색, html에) */
   --color-bg: #fbf6ea;
   --color-ink: #1f2340;
   --color-ink-2: #3a3f5c;
@@ -70,12 +70,10 @@
     /* 밝은 화면 하나만: 안드로이드 자동 다크·삼성 인터넷 다크가 뒤집지 않게 */
     color-scheme: light;
   }
-  /* 크림 종이 + 점 모눈(18px 간격). 바탕은 html에만 깔고 body는 비워 둔다(둘 다 칠하면 body가 점을 덮는다) */
+  /* 크림 단색 바탕. 바탕은 html에만 깔고 body는 비워 둔다 */
   html {
     -webkit-text-size-adjust: 100%;
     background-color: var(--color-bg);
-    background-image: radial-gradient(rgb(31 35 64 / 0.16) 1px, transparent 1.3px);
-    background-size: 18px 18px;
   }
   body {
     color: var(--color-ink);
@@ -203,7 +201,8 @@
   .card {
     background: var(--color-paper);
     border-radius: 10px;
-    box-shadow: 0 1px 2px rgb(31 35 64 / 0.08), 0 12px 26px -16px rgb(31 35 64 / 0.42);
+    /* 바탕이 점 모눈 없는 크림 단색이라 종이 가장자리를 가는 윤곽선(0.05)과 살짝 진한 그림자(0.10)로 살린다 */
+    box-shadow: 0 0 0 1px rgb(31 35 64 / 0.05), 0 1px 3px rgb(31 35 64 / 0.1), 0 12px 26px -16px rgb(31 35 64 / 0.42);
   }
   /* 줄노트 바탕(오늘의 질문 등): 파란 줄 + 왼쪽 분홍 여백선은 components/diary.tsx의 MarginLine */
   .ruled {
@@ -562,6 +561,194 @@
 .bar-mask-bottom {
   bottom: 0;
   height: var(--sab);
+}
+
+/* 앱(웹뷰)을 처음 켤 때 웹을 불러오는 동안 보이는 로딩 덮개(components/LaunchOverlay.tsx, 서버가 첫 HTML에 그린다).
+   네이티브 실행 화면(apps/mobile/scripts/make-assets.mjs가 그린 정지판)과 같은 자리·크기: 크림 단색 바탕, 로고 덩어리가 화면 한가운데에서 24px 위.
+   안드로이드 12+ 시스템 스플래시는 가운데 지름 192dp 원 안에만 그릴 수 있어서 안드로이드 앱에서는 로고를 0.84배로 한가운데에 두고 별·하트는 살짝 늦게 나타난다.
+   움직임은 '완성된 로고'로 시작해(정지판에서 이어짐) --ry-hold 동안 그대로 있다가, U·점·물결선이 사라졌다 다시 그려지는 4초 반복(첫 한 번만 처음에 멈춰 있고 이후는 4초 주기).
+   웹이 금방 준비되면 로고가 멈춘 채로 덮개만 사라진다. 움직임 줄이기를 켜면 정지판 그대로 */
+.ry-boot {
+  --ry-hold: 1.2s;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  touch-action: none;
+  transition: opacity 0.35s ease;
+}
+/* 사라지는 중에는 눌러도 아래 화면으로 통과 */
+.ry-boot.ry-out {
+  opacity: 0;
+  pointer-events: none;
+}
+/* 이 앱 실행에서 이미 보여 줬으면 처음부터 숨긴다(lib/launch-boot.ts) */
+html.ry-seen .ry-boot {
+  display: none;
+}
+.ry-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  transform: translateY(-24px);
+}
+.ry-boot[data-os="android"] .ry-stack {
+  transform: scale(0.84);
+}
+.ry-word {
+  display: inline-flex;
+  align-items: flex-end;
+  font-family: "Wordmark Hand", var(--font-num);
+  font-weight: 400;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  -webkit-text-stroke: 1px currentColor;
+}
+.ry-u {
+  flex-shrink: 0;
+  margin: 0 0 5px 3px;
+}
+.ry-deco {
+  position: absolute;
+}
+.ry-d1,
+.ry-d2 {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ry-up {
+  stroke-dasharray: 54 120;
+  animation: ry-u 4s ease-in-out var(--ry-hold) infinite backwards;
+}
+.ry-d1 {
+  animation: ry-d1 4s ease-in-out var(--ry-hold) infinite backwards;
+}
+.ry-d2 {
+  animation: ry-d2 4s ease-in-out var(--ry-hold) infinite backwards;
+}
+.ry-w {
+  stroke-dasharray: 208 400;
+  animation: ry-w 4s ease-in-out var(--ry-hold) infinite backwards;
+}
+.ry-boot[data-os="android"] .ry-deco {
+  animation: ry-fade-in 0.4s ease-out both;
+}
+/* 한 주기: 완성(0%) → 사라짐(6~8%) → U가 그려짐(~40%) → 점 둘이 콕(~46%·56%) → 물결선(~90%) → 완성 */
+@keyframes ry-u {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  6%,
+  8% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+  8.01%,
+  14% {
+    stroke-dashoffset: 58;
+    opacity: 1;
+  }
+  40%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+@keyframes ry-d1 {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  6%,
+  8% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  8.01%,
+  42% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  46% {
+    transform: scale(1.45);
+    opacity: 1;
+  }
+  50%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes ry-d2 {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  6%,
+  8% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  8.01%,
+  52% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  56% {
+    transform: scale(1.45);
+    opacity: 1;
+  }
+  60%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes ry-w {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  6%,
+  8% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+  8.01%,
+  62% {
+    stroke-dashoffset: 212;
+    opacity: 1;
+  }
+  90%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+@keyframes ry-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ry-up,
+  .ry-d1,
+  .ry-d2,
+  .ry-w,
+  .ry-boot[data-os="android"] .ry-deco {
+    animation: none;
+    stroke-dasharray: none;
+  }
 }
 
 /* 말로 적기: 듣는 동안 물방울·마이크에서 퍼져 나가는 물결 고리 */

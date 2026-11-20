@@ -1,14 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { preload } from "react-dom";
 import { BRAND } from "@readme/core";
 import { KeyboardInset } from "@/components/KeyboardInset";
+import { LaunchOverlay } from "@/components/LaunchOverlay";
 import { LocaleSync } from "@/components/LocaleSync";
 import { SplashHide } from "@/components/SplashHide";
 import { Tags } from "@/components/Tags";
 import { UsageTracker } from "@/components/UsageTracker";
 import { WebAnalytics } from "@/components/WebAnalytics";
 import { getSession } from "@/lib/data";
-import { chosenLocale, requestLocale } from "@/lib/i18n";
+import { chosenLocale, makeT, requestLocale } from "@/lib/i18n";
+import { LAUNCH_BOOT_SCRIPT } from "@/lib/launch-boot";
 import { ogMetadata } from "@/lib/og";
 import { SITE_URL } from "@/lib/site";
 import { WORDMARK_FONT_URL } from "@/lib/wordmark-font";
@@ -50,10 +53,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const session = await getSession();
   const locale = await requestLocale(session?.profile.locale);
   const chosen = !!(session?.profile.localeChoice ?? (await chosenLocale()));
+  // 앱 웹뷰(UA에 ReadmeApp)만 첫 HTML에 움직이는 로딩 덮개를 넣는다: 웹 브라우저(검색 노출 화면·e2e)는 그대로
+  const ua = (await headers()).get("user-agent") ?? "";
+  const nativeApp = /ReadmeApp/.test(ua);
+  const t = makeT(locale);
   return (
     // 앱 웹뷰(Capacitor)가 화면 여백 값을 <html style>에 넣어서 서버가 그린 것과 다를 수 있다
     <html lang={locale} suppressHydrationWarning>
       <body>
+        {nativeApp && (
+          <>
+            <script dangerouslySetInnerHTML={{ __html: LAUNCH_BOOT_SCRIPT }} />
+            <LaunchOverlay word={locale === "en" ? "Remember" : "기억해"} label={t("app.loading")} os={/ReadmeApp \(android\)/.test(ua) ? "android" : "ios"} />
+          </>
+        )}
         <div aria-hidden="true" className="bar-mask-top" />
         {children}
         <div aria-hidden="true" className="bar-mask-bottom" />

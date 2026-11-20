@@ -8,7 +8,7 @@ import type { T } from "@/lib/i18n";
 // 제목을 두 줄로 나누는 자리(첫 줄에 들어갈 낱말 수): 첫 줄은 그대로, 둘째 줄에 형광펜
 const LEAD: Record<Locale, [number, number, number]> = { ko: [2, 3, 1], en: [1, 2, 2] };
 
-/** 온보딩 윗부분: 크림 점 모눈 위에 뒤로·나중에, 진행 막대(웃는 손잡이), 제목과 리디. 아래 종이 시트(Steps의 SHEET)가 이어진다 */
+/** 온보딩 윗부분: 크림 바탕 위에 뒤로·나중에, 진행 막대(웃는 손잡이), 제목과 리디. 아래 종이 시트(Steps의 SHEET)가 이어진다 */
 export function StepHeader({ step, back, skip, t, title, locale = "ko" }: { step: 1 | 2 | 3; back?: string; skip?: string; t: T; title: string; locale?: Locale }) {
   const pct = `${(step / 3) * 100}%`;
   const words = title.split(" ");
