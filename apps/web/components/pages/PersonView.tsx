@@ -95,6 +95,8 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
                 mine={p.folderIds}
                 labels={{
                   put: t("folder.put"),
+                  removeFrom: t("folder.removeFrom", { name: "{name}" }),
+                  removed: t("folder.removed"),
                   title: t("folder.of", { name: "{name}" }),
                   done: t("folder.done"),
                   newFolder: t("folder.new"),

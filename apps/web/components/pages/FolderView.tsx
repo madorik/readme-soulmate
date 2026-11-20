@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { FolderMembers } from "@/app/(app)/people/folder/[id]/FolderMembers";
 import { FolderSheets } from "@/app/(app)/people/folder/[id]/FolderSheets";
 import { TopBar } from "@/components/chrome";
 import { FolderArt } from "@/components/FolderArt";
 import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
-import { RowBody } from "@/components/PersonRow";
 import { folderSheetLabels } from "@/lib/folders";
 import type { FolderData } from "@/lib/pages/folder.data";
 import { makeT } from "@/lib/t";
@@ -59,23 +59,18 @@ export function FolderView({ locale, folder, rows, byName, memberIds, people, op
 
       <div className="card relative mx-4 px-3.5">
         <Tape color="mango" w={84} h={22} rotate={4} alpha={0.62} className="-top-[11px] right-[34px]" />
-        <ul className="flex flex-col">
-        {rows.map((r) => (
-          <li key={r.contactId} className="border-t border-dashed border-rule first-of-type:border-t-0">
-            <Link href={`/people/${r.contactId}?back=${encodeURIComponent(here)}`} className="flex min-h-[72px] items-center gap-3">
-              <RowBody row={r} avatarLabel={t("avatar.of", { name: r.name })} />
-            </Link>
-          </li>
-        ))}
-        <li className="border-t border-dashed border-rule first-of-type:border-t-0">
-          <Link href={withParam("add")} scroll={false} className="flex min-h-[72px] items-center gap-3 text-accent">
-            <span className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full border-[1.8px] border-dashed border-ink text-ink">
-              <Icon name="plus" size={20} strokeWidth={2.2} />
-            </span>
-            <span className="text-[20px]">{t("folder.addPeople")}</span>
-          </Link>
-        </li>
-        </ul>
+        <FolderMembers
+          folderId={folder.id}
+          rows={rows}
+          here={here}
+          locale={locale}
+          labels={{
+            remove: t("folder.removeMember", { name: "{name}" }),
+            removed: t("folder.removed"),
+            addPeople: t("folder.addPeople"),
+            error: t("common.error"),
+          }}
+        />
         <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[7px] top-24" />
         <Squiggle w={54} width={2.4} color="#F59BAE" className="-bottom-2 right-[26px]" />
       </div>

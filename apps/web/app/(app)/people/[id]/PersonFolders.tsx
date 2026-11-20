@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { createFolder, setPersonFolders } from "@/app/actions/people";
+import { useOptimistic, useRef, useState, useTransition } from "react";
+import { addToFolder, createFolder, removeFromFolder, setPersonFolders } from "@/app/actions/people";
 import { FolderArt, FolderMini } from "@/components/FolderArt";
 import { DrawnCheck, Icon } from "@/components/marks";
 import { Sheet } from "@/components/Sheet";
+import { useUndoToast } from "@/components/UndoToast";
 import { FOLDER_COLORS, type FolderView } from "@/lib/folders";
 
 interface Labels {
   /** "+" 버튼·시트 제목 */
   put: string;
+  /** 칩 오른쪽 '×'의 이름 "{name} 폴더에서 빼기"(이름 자리는 "{name}") */
+  removeFrom: string;
+  /** 뺀 뒤 토스트 글 */
+  removed: string;
   /** "{name} · 폴더" */
   title: string;
   done: string;
@@ -25,22 +30,48 @@ interface Labels {
 }
 
 /**
- * 사람 화면 이름 밑: 그 사람이 든 폴더 칩(누르면 그 폴더) + "+"(폴더 고르기 시트).
+ * 사람 화면 이름 밑: 그 사람이 든 폴더 칩(누르면 그 폴더, 오른쪽 ×를 누르면 그 폴더에서만 뺀다) + "+"(폴더 고르기 시트).
+ * 빼면 칩이 바로 사라지고(서버에도 바로 반영) 5초 동안 '되돌리기'를 누르면 돌아온다.
  * 시트에서 체크한 폴더로 맞추고, 맨 끝에서 새 폴더를 바로 만들어 넣을 수 있다
  */
 export function PersonFolders({ contactId, name, folders, mine, labels }: { contactId: string; name: string; folders: FolderView[]; mine: string[]; labels: Labels }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  // 든 폴더(빼기·되돌리기는 서버가 답하기 전에 먼저 보인다)
+  const [now, apply] = useOptimistic(mine, (cur, op: { type: "remove" | "add"; id: string }) =>
+    op.type === "remove" ? cur.filter((x) => x !== op.id) : cur.includes(op.id) ? cur : [...cur, op.id],
+  );
+  const [, startMove] = useTransition();
+  const [moveFailed, setMoveFailed] = useState(false);
+  const undo = useUndoToast();
+  // 빼기와 되돌리기가 서로 앞서지 않게 하나씩 차례로 보낸다
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
   const [picked, setPicked] = useState<string[]>(mine);
   const [making, setMaking] = useState(false);
   const [newName, setNewName] = useState("");
   const [busy, start] = useTransition();
   const [failed, setFailed] = useState(false);
-  const inFolders = folders.filter((f) => mine.includes(f.id));
+  const inFolders = folders.filter((f) => now.includes(f.id));
   const toggle = (id: string) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]);
 
+  const move = (type: "remove" | "add", id: string) => {
+    setMoveFailed(false);
+    startMove(async () => {
+      apply({ type, id });
+      const job = () => (type === "remove" ? removeFromFolder(id, contactId) : addToFolder(id, contactId));
+      const p = queue.current.then(job).catch(() => ({ ok: false }));
+      queue.current = p;
+      // 실패하면 서버 목록 그대로(사라졌던 칩이 돌아온다)
+      if (!(await p).ok) setMoveFailed(true);
+    });
+  };
+  const takeOut = (id: string) => {
+    move("remove", id);
+    undo.show({ text: labels.removed, onUndo: () => move("add", id) });
+  };
+
   function openSheet() {
-    setPicked(mine);
+    setPicked(now);
     setMaking(false);
     setFailed(false);
     setOpen(true);
@@ -72,15 +103,21 @@ export function PersonFolders({ contactId, name, folders, mine, labels }: { cont
     <>
       <div className="flex flex-wrap gap-1.5">
         {inFolders.map((f) => (
-          <Link
-            key={f.id}
-            href={`/people/folder/${f.id}`}
-            // 보이는 칩은 34px, 누르는 자리는 위아래 5px씩 넓혀 44px(before)
-            className="relative flex h-[34px] max-w-full items-center gap-1.5 rounded-full bg-paper pl-[9px] pr-3 text-[17px] shadow-[inset_0_0_0_1.5px_var(--color-edge)] before:absolute before:-inset-y-[5px] before:inset-x-0"
-          >
-            <FolderMini color={f.color} />
-            <span className="truncate">{f.name}</span>
-          </Link>
+          // 보이는 칩은 34px, 누르는 자리는 위아래 5px씩 넓혀 44px(before). 오른쪽 ×는 가로도 5px씩 넓혀 44×44
+          <span key={f.id} className="flex h-[34px] min-w-0 max-w-full items-center rounded-full bg-paper shadow-[inset_0_0_0_1.5px_var(--color-edge)]">
+            <Link href={`/people/folder/${f.id}`} className="relative flex h-full min-w-0 items-center gap-1.5 pl-[9px] pr-1 text-[17px] before:absolute before:-inset-y-[5px] before:inset-x-0">
+              <FolderMini color={f.color} />
+              <span className="truncate">{f.name}</span>
+            </Link>
+            <button
+              type="button"
+              aria-label={labels.removeFrom.replace("{name}", f.name)}
+              onClick={() => takeOut(f.id)}
+              className="relative flex h-full w-[34px] shrink-0 items-center justify-center rounded-full text-muted before:absolute before:-inset-[5px] active:text-ink"
+            >
+              <Icon name="close" size={13} strokeWidth={2.2} />
+            </button>
+          </span>
         ))}
         <button
           type="button"
@@ -92,6 +129,12 @@ export function PersonFolders({ contactId, name, folders, mine, labels }: { cont
           <Icon name="plus" size={16} strokeWidth={2.4} />
         </button>
       </div>
+      {moveFailed ? (
+        <p role="alert" className="pt-1 text-[16px] text-red">
+          {labels.error}
+        </p>
+      ) : null}
+      {undo.toast}
 
       {open ? (
         <Sheet

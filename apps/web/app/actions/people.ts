@@ -343,6 +343,19 @@ export async function addToFolder(folderId: string, contactId: string): Promise<
   }
 }
 
+/** 사람 하나를 이 폴더에서만 빼기(사람은 그대로, 다른 폴더도 그대로). 내 폴더·내 사람만 건드린다(RLS). 이미 없으면 그대로 성공 */
+export async function removeFromFolder(folderId: string, contactId: string): Promise<{ ok: boolean }> {
+  const s = await requireSession();
+  if (typeof folderId !== "string" || !UUID.test(folderId) || typeof contactId !== "string" || !UUID.test(contactId)) return { ok: false };
+  try {
+    await s.tx((q) => q("delete from contact_group_members where group_id = $1 and contact_id = $2", [folderId, contactId]));
+    revalidatePeople(contactId);
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
+}
+
 /** 한 사람이 든 폴더를 이 목록으로 맞춘다(사람 화면의 폴더 고르기). 내 폴더만 들어간다(RLS) */
 export async function setPersonFolders(contactId: string, folderIds: string[]): Promise<{ ok: boolean }> {
   const s = await requireSession();

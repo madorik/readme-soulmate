@@ -14,6 +14,8 @@ const SHOW_MS = 5000;
 export interface UndoOffer {
   onUndo: () => void;
   onCommit?: () => void;
+  /** 토스트 글(안 주면 "지웠어요"). 지우는 게 아닌 일(폴더에서 빼기 등)은 맞는 말로 */
+  text?: string;
 }
 
 /** 늘 가장 새 값을 가리키는 ref(되돌리기가 몇 초 뒤에 눌려도 그때의 값·함수로 되살리게) */
@@ -51,7 +53,7 @@ export function useUndoToast(locale?: Locale): { show: (offer: UndoOffer) => voi
       const id = ++seq.current;
       const l = locale ?? pageLocale();
       current.current = { ...offer, id };
-      setShown({ id, text: translate(l, "common.deleted"), undo: translate(l, "common.undo") });
+      setShown({ id, text: offer.text ?? translate(l, "common.deleted"), undo: translate(l, "common.undo") });
       timer.current = window.setTimeout(commit, SHOW_MS);
     },
     [commit, locale],
