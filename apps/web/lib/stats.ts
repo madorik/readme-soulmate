@@ -419,26 +419,55 @@ export interface Stats {
   devices: Awaited<ReturnType<typeof devices>>;
   gifts: Awaited<ReturnType<typeof gifts>>;
   totals: Totals | null;
+  /** 화면·유입 기록이 쌓이기 시작한 날(그 기록을 쓰는 탭에서만 읽는다) */
+  trackingSince: string | null;
 }
 
-export async function loadStats(period: Period): Promise<Stats> {
+/** 탭: 한 번에 다 읽으면 DB 비용이 크니, 고른 탭에 필요한 쿼리만 돌린다 */
+export const TABS = [
+  ["summary", "요약·추이"],
+  ["acquisition", "유입"],
+  ["funnel", "퍼널"],
+  ["retention", "리텐션"],
+  ["pages", "화면"],
+  ["features", "기능"],
+  ["devices", "기기"],
+  ["gifts", "선물"],
+  ["totals", "누적"],
+] as const;
+export type Tab = (typeof TABS)[number][0];
+
+export function parseTab(v: unknown): Tab {
+  return TABS.find(([id]) => id === v)?.[0] ?? "summary";
+}
+
+async function trackingSince(): Promise<string | null> {
+  const r = await safe((q) => q.one(`select to_char(min(at) at time zone 'Asia/Seoul', 'YYYY-MM-DD') as since from app_events where name = 'page_view'`));
+  return (r?.since as string | null | undefined) ?? null;
+}
+
+/** 고른 탭에 필요한 것만 읽는다(나머지는 null). 퍼널 탭의 '나간 곳'은 화면 기록(pages)을, 선물 탭은 기능 기록(features)을 같이 쓴다 */
+export async function loadStats(period: Period, tab: Tab = "summary"): Promise<Stats> {
   const start = new Date(kstStart(period.from)).toISOString();
   const end = new Date(kstStart(period.to) + DAY).toISOString();
   const pStart = new Date(kstStart(period.prevFrom)).toISOString();
   const pEnd = new Date(kstStart(period.prevTo) + DAY).toISOString();
-  const [k, prev, d, f, ret, pg, ch, ft, acq, dev, gf, tot] = await Promise.all([
-    kpis(start, end, period.days),
-    kpis(pStart, pEnd, period.days),
-    daily(start, end, period.from, period.to),
-    funnel(start, end),
-    retention(start, end, todayKst()),
-    pages(start, end),
-    churn(end),
-    features(start, end),
-    acquisition(start, end),
-    devices(start, end),
-    gifts(start, end),
-    totals(),
+  const none = Promise.resolve(null);
+  const on = (...tabs: Tab[]) => tabs.includes(tab);
+  const [k, prev, d, f, ret, pg, ch, ft, acq, dev, gf, tot, since] = await Promise.all([
+    on("summary") ? kpis(start, end, period.days) : none,
+    on("summary") ? kpis(pStart, pEnd, period.days) : none,
+    on("summary") ? daily(start, end, period.from, period.to) : none,
+    on("funnel") ? funnel(start, end) : none,
+    on("retention") ? retention(start, end, todayKst()) : none,
+    on("funnel", "pages") ? pages(start, end) : none,
+    on("funnel") ? churn(end) : none,
+    on("features", "gifts") ? features(start, end) : none,
+    on("acquisition") ? acquisition(start, end) : none,
+    on("devices") ? devices(start, end) : none,
+    on("gifts") ? gifts(start, end) : none,
+    on("totals") ? totals() : none,
+    on("summary", "acquisition", "pages") ? trackingSince() : none,
   ]);
-  return { period, kpis: k, prev, daily: d, funnel: f, retention: ret, pages: pg, churn: ch, features: ft, acquisition: acq, devices: dev, gifts: gf, totals: tot };
+  return { period, kpis: k, prev, daily: d, funnel: f, retention: ret, pages: pg, churn: ch, features: ft, acquisition: acq, devices: dev, gifts: gf, totals: tot, trackingSince: since };
 }

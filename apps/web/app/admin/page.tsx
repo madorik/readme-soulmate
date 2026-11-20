@@ -4,12 +4,13 @@ import { notFound } from "next/navigation";
 import { LineChart } from "@/components/admin/LineChart";
 import { Wordmark } from "@/components/chrome";
 import { CATALOG_BY_ID } from "@/lib/gift-catalog";
-import { loadStats, parsePeriod, type CountRow, type FunnelStep, type Kpis } from "@/lib/stats";
+import { loadStats, parsePeriod, parseTab, TABS, type CountRow, type FunnelStep, type Kpis, type Tab } from "@/lib/stats";
 import { BROWSER_LABEL, CHANNEL_LABEL, FEATURE_LABEL, pageLabel } from "@/lib/usage";
 import { adminLogin, adminLogout, isAdmin } from "./auth";
 
 // 우리 통계: 기간(오늘·7일·30일·90일·직접)을 고르면 그 기간과 바로 앞 같은 길이 기간을 견준다.
-// 요약 → 추이(DAU·가입·방문) → 유입 → 퍼널(가입→…→쿠팡) → 리텐션 → 화면(조회·머문 시간·나간 곳) → 기능 → 기기 → 선물 → 누적. 데모 계정은 뺀다
+// 탭: 요약·추이(DAU·가입·방문) / 유입 / 퍼널(가입→…→쿠팡) / 리텐션 / 화면(조회·머문 시간·나간 곳) / 기능 / 기기 / 선물 / 누적. 데모 계정은 뺀다
+// 한 번에 다 읽으면 DB 비용이 커서, 탭을 누를 때 그 탭에 필요한 쿼리만 돌린다(lib/stats.ts loadStats(period, tab))
 
 export const metadata: Metadata = { title: "통계", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -28,18 +29,6 @@ const BAND_LABEL: Record<string, string> = { "1": "1만원대", "3": "3만원대
 const SOURCE_LABEL: Record<string, string> = { reminder: "선물 힌트 화면", plan: "같이 고르기", card: "가족 카드", guide: "선물 가이드(검색)" };
 const PLATFORM_LABEL: Record<string, string> = { ios: "아이폰 앱", android: "안드로이드 앱", web: "웹" };
 const OS_LABEL: Record<string, string> = { ios: "iOS", android: "Android", windows: "Windows", mac: "macOS", linux: "Linux", other: "그 밖" };
-const SECTIONS = [
-  ["summary", "요약"],
-  ["trend", "추이"],
-  ["acquisition", "유입"],
-  ["funnel", "퍼널"],
-  ["retention", "리텐션"],
-  ["pages", "화면"],
-  ["features", "기능"],
-  ["devices", "기기"],
-  ["gifts", "선물"],
-  ["totals", "누적"],
-] as const;
 
 function Delta({ cur, prev, invert = false }: { cur: number; prev: number | undefined; invert?: boolean }) {
   if (prev == null) return null;
@@ -66,7 +55,8 @@ function Kpi({ label, value, cur, prev, hint }: { label: string; value: string; 
   );
 }
 
-function Section({ id, title, desc, children }: { id: string; title: string; desc?: string; children: React.ReactNode }) {
+function Section({ id, title, desc, show = true, children }: { id: string; title: string; desc?: string; show?: boolean; children: React.ReactNode }) {
+  if (!show) return null;
   return (
     <section id={id} className="scroll-mt-28 pt-10">
       <h2 className="text-[20px] font-bold tracking-[-0.02em]">{title}</h2>
@@ -184,7 +174,7 @@ function Login({ wrong }: { wrong: boolean }) {
   );
 }
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ wrong?: string; from?: string; to?: string; range?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ wrong?: string; from?: string; to?: string; range?: string; tab?: string }> }) {
   const sp = await searchParams;
   if (!(await isAdmin())) {
     // 관리자 키가 없으면 키 칸도 없다(관리자 계정만 들어온다)
@@ -193,10 +183,14 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   }
 
   const period = parsePeriod(sp);
-  const st = await loadStats(period);
+  const tab = parseTab(sp.tab);
+  const st = await loadStats(period, tab);
   const k = st.kpis;
   const p = st.prev ?? undefined;
-  const range = (n: number) => `/admin?range=${n}`;
+  // 탭을 옮겨도 고른 기간은 그대로(직접 고른 날짜면 날짜, 아니면 며칠)
+  const keep = sp.from || sp.to ? `&from=${encodeURIComponent(period.from)}&to=${encodeURIComponent(period.to)}` : sp.range ? `&range=${encodeURIComponent(sp.range)}` : "";
+  const tabHref = (t: Tab) => `/admin?tab=${t}${keep}`;
+  const range = (n: number) => `/admin?tab=${tab}&range=${n}`;
   const isRange = (n: number) => !sp.from && (Number(sp.range) || 30) === n;
   const kv = (f: (x: Kpis) => number) => (k ? f(k) : 0);
   const kp = (f: (x: Kpis) => number) => (p ? f(p) : undefined);
@@ -224,7 +218,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               </Link>
             ))}
           </nav>
-          <form action="/admin" className="flex items-center gap-1.5 text-[13px]">
+          <form key={`${period.from}~${period.to}`} action="/admin" className="flex items-center gap-1.5 text-[13px]">
+            <input type="hidden" name="tab" value={tab} />
             <input type="date" name="from" defaultValue={period.from} aria-label="시작일" className="h-9 rounded-lg bg-white px-2 ring-1 ring-edge" />
             <span className="text-muted">~</span>
             <input type="date" name="to" defaultValue={period.to} aria-label="끝일" className="h-9 rounded-lg bg-white px-2 ring-1 ring-edge" />
@@ -234,11 +229,11 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             <button className="flex h-9 items-center px-2 text-[13px] font-semibold text-muted">나가기</button>
           </form>
         </div>
-        <nav aria-label="바로가기" className="mx-auto flex max-w-[1120px] gap-1 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:px-8">
-          {SECTIONS.map(([id, l]) => (
-            <a key={id} href={`#${id}`} className="flex h-8 shrink-0 items-center rounded-full px-3 text-[13px] font-semibold text-ink-2 hover:bg-white">
+        <nav aria-label="탭" className="mx-auto flex max-w-[1120px] gap-1 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:px-8">
+          {TABS.map(([id, l]) => (
+            <Link key={id} href={tabHref(id)} aria-current={id === tab ? "page" : undefined} className={`flex h-8 shrink-0 items-center rounded-full px-3 text-[13px] font-semibold ${id === tab ? "chip-on" : "text-ink-2 hover:bg-white"}`}>
               {l}
-            </a>
+            </Link>
           ))}
         </nav>
       </header>
@@ -246,10 +241,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       <div className="mx-auto max-w-[1120px] px-4 md:px-8">
         <p className="pt-5 text-[13px] text-muted">
           {period.from} ~ {period.to} ({period.days}일) · 이전 기간 {period.prevFrom} ~ {period.prevTo}와 견줌 · 데모 계정 제외 · 한국 시간
-          {st.totals?.trackingSince ? ` · 화면·유입 기록은 ${st.totals.trackingSince}부터` : " · 화면·유입 기록은 아직 없음"}
+          {tab === "summary" || tab === "acquisition" || tab === "pages" ? (st.trackingSince ? ` · 화면·유입 기록은 ${st.trackingSince}부터` : " · 화면·유입 기록은 아직 없음") : ""}
         </p>
 
-        <Section id="summary" title="요약" desc="DAU 평균 = 기간 동안 날마다 들어온 사람 수의 평균. WAU·MAU = 기간 마지막 날까지 7일·30일 동안 한 번이라도 들어온 사람.">
+        <Section id="summary" show={tab === "summary"} title="요약" desc="DAU 평균 = 기간 동안 날마다 들어온 사람 수의 평균. WAU·MAU = 기간 마지막 날까지 7일·30일 동안 한 번이라도 들어온 사람.">
           <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 lg:grid-cols-6">
             <Kpi label="새로 가입" value={fmt(kv((x) => x.signups))} cur={kv((x) => x.signups)} prev={kp((x) => x.signups)} />
             <Kpi label="활성 사용자" value={fmt(kv((x) => x.active))} cur={kv((x) => x.active)} prev={kp((x) => x.active)} />
@@ -266,7 +261,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
         </Section>
 
-        <Section id="trend" title="추이" desc="대면 그날 숫자가 보여요.">
+        <Section id="trend" show={tab === "summary"} title="추이" desc="대면 그날 숫자가 보여요.">
           {st.daily ? (
             <div className="grid gap-3 lg:grid-cols-2">
               <LineChart title="날마다 활성 사용자(DAU)" unit="명" data={st.daily.map((d) => ({ day: d.day, n: d.dau }))} />
@@ -279,7 +274,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           )}
         </Section>
 
-        <Section id="acquisition" title="유입" desc="방문의 첫 화면에서 어디서 왔는지(utm_source → 인앱 브라우저 → 들어온 사이트 → 없으면 직접). 가입 = 그 기기로 처음 온 경로 기준.">
+        <Section id="acquisition" show={tab === "acquisition"} title="유입" desc="방문의 첫 화면에서 어디서 왔는지(utm_source → 인앱 브라우저 → 들어온 사이트 → 없으면 직접). 가입 = 그 기기로 처음 온 경로 기준.">
           <Table
             head={["유입 경로", "방문", "방문자", "가입", "가입 전환", "방문 비중"]}
             rows={(st.acquisition?.channels ?? []).map((c) => [CHANNEL_LABEL[c.source] ?? `utm · ${c.source}`, c.visits, c.visitors, c.signups, pct(c.signups, c.visitors), pct(c.visits, visits)])}
@@ -300,7 +295,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
         </Section>
 
-        <Section id="funnel" title="가입 퍼널" desc="이 기간에 가입한 사람이 각 단계까지 갔는지. 빨간 숫자 = 앞 단계에서 떨어진 비율.">
+        <Section id="funnel" show={tab === "funnel"} title="가입 퍼널" desc="이 기간에 가입한 사람이 각 단계까지 갔는지. 빨간 숫자 = 앞 단계에서 떨어진 비율.">
           {st.funnel ? (
             <div className="grid gap-3 lg:grid-cols-[3fr_2fr]">
               <Funnel steps={st.funnel.steps} />
@@ -339,7 +334,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
         </Section>
 
-        <Section id="retention" title="리텐션" desc="가입하고 N일 뒤 그날 다시 들어온 비율(그날이 지난 사람만). 아래는 주별 가입 묶음이 몇 주 뒤에도 들어왔는지.">
+        <Section id="retention" show={tab === "retention"} title="리텐션" desc="가입하고 N일 뒤 그날 다시 들어온 비율(그날이 지난 사람만). 아래는 주별 가입 묶음이 몇 주 뒤에도 들어왔는지.">
           <div className="grid grid-cols-3 gap-2.5">
             {(st.retention?.day ?? [1, 7, 30].map((n) => ({ n, eligible: 0, back: 0 }))).map((d) => (
               <Kpi key={d.n} label={`${d.n}일 뒤 다시 옴`} value={pct(d.back, d.eligible)} hint={`${fmt(d.back)} / ${fmt(d.eligible)}명`} />
@@ -385,7 +380,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           )}
         </Section>
 
-        <Section id="pages" title="화면별" desc="조회 = 화면을 연 횟수. 평균 머문 시간 = 그 화면을 보고 있던 시간 합 ÷ 조회(앱을 내리거나 탭을 숨기면 안 셈).">
+        <Section id="pages" show={tab === "pages"} title="화면별" desc="조회 = 화면을 연 횟수. 평균 머문 시간 = 그 화면을 보고 있던 시간 합 ÷ 조회(앱을 내리거나 탭을 숨기면 안 셈).">
           <Table
             head={["화면", "조회", "사람", "평균 머문 시간", "머문 시간 합", "나간 비율"]}
             rows={(st.pages ?? []).map((r) => [pageLabel(r.path), r.views, r.users, dur(r.views ? r.totalMs / r.views : 0), dur(r.totalMs), pct(r.exits, r.views, 0)])}
@@ -403,14 +398,14 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
         </Section>
 
-        <Section id="features" title="기능별 사용" desc="서버에서 기능이 실제로 끝났을 때 남긴 기록. 사람 = 그 기능을 한 번이라도 쓴 사람(로그인 전은 기기).">
+        <Section id="features" show={tab === "features"} title="기능별 사용" desc="서버에서 기능이 실제로 끝났을 때 남긴 기록. 사람 = 그 기능을 한 번이라도 쓴 사람(로그인 전은 기기).">
           <Table
             head={["기능", "횟수", "사람", "1인당"]}
             rows={(st.features ?? []).map((f) => [FEATURE_LABEL[f.key] ?? f.key, f.n, f.users, f.users ? (f.n / f.users).toFixed(1) : "—"])}
           />
         </Section>
 
-        <Section id="devices" title="기기" desc="활성 사용자가 쓴 곳(앱·웹)과 방문 기기 OS·브라우저(카카오톡·인스타 같은 앱 안 브라우저 포함).">
+        <Section id="devices" show={tab === "devices"} title="기기" desc="활성 사용자가 쓴 곳(앱·웹)과 방문 기기 OS·브라우저(카카오톡·인스타 같은 앱 안 브라우저 포함).">
           <div className="grid gap-3 lg:grid-cols-3">
             <div className="flex flex-col gap-2">
               <h3 className="text-[14.5px] font-bold">앱 · 웹(활성 사용자)</h3>
@@ -427,7 +422,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
         </Section>
 
-        <Section id="gifts" title="선물" desc="선물 추천 봄 → 쿠팡 링크 누름 → 가족 카드 보냄·열림 → 선물 완료. 수익은 쿠팡 파트너스 리포트에서.">
+        <Section id="gifts" show={tab === "gifts"} title="선물" desc="선물 추천 봄 → 쿠팡 링크 누름 → 가족 카드 보냄·열림 → 선물 완료. 수익은 쿠팡 파트너스 리포트에서.">
           <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-6">
             <Kpi label="선물 추천 봄" value={fmt(giftN("gift_picks_view"))} />
             <Kpi label="다시 고르기" value={fmt(giftN("gift_reroll"))} />
@@ -452,7 +447,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
         </Section>
 
-        <Section id="totals" title="누적(기간과 상관없이 지금까지)">
+        <Section id="totals" show={tab === "totals"} title="누적(기간과 상관없이 지금까지)">
           {st.totals ? (
             <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 lg:grid-cols-6">
               <Kpi label="가입" value={fmt(st.totals.real)} hint={`온보딩 끝 ${fmt(st.totals.onboarded)}명`} />

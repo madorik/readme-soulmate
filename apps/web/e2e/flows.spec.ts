@@ -1097,10 +1097,26 @@ test("통계: 이용 기록을 받고, 관리자 키로 들어가 기간을 바�
   await expect(page.getByText("키가 맞지 않아요")).toBeVisible();
   await page.getByPlaceholder("관리자 키").fill(key!);
   await page.getByRole("button", { name: "들어가기" }).click();
-  for (const name of ["요약", "추이", "유입", "가입 퍼널", "리텐션", "화면별", "기능별 사용", "기기", "선물"]) await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  // 한 번에 다 읽으면 DB 비용이 커서 탭으로 나눈다: 처음엔 요약·추이만, 탭을 누르면 그 탭의 구역만 보인다
+  const headings = { "요약·추이": ["요약", "추이"], 유입: ["유입"], 퍼널: ["가입 퍼널"], 리텐션: ["리텐션"], 화면: ["화면별"], 기능: ["기능별 사용"], 기기: ["기기"], 선물: ["선물"], 누적: ["누적(기간과 상관없이 지금까지)"] } as Record<string, string[]>;
+  const tabs = page.getByRole("navigation", { name: "탭" });
+  await expect(tabs.getByRole("link", { name: "요약·추이" })).toHaveAttribute("aria-current", "page");
+  for (const [tab, names] of Object.entries(headings)) {
+    if (tab !== "요약·추이") {
+      await tabs.getByRole("link", { name: tab, exact: true }).click();
+      await expect(tabs.getByRole("link", { name: tab, exact: true })).toHaveAttribute("aria-current", "page");
+    }
+    for (const name of names) await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    await expect(page.locator("main section")).toHaveCount(names.length);
+  }
+  // 기간을 바꿔도 보던 탭 그대로, 탭을 옮겨도 고른 기간 그대로
+  await tabs.getByRole("link", { name: "선물", exact: true }).click();
   await page.getByRole("link", { name: "7일", exact: true }).click();
-  await expect(page).toHaveURL(/range=7/);
+  await expect(page).toHaveURL(/tab=gifts&range=7/);
   await expect(page.getByText(/\(7일\)/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "선물", exact: true })).toBeVisible();
+  await tabs.getByRole("link", { name: "기기", exact: true }).click();
+  await expect(page).toHaveURL(/tab=devices&range=7/);
 });
 
 test("말로 적기: 들어오면 누르라는 표시, 듣는 중 표시, 말이 멈추면 저장 없이 스스로 끄고 기억해 두기를 강조하며, 아무 말이 없으면 8초 뒤 다시 누르라는 표시", async ({ browser }) => {
