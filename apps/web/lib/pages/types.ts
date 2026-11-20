@@ -88,6 +88,8 @@ export interface RequestData {
   fixed: AskPersonData | null;
   initialName: string;
   defaults: Section[];
+  /** 처음부터 채워 둘 메시지(홈의 크리스마스 물어보기에서 왔을 때) */
+  initialMessage: string;
   tour: TourInfo | null;
 }
 

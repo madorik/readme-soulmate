@@ -50,6 +50,14 @@ export function upcomingHolidays(today: YMD, withinDays = HOLIDAY_WINDOW_DAYS): 
   return out.sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
+/** 연말 분위기로 바뀌는 때: 크리스마스 45일 전(11월 10일)부터 크리스마스 당일까지 */
+export const YEAR_END_WINDOW_DAYS = 45;
+
+/** 연말(크리스마스 45일 전~당일)이면 그 크리스마스, 아니면 null */
+export function yearEnd(today: YMD): UpcomingHoliday | null {
+  return upcomingHolidays(today, YEAR_END_WINDOW_DAYS).find((h) => h.id === "christmas") ?? null;
+}
+
 /** 가장 가까운 하나(없으면 null) */
 export function nextHoliday(today: YMD, withinDays = HOLIDAY_WINDOW_DAYS): UpcomingHoliday | null {
   return upcomingHolidays(today, withinDays)[0] ?? null;

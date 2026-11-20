@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { en, HOLIDAY_WINDOW_DAYS, HOLIDAYS, holidayKey, ko, lunarToSolar, nextHoliday, upcomingHolidays, type HolidayId, type YMD } from "../index";
+import { en, HOLIDAY_WINDOW_DAYS, HOLIDAYS, holidayKey, ko, lunarToSolar, nextHoliday, upcomingHolidays, yearEnd, type HolidayId, type YMD } from "../index";
 
 const ymd = (y: number, m: number, d: number): YMD => ({ y, m, d });
 const summary = (today: YMD, within?: number) => upcomingHolidays(today, within).map((h) => `${h.id} ${h.date.y}-${h.date.m}-${h.date.d} D${h.daysUntil}`);
@@ -96,4 +96,14 @@ test("음력을 바꿀 수 없는 2050년 뒤: 음력 날은 빼고 양력 날�
   assert.ok(!far.includes("seollal") && !far.includes("chuseok"));
   assert.ok(far.includes("valentine"));
   assert.equal(nextHoliday(ymd(2050, 12, 30)), null);
+});
+
+test("연말: 크리스마스 45일 전(11월 10일)부터 당일까지만 크리스마스를 돌려준다", () => {
+  assert.equal(yearEnd(ymd(2026, 11, 9)), null);
+  assert.equal(yearEnd(ymd(2026, 11, 10))?.daysUntil, 45);
+  assert.equal(yearEnd(ymd(2026, 11, 20))?.daysUntil, 35);
+  assert.equal(yearEnd(ymd(2026, 12, 25))?.daysUntil, 0);
+  // 크리스마스가 지나면 다음 해로 넘어가 연말이 아니다
+  assert.equal(yearEnd(ymd(2026, 12, 26)), null);
+  assert.equal(yearEnd(ymd(2027, 6, 1)), null);
 });

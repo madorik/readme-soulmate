@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext } from "@playwright/test";
-import { holidayKey, ko, lunarToSolar, nextHoliday, nextOccurrence, todayIn } from "@readme/core";
+import { holidayKey, ko, lunarToSolar, nextHoliday, nextOccurrence, todayIn, yearEnd } from "@readme/core";
 import { ADMIN_KEY, CRON_SECRET, onboard, signIn } from "./helpers";
 
 // 흐름을 실제로 눌러 본다: 가입·온보딩 → 물어보기·앱 없이 답하기(답이 내 기록에) → 받은 답 고치기 → 다시 물어보기 → 로그인하고 답하기 → 영어
@@ -56,16 +56,32 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   await onboard(page, { name: "지수", allergy: "새우", dislike: "오이", lunar: { month: 10, day: 12 } });
   await expect(page).toHaveURL(/\/home/);
   await expect(page.getByRole("heading", { name: "내 사람들" })).toBeVisible();
-  // 챙길 사람이 아직 없으면 사람 기념일 대신 30일 안의 명절·챙기는 날(없으면 '새 친구 추가해 봐요')을 보이고, 그 안에서 바로 사람을 더하게 이끈다
+  // 챙길 사람이 아직 없으면 사람 기념일 대신 30일 안의 명절·챙기는 날(없으면 '새 친구 추가해 봐요')을 보이고, 그 안에서 바로 사람을 더하게 이끈다.
+  // 연말(크리스마스 45일 전~당일)엔 크리스마스 트리 + '연말, 크리스마스' 문구로 바뀌고 물어보고 선물 챙기기로도 이끈다
   const upcoming = page.getByRole("region", { name: "다가오는 날" });
-  const holiday = nextHoliday(todayIn("Asia/Seoul"));
-  await expect(upcoming.getByText(holiday ? ko[holidayKey(holiday.id)] : "새 친구 추가해 봐요")).toBeVisible();
-  await expect(upcoming.getByRole("link", { name: "사람 추가하기" })).toBeVisible();
+  const today = todayIn("Asia/Seoul");
+  const holiday = nextHoliday(today);
+  const yearEndNow = !!yearEnd(today);
+  await expect(upcoming.getByText(yearEndNow ? ko["home.yearEnd"] : holiday ? ko[holidayKey(holiday.id)] : "새 친구 추가해 봐요")).toBeVisible();
+  // 연말엔 '사람 추가하기' 대신 물어보고 선물 챙기기 하나로 이끈다(물어보기에서 이름을 적으면 그 사람이 들어간다)
+  if (yearEndNow) {
+    await expect(upcoming.getByRole("link", { name: ko["home.yearEndAsk"] })).toHaveAttribute("href", "/request?xmas=1");
+    await expect(upcoming.getByRole("link", { name: "사람 추가하기" })).toHaveCount(0);
+  } else {
+    await expect(upcoming.getByRole("link", { name: "사람 추가하기" })).toBeVisible();
+  }
   await expect(upcoming.getByText("두 달 동안은 조용해요")).toHaveCount(0);
   // 오늘의 질문은 등록한 사람에 대한 것이라, 사람이 없으면 카드 자체가 없다
   await expect(page.getByRole("region", { name: "오늘의 질문" })).toHaveCount(0);
 
   await shot(page, "02-home-empty");
+  // 크리스마스 물어보기(?xmas=1): 선물을 먼저 묻는 칸이 켜져 있고 메시지는 크리스마스 말로 채워져 있다
+  await page.goto("/request?xmas=1");
+  await expect(page.getByRole("button", { name: ko["request.topic.gifts"] })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: ko["request.topic.dates"] })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("textbox", { name: ko["request.message"] })).toHaveValue(ko["request.xmasMessage"]);
+  await shot(page, "02a-request-xmas");
+  await page.goto("/home");
   // 이번 주를 누르면 월별 달력, 앞뒤 달로 넘긴다
   await page.getByRole("link", { name: "달력 보기" }).click();
   await expect(page).toHaveURL(/\/calendar$/);

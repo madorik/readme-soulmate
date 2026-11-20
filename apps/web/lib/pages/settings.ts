@@ -34,7 +34,9 @@ export async function loadPrivacy(): Promise<PrivacyData> {
  */
 export async function loadRequest({ searchParams }: PageInput): Promise<RequestData> {
   const s = await requireSession();
-  const defaults: Section[] = ["dates", "safety", "gifts"];
+  // 홈의 크리스마스 물어보기(?xmas=1)에서 왔으면 선물 쪽을 먼저 묻고 메시지도 크리스마스로
+  const xmas = !!searchParams.xmas;
+  const defaults: Section[] = xmas ? ["taste", "gifts", "favorites"] : ["dates", "safety", "gifts"];
   // 찾기에 쓸 사람들(즐겨찾기 먼저). 사람마다 아직 안 적힌 항목
   const people = [...(await listPeople(s))]
     .sort((a, b) => Number(b.favorite) - Number(a.favorite))
@@ -50,7 +52,7 @@ export async function loadRequest({ searchParams }: PageInput): Promise<RequestD
   const fixed = searchParams.to ? (people.find((p) => p.id === searchParams.to) ?? null) : null;
   // 체험(?tour=)이면 마지막 단계: 말로 적기가 있으면 둘째, 없으면(AI 꺼짐) 첫째이자 마지막
   const total = tourTotal();
-  return { locale: s.profile.locale, people, fixed, initialName: (searchParams.name ?? "").slice(0, 40), defaults, tour: searchParams.tour ? { n: total, total } : null };
+  return { locale: s.profile.locale, people, fixed, initialName: (searchParams.name ?? "").slice(0, 40), defaults, initialMessage: xmas ? makeT(s.profile.locale)("request.xmasMessage") : "", tour: searchParams.tour ? { n: total, total } : null };
 }
 
 /** 말로 적기: 말하면(또는 적으면) 누구의 어느 칸인지 나눠서 바로 넣는다. 없는 사람은 새로, 맞는 칸이 없으면 메모로 */
