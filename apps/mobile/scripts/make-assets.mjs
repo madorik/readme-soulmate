@@ -208,8 +208,7 @@ await icon(180, { scale: 1, shape: "square" }, `${webApp}/apple-icon.png`);
 const tilt = (deg) => `transform:rotate(${deg}deg)`;
 const featureDeco = (path, fill, size, pos, deg) =>
   `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="${fill}" stroke="${INK}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position:absolute;${pos};${tilt(deg)}"><path d="${path}"/></svg>`;
-const feature = page(
-  `<div style="position:relative;width:1024px;height:500px;display:flex;align-items:center;padding:0 72px;background:${CREAM}">
+const featureInner = `<div style="position:relative;width:1024px;height:500px;display:flex;align-items:center;padding:0 72px;background:${CREAM}">
     <div style="flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:18px;margin-top:-6px">
       <div style="display:flex;flex-direction:column;align-items:flex-start;gap:12px">
         <span class="ry-word" style="font-size:112px;-webkit-text-stroke:2px ${INK}">기억해<svg class="u" viewBox="0 0 26 34" width="88" height="116" aria-hidden="true" style="margin:0 0 10px 6px"><circle cx="4.4" cy="3.6" r="2.4" fill="currentColor"/><circle cx="22.3" cy="3.6" r="2.4" fill="currentColor"/><path d="M4.2 10.6 C3.8 18.5 4.3 24 6.6 27.6 C8.6 30.6 11 31.8 13.4 31.8 C15.8 31.8 18.2 30.6 20.2 27.6 C22.5 24 22.9 18.5 22.5 10.2" fill="none" stroke="currentColor" stroke-width="3.1" stroke-linecap="round"/></svg></span>
@@ -224,12 +223,18 @@ const feature = page(
       ${featureDeco(HEART, "#F59BAE", 58, "left:-40px;bottom:-14px", -14)}
       ${featureDeco(STAR, "#8FD2EC", 38, "right:-28px;bottom:26px", 10)}
     </div>
-  </div>`,
-  1024,
-  500,
+  </div>`;
+const feature = page(featureInner, 1024, 500, { bg: CREAM, fonts: true });
+await render(feature, 1024, 500, `${store}/feature-1024x500.png`, { transparent: false });
+
+// ── 링크 미리보기 1200×630(카카오톡·문자·메신저): 위 그래픽 장면을 1200 너비에 맞춰 키우고 세로로 가운데. 웹 public/og.png ──
+const og = page(
+  `<div style="width:1200px;height:630px;display:flex;align-items:center;justify-content:center;background:${CREAM}"><div style="width:1024px;height:500px;flex-shrink:0;transform:scale(${1200 / 1024})">${featureInner}</div></div>`,
+  1200,
+  630,
   { bg: CREAM, fonts: true },
 );
-await render(feature, 1024, 500, `${store}/feature-1024x500.png`, { transparent: false });
+await render(og, 1200, 630, resolve(mobile, "../web/public/og.png"), { transparent: false });
 
 await browser.close();
 console.log("done");

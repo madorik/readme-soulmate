@@ -485,6 +485,13 @@ test("설정: 앱 공유하기는 다운로드 QR과 보내기·링크 복사를
   const store = async (ua: string) => (await doyun.request.get("/get?from=share", { headers: { "user-agent": ua }, maxRedirects: 0 })).headers().location ?? "";
   expect(await store("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148")).toBe("https://apps.apple.com/kr/app/id6834970170");
   expect(await store("Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile Safari/537.36")).toMatch(/^https:\/\/play\.google\.com\/store\/apps\/details\?id=kr\.readme\.app&referrer=utm_source%3Dshare/);
+  // 링크 미리보기를 가져가는 로봇(카카오톡 등)에게는 스토어로 보내지 않고 제목·설명·이미지가 있는 페이지를 준다
+  const scrape = await doyun.request.get("/get?from=share", { headers: { "user-agent": "facebookexternalhit/1.1;kakaotalk-scrap/1.0" }, maxRedirects: 0 });
+  expect(scrape.status()).toBe(200);
+  const preview = await scrape.text();
+  expect(preview).toMatch(/<meta property="og:title" content="기억해유">/);
+  expect(preview).toMatch(/<meta property="og:image" content="[^"]+\/og\.png">/);
+  expect(preview).toMatch(/<meta property="og:url" content="[^"]+\/get\?from=share">/);
   // 닫으면 설정 화면으로 돌아온다
   await sheet.getByRole("button", { name: "닫기" }).click();
   await expect(sheet).toHaveCount(0);
