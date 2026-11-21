@@ -136,6 +136,7 @@ export function PeopleBoard({
   initial,
   initialMe,
   initialGift,
+  initialXmas,
   labels,
   sheet,
 }: {
@@ -147,6 +148,7 @@ export function PeopleBoard({
   initial: string[];
   initialMe: boolean;
   initialGift: boolean;
+  initialXmas: boolean;
   labels: Labels;
   sheet: FolderSheetLabels;
 }) {
@@ -155,9 +157,9 @@ export function PeopleBoard({
   const [start] = useState(() => {
     if (typeof window !== "undefined" && window.location.pathname === "/people") {
       const q = new URLSearchParams(window.location.search);
-      return { pick: q.get("pick") === "1", ids: (q.get("with") ?? "").split(",").filter(Boolean), me: q.get("me") !== "0", gift: q.get("to") === "gift" };
+      return { pick: q.get("pick") === "1", ids: (q.get("with") ?? "").split(",").filter(Boolean), me: q.get("me") !== "0", gift: q.get("to") === "gift", xmas: q.get("xmas") === "1" };
     }
-    return { pick: initialPick, ids: initial, me: initialMe, gift: initialGift };
+    return { pick: initialPick, ids: initial, me: initialMe, gift: initialGift, xmas: initialXmas };
   });
   const [pickOn, setPicking] = useState(start.pick && canPick);
   // 다 지워서 고를 사람이 없어지면 고르기도 같이 끝난다
@@ -189,7 +191,7 @@ export function PeopleBoard({
   q.set("me", withMe ? "1" : "0");
   const query = `?${q.toString()}`;
   // 지금 상태를 주소에 적어 둔다: 상세로 갔다가 뒤로(버튼·기기 뒤로가기) 와도 고르던 체크가 그대로다
-  const here = picking ? `/people${query}&pick=1${forGift ? "&to=gift" : ""}` : "/people";
+  const here = picking ? `/people${query}&pick=1${forGift ? "&to=gift" : ""}${forGift && start.xmas ? "&xmas=1" : ""}` : "/people";
   useEffect(() => {
     if (window.location.pathname + window.location.search !== here) window.history.replaceState(window.history.state, "", here);
   }, [here]);
@@ -291,7 +293,9 @@ export function PeopleBoard({
     });
   };
   // 같이 뭐할지(메뉴 고르기). 홈 기념일 카드에서 선물을 고르러 온 경우에만 선물 고르기가 그 자리에 온다
-  const planHref = `${forGift ? "/plan/gift" : "/plan/menu"}${query}`;
+  // 선물 고르기에 한 명만(나는 빼고) 골랐으면 그 사람의 선물 고르기 화면으로(사람 화면의 '선물 고르기'와 같은 곳, 홈 연말 카드에서 왔으면 크리스마스용), 여럿이면 같이 고르기
+  const onlyOne = forGift && !withMe && picked.length === 1 ? picked[0]! : null;
+  const planHref = onlyOne ? `/people/${onlyOne}/reminder${start.xmas ? "?xmas=1" : ""}` : `${forGift ? "/plan/gift" : "/plan/menu"}${query}`;
   const planLabel = forGift ? labels.gift : labels.menu;
   const favCount = rows.filter((r) => r.favorite).length;
   // 정렬 칩(이름순 · 생일 가까운 순 · 최근 추가순). 즐겨찾기는 늘 맨 위

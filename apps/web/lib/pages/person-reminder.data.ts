@@ -32,6 +32,8 @@ export interface PersonReminderData {
   done: string | null;
   /** 당일 알림을 받는다(설정 > 언제 알릴지) */
   remindOnDay: boolean;
+  /** 이 사람의 안 본 답장이 있다(이 화면을 열면 읽은 것으로: 홈 연말 카드에서 답이 온 사람의 선물 고르기로 곧장 왔을 때) */
+  answered: boolean;
   /** 고른 선물(picksOn일 때만 읽는다) */
   picks: GiftPicksData | null;
 }

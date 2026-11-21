@@ -22,6 +22,7 @@ export async function loadPeople({ searchParams: sp }: PageInput): Promise<Peopl
     initial: (sp.with ?? "").split(",").filter(Boolean),
     initialMe: sp.me !== "0",
     initialGift: sp.to === "gift",
+    initialXmas: sp.xmas === "1",
     ai: aiConfigured(),
   };
 }

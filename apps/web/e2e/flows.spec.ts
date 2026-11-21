@@ -1533,8 +1533,8 @@ test("연말엔 사람이 있어도 가까운 기념일이 없으면 크리스�
   if (yearEnd(todayIn("Asia/Seoul"))) {
     const upcoming = page.getByRole("region", { name: "다가오는 날" });
     await expect(upcoming.getByText(ko["home.yearEnd"])).toBeVisible();
-    // 사람이 있으니 곧장 선물 고르기(한 명이면 그 사람 선물 힌트로), '사람 추가하기'로 이끄는 쪽은 없다
-    await expect(upcoming.getByRole("link", { name: ko["home.yearEndGift"] })).toHaveAttribute("href", /^\/plan\/gift\?with=[0-9a-f-]{36}&me=0$/);
+    // 사람이 있으니 곧장 선물 고르기(한 명이면 그 사람의 선물 고르기 화면으로, 크리스마스용), '사람 추가하기'로 이끄는 쪽은 없다
+    await expect(upcoming.getByRole("link", { name: ko["home.yearEndGift"] })).toHaveAttribute("href", /^\/people\/[0-9a-f-]{36}\/reminder\?xmas=1$/);
     await expect(upcoming.getByRole("link", { name: ko["home.yearEndAdd"] })).toHaveCount(0);
     await expect(upcoming.getByRole("link", { name: ko["home.yearEndAsk"] })).toHaveCount(0);
     await expect(page.getByText("새 친구 추가해 봐요")).toHaveCount(0);
@@ -1574,7 +1574,7 @@ test("연말 카드의 흐름: 사람이 없으면 추가 → 곧바로 물어�
 
   // ③ 사람이 생겼고 아직 답이 없다: 카드는 곧장 선물 고르기로 이끈다(알림도 아직 없다)
   await page.goto("/home");
-  await expect(upcoming.getByRole("link", { name: ko["home.yearEndGift"] })).toHaveAttribute("href", `/plan/gift?with=${id}&me=0`);
+  await expect(upcoming.getByRole("link", { name: ko["home.yearEndGift"] })).toHaveAttribute("href", `/people/${id}/reminder?xmas=1`);
   await expect(upcoming.getByText(ko["home.yearEndLine"].replace("\n", " "))).toBeVisible();
   await expect(page.getByRole("button", { name: "알림", exact: true })).toBeVisible();
 
@@ -1594,10 +1594,11 @@ test("연말 카드의 흐름: 사람이 없으면 추가 → 곧바로 물어�
   await expect(upcoming.getByText(/엄마.*답장을 보냈어요/)).toBeVisible();
   await shot(page, "xmas-4-card-answered");
   await upcoming.getByRole("link", { name: ko["home.yearEndGift"] }).click();
-  await expect(page).toHaveURL(`/plan/gift?with=${id}&me=0`);
-  await expect(page.getByRole("heading", { name: "선물 힌트" })).toBeVisible();
-  // 그 사람의 답이 힌트로 보인다(분위기 맞춰 = 술 취향이 아니라 좋아하는 것 칸 답) — 적어도 이름 카드가 있다
-  await expect(page.getByText("엄마", { exact: false }).first()).toBeVisible();
+  // 그 사람의 선물 고르기 화면으로 바로(상세 정보와 목록이 같이 나오는 선물 힌트가 아니라): 제목이 크리스마스까지 남은 날, 고르는 카드가 있다
+  await expect(page).toHaveURL(`/people/${id}/reminder?xmas=1`);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(/크리스마스까지 \d+일 남았어요|오늘은 크리스마스/);
+  await expect(page.getByRole("heading", { name: "선물 힌트" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: ko["reminder.together"] })).toBeVisible();
 
   // ⑥ 선물 고르기를 열면 그 답장 알림은 읽은 것으로: 카드는 다시 감성 문구, 종에는 숫자가 없다
   await expect.poll(async () => (await page.request.get("/home")).text().then((h) => h.includes('aria-label="알림 1"'))).toBe(false);
@@ -1605,6 +1606,38 @@ test("연말 카드의 흐름: 사람이 없으면 추가 → 곧바로 물어�
   await expect(page.getByRole("button", { name: "알림", exact: true })).toBeVisible();
   await expect(upcoming.getByText(/답장을 보냈어요/)).toHaveCount(0);
   await expect(upcoming.getByRole("link", { name: ko["home.yearEndGift"] })).toBeVisible();
+});
+
+test("연말 카드: 사람이 여럿이면 사람들에서 한 명을 고르면 그 사람의 크리스마스 선물 고르기로, 여럿을 고르면 같이 고르기로", async ({ browser }) => {
+  test.skip(!yearEnd(todayIn("Asia/Seoul")), "크리스마스 45일 전~당일에만 보이는 카드");
+  const page = await newPage(browser);
+  await page.goto("/");
+  await signIn(page);
+  await onboard(page, { name: "수아" });
+  // 날짜 없는 사람 둘: 가까운 기념일이 없어 크리스마스 카드가 보인다
+  for (const name of ["할머니", "고모"]) {
+    await page.goto("/people/new");
+    await page.getByLabel("이름이나 부르는 말").fill(name);
+    await page.getByRole("button", { name: "만들기", exact: true }).click();
+    await expect(page.getByRole("heading", { name: name })).toBeVisible();
+  }
+  await page.goto("/home");
+  const gift = page.getByRole("region", { name: "다가오는 날" }).getByRole("link", { name: ko["home.yearEndGift"] });
+  await expect(gift).toHaveAttribute("href", "/people?pick=1&me=0&to=gift&xmas=1");
+  await gift.click();
+  await expect(page).toHaveURL(/\/people\?.*pick=1/);
+  // 한 명만 고르면 그 사람의 선물 고르기 화면(크리스마스용)
+  await page.getByRole("button", { name: "고모 선택" }).click();
+  await page.getByRole("link", { name: "선물 고르기" }).click();
+  await expect(page).toHaveURL(/\/people\/[0-9a-f-]{36}\/reminder\?xmas=1$/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(/크리스마스까지 \d+일 남았어요|오늘은 크리스마스/);
+  // 둘을 고르면 같이 고르기(선물 힌트)
+  await page.goto("/people?pick=1&me=0&to=gift&xmas=1");
+  await page.getByRole("button", { name: "고모 선택" }).click();
+  await page.getByRole("button", { name: "할머니 선택" }).click();
+  await page.getByRole("link", { name: "선물 고르기" }).click();
+  await expect(page).toHaveURL(/\/plan\/gift\?with=/);
+  await expect(page.getByRole("heading", { name: "선물 힌트" })).toBeVisible();
 });
 
 /** 크로미움 CDP로 손가락 밀기(가로): fromX에서 toX로 */

@@ -460,6 +460,7 @@ export const ko = {
   "gift.brandsPlaceholder": "예: 무인양품, 이솝",
 
   "reminder.left": "{event}까지 {n}일 남았어요",
+  "reminder.xmasEvent": "크리스마스",
   "reminder.today": "오늘은 {event|이에요}",
   "reminder.hints": "{name}님을 위한 힌트",
   "reminder.flowers": "꽃",
@@ -1242,6 +1243,7 @@ export const en: Messages = {
   "gift.brandsPlaceholder": "e.g. Muji, Aesop",
 
   "reminder.left": "{n} {n|day,days} until {event}",
+  "reminder.xmasEvent": "Christmas",
   "reminder.today": "{event} is today",
   "reminder.hints": "Hints for {name}",
   "reminder.flowers": "Flowers",

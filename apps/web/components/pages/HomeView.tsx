@@ -49,14 +49,15 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
   const xmas = xmasAt && (!nearest || xmasAt.daysUntil < nearest.daysUntil) ? xmasAt : null;
   const next = xmas ? null : nearest;
   const personOf = (contactId: string) => people.find((p) => p.contactId === contactId) ?? null;
-  // 연말 카드의 흐름: 답이 온 사람이 있으면 그 사람 선물 고르기로, 사람이 하나뿐이면 곧장 그 사람 선물 고르기로, 여럿이면 고르러(사람들), 아직 없으면 사람 추가 → 물어보기로
+  // 연말 카드의 흐름: 선물 고르기 화면(사람 화면의 '선물 고르기'가 가는 곳, 크리스마스용 ?xmas=1)으로 바로 간다.
+  // 답이 온 사람이 있으면 그 사람, 사람이 하나뿐이면 그 사람, 여럿이면 사람들에서 한 명을 고르게(고르면 그 사람의 선물 고르기로), 아직 없으면 사람 추가 → 물어보기로
   const answeredIds = [...new Set(answers.map((a) => a.contactId))].filter((id) => personOf(id));
   const answeredFirst = answeredIds[0] ? personOf(answeredIds[0]) : null;
-  const xmasGiftHref = answeredIds.length
-    ? `/plan/gift?with=${answeredIds.join(",")}&me=0`
+  const xmasGiftHref = answeredFirst
+    ? `/people/${answeredFirst.contactId}/reminder?xmas=1`
     : people.length === 1
-      ? `/plan/gift?with=${people[0]!.contactId}&me=0`
-      : "/people?pick=1&me=0&to=gift";
+      ? `/people/${people[0]!.contactId}/reminder?xmas=1`
+      : "/people?pick=1&me=0&to=gift&xmas=1";
   const bellItems: BellItem[] = answers.map((a) => {
     const who = personOf(a.contactId);
     const name = who ? displayName(who) : a.label;

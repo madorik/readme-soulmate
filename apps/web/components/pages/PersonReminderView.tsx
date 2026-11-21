@@ -1,5 +1,6 @@
 import { realCodes, ALLERGENS, DISLIKES, METALS, PATTERNS, SPICY_LEVELS, formatSpec, labelOf, monthName, weekdayLong } from "@readme/core";
 import Link from "next/link";
+import { SeeAnswers } from "@/components/SeeAnswers";
 import { Suspense } from "react";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
@@ -25,7 +26,7 @@ function Hint({ label, children, sub }: { label: string; children: React.ReactNo
   );
 }
 
-export function PersonReminderView({ locale, contactId, avatar, card, name, spec, next, event, notes, picksOn, skip, again, shareText, doneLabel, done, remindOnDay, picks }: PersonReminderProps) {
+export function PersonReminderView({ locale, contactId, avatar, card, name, spec, next, event, notes, picksOn, skip, again, shareText, doneLabel, done, remindOnDay, answered, picks }: PersonReminderProps) {
   const t = makeT(locale);
   const { gifts, safety, taste, sizes } = card;
   const { favorites: fav, life } = card;
@@ -74,6 +75,8 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
 
   return (
     <>
+      {/* 답이 온 사람의 선물 고르기로 곧장 왔으면(홈 연말 카드) 그 답장 알림은 읽은 것으로 */}
+      {answered ? <SeeAnswers contactId={contactId} /> : null}
       <TopBar back={`/people/${contactId}`} label={t("common.back")} right={<Link href="/privacy#reminders" aria-label={t("privacy.reminders")} className="flex h-11 w-11 items-center justify-center"><Icon name="bell" /></Link>} />
 
       {next && spec ? (

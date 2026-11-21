@@ -17,5 +17,7 @@ export interface PeopleData {
   initialMe: boolean;
   /** 주소 ?to=gift: 홈 기념일 카드에서 선물을 고르러 왔다(동작 막대의 큰 단추가 선물 고르기) */
   initialGift: boolean;
+  /** 주소 ?xmas=1: 홈 연말 카드에서 왔다(한 명만 골라 선물 고르기로 가면 크리스마스용 선물 고르기로) */
+  initialXmas: boolean;
   ai: boolean;
 }
