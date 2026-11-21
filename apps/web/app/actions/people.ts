@@ -1,9 +1,10 @@
 "use server";
 
-import { applyAnswer, isSection, josa, QUESTIONS, sanitizeAvatar, type AvatarConfig, type DailyQuestion, type Section } from "@readme/core";
+import { applyAnswer, isSection, josa, QUESTION_SECTION, QUESTIONS, sanitizeAvatar, ymdKey, type AvatarConfig, type DailyQuestion, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { readPerson, requireSession, sealNote, writeContactSection } from "@/lib/data";
+import { readPerson, requireSession, sealNote, todayFor, writeContactSection, type Session } from "@/lib/data";
+import type { Q } from "@/lib/db";
 import { LIMITS } from "@/lib/data-core";
 import { isFolderColor, isFolderIcon } from "@/lib/folders";
 import { GIFT_CATALOG } from "@/lib/gift-catalog";
@@ -154,9 +155,17 @@ export async function removeContacts(contactIds: string[]): Promise<{ ok: boolea
   }
 }
 
+/** 오늘의 질문 카드를 한 번 처리했다고 센다(답하기·건너뛰기·물어보기·그만 묻기). 하루 두 번 처리하면 그날은 카드가 더 뜨지 않는다. 날이 바뀌면 1부터 */
+async function spendQuestion(q: Q, s: Session): Promise<void> {
+  await q(
+    "update profiles set question_count = case when question_day = $2 then least(question_count + 1, 9) else 1 end, question_day = $2 where id = $1",
+    [s.user.id, ymdKey(todayFor(s.profile))],
+  );
+}
+
 /**
  * 오늘의 질문 답: 내가 등록한 그 사람의 기록 한 칸에 넣는다(내 사람만, 이미 적힌 칸은 그 위에 더하거나 바꾼다).
- * 끝나면 홈으로 돌아가 같은 자리에 다음 질문이 뜬다
+ * 끝나면 홈으로 돌아간다(오늘 두 번을 다 쓰지 않았으면 다음 질문이 뜬다)
  */
 export async function answerAbout(form: FormData): Promise<void> {
   const contactId = String(form.get("contactId") ?? "");
@@ -171,10 +180,64 @@ export async function answerAbout(form: FormData): Promise<void> {
     for (const [section, data] of Object.entries(applyAnswer(person.card, id, value, s.profile.locale))) {
       if (isSection(section)) await writeContactSection(q, s.user.id, contactId, section, data);
     }
+    await spendQuestion(q, s);
   });
   track("daily_answer", { userId: s.user.id, source: id.toLowerCase().replace(/[^a-z_]/g, "_").slice(0, 20) });
   revalidatePeople(contactId);
   redirect("/home?answered=1");
+}
+
+/** 오늘의 질문 건너뛰기: 모르는 건 넘어간다(오늘 한 번 쓴 것으로 센다) */
+export async function skipAbout(): Promise<void> {
+  const s = await requireSession();
+  await s.tx((q) => spendQuestion(q, s));
+  track("daily_skip", { userId: s.user.id });
+  revalidatePath("/home");
+  redirect("/home");
+}
+
+/** 오늘의 질문 대신 그 사람에게 직접 물어보기: 그 사람을 고른 채, 그 질문이 속한 항목만 골라서 물어보기 화면으로 */
+export async function askAbout(form: FormData): Promise<void> {
+  const contactId = String(form.get("contactId") ?? "");
+  const id = String(form.get("id")) as DailyQuestion["id"];
+  const { s } = await ownContact(contactId);
+  const section = QUESTIONS.some((x) => x.id === id) ? QUESTION_SECTION[id] : null;
+  await s.tx((q) => spendQuestion(q, s));
+  track("daily_ask", { userId: s.user.id, source: id.toLowerCase().replace(/[^a-z_]/g, "_").slice(0, 20) });
+  revalidatePath("/home");
+  redirect(`/request?to=${contactId}${section ? `&topic=${section}` : ""}`);
+}
+
+/** 이 사람에 대해 다시 묻지 않기: 오늘의 질문에서 뺀다(사람 화면에서 다시 켤 수 있다) */
+export async function muteAbout(form: FormData): Promise<void> {
+  const contactId = String(form.get("contactId") ?? "");
+  const { s } = await ownContact(contactId);
+  await s.tx(async (q) => {
+    await q("update contacts set ask_off = true where id = $1::uuid", [contactId]);
+    await spendQuestion(q, s);
+  });
+  track("daily_mute", { userId: s.user.id });
+  revalidatePeople(contactId);
+  redirect("/home?muted=1");
+}
+
+/** 사람 화면에서 오늘의 질문을 다시 켜고 끄기 */
+export async function setAskOff(contactId: string, off: boolean): Promise<{ ok: boolean }> {
+  const s = await requireSession();
+  if (!isUuid(contactId)) return { ok: false };
+  const row = await s.tx((q) => q.one<{ id: string }>("update contacts set ask_off = $2 where id = $1::uuid returning id", [contactId, off === true]));
+  revalidatePeople(contactId);
+  return { ok: !!row };
+}
+
+/** 사람 상세 화면을 열었다고 센다(하루에 한 번만): 자주 보는 사람에게만 질문하려고. 화면이 열린 뒤 브라우저가 부른다(미리 불러오기에는 세지 않는다) */
+export async function noteView(contactId: string): Promise<void> {
+  if (!isUuid(contactId)) return;
+  const s = await requireSession();
+  const day = ymdKey(todayFor(s.profile));
+  await s.tx((q) =>
+    q("update contacts set view_days = least(view_days + 1, 1000), viewed_on = $2::date where id = $1::uuid and viewed_on is distinct from $2::date", [contactId, day]),
+  );
 }
 
 /** 사람 더하기: 주소록에 넣고 빈 기록을 만든 뒤 그 사람 화면으로 */

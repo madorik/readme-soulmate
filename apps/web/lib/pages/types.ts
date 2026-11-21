@@ -94,6 +94,8 @@ export interface RequestData {
   xmas: boolean;
   /** 처음부터 채워 둘 메시지(크리스마스 물어보기에서 왔을 때) */
   initialMessage: string;
+  /** 오늘의 질문의 '물어보기'(?topic=)에서 왔다: 그 항목만 묻는다 */
+  focus: Section | null;
   tour: TourInfo | null;
 }
 

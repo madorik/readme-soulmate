@@ -46,6 +46,9 @@ export interface Profile {
   pushEnabled: boolean;
   /** 설정 > 명절·챙기는 날 알림(설날·추석·크리스마스 …) */
   holidayReminders: boolean;
+  /** 오늘의 질문 카드를 처리한 날(그 사람 시간대 YYYY-MM-DD)과 그날 처리한 횟수 */
+  questionDay: string | null;
+  questionCount: number;
   isDemo: boolean;
   onboardedAt: string | null;
 }
@@ -69,6 +72,8 @@ function toProfile(row: Row, detected: Locale): Profile {
     appLock: row.app_lock === true,
     pushEnabled: row.push_enabled !== false,
     holidayReminders: row.holiday_reminders !== false,
+    questionDay: typeof row.question_day === "string" ? row.question_day : null,
+    questionCount: typeof row.question_count === "number" ? row.question_count : 0,
     isDemo: row.is_demo === true,
     onboardedAt: iso(row.onboarded_at),
   };
@@ -231,6 +236,10 @@ export interface Person {
   folderIds: string[];
   /** 즐겨찾기(사람들 맨 위에 고정) */
   favorite: boolean;
+  /** '이 사람에 대해 다시 묻지 않기'(오늘의 질문에서 뺀다) */
+  askOff: boolean;
+  /** 사람 상세 화면을 연 날 수 */
+  viewDays: number;
 }
 
 /** 사람 한 줄(주소록 + 이어진 사람 프로필 + 내 기록 + 가장 최근 물어보기 + 든 폴더) */
@@ -239,6 +248,8 @@ type PersonRow = {
   person_id: string | null;
   nickname: string;
   favorite: boolean;
+  ask_off: boolean;
+  view_days: number;
   avatar: unknown;
   p_id: string | null;
   p_display_name: string | null;
@@ -262,7 +273,7 @@ async function loadPeople(q: Q, me: string, opts: { contactId?: string; cards?: 
   // 한 클라이언트(트랜잭션)에서 Promise.all로 여러 쿼리를 보내도 pg가 줄 세워 하나씩 보내므로, 왕복 한 번짜리 쿼리 하나로 모은다.
   // 물어보기는 사람마다 가장 최근 한 줄, 폴더는 들어간 순서대로. RLS는 조인한 표마다 그대로 적용된다
   const rows = await q<PersonRow>(
-    `select c.id, c.person_id, c.nickname, c.favorite, c.avatar,
+    `select c.id, c.person_id, c.nickname, c.favorite, c.ask_off, c.view_days, c.avatar,
             p.id as p_id, p.display_name as p_display_name, p.avatar as p_avatar,
             ${withCards ? "cc.sections" : "null::jsonb"} as cc_sections, cc.answered as cc_answered, cc.updated_at as cc_updated_at,
             a.id as a_id, a.sections as a_sections, a.expires_at as a_expires_at, a.used_at as a_used_at, a.canceled_at as a_canceled_at,
@@ -304,6 +315,8 @@ async function loadPeople(q: Q, me: string, opts: { contactId?: string; cards?: 
         : null,
       folderIds: c.folder_ids ?? [],
       favorite: c.favorite === true,
+      askOff: c.ask_off === true,
+      viewDays: Number(c.view_days) || 0,
     };
   });
 }

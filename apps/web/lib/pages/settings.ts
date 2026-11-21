@@ -50,9 +50,10 @@ export async function loadRequest({ searchParams }: PageInput): Promise<RequestD
       missing: SECTIONS.filter((x) => !p.card[x] && x !== "pets"),
     }));
   const fixed = searchParams.to ? (people.find((p) => p.id === searchParams.to) ?? null) : null;
+  const focus = SECTIONS.find((x) => x === searchParams.topic) ?? null;
   // 체험(?tour=)이면 마지막 단계: 말로 적기가 있으면 둘째, 없으면(AI 꺼짐) 첫째이자 마지막
   const total = tourTotal();
-  return { locale: s.profile.locale, people, fixed, initialName: (searchParams.name ?? "").slice(0, 40), defaults, xmas, initialMessage: xmas ? makeT(s.profile.locale)("request.xmasMessage") : "", tour: searchParams.tour ? { n: total, total } : null };
+  return { locale: s.profile.locale, people, fixed, initialName: (searchParams.name ?? "").slice(0, 40), defaults, xmas, initialMessage: xmas ? makeT(s.profile.locale)("request.xmasMessage") : "", focus, tour: searchParams.tour ? { n: total, total } : null };
 }
 
 /** 말로 적기: 말하면(또는 적으면) 누구의 어느 칸인지 나눠서 바로 넣는다. 없는 사람은 새로, 맞는 칸이 없으면 메모로 */

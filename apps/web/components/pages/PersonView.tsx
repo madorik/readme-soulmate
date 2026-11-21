@@ -1,8 +1,10 @@
 import { formatMonthDay, parseYmd, SECTIONS_BY_IMPORTANCE } from "@readme/core";
 import Link from "next/link";
+import { AskOnButton } from "@/app/(app)/people/[id]/AskOnButton";
 import { FavoriteStar } from "@/app/(app)/people/[id]/FavoriteStar";
 import { NotesButton } from "@/app/(app)/people/[id]/NotesButton";
 import { PersonFolders } from "@/app/(app)/people/[id]/PersonFolders";
+import { ViewBeacon } from "@/app/(app)/people/[id]/ViewBeacon";
 import { QuickNote } from "@/app/(app)/people/[id]/QuickNote";
 import { TagEditor } from "@/app/(app)/people/[id]/TagEditor";
 import { cancelInvite } from "@/app/actions/request";
@@ -49,6 +51,13 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
           </div>
         }
       />
+
+      <ViewBeacon contactId={p.contactId} />
+      {p.askOff ? (
+        <div className="px-6 pt-3">
+          <AskOnButton contactId={p.contactId} label={t("person.askOn")} />
+        </div>
+      ) : null}
 
       <div className="relative flex items-start gap-5 px-6 pt-4">
         {/* 얼굴을 누르면 내 프로필처럼 그 사람의 얼굴·부르는 말을 꾸민다. 폴라로이드 한 장 */}

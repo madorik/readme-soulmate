@@ -17,6 +17,8 @@ export interface PersonData {
     avatar: AvatarConfig | null;
     card: PartialCard;
     favorite: boolean;
+    /** '이 사람에 대해 다시 묻지 않기'를 했다(오늘의 질문에서 빠져 있다) */
+    askOff: boolean;
     folderIds: string[];
   };
   /** 부를 이름(내가 정한 부르는 말, 없으면 그 사람 이름) */

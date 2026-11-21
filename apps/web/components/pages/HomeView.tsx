@@ -1,6 +1,6 @@
 import { aboutPrompt, addDays, canAnswerOwn, countWord, formatDayFull, formatMonthDay, formatSpec, holidayKey, nextHoliday, NONE, NONE_LABEL, sameYmd, solarToLunar, weekday, weekdayNames, yearEnd } from "@readme/core";
 import Link from "next/link";
-import { answerAbout } from "@/app/actions/people";
+import { answerAbout, askAbout, muteAbout, skipAbout } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";
 import { ChiliMeter } from "@/components/Chili";
 import { Wordmark } from "@/components/chrome";
@@ -32,7 +32,7 @@ function memoOf(p: Person | null): string {
     .slice(0, 3)
     .join(" · ");
 }
-export function HomeView({ locale, avatar, today, people, question: asked, questionSkip, answers, answered, isAdmin }: HomeData) {
+export function HomeView({ locale, avatar, today, people, question: asked, answers, answered, muted, isAdmin }: HomeData) {
   const t = makeT(locale);
   // 물어보기에 온 답장(아직 안 본 것)은 오른쪽 위 종에 모은다. 누르면 그 사람 화면, 열면 읽은 것으로
   const rtf = new Intl.RelativeTimeFormat(locale === "ko" ? "ko" : "en", { numeric: "auto" });
@@ -385,19 +385,32 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
               </button>
             </form>
           ) : null}
-          {/* 모르는 건 건너뛴다: 같은 날 다음 칸으로(?skip=) */}
-          <Link replace href={`/home?skip=${questionSkip + 1}`} className="-mb-1.5 -mt-1 flex min-h-11 items-center gap-1 self-end pl-2 text-[16px] text-muted">
-            {t("common.skip")}
-            <Icon name="chevron" size={18} strokeWidth={2} />
-          </Link>
+          {/* 내가 어림짐작하지 않고 그 사람에게 직접 물어보기 / 모르는 건 건너뛰기(오늘 두 번까지만 카드가 뜬다) */}
+          <div className="-mt-1 flex items-center justify-between gap-2">
+            <form action={askAbout}>
+              <input type="hidden" name="contactId" value={asked.contactId} />
+              <input type="hidden" name="id" value={question.id} />
+              <button className="pill !min-h-11 !px-4 !text-[17px]">{t("home.questionAsk")}</button>
+            </form>
+            <form action={skipAbout}>
+              <button className="flex min-h-11 items-center gap-1 pl-2 text-[16px] text-muted">
+                {t("common.skip")}
+                <Icon name="chevron" size={18} strokeWidth={2} />
+              </button>
+            </form>
+          </div>
+          <form action={muteAbout} className="-mb-1.5 -mt-1.5">
+            <input type="hidden" name="contactId" value={asked.contactId} />
+            <button className="flex min-h-11 items-center text-[15px] text-muted underline decoration-dotted underline-offset-4">{t("home.questionMute")}</button>
+          </form>
           <Heart size={26} rotate={16} className="-right-[7px] top-11" />
           <Star size={20} rotate={-12} className="-left-[7px] bottom-[30px]" />
         </section>
       ) : null}
-      {answered ? (
+      {answered || muted ? (
         <p role="status" className="mx-5 mt-2.5 flex items-center gap-2 text-[16px] text-muted">
           <Icon name="check" size={16} className="text-accent" />
-          {t("home.answered")}
+          {t(muted ? "home.muted" : "home.answered")}
         </p>
       ) : null}
 

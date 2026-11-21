@@ -34,9 +34,10 @@ type Who = { kind: "person"; person: AskPerson } | { kind: "new"; name: string }
  * 누구에게: 주소록 사람을 이름·태그로 찾아 고르면 그 사람에게 묻고 답은 그 사람 기록에 들어간다(내 기록에 적힌 값은 서버가 미리 채워 보낸다).
  * 없는 사람이면 적은 이름으로 새로. fixed(사람 화면에서 왔을 때)면 그 사람으로 정해져 있다
  */
-export function RequestForm({ locale, people, fixed, initialName, defaults, xmas = false, initialMessage = "", tour = false }: { locale: Locale; people: AskPerson[]; fixed: string | null; initialName: string; defaults: Section[]; xmas?: boolean; initialMessage?: string; tour?: boolean }) {
+export function RequestForm({ locale, people, fixed, initialName, defaults, xmas = false, initialMessage = "", focus = null, tour = false }: { locale: Locale; people: AskPerson[]; fixed: string | null; initialName: string; defaults: Section[]; xmas?: boolean; initialMessage?: string; focus?: Section | null; tour?: boolean }) {
   const t = useT(locale);
-  const topicsFor = (p: AskPerson | null) => (!xmas && p && p.missing.length ? p.missing : defaults);
+  // 오늘의 질문에서 온 물어보기(focus)는 그 질문이 속한 항목 하나만 묻는다
+  const topicsFor = (p: AskPerson | null) => (focus ? [focus] : !xmas && p && p.missing.length ? p.missing : defaults);
   const fixedPerson = fixed ? (people.find((p) => p.id === fixed) ?? null) : null;
   const [who, setWho] = useState<Who | null>(fixedPerson ? { kind: "person", person: fixedPerson } : initialName ? { kind: "new", name: initialName } : null);
   const [query, setQuery] = useState("");

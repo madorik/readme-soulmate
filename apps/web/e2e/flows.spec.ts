@@ -1114,7 +1114,7 @@ test("사람들 > 고르기: 고른 사람을 한꺼번에 지운다(확인 시�
   await expect(page.getByText("아내", { exact: true })).toHaveCount(0);
 });
 
-test("오늘의 질문: 내 질문이 아니라 등록한 사람에 대한 빈 칸을 하나씩 묻고, 답하면 그 사람 기록에 들어가며, 건너뛸 수 있다", async ({ page }) => {
+test("오늘의 질문: 가까운 사람의 빈 칸을 하나씩 묻고, 답하면 그 사람 기록에 들어가며, 하루 두 번을 쓰면 더 뜨지 않는다", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "데모로 둘러보기" }).click();
   await expect(page).toHaveURL(/\/home/);
@@ -1126,16 +1126,78 @@ test("오늘의 질문: 내 질문이 아니라 등록한 사람에 대한 빈 �
   expect(name).toBeTruthy();
   const first = ((await card.getByRole("heading").textContent()) ?? "").trim();
   expect(first).toContain(name);
-  // 건너뛰면 같은 날 다음 칸(다른 질문)
-  await card.getByRole("link", { name: "건너뛰기" }).click();
-  await expect(page).toHaveURL(/\/home\?skip=1/);
+  // 건너뛰면 오늘 한 번 쓴 것으로 세고 다음 질문이 뜬다. 새로고침해도 처음 질문으로 돌아가지 않는다
+  await card.getByRole("button", { name: "건너뛰기" }).click();
+  await expect(page).toHaveURL(/\/home$/);
   await expect(card.getByRole("heading")).not.toHaveText(first);
+  const second = ((await card.getByRole("heading").textContent()) ?? "").trim();
   await page.goto("/home");
-  await expect(card.getByRole("heading")).toHaveText(first);
-  // 답하면 그 사람 기록에 들어가고, 같은 질문은 다시 묻지 않는다
+  await expect(card.getByRole("heading")).toHaveText(second);
+  // 답하면 그 사람 기록에 들어가고, 오늘 두 번을 다 썼으니 카드는 더 뜨지 않는다(새로고침해도)
   await card.locator('form button[name="value"]').first().click();
   await expect(page.getByRole("status").filter({ hasText: "기억해 둘게요" })).toBeVisible();
+  await expect(card).toHaveCount(0);
+  await page.goto("/home");
+  await expect(card).toHaveCount(0);
+});
+
+test("오늘의 질문: '물어보기'는 그 사람을 고른 채 그 질문의 항목만 물어보기로 보내고, 오늘 한 번 쓴 것으로 센다", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  const card = page.getByRole("region", { name: "오늘의 질문" });
+  const href = (await card.getByRole("link").first().getAttribute("href")) ?? "";
+  const id = href.split("/").pop()!;
+  const first = ((await card.getByRole("heading").textContent()) ?? "").trim();
+  await card.getByRole("button", { name: "물어보기" }).click();
+  await expect(page).toHaveURL(new RegExp(`/request\\?to=${id}&topic=[a-z]+$`));
+  // 그 사람이 고정돼 있고 묻는 항목은 하나뿐이다
+  await expect(page.getByRole("heading", { name: "물어보기" })).toBeVisible();
+  await expect(page.locator("form button[aria-pressed=true]")).toHaveCount(1);
+  // 돌아오면 한 번 쓴 것으로 세서 다음 질문이 뜬다
+  await page.goto("/home");
   await expect(card.getByRole("heading")).not.toHaveText(first);
+});
+
+test("오늘의 질문: '이 사람에 대해 다시 묻지 않기'를 하면 그 사람은 더 안 나오고, 사람 화면에서 다시 켤 수 있다", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  const card = page.getByRole("region", { name: "오늘의 질문" });
+  const href = (await card.getByRole("link").first().getAttribute("href")) ?? "";
+  await card.getByRole("button", { name: "이 사람에 대해 다시 묻지 않기" }).click();
+  await expect(page).toHaveURL(/\/home\?muted=1$/);
+  await expect(page.getByRole("status").filter({ hasText: "더 묻지 않을게요" })).toBeVisible();
+  // 오늘 한 번 더 남았어도 그 사람 이야기는 아니다
+  if (await card.count()) await expect(card.getByRole("link").first()).not.toHaveAttribute("href", href);
+  // 그 사람 화면에서 다시 켠다
+  await page.goto(href);
+  await page.getByRole("button", { name: "오늘의 질문 다시 받기" }).click();
+  await expect(page.getByRole("button", { name: "오늘의 질문 다시 받기" })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "오늘의 질문 다시 받기" })).toHaveCount(0);
+});
+
+test("오늘의 질문: 그냥 적어 둔 사람에게는 묻지 않고, 즐겨찾기한 사람부터 묻는다", async ({ page }) => {
+  await page.goto("/");
+  await signIn(page);
+  await onboard(page, { name: "다온" });
+  await page.goto("/people/new");
+  await page.getByLabel("이름이나 부르는 말").fill("옆집 아저씨");
+  await page.getByRole("button", { name: "만들기", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "옆집 아저씨" })).toBeVisible();
+  const person = new URL(page.url()).pathname;
+  // 폴더도 즐겨찾기도 없고 사람 화면을 처음 연 사람: 묻지 않는다
+  await page.goto("/home");
+  await expect(page.getByRole("region", { name: "오늘의 질문" })).toHaveCount(0);
+  // 즐겨찾기하면 가까운 사람이라 묻는다
+  await page.goto(person);
+  await page.getByRole("button", { name: "즐겨찾기" }).click();
+  await expect(page.getByRole("button", { name: "즐겨찾기" })).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/home");
+  const card = page.getByRole("region", { name: "오늘의 질문" });
+  await expect(card).toBeVisible();
+  await expect(card.getByRole("heading")).toContainText("옆집 아저씨");
 });
 
 test("기기 언어가 영어면 처음부터 영어로, 직접 고른 언어가 우선", async ({ browser }) => {

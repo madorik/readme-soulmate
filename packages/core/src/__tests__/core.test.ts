@@ -30,6 +30,12 @@ import {
   parseFoodSpeech,
   placeholders,
   questionForPeople,
+  questionsLeft,
+  questionsUsedToday,
+  isCloseEnough,
+  CLOSE_VIEW_DAYS,
+  DAILY_QUESTION_LIMIT,
+  QUESTION_SECTION,
   aboutPrompt,
   QUESTIONS,
   randomCode,
@@ -167,6 +173,45 @@ test("날짜 표기", () => {
   assert.equal(countWord(100, "ko"), "100");
   assert.equal(countWord(3, "en"), "3");
   assert.equal(formatDaysLeft(7, "en"), "In 7 days");
+});
+
+test("오늘의 질문: 하루 두 번까지만, 날이 바뀌면 다시 센다", () => {
+  assert.equal(DAILY_QUESTION_LIMIT, 2);
+  assert.equal(questionsLeft(0), 2);
+  assert.equal(questionsLeft(1), 1);
+  assert.equal(questionsLeft(2), 0);
+  assert.equal(questionsLeft(9), 0, "넘게 센 값도 음수가 되지 않는다");
+  assert.equal(questionsLeft(Number.NaN), 2);
+  const today = { y: 2026, m: 11, d: 21 };
+  assert.equal(questionsUsedToday({ questionDay: "2026-11-21", questionCount: 2 }, today), 2);
+  assert.equal(questionsUsedToday({ questionDay: "2026-11-20", questionCount: 2 }, today), 0, "어제 센 것은 오늘 세지 않는다");
+  assert.equal(questionsUsedToday({ questionDay: null, questionCount: 0 }, today), 0);
+});
+
+test("오늘의 질문: 가까운 사람에게만(가족·연인 폴더, 즐겨찾기, 여러 날 열어 본 사람) 묻고, 다시 묻지 않기는 늘 뺀다", () => {
+  const base = { askOff: false, favorite: false, closeFolder: false, viewDays: 0 };
+  assert.equal(isCloseEnough(base), false, "그냥 적어 둔 사람");
+  assert.equal(isCloseEnough({ ...base, closeFolder: true }), true);
+  assert.equal(isCloseEnough({ ...base, favorite: true }), true);
+  assert.equal(isCloseEnough({ ...base, viewDays: CLOSE_VIEW_DAYS - 1 }), false);
+  assert.equal(isCloseEnough({ ...base, viewDays: CLOSE_VIEW_DAYS }), true);
+  assert.equal(isCloseEnough({ askOff: true, favorite: true, closeFolder: true, viewDays: 99 }), false, "다시 묻지 않기가 이긴다");
+});
+
+test("오늘의 질문: 남은 칸이 하나뿐인데 이미 하나 처리했으면 같은 질문을 또 묻지 않고, 물어보기는 그 질문의 항목 하나로", () => {
+  const full = {
+    taste: { likes: [], spicy: 2, dessert: "", drinks: "", alcohol: { level: null, kinds: [] } },
+    gifts: { giftCard: "yes" as const, wishlist: [], skip: [], brands: [] },
+    life: sanitizeSection("life", { seasons: ["autumn"] }),
+    favorites: sanitizeSection("favorites", { scent: "우디", flowers: "튤립", patterns: ["stripe"], metals: ["silver"], styles: ["minimal"] }),
+    culture: sanitizeSection("culture", { musicGenres: ["indie"], movieGenres: ["comedy"] }),
+  };
+  const dad = [{ contactId: "dad", card: full }];
+  assert.equal(questionForPeople(TODAY, dad, 0)?.question.id, "drinks");
+  assert.equal(questionForPeople(TODAY, dad, 1), null);
+  for (const q of QUESTIONS) assert.ok(QUESTION_SECTION[q.id], q.id);
+  assert.equal(QUESTION_SECTION.drinks, "taste");
+  assert.equal(QUESTION_SECTION.giftCard, "gifts");
 });
 
 test("오늘의 질문: 등록한 사람 중 답이 없는 칸을 하나씩, 답한 건 건너뛰고, 답은 그 사람 카드 칸에", () => {

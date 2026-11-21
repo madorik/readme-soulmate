@@ -1,6 +1,6 @@
-import { diffDays, type YMD } from "./calendar";
+import { diffDays, ymdKey, type YMD } from "./calendar";
 import { METALS, MOVIE_GENRES, MUSIC_GENRES, NONE, NONE_LABEL, PATTERNS, SEASONS, STYLES, type CatalogItem } from "./catalog";
-import { emptySection, type CardData, type CultureData, type FavoritesData } from "./card";
+import { emptySection, type CardData, type CultureData, type FavoritesData, type Section } from "./card";
 import type { Label, Locale } from "./locale";
 import { josa } from "./i18n";
 import { clip } from "./text";
@@ -126,6 +126,45 @@ export function isAnswered(card: Partial<CardData>, id: DailyQuestion["id"]): bo
   }
 }
 
+/** 하루에 질문 카드를 띄우는 최대 횟수(답하기·건너뛰기·물어보기·그만 묻기로 처리한 만큼 센다) */
+export const DAILY_QUESTION_LIMIT = 2;
+/** 사람 화면을 이만큼의 서로 다른 날에 열었으면 '자주 보는 사람' */
+export const CLOSE_VIEW_DAYS = 3;
+
+/** 오늘 질문 카드를 몇 번 처리했나(기록된 날이 오늘이 아니면 0) */
+export function questionsUsedToday(profile: { questionDay: string | null; questionCount: number }, today: YMD): number {
+  return profile.questionDay === ymdKey(today) ? Math.max(0, profile.questionCount) : 0;
+}
+
+/** 오늘 더 띄울 수 있는 질문 수 */
+export function questionsLeft(usedToday: number): number {
+  return Math.max(0, DAILY_QUESTION_LIMIT - Math.max(0, Math.floor(usedToday) || 0));
+}
+
+/**
+ * 오늘의 질문을 물어볼 만큼 가까운 사람인가: 가족·연인 폴더에 있거나, 즐겨찾기거나, 사람 화면을 여러 날 열어 본 사람.
+ * '다시 묻지 않기'를 한 사람은 늘 아니다. 아무나(그냥 적어 둔 사람)에게는 묻지 않는다
+ */
+export function isCloseEnough(p: { askOff: boolean; favorite: boolean; closeFolder: boolean; viewDays: number }): boolean {
+  if (p.askOff) return false;
+  return p.closeFolder || p.favorite || p.viewDays >= CLOSE_VIEW_DAYS;
+}
+
+/** 질문에 답이 들어갈 항목(물어보기로 그 항목만 물어볼 때) */
+export const QUESTION_SECTION = {
+  drinks: "taste",
+  spicy: "taste",
+  flowers: "favorites",
+  scent: "favorites",
+  pattern: "favorites",
+  metal: "favorites",
+  style: "favorites",
+  giftCard: "gifts",
+  season: "life",
+  musicGenre: "culture",
+  movieGenre: "culture",
+} as const satisfies Record<DailyQuestion["id"], Section>;
+
 /** 누구에 대한 어떤 질문인지 */
 export interface PersonQuestion {
   contactId: string;
@@ -139,6 +178,8 @@ export interface PersonQuestion {
 export function questionForPeople(today: YMD, people: { contactId: string; card: Partial<CardData> }[], skip = 0): PersonQuestion | null {
   const open = people.flatMap((p) => QUESTIONS.filter((q) => !isAnswered(p.card, q.id)).map((question) => ({ contactId: p.contactId, question })));
   if (!open.length) return null;
+  // 남은 게 하나뿐인데 이미 하나 넘겼으면(skip>0) 같은 질문이 또 나오니 오늘은 그만 묻는다
+  if (open.length === 1 && skip > 0) return null;
   const day = Math.abs(diffDays({ y: 2026, m: 1, d: 1 }, today));
   return open[(day + Math.max(0, Math.floor(skip) || 0)) % open.length] ?? null;
 }
