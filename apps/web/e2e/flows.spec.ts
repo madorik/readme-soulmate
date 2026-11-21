@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext } from "@playwright/test";
-import { holidayKey, ko, lunarToSolar, nextHoliday, nextOccurrence, todayIn, yearEnd } from "@readme/core";
+import { IMAGE_LONG_SIDE, IMAGE_MAX_BYTES, checkJpegBytes, holidayKey, ko, lunarToSolar, nextHoliday, nextOccurrence, todayIn, yearEnd } from "@readme/core";
 import { ADMIN_KEY, CRON_SECRET, onboard, signIn } from "./helpers";
 
 // 흐름을 실제로 눌러 본다: 가입·온보딩 → 물어보기·앱 없이 답하기(답이 내 기록에) → 받은 답 고치기 → 다시 물어보기 → 로그인하고 답하기 → 영어
@@ -1656,25 +1656,48 @@ test("내 기록 링크로 보내기: 글에는 정보가 없고, 받은 사람�
   await other.close();
 });
 
-/** 홈에 보이는 사람의 id(이름으로 시작하는 첫 링크) */
-async function personId(page: import("@playwright/test").Page, name: string) {
-  await page.goto("/home");
-  const href = await page.getByRole("link", { name: new RegExp(`^${name}`) }).first().getAttribute("href");
-  expect(href).toMatch(/^\/people\/[0-9a-f-]{36}$/);
-  return href!.split("/").pop()!;
+/** multipart 본문에서 파일 부분들의 바이트 */
+function multipartFiles(buf: Buffer, contentType: string): Buffer[] {
+  const boundary = "--" + (/boundary=(.+)$/.exec(contentType)?.[1] ?? "");
+  const parts: Buffer[] = [];
+  let pos = buf.indexOf(boundary);
+  while (pos >= 0) {
+    const next = buf.indexOf(boundary, pos + boundary.length);
+    if (next < 0) break;
+    const part = buf.subarray(pos + boundary.length, next);
+    const head = part.indexOf("\r\n\r\n");
+    if (head > 0 && /filename="/.test(part.subarray(0, head).toString("latin1"))) parts.push(part.subarray(head + 4, part.length - 2));
+    pos = next;
+  }
+  return parts;
 }
 
 /**
- * 메모 가져오기의 AI 읽기(draftImport 서버 액션 응답)를 정해 둔 줄로 바꿔 끼운다(AI 키·비용 없이). 저장·되돌리기는 그대로 서버로 간다.
- * 돌려주는 함수에 {줄, 이름}을 넘기면 다음 '읽어 보기'가 그 줄을 받는다
+ * 메모 가져오기의 AI 읽기(글 draftImport·사진 draftImportImages 서버 액션 응답)를 정해 둔 줄로 바꿔 끼운다(AI 키·비용 없이).
+ * 저장·되돌리기는 그대로 서버로 간다. 돌려주는 함수에 {줄, 이름, error, skipped}를 넘기면 다음 '읽어 보기'가 그 답을 받는다.
+ * 함수의 uploads에는 사진 읽기로 올라간 파일들(바이트)이 쌓인다
  */
 async function fakeImport(page: import("@playwright/test").Page) {
-  let next: { lines: FakeLine[]; name?: string } = { lines: [] };
+  let next: { lines: FakeLine[]; name?: string; error?: string; skipped?: number } = { lines: [] };
+  const uploads: Buffer[][] = [];
   await page.route("**/import**", async (route) => {
     const req = route.request();
-    const args = req.method() === "POST" && req.headers()["next-action"] ? (JSON.parse(req.postData() ?? "[]") as unknown[]) : null;
-    // draftImport만(첫 인자가 글, 둘째 인자가 범위). saveImport·undoCapture는 첫 인자가 배열이다
-    if (!args || typeof args[0] !== "string" || typeof args[1] !== "string") return route.continue();
+    if (req.method() !== "POST" || !req.headers()["next-action"]) return route.continue();
+    const type = req.headers()["content-type"] ?? "";
+    let draft = false;
+    if (type.startsWith("multipart/form-data")) {
+      // 사진 읽기: 보낸 사람 한 장 이상 파일(image)이 든 본문. 로그인 같은 다른 폼 서버 액션은 그대로 보낸다
+      const body = req.postDataBuffer();
+      if (body && /name="_1_image"; filename=/.test(body.toString("latin1"))) {
+        draft = true;
+        uploads.push(multipartFiles(body, type));
+      }
+    } else {
+      // 글 읽기: 첫 인자가 글, 둘째 인자가 범위. saveImport·undoCapture는 첫 인자가 배열이다
+      const args = JSON.parse(req.postData() ?? "[]") as unknown[];
+      draft = typeof args[0] === "string" && typeof args[1] === "string";
+    }
+    if (!draft) return route.continue();
     const lines = next.lines.map((l, idx) => {
       const name = l.target.kind === "new" ? l.target.name : l.spoken;
       const who = l.target.kind === "new" ? { type: "new", contactId: null, name } : l.target.kind === "person" ? { type: "existing", contactId: l.target.id, name: null } : l.target.kind === "me" ? { type: "me", contactId: null, name: null } : { type: "new", contactId: null, name };
@@ -1696,12 +1719,32 @@ async function fakeImport(page: import("@playwright/test").Page) {
     return route.fulfill({
       status: 200,
       headers: { "content-type": "text/x-component" },
-      body: `0:{"a":"$@1","f":"","q":"","i":true,"b":"development"}\n1:${JSON.stringify({ lines, error: null, name: next.name ?? "" })}\n`,
+      body: `0:{"a":"$@1","f":"","q":"","i":true,"b":"development"}\n1:${JSON.stringify({ lines, error: next.error ?? null, name: next.name ?? "", skipped: next.skipped ?? 0 })}\n`,
     });
   });
-  return (v: { lines: (FakeLine & { same?: boolean })[]; name?: string }) => {
+  const set = (v: { lines: (FakeLine & { same?: boolean })[]; name?: string; error?: string; skipped?: number }) => {
     next = v;
   };
+  return Object.assign(set, { uploads });
+}
+
+/** 홈에 보이는 사람의 id(이름으로 시작하는 첫 링크) */
+async function personId(page: import("@playwright/test").Page, name: string) {
+  await page.goto("/home");
+  const href = await page.getByRole("link", { name: new RegExp(`^${name}`) }).first().getAttribute("href");
+  expect(href).toMatch(/^\/people\/[0-9a-f-]{36}$/);
+  return href!.split("/").pop()!;
+}
+
+/** 시험용 사진: 화면을 찍은 PNG */
+async function pngOf(browser: Browser, html: string, width: number, height: number): Promise<Buffer> {
+  // 화면 배율 1(프로젝트 기본 기기의 배율 3을 따르면 사진 크기가 세 배가 된다)
+  const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, isMobile: false, hasTouch: false });
+  const p = await ctx.newPage();
+  await p.setContent(`<body style="margin:0;font-family:sans-serif">${html}</body>`);
+  const png = await p.screenshot();
+  await ctx.close();
+  return png;
 }
 
 test("메모 가져오기: 구슬·사람 추가·편집에서 들어가고, 읽은 것을 사람별로 확인해 없는 것만 더하며, 되돌릴 수 있다", async ({ browser }) => {
@@ -1817,6 +1860,174 @@ test("메모 가져오기: 사람 추가에서는 한 사람 이야기로 읽어
   await page.getByRole("button", { name: "다음" }).click();
   await expect(page).toHaveURL(new RegExp(`/people/${wife.id}$`));
   await expect(page.getByText("라넌큘러스").first()).toBeVisible();
+});
+
+test("메모 가져오기: 사진 — 이상한 파일은 올리기 전에 걸러 내고, 줄인 JPEG 파일만 보내며, 읽지 못한 사진은 안내하고, 읽은 것만 적는다", async ({ browser }) => {
+  const page = await newPage(browser);
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  const mom = await personId(page, "엄마");
+  const setDraft = await fakeImport(page);
+
+  // 시험용 사진: 정상 메모(크게), 너무 작은 것, 빈 화면, 너무 긴 것
+  const memo = await pngOf(browser, `<div style="padding:28px;background:#fffbe8;height:100%;font-size:30px;line-height:1.5"><b>가족 메모</b><br/>엄마<br/>- 새우 알레르기<br/>- 수국 좋아함</div>`, 2400, 1800);
+  const tiny = await pngOf(browser, `<div style="font-size:9px">엄마 수국</div>`, 100, 100);
+  const blank = await pngOf(browser, `<div style="background:#fff;height:100%"></div>`, 700, 700);
+  const tall = await pngOf(browser, `<div style="padding:20px;font-size:28px">엄마 수국<br/>${"줄<br/>".repeat(60)}</div>`, 400, 2000);
+
+  await page.goto("/import");
+  await page.getByRole("tab", { name: "사진" }).click();
+  // 개인정보 고지와 못 읽는 상태
+  await expect(page.getByText("저장하지 않아요")).toBeVisible();
+  await expect(page.getByRole("button", { name: "읽어 보기" })).toBeDisabled();
+  const input = page.locator("input[type=file]");
+  const problem = async (file: { name: string; mimeType: string; buffer: Buffer }, text: string) => {
+    await input.setInputFiles(file);
+    await expect(page.getByRole("alert").filter({ hasText: text })).toBeVisible();
+    await expect(page.locator("ul img")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "읽어 보기" })).toBeDisabled();
+  };
+  await problem({ name: "memo.png", mimeType: "image/png", buffer: Buffer.from("이건 사진이 아니에요") }, "사진을 열 수 없어요"); // 이름만 사진
+  await problem({ name: "memo.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4") }, "JPG·PNG·WebP 사진만");
+  await problem({ name: "tiny.png", mimeType: "image/png", buffer: tiny }, "너무 작아서");
+  await problem({ name: "blank.png", mimeType: "image/png", buffer: blank }, "내용이 거의 없는");
+  await problem({ name: "tall.png", mimeType: "image/png", buffer: tall }, "너무 길어요");
+
+  // 정상 메모: 줄여서(긴 변 1600 이하, 크기 한도 안, 서버가 받는 JPEG) 한 장 담긴다
+  await input.setInputFiles({ name: "memo.png", mimeType: "image/png", buffer: memo });
+  await expect(page.locator("ul img")).toHaveCount(1);
+  await expect(page.getByRole("alert").filter({ hasText: /사진/ })).toHaveCount(0);
+  setDraft({
+    skipped: 0,
+    lines: [
+      { spoken: "엄마", target: { kind: "person", id: mom }, key: "safety.allergens", field: "알레르기", text: "새우" },
+      { spoken: "엄마", target: { kind: "person", id: mom }, key: "favorites.flowers", field: "꽃", text: "수국" },
+    ],
+  });
+  await page.getByRole("button", { name: "읽어 보기" }).click();
+  await expect(page.getByRole("heading", { name: "이렇게 적을까요?" })).toBeVisible({ timeout: 30_000 });
+  expect(setDraft.uploads).toHaveLength(1);
+  expect(setDraft.uploads[0]).toHaveLength(1);
+  const sent = checkJpegBytes(new Uint8Array(setDraft.uploads[0]![0]!));
+  expect(sent.ok).toBe(true);
+  if (sent.ok) {
+    expect(Math.max(sent.width, sent.height)).toBeLessThanOrEqual(IMAGE_LONG_SIDE);
+    expect(sent.bytes).toBeLessThanOrEqual(IMAGE_MAX_BYTES);
+    expect(Math.max(sent.width, sent.height)).toBeLessThan(2400); // 원본(2400)보다 줄었다
+  }
+  expect(setDraft.uploads[0]![0]!.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
+  // 저장: 읽은 두 줄만 적힌다
+  await page.getByRole("button", { name: "2줄 적기" }).click();
+  await expect(page.getByText("2줄을 적었어요")).toBeVisible({ timeout: 30_000 });
+  await page.goto(`/people/${mom}`);
+  await expect(page.getByText("새우").first()).toBeVisible();
+});
+
+test("메모 가져오기: 사진 — 읽는 사진이 아니면 아무것도 적지 않고 이유를 알려 주며, 사진은 세 장까지, 일부만 읽혔으면 건너뛴 수를 알려 준다", async ({ browser }) => {
+  const page = await newPage(browser);
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  const mom = await personId(page, "엄마");
+  const setDraft = await fakeImport(page);
+  const note = await pngOf(browser, `<div style="padding:28px;background:#fffbe8;height:100%;font-size:30px">엄마<br/>- 수국 좋아함<br/>- 새우 알레르기</div>`, 720, 900);
+
+  await page.goto("/import");
+  await page.getByRole("tab", { name: "사진" }).click();
+  const input = page.locator("input[type=file]");
+
+  // 한 번에 네 장을 고르면 세 장까지만 담고 안내한다. 세 장이 차면 고르기 단추가 사라진다
+  const four = [1, 2, 3, 4].map((n) => ({ name: `memo${n}.png`, mimeType: "image/png", buffer: note }));
+  await input.setInputFiles(four);
+  await expect(page.locator("ul img")).toHaveCount(3);
+  await expect(page.getByText("사진은 3장까지")).toBeVisible();
+  await expect(page.locator("button", { hasText: "사진 고르기" })).toHaveCount(0); // 파일 칸(input)은 접근성에서 단추로 잡혀서 button 태그만 센다
+  await page.getByRole("button", { name: "사진 빼기 3" }).click();
+  await page.getByRole("button", { name: "사진 빼기 2" }).click();
+  await expect(page.locator("ul img")).toHaveCount(1);
+
+  // 읽는 사진이 아니라고 AI가 답한 경우: 이유를 알려 주고, 사진은 그대로 두어 다른 사진으로 바꿀 수 있다
+  for (const [error, text] of [
+    ["not_memo", "메모나 대화, 문서 사진이 아니에요"],
+    ["unreadable", "글씨를 읽을 수 없어요"],
+    ["sensitive", "신분증·카드·결제 화면 같은 사진은 읽지 않아요"],
+    ["bad_image", "받을 수 없는 사진이에요"],
+  ] as const) {
+    setDraft({ lines: [], error, skipped: 1 });
+    await page.getByRole("button", { name: "읽어 보기" }).click();
+    await expect(page.getByRole("alert").filter({ hasText: text })).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("ul img")).toHaveCount(1);
+  }
+
+  // 두 장 중 한 장만 읽혔다: 읽은 것은 보이고 건너뛴 수를 알려 준다
+  await input.setInputFiles({ name: "memo2.png", mimeType: "image/png", buffer: note });
+  await expect(page.locator("ul img")).toHaveCount(2);
+  setDraft({ skipped: 1, lines: [{ spoken: "엄마", target: { kind: "person", id: mom }, key: "favorites.flowers", field: "꽃", text: "수국" }] });
+  await page.getByRole("button", { name: "읽어 보기" }).click();
+  await expect(page.getByRole("heading", { name: "이렇게 적을까요?" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("읽지 못한 사진 1장은 건너뛰었어요")).toBeVisible();
+  expect(setDraft.uploads.at(-1)).toHaveLength(2);
+});
+
+test("메모 가져오기: 말하기 — 마이크가 입력 칸 위에 있고, 누르면 듣고 받아 적은 글이 글 칸에 들어가며, 마이크를 못 쓰면 이유를 알려 준다", async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 640 } });
+  // 브라우저 음성 인식을 흉내 낸다(시험 환경에는 마이크가 없다)
+  await ctx.addInitScript(() => {
+    class Fake {
+      onstart: (() => void) | null = null;
+      onresult: ((e: unknown) => void) | null = null;
+      onerror: ((e: { error: string }) => void) | null = null;
+      onend: (() => void) | null = null;
+      start() {
+        (window as unknown as { __rec: Fake }).__rec = this;
+        const deny = (window as unknown as { __deny?: boolean }).__deny;
+        setTimeout(() => (deny ? this.onerror?.({ error: "not-allowed" }) : this.onstart?.()), 10);
+      }
+      stop() {
+        setTimeout(() => this.onend?.(), 10);
+      }
+      abort() {
+        this.onend?.();
+      }
+    }
+    // 표준 이름(SpeechRecognition)이 있는 브라우저는 그것을 먼저 쓴다: 둘 다 바꿔 끼운다
+    (window as unknown as { webkitSpeechRecognition: typeof Fake; SpeechRecognition: typeof Fake }).webkitSpeechRecognition = Fake;
+    (window as unknown as { SpeechRecognition: typeof Fake }).SpeechRecognition = Fake;
+  });
+  const page = await ctx.newPage();
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  await page.goto("/import");
+  await page.getByRole("tab", { name: "말하기" }).click();
+  const mic = page.getByRole("button", { name: /눌러서 말하기/ });
+  const box = await page.getByRole("textbox").boundingBox();
+  const micBox = await mic.boundingBox();
+  const bar = await page.locator(".bottom-bar").boundingBox();
+  // 작은 화면에서도 마이크가 입력 칸 위에, 아래 단추 줄에 가리지 않고 보인다
+  expect(micBox!.y + micBox!.height).toBeLessThanOrEqual(box!.y);
+  expect(micBox!.y + micBox!.height).toBeLessThanOrEqual(bar!.y);
+  await mic.click();
+  await expect(page.getByRole("button", { name: /듣고 있어요/ })).toBeVisible();
+  // 말한 글이 글 칸에 들어가고(고칠 수 있다), 이어 말하면 앞의 글 뒤에 붙는다
+  await page.evaluate(() => (window as unknown as { __rec: { onresult: (e: unknown) => void } }).__rec.onresult({ results: [[{ transcript: "엄마는 수국을 좋아해" }]] }));
+  await expect(page.getByRole("textbox")).toHaveValue("엄마는 수국을 좋아해");
+  await page.getByRole("button", { name: /듣고 있어요/ }).click();
+  await expect(mic).toBeVisible();
+  await expect(page.getByRole("button", { name: "읽어 보기" })).toBeEnabled();
+  await mic.click();
+  await page.evaluate(() => (window as unknown as { __rec: { onresult: (e: unknown) => void } }).__rec.onresult({ results: [[{ transcript: "아빠는 등산을 좋아해" }]] }));
+  await expect(page.getByRole("textbox")).toHaveValue("엄마는 수국을 좋아해\n아빠는 등산을 좋아해");
+
+  // 마이크 허락이 없으면: 이유를 알려 주고 글로 적게 한다(말하기 탭이 글 탭으로)
+  await page.getByRole("button", { name: /듣고 있어요/ }).click();
+  await page.evaluate(() => ((window as unknown as { __deny: boolean }).__deny = true));
+  await page.getByRole("tab", { name: "말하기" }).click();
+  await page.getByRole("button", { name: /눌러서 말하기/ }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "마이크와 음성 인식을 허락해 주세요" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "쓰기" })).toHaveAttribute("aria-selected", "true");
+  await ctx.close();
 });
 
 test("설정: 명절·챙기는 날 알림 스위치(알림 받기가 켜져 있을 때만 보이고, 끄고 켤 수 있다)", async ({ page }) => {

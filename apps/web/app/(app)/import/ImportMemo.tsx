@@ -1,10 +1,10 @@
 "use client";
 
-import type { AvatarConfig, Locale } from "@readme/core";
+import { IMAGE_MAX_COUNT, type AvatarConfig, type Locale } from "@readme/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { draftImport, saveImport, undoCapture, type CaptureDraftLine, type CaptureState, type UndoOp } from "@/app/actions/capture";
+import { draftImport, draftImportImages, saveImport, undoCapture, type CaptureDraftLine, type CaptureState, type ImportError, type UndoOp } from "@/app/actions/capture";
 import { Avatar } from "@/components/Avatar";
 import { CaptureBadge } from "@/components/CaptureBadge";
 import { Heart, Squiggle, Star, Tape } from "@/components/diary";
@@ -12,17 +12,29 @@ import { DrawnCheck, Icon } from "@/components/marks";
 import { OrganizeScene } from "@/components/OrganizeScene";
 import type { CaptureItem } from "@/lib/capture-ai";
 import { nameKey, retarget, whoOf, type CaptureTarget } from "@/lib/capture-target";
+import { prepareImage, type PrepProblem } from "@/lib/image-prep";
 import type { ImportScopeData } from "@/lib/pages/import.data";
+import { startListenGuard, type ListenGuard } from "@/lib/listen-guard";
 import { startDictation, type Dictation, type NativeSpeech } from "@/lib/speech";
 
-type Method = "write" | "speak";
+type Method = "write" | "speak" | "image";
 type Step = "input" | "reading" | "review" | "saving" | "done";
-type FailCode = NonNullable<CaptureState["error"]>;
+type FailCode = ImportError;
 
 interface Labels {
   method: string;
   write: string;
   speak: string;
+  image: string;
+  pickImage: string;
+  imageNotice: string;
+  removeImage: string;
+  preparing: string;
+  imageChip: string;
+  /** "읽지 못한 사진 {n}장은 건너뛰었어요" */
+  skipped: string;
+  micDenied: string;
+  imageProblems: Record<PrepProblem | "many", string>;
   placeholder: string;
   /** "{n} / 6000자" 모양(n 자리를 채운다) */
   count: string;
@@ -79,6 +91,7 @@ type WebRecognition = {
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
   onend: (() => void) | null;
+  onstart?: (() => void) | null;
 };
 
 function webCtor(): (new () => WebRecognition) | null {
@@ -129,31 +142,62 @@ export function ImportMemo({
   const [undone, setUndone] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [listening, setListening] = useState(false);
-  const [micError, setMicError] = useState(false);
+  const [micError, setMicError] = useState<"" | "denied" | "other">("");
+  const [images, setImages] = useState<{ id: number; blob: Blob; url: string }[]>([]);
+  const [imgError, setImgError] = useState("");
+  const [preparing, setPreparing] = useState(false);
+  const [skipped, setSkipped] = useState(0);
+  const picker = useRef<HTMLInputElement>(null);
+  const imageId = useRef(0);
+  const urls = useRef<string[]>([]);
+  const guard = useRef<ListenGuard | null>(null);
   const native = useRef<Dictation | null>(null);
   const web = useRef<WebRecognition | null>(null);
   const base = useRef("");
   const alive = useRef(true);
   const byId = new Map(people.map((p) => [p.id, p]));
 
+  // 사진 미리보기 주소는 사진이 빠지거나 화면을 떠날 때 거둔다
+  useEffect(() => {
+    urls.current = images.map((i) => i.url);
+  }, [images]);
+
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
+      urls.current.forEach((u) => URL.revokeObjectURL(u));
+      guard.current?.dispose();
       native.current?.cancel();
       web.current?.abort();
     };
   }, []);
 
+  const endGuard = () => {
+    guard.current?.dispose();
+    guard.current = null;
+  };
+
   const stopListening = () => {
+    endGuard();
     native.current?.stop();
     web.current?.stop();
     setListening(false);
   };
 
+  /** 마이크를 못 쓰는 이유: 허락이 없으면 그 안내, 그 밖에는 일반 안내. 글로 적게 한다 */
+  const micFailed = (why: "denied" | "other") => {
+    endGuard();
+    native.current = null;
+    web.current = null;
+    setListening(false);
+    setMicError(why);
+    setMethod("write");
+  };
+
   const listen = async () => {
     if (listening) return stopListening();
-    setMicError(false);
+    setMicError("");
     base.current = text.trim();
     const lang = locale === "ko" ? "ko-KR" : "en-US";
     const plugin = nativeSpeech();
@@ -162,30 +206,30 @@ export function ImportMemo({
         const perm = await plugin.requestPermissions();
         if (perm.speechRecognition !== "granted") throw new Error("denied");
         setListening(true);
+        // 말이 끝난 뒤 한참 새 글이 없으면 스스로 멈춘다(말로 적기와 같은 규칙)
+        guard.current = startListenGuard({ onStop: () => native.current?.stop() });
         native.current = await startDictation(plugin, {
           language: lang,
-          onText: (t) => alive.current && setText(join(base.current, t).slice(0, max)),
+          onText: (t) => {
+            if (!alive.current) return;
+            setText(join(base.current, t).slice(0, max));
+            guard.current?.heard(t);
+          },
           onDone: (t) => {
             native.current = null;
+            endGuard();
             if (!alive.current) return;
             if (t) setText(join(base.current, t).slice(0, max));
             setListening(false);
           },
         });
-      } catch {
-        native.current = null;
-        setListening(false);
-        setMicError(true);
-        setMethod("write");
+      } catch (e) {
+        micFailed(e instanceof Error && e.message === "denied" ? "denied" : "other");
       }
       return;
     }
     const Ctor = webCtor();
-    if (!Ctor) {
-      setMicError(true);
-      setMethod("write");
-      return;
-    }
+    if (!Ctor) return micFailed("other");
     const r = new Ctor();
     r.lang = lang;
     r.interimResults = true;
@@ -195,33 +239,67 @@ export function ImportMemo({
         .map((res) => res[0]?.transcript ?? "")
         .join(" ");
       setText(join(base.current, said).slice(0, max));
+      guard.current?.heard(said);
     };
     r.onerror = (e) => {
-      if (e.error !== "aborted" && e.error !== "no-speech") {
-        setMicError(true);
-        setMethod("write");
-      }
+      if (e.error === "aborted" || e.error === "no-speech") return;
+      micFailed(e.error === "not-allowed" || e.error === "service-not-allowed" ? "denied" : "other");
     };
     r.onend = () => {
+      endGuard();
       if (web.current === r) web.current = null;
       if (alive.current) setListening(false);
     };
     web.current = r;
-    setListening(true);
-    r.start();
+    try {
+      setListening(true);
+      r.start();
+      guard.current = startListenGuard({ onStop: () => web.current?.stop() });
+    } catch {
+      micFailed("other");
+    }
+  };
+
+  /** 사진을 골랐다: 하나씩 걸러 내고 줄여서 담는다(걸린 사진은 이유를 보인다) */
+  const pick = async (files: FileList | null) => {
+    const list = Array.from(files ?? []);
+    if (picker.current) picker.current.value = "";
+    if (!list.length) return;
+    setImgError("");
+    setPreparing(true);
+    const room = IMAGE_MAX_COUNT - images.length;
+    const added: { id: number; blob: Blob; url: string }[] = [];
+    let problem: PrepProblem | "many" | null = list.length > room ? "many" : null;
+    for (const file of list.slice(0, Math.max(0, room))) {
+      const r = await prepareImage(file);
+      if (r.ok) added.push({ id: ++imageId.current, blob: r.blob, url: URL.createObjectURL(r.blob) });
+      else problem = r.problem;
+    }
+    if (!alive.current) return added.forEach((x) => URL.revokeObjectURL(x.url));
+    setPreparing(false);
+    if (added.length) setImages((cur) => [...cur, ...added].slice(0, IMAGE_MAX_COUNT));
+    if (problem) setImgError(labels.imageProblems[problem]);
   };
 
   const analyze = async () => {
-    if (!text.trim() || step === "reading") return;
+    const withImages = method === "image";
+    if (withImages ? !images.length || preparing : !text.trim()) return;
+    if (step === "reading") return;
     if (listening) stopListening();
     setError("");
     setStep("reading");
     const scopeArg = scope.kind === "person" ? scope.id : scope.kind;
     let draft;
     try {
-      draft = await draftImport(text, scopeArg);
+      if (withImages) {
+        // 줄인 사진을 파일로(글자로 바꾸지 않는다: 서버 동작 인자의 배열 글자 수 한도와 본문 크기를 피한다)
+        const form = new FormData();
+        form.set("scope", scopeArg);
+        images.forEach((im, n) => form.append("image", im.blob, `photo-${n + 1}.jpg`));
+        draft = await draftImportImages(form);
+      } else draft = await draftImport(text, scopeArg);
     } catch {
-      draft = { lines: [], error: "failed" as FailCode, name: "" };
+      draft = { lines: [], error: "failed" as FailCode, name: "", skipped: 0 };
     }
     if (!alive.current) return;
     if (draft.error || !draft.lines.length) {
@@ -230,6 +308,7 @@ export function ImportMemo({
       return;
     }
     setNewName(draft.name);
+    setSkipped(draft.skipped);
     setRows(
       draft.lines.map((line, key) => ({
         key,
@@ -302,7 +381,7 @@ export function ImportMemo({
     router.push(scope.kind === "person" ? `/people/${scope.id}` : scope.kind === "new" && !undone && first ? first : "/people");
   };
 
-  if (step === "reading") return <OrganizeScene text={text.trim().slice(0, 120)} steps={labels.steps} />;
+  if (step === "reading") return <OrganizeScene text={method === "image" ? labels.imageChip : text.trim().slice(0, 120)} steps={labels.steps} />;
 
   if (step === "done" && saved) {
     const touched = new Map<string, string>();
@@ -363,6 +442,7 @@ export function ImportMemo({
     return (
       <div className="flex flex-1 flex-col">
         <h2 className="px-6 pb-1 pt-3 text-[24px] font-normal [html[data-kb]_&]:hidden">{labels.review}</h2>
+        {skipped > 0 ? <p className="px-6 text-[16px] text-muted">{labels.skipped.replace("{n}", String(skipped))}</p> : null}
         {scope.kind === "new" ? (
           <label className="mx-4 mt-2 flex flex-col gap-2 px-2">
             <span className="text-[19px]">{labels.name}</span>
@@ -469,67 +549,134 @@ export function ImportMemo({
     );
   }
 
-  // 넣기: 쓰기·말하기(이미지는 다음 단계)
-  const err = error || (micError ? labels.micError : "");
+  // 넣기: 쓰기·말하기·사진
+  const err = error || (micError === "denied" ? labels.micDenied : micError ? labels.micError : "");
+  const methods = [
+    { id: "write", label: labels.write },
+    { id: "speak", label: labels.speak },
+    { id: "image", label: labels.image },
+  ] as const;
+  const canRead = method === "image" ? images.length > 0 && !preparing : text.trim().length > 0;
   return (
     <div className="flex flex-1 flex-col">
       <div role="tablist" aria-label={labels.method} className="mx-6 mt-4 flex gap-6">
-        {(["write", "speak"] as const).map((m) => (
+        {methods.map((m) => (
           <button
-            key={m}
+            key={m.id}
             type="button"
             role="tab"
-            aria-selected={method === m}
+            aria-selected={method === m.id}
             onClick={() => {
               if (listening) stopListening();
-              setMethod(m);
+              setMicError("");
+              setMethod(m.id);
             }}
-            className={`relative flex min-h-11 items-center px-1 text-[22px] ${method === m ? "text-ink" : "text-muted"}`}
+            className={`relative flex min-h-11 items-center px-1 text-[22px] ${method === m.id ? "text-ink" : "text-muted"}`}
           >
-            <span className={method === m ? "hl px-1" : "px-1"}>{m === "write" ? labels.write : labels.speak}</span>
+            <span className={method === m.id ? "hl px-1" : "px-1"}>{m.label}</span>
           </button>
         ))}
       </div>
-      <div className="card ruled relative mx-4 mt-3 pb-3 pl-5 pr-4 pt-3 [background-position:0_12px]">
-        <Squiggle w={50} width={2.4} color="#F59BAE" className="-bottom-2 right-8" />
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value.slice(0, max))}
-          maxLength={max}
-          rows={11}
-          placeholder={labels.placeholder}
-          aria-label={labels.placeholder}
-          className="block w-full resize-none bg-transparent text-[19px] leading-8 outline-none placeholder:text-muted"
-        />
-        <p className="pt-1 text-right text-[14px] text-muted">{labels.count.replace("{n}", String(text.length))}</p>
-      </div>
-      {method === "speak" ? (
-        <div className="flex flex-col items-center gap-2 pt-4">
-          <button
-            type="button"
-            onClick={() => void listen()}
-            aria-pressed={listening}
-            className={`flex h-[72px] w-[72px] items-center justify-center rounded-full border-[1.8px] border-ink ${listening ? "bg-sky" : "bg-white"}`}
-          >
-            {listening ? <Icon name="stop" size={28} strokeWidth={2} /> : <MicGlyph />}
-            <span className="sr-only">{listening ? labels.listening : labels.listen}</span>
-          </button>
-          <p className="text-[17px] text-muted" aria-live="polite">
-            {listening ? labels.listening : labels.listen}
-          </p>
+
+      {method === "image" ? (
+        <div className="mx-4 mt-3 flex flex-col gap-3">
+          <input ref={picker} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" tabIndex={-1} aria-label={labels.pickImage} onChange={(e) => void pick(e.target.files)} />
+          {images.length ? (
+            <ul className="flex flex-wrap gap-3 px-1">
+              {images.map((im, n) => (
+                <li key={im.id} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={im.url} alt="" className="h-[104px] w-[104px] rounded-[12px] border-[1.5px] border-ink bg-white object-cover" />
+                  <button
+                    type="button"
+                    aria-label={`${labels.removeImage} ${n + 1}`}
+                    onClick={() => {
+                      URL.revokeObjectURL(im.url);
+                      setImages((cur) => cur.filter((x) => x.id !== im.id));
+                    }}
+                    className="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full border-[1.5px] border-ink bg-white"
+                  >
+                    <Icon name="close" size={16} strokeWidth={2.2} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {images.length < IMAGE_MAX_COUNT ? (
+            <button
+              type="button"
+              disabled={preparing}
+              onClick={() => picker.current?.click()}
+              className="card relative flex min-h-[96px] w-full items-center justify-center gap-2 border-dashed text-[20px] disabled:opacity-60"
+            >
+              <PhotoGlyph />
+              {preparing ? labels.preparing : labels.pickImage}
+            </button>
+          ) : null}
+          {imgError ? (
+            <p role="alert" className="px-1 text-[17px] text-red">
+              {imgError}
+            </p>
+          ) : null}
+          <p className="px-1 text-[15px] leading-[1.4] text-muted">{labels.imageNotice}</p>
         </div>
-      ) : null}
+      ) : (
+        <>
+          {/* 말하기: 마이크를 입력 칸 위에 크게(작은 화면에서 아래 단추 줄에 가리지 않게) */}
+          {method === "speak" ? (
+            <div className="flex flex-col items-center gap-1.5 pt-4">
+              <button
+                type="button"
+                onClick={() => void listen()}
+                aria-pressed={listening}
+                className={`relative flex h-[84px] w-[84px] items-center justify-center rounded-full border-[1.8px] border-ink ${listening ? "bg-sky" : "bg-white"}`}
+              >
+                {listening ? <span aria-hidden="true" className="absolute inset-0 animate-ping rounded-full border-2 border-ink/30" /> : null}
+                {listening ? <Icon name="stop" size={30} strokeWidth={2} /> : <MicGlyph />}
+                <span className="sr-only">{listening ? labels.listening : labels.listen}</span>
+              </button>
+              <p className="text-[17px] text-muted" aria-live="polite">
+                {listening ? labels.listening : labels.listen}
+              </p>
+            </div>
+          ) : null}
+          <div className="card ruled relative mx-4 mt-3 pb-3 pl-5 pr-4 pt-3 [background-position:0_12px]">
+            <Squiggle w={50} width={2.4} color="#F59BAE" className="-bottom-2 right-8" />
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, max))}
+              maxLength={max}
+              rows={method === "speak" ? 6 : 11}
+              placeholder={labels.placeholder}
+              aria-label={labels.placeholder}
+              className="block w-full resize-none bg-transparent text-[19px] leading-8 outline-none placeholder:text-muted"
+            />
+            <p className="pt-1 text-right text-[14px] text-muted">{labels.count.replace("{n}", String(text.length))}</p>
+          </div>
+        </>
+      )}
       <div className="bottom-bar mt-auto flex flex-col gap-2 bg-bg px-4 pt-4">
         {err ? (
           <p role="alert" className="px-1 text-[17px] text-red">
             {err}
           </p>
         ) : null}
-        <button type="button" onClick={analyze} disabled={!text.trim()} className="btn-primary !min-h-[58px] w-full !text-[22px] disabled:opacity-50">
+        <button type="button" onClick={analyze} disabled={!canRead} className="btn-primary !min-h-[58px] w-full !text-[22px] disabled:opacity-50">
           {labels.analyze}
         </button>
       </div>
     </div>
+  );
+}
+
+/** 사진 그림(사진 고르기 단추) */
+function PhotoGlyph() {
+  return (
+    <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3.5" y="5" width="17" height="14" rx="3" />
+      <circle cx="9" cy="10" r="1.6" />
+      <path d="M4.5 17l4.5-4.5 3.5 3.5 2.5-2.5 4.5 4" />
+    </svg>
   );
 }
 

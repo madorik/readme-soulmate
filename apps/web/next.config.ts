@@ -13,7 +13,8 @@ const nextConfig: NextConfig = {
   // 운영 번들(Turbopack) 쪼개는 기준: 기본값(minChunkSize 50000)에선 작은 조각을 큰 조각에 합치면서 공용 모듈(@readme/core의 번역 사전 등 43KB)이
   // 합쳐진 조각마다 복사돼, 한 화면에서 같은 사전을 세 번 받았다(gzip 57KB, 첫 화면 238KB 중 약 24%). 기준을 낮춰 합치기를 줄이면 한 번만 받는다
   // (홈 첫 화면 gzip 238KB → 203KB, 모든 조각의 gzip 합 657KB → 529KB, 요청은 16개 → 23개). 기능은 그대로고 쪼개는 방식만 다르다
-  experimental: { staleTimes: { static: 60 }, turbopackChunking: { minChunkSize: 20000 } },
+  // 서버 액션 본문 한도(기본 1MB): 메모 사진 가져오기가 줄인 사진 세 장(장당 900KB 이하, 글자로 바꾸면 1.2MB쯤)을 한 번에 보낸다. Vercel 함수 본문 한도(4.5MB) 안에서 4MB
+  experimental: { staleTimes: { static: 60 }, turbopackChunking: { minChunkSize: 20000 }, serverActions: { bodySizeLimit: "4mb" } },
   async headers() {
     // 기억해유는 개인 정보 화면이라 다른 사이트 안에 넣지 못하게 하고, 검색에도 안 나오게 한다.
     // 검색에 열어 두는 곳: 시작 화면·선물 가이드(/gifts)·약관류·robots·sitemap·llms.txt(가족에게 보낸 카드 /g·통계 /admin은 닫는다)

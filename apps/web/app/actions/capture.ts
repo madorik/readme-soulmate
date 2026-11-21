@@ -1,10 +1,10 @@
 "use server";
 
 import { track } from "@/lib/track";
-import { captureField, cleanMemo, clip, describeCapture, isSection, mergeCapture, mergeImport, sanitizeSection, splitMemo, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
+import { IMAGE_MAX_BYTES, IMAGE_MAX_COUNT, captureField, checkJpegBytes, cleanMemo, clip, describeCapture, isSection, mergeCapture, mergeImport, sanitizeSection, splitMemo, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
-import { aiConfigured, classifyCapture, classifyImport, type CaptureItem, type ImportScope } from "@/lib/ai";
-import { cleanCaptureItems, type CapturePerson } from "@/lib/capture-ai";
+import { aiConfigured, classifyCapture, classifyImport, classifyImportImage, type CaptureItem, type ImageKind, type ImageReading, type ImportScope } from "@/lib/ai";
+import { cleanCaptureItems, tidyImportItems, type CapturePerson } from "@/lib/capture-ai";
 import { holdsForConfirm, nameKey, resolveCapture, resolveSaved, sameSectionValue, tidyName, whoOf, type CaptureTarget, type ResolvedCapture } from "@/lib/capture-target";
 import { refundAi, reserveAi } from "@/lib/ai-quota";
 import { displayName, listNotes, listPeopleLite, readCard, readContactCard, requireSession, sealNote, writeContactSection, writeSection, type Note, type Person, type Session } from "@/lib/data";
@@ -388,9 +388,15 @@ export async function undoCapture(ops: UndoOp[]): Promise<{ ok: boolean }> {
 // 말로 적기와 같은 길(나누기 초안 → 확인 → 저장 → 되돌리기)을 쓰되: 글이 길어 조각으로 잘라 동시에 읽고(한 번 가져오기가 하루 한도 한 번),
 // 더하기만 하고(이미 값이 있는 칸은 그대로), 범위를 정할 수 있다 — any: 메모에 여러 사람 / 내 사람 한 명(contactId): 그 사람 이야기뿐 / new: 아직 없는 한 사람.
 
-/** 가져오기 초안: 말로 적기 초안과 같고, new 범위에서는 AI가 읽은 이름(없으면 빈 글)을 같이 돌려준다 */
-export interface ImportDraft extends CaptureDraft {
+/** 가져오기가 읽지 못한 이유(말로 적기와 같은 것 + 사진을 받지 않는 이유) */
+export type ImportError = NonNullable<CaptureState["error"]> | "bad_image" | "not_memo" | "unreadable" | "sensitive";
+
+/** 가져오기 초안: 말로 적기 초안 줄들. new 범위에서는 AI가 읽은 이름(없으면 빈 글), 사진이면 읽지 못해 건너뛴 사진 수를 같이 돌려준다 */
+export interface ImportDraft {
+  lines: CaptureDraftLine[];
+  error: ImportError | null;
   name: string;
+  skipped: number;
 }
 
 /** 조각 사이를 이어 주는 앞 조각의 끝(누구 목록인지 알려 주는 용도) */
@@ -411,16 +417,21 @@ function commonName(items: readonly CaptureItem[]): string {
   return [...count.values()].sort((a, b) => b.n - a.n)[0]?.name ?? "";
 }
 
+/** 받지 않은 사진의 이유 중 사람에게 가장 알려 줄 것(신분증·카드 > 메모가 아님 > 글이 안 읽힘 > 적을 게 없음) */
+const REJECT_ORDER: ImportError[] = ["sensitive", "not_memo", "unreadable", "nothing"];
+const rejectReason = (kind: ImageKind): ImportError => (kind === "id_or_payment" || kind === "inappropriate" ? "sensitive" : kind === "other" ? "not_memo" : kind === "unreadable" ? "unreadable" : "nothing");
+
+/** 가져올 것: 메모 글, 또는 서버가 이미 확인한 사진들(JPEG data URL, 저장하지 않고 AI에만 보낸다) */
+type ImportInput = { kind: "text"; memo: string } | { kind: "images"; photos: string[] };
+
 /**
- * 메모 가져오기 1단계 — 읽기만 한다(아무것도 저장하지 않는다): 글을 조각으로 잘라 동시에 읽고, 말로 적기 초안과 같은 줄들로 돌려준다.
- * scope: "new" | "any"(그 밖의 값) | 내 사람의 contactId. 하루 한도(가져오기 5번)는 한 번 가져오기가 한 번이고, 못 읽었으면 돌려준다
+ * 읽기 본체(글·사진 공통): 한도를 잡고 AI로 읽어 항목을 다듬고, 범위에 맞게 대상을 정해 초안 줄들로 돌려준다.
+ * - 읽는 사진이 아니면(풍경·신분증·카드·안 읽힘) 아무것도 적지 않는다. 읽은 항목은 tidyImportItems로 쓸데없는 것(식별 정보·긴 메모·중복·메모뿐인 새 사람)을 걸러 낸다
+ * - 한 조각·한 장이라도 불러 보지 못했으면 통째로 실패로 하고 한도를 돌려준다. 불러서 답을 받은 뒤의 거절(사진이 메모가 아님 등)은 비용이 났으니 돌려주지 않는다
  */
-export async function draftImport(raw: string, scopeRaw: string): Promise<ImportDraft> {
-  const none = (error: NonNullable<CaptureState["error"]>): ImportDraft => ({ lines: [], error, name: "" });
-  const s = await requireSession();
+async function runImport(s: Session, scopeRaw: string, input: ImportInput): Promise<ImportDraft> {
+  const none = (error: ImportError, skipped = 0): ImportDraft => ({ lines: [], error, name: "", skipped });
   const { locale } = s.profile;
-  const memo = cleanMemo(raw);
-  if (!memo) return none("nothing");
   if (!aiConfigured()) return none("ai_off");
   const people = await listPeopleLite(s);
   let scope: ImportScope = { kind: "any" };
@@ -434,37 +445,89 @@ export async function draftImport(raw: string, scopeRaw: string): Promise<Import
   const gate = await reserveAi({ id: s.user.id, demo: s.user.isAnonymous || s.profile.isDemo }, "import");
   if (gate === "user_limit" || gate === "global_limit") return none("limit");
   if (gate !== "ok") return none("failed");
-  const chunks = splitMemo(memo);
+  const known = people.map(asCapture);
   let items: CaptureItem[];
-  try {
-    items = (await Promise.all(chunks.map((c, i) => classifyImport(c, i ? chunks[i - 1]!.slice(-PREVIOUS_CHARS) : "", people.map(asCapture), locale, scope)))).flat();
-  } catch {
-    // 한 조각이라도 못 읽었으면 일부만 적히는 일이 없게 통째로 실패로 하고 한도는 돌려준다
-    await refundAi(s.user.id, "import");
-    return none("failed");
+  let skipped = 0;
+  if (input.kind === "images") {
+    const settled = await Promise.allSettled(input.photos.map((url) => classifyImportImage(url, known, locale, scope)));
+    if (settled.some((r) => r.status === "rejected")) {
+      await refundAi(s.user.id, "import");
+      return none("failed");
+    }
+    const readings = settled.map((r) => (r as PromiseFulfilledResult<ImageReading>).value);
+    const accepted = readings.filter((r) => r.accepted);
+    skipped = readings.length - accepted.length;
+    track("import_draft", { userId: s.user.id, source: "image" });
+    if (!accepted.length) {
+      const why = readings.map((r) => rejectReason(r.kind)).sort((a, b) => REJECT_ORDER.indexOf(a) - REJECT_ORDER.indexOf(b))[0]!;
+      return none(why, skipped);
+    }
+    items = accepted.flatMap((r) => r.items);
+  } else {
+    const chunks = splitMemo(input.memo);
+    try {
+      items = (await Promise.all(chunks.map((c, i) => classifyImport(c, i ? chunks[i - 1]!.slice(-PREVIOUS_CHARS) : "", known, locale, scope)))).flat();
+    } catch {
+      await refundAi(s.user.id, "import");
+      return none("failed");
+    }
+    track("import_draft", { userId: s.user.id, source: scope.kind });
   }
-  track("import_draft", { userId: s.user.id, source: scope.kind });
-  if (!items.length) return none("nothing");
+  items = tidyImportItems(items);
+  if (!items.length) return none("nothing", skipped);
   let name = "";
   let rows: ResolvedCapture[];
   if (scope.kind === "person") {
     // 그 사람 이야기뿐: 누구 이야기라고 했든 그 사람으로
-    rows = resolveSaved(items.map((it) => ({ ...it, who: { type: "existing" as const, contactId: about!.contactId, name: null } })), people.map(asCapture));
+    rows = resolveSaved(items.map((it) => ({ ...it, who: { type: "existing" as const, contactId: about!.contactId, name: null } })), known);
   } else if (scope.kind === "new") {
     name = commonName(items);
     const label = name || translate(locale, "import.unnamed");
-    rows = resolveSaved(items.map((it) => ({ ...it, who: { type: "new" as const, contactId: null, name: label } })), people.map(asCapture));
+    rows = resolveSaved(items.map((it) => ({ ...it, who: { type: "new" as const, contactId: null, name: label } })), known);
   } else {
-    rows = resolveCapture(items, people.map(asCapture), { detect: true });
+    rows = resolveCapture(items, known, { detect: true });
   }
   let done;
   try {
     done = await apply(s, people, rows, false, true);
   } catch {
-    return none("failed");
+    return none("failed", skipped);
   }
-  if (!done.lines.length) return none("nothing");
-  return { lines: done.lines, error: null, name };
+  if (!done.lines.length) return none("nothing", skipped);
+  return { lines: done.lines, error: null, name, skipped };
+}
+
+/**
+ * 메모 가져오기 1단계(글) — 읽기만 한다(아무것도 저장하지 않는다): 붙여 넣거나 말한 메모를 조각으로 잘라 동시에 읽어
+ * 말로 적기 초안과 같은 줄들로 돌려준다. scope: "new" | "any"(그 밖의 값) | 내 사람의 contactId
+ */
+export async function draftImport(raw: string, scopeRaw: string): Promise<ImportDraft> {
+  const s = await requireSession();
+  const memo = cleanMemo(raw);
+  if (!memo) return { lines: [], error: "nothing", name: "", skipped: 0 };
+  return runImport(s, scopeRaw, { kind: "text", memo });
+}
+
+/**
+ * 메모 가져오기 1단계(사진) — 읽기만 한다: 폰에서 줄여 JPEG로 다시 만든 사진 한 장 이상 세 장까지를 파일(FormData의 image, scope)로 받는다.
+ * AI에 보내기 전에 서버가 사진마다 한 번 더 확인한다(파일 크기·JPEG 시작과 끝 표시·가로세로 범위, core checkJpegBytes). 하나라도 걸리면
+ * 한도를 쓰지 않고 bad_image로 돌려보낸다. 사진은 저장하지 않고 AI에만 보낸다(store:false)
+ */
+export async function draftImportImages(form: FormData): Promise<ImportDraft> {
+  const s = await requireSession();
+  const bad: ImportDraft = { lines: [], error: "bad_image", name: "", skipped: 0 };
+  if (!(form instanceof FormData)) return bad;
+  const entries = form.getAll("image");
+  if (entries.length < 1 || entries.length > IMAGE_MAX_COUNT) return bad;
+  const photos: string[] = [];
+  for (const e of entries) {
+    // 문자열이거나 파일이 아니면, 너무 크면(읽어 들이기 전에) 거절
+    if (typeof e === "string" || typeof (e as Blob).arrayBuffer !== "function" || (e as Blob).size > IMAGE_MAX_BYTES) return bad;
+    const bytes = new Uint8Array(await (e as Blob).arrayBuffer());
+    if (!checkJpegBytes(bytes).ok) return bad;
+    photos.push(`data:image/jpeg;base64,${Buffer.from(bytes).toString("base64")}`);
+  }
+  return runImport(s, String(form.get("scope") ?? "any"), { kind: "images", photos });
 }
 
 /**
