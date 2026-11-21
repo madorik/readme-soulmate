@@ -282,6 +282,24 @@ export function mergeCapture<S extends Section>(field: CaptureField, current: Ca
   return JSON.stringify(out) === before ? null : out;
 }
 
+/**
+ * 메모 가져오기: '없는 것만 더한다'. 글은 이어 붙이고 목록·고르는 칸·반려동물은 없는 것만 더하되(mergeCapture의 더하기),
+ * 이미 값이 있는 한 칸짜리(하나만 고르는 칸·수·생일·바꿔 쓰는 사이즈 글)와 같은 이름의 기념일은 건드리지 않는다(null)
+ */
+export function mergeImport<S extends Section>(field: CaptureField, current: CardData[S] | null | undefined, value: CaptureValue): CardData[S] | null {
+  const base = (current ?? {}) as unknown as Record<string, unknown>;
+  const filled = (v: unknown) => v != null && String(v).trim() !== "";
+  if (field.kind === "code" || field.kind === "number" || field.kind === "date") {
+    if (filled(getRaw(base, field.key))) return null;
+  } else if (field.kind === "text" && field.replace) {
+    if (filled(getRaw(base, field.key))) return null;
+  } else if (field.kind === "anniversary") {
+    const label = (value.label ?? "").trim();
+    if (((base.anniversaries as { label: string }[]) ?? []).some((a) => same(a.label, label))) return null;
+  }
+  return mergeCapture(field, current, value, "add");
+}
+
 /** 지우기: 맞는 것만 빼고(값이 없으면 그 칸을 비운다), 뺄 게 있었는지 */
 function removeFrom(field: CaptureField, base: Record<string, unknown>, text: string, codes: string[], value: CaptureValue): boolean {
   switch (field.kind) {

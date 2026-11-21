@@ -37,6 +37,13 @@ describe("reserve_ai_call", () => {
     assert.equal(await reserve(b, "capture", 2, 1_000_000), "ok");
   });
 
+  test("메모 가져오기(import)는 하루 5번: 다섯 번까지 ok, 여섯 번째는 user_limit, 말로 적기 횟수와 따로 센다", async () => {
+    const a = await makeUser();
+    for (let i = 0; i < 5; i++) assert.equal(await reserve(a, "import", 5, 1_000_000), "ok", `${i + 1}번째`);
+    assert.equal(await reserve(a, "import", 5, 1_000_000), "user_limit");
+    assert.equal(await reserve(a, "capture", 40, 1_000_000), "ok");
+  });
+
   test("한도 0이면 첫 호출부터 막고, 막힌 호출은 기록에 남기지 않는다", async () => {
     const a = await makeUser();
     assert.equal(await reserve(a, "capture", 0, 1_000_000), "user_limit");

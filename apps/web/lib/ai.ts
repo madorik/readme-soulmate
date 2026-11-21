@@ -1,11 +1,11 @@
 import "server-only";
 import type { Locale } from "@readme/core";
-import { captureRequest, parseCapture, type CaptureItem, type CapturePerson } from "./capture-ai";
+import { IMPORT_ITEMS_MAX, captureRequest, importRequest, parseCapture, type CaptureItem, type CapturePerson, type ImportScope } from "./capture-ai";
 
 // 말로 적기: 한 문장을 (누구, 어느 칸, 값) 여러 개로 나눈다. OpenAI Responses API + JSON 스키마(구조화 출력). 요청 몸·응답 풀기는 capture-ai.ts.
 // 키(OPENAI_API_KEY)가 없으면 기능을 숨긴다. 모델은 OPENAI_MODEL(기본 gpt-6-luna), 주소는 OPENAI_BASE_URL(기본 api.openai.com/v1, 시험용 가짜 서버로 바꿀 수 있다).
 
-export type { CaptureItem, CapturePerson };
+export type { CaptureItem, CapturePerson, ImportScope };
 
 export function aiConfigured(): boolean {
   return !!process.env.OPENAI_API_KEY;
@@ -30,4 +30,26 @@ export async function classifyCapture(text: string, people: CapturePerson[], loc
   });
   if (!res.ok) throw new Error(`ai_http_${res.status}`);
   return parseCapture(await res.json());
+}
+
+/** 메모 가져오기의 추론 강도: OPENAI_IMPORT_EFFORT(none·low·medium·high). 기본 low(긴 글을 조각마다 훑는 일이라 말로 적기보다 가볍게) */
+function importEffort(): "none" | "low" | "medium" | "high" {
+  const v = process.env.OPENAI_IMPORT_EFFORT;
+  return v === "none" || v === "low" || v === "medium" || v === "high" ? v : "low";
+}
+
+/** 메모 한 조각을 읽는다(previous: 앞 조각의 끝, 누구 목록인지 알려 주는 용도). 실패하면 throw */
+export async function classifyImport(text: string, previous: string, people: CapturePerson[], locale: Locale, scope: ImportScope): Promise<CaptureItem[]> {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("ai_off");
+  const base = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
+  const res = await fetch(`${base}/responses`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify(importRequest(text, previous, people, locale, scope, process.env.OPENAI_MODEL || "gpt-6-luna", importEffort())),
+    // 조각들을 동시에 부르므로 한 조각이 늦어도 이만큼만 기다린다
+    signal: AbortSignal.timeout(50_000),
+  });
+  if (!res.ok) throw new Error(`ai_http_${res.status}`);
+  return parseCapture(await res.json(), new Date(), IMPORT_ITEMS_MAX);
 }

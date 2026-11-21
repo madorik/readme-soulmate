@@ -17,5 +17,6 @@ export * from "./invite";
 export * from "./i18n";
 export * from "./speech";
 export * from "./capture";
+export * from "./import";
 export * from "./text";
 export * from "./relation";

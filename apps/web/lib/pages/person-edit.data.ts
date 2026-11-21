@@ -10,6 +10,8 @@ export interface PersonEditData {
   /** 이름 옆 작은 얼굴 */
   avatar: AvatarConfig | null;
   card: PartialCard;
+  /** 메모 가져오기를 쓸 수 있나(AI 키가 있을 때) */
+  ai: boolean;
   /** 주소 ?open=…: 펼쳐 둘 항목 */
   open: Section | null;
 }

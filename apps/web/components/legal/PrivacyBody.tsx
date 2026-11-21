@@ -4,7 +4,7 @@ import { CEO, OPERATOR, SUPPORT_EMAIL } from "@/lib/legal-info";
 export const PRIVACY_TITLE = { ko: "개인정보 처리방침", en: "Privacy Policy" } as const;
 
 // 「개인정보 보호법」 제30조 항목을 실제로 처리하는 대로 적는다(2026-11-14 코드 기준).
-// 위탁: Vercel(호스팅), Supabase(DB, 서울), Google·Apple(로그인), OpenAI(말로 적기·선물 추천 찾을 말), Google(푸시 FCM, 2026-11-17부터), Google·Apple·Mozilla·Microsoft(웹 브라우저 푸시, 2026-11-21부터). 쿠팡에는 찾을 말만 보낸다. 위탁이 바뀌면 여기와 시행일(lib/legal-info.ts)을 같이 고친다.
+// 위탁: Vercel(호스팅), Supabase(DB, 서울), Google·Apple(로그인), OpenAI(말로 적기·메모 가져오기·선물 추천), Google(푸시 FCM, 2026-11-17부터), Google·Apple·Mozilla·Microsoft(웹 브라우저 푸시, 2026-11-21부터). 쿠팡에는 찾을 말만 보낸다. 위탁이 바뀌면 여기와 시행일(lib/legal-info.ts)을 같이 고친다.
 /** 본문만. 링크는 웹 주소로 둔다 */
 export function PrivacyBody({ locale }: { locale: Locale }) {
   const mail = <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>;
@@ -73,6 +73,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
           <li>About me is visible only to you. Nobody else can read it, even people in your list.</li>
           <li>Your records about other people and your private notes are visible only to you. They are not shown to that person either.</li>
           <li>A question link expires in 7 days and can be answered once. Once answered, the answers belong to the asker&rsquo;s record and the asker can edit or delete them.</li>
+          <li>When you send About me by link, the link carries no information. The items you picked are kept encrypted on our server for up to 7 days (and up to 10 receipts). Only a signed-in person who opens the link can see them, and what they choose to save becomes a copy in their own list.</li>
         </ul>
 
         <h2>5. Service providers and overseas transfer</h2>
@@ -102,7 +103,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
             </tr>
             <tr>
               <td>OpenAI, L.L.C.</td>
-              <td>Sorting a sentence you say or type in Say it into people and sections, and picking gift ideas from your records and notes about a person, only when you use them</td>
+              <td>Sorting a sentence you say or type in Say it, and reading a memo you paste or dictate in Import notes, into people and sections, and picking gift ideas from your records and notes about a person, only when you use them</td>
               <td>USA (sent over the network each time)</td>
             </tr>
             <tr>
@@ -125,7 +126,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
         <p>
           Information is stored with these providers until you delete your account. If you don&rsquo;t want overseas transfer, you can choose not to sign up or delete your account; the service can&rsquo;t
           run without it. In the app and on the web, voice input uses your device&rsquo;s or browser&rsquo;s speech recognition (Apple, Google, etc.); we never receive the audio. In Say it, the recognized sentence and the names of your people are
-          sent to OpenAI only to sort the sentence; we don&rsquo;t keep the sentence itself, only the values saved to your records. For gift ideas, what you call the person, their folders, the
+          sent to OpenAI only to sort the sentence; we don&rsquo;t keep the sentence itself, only the values saved to your records. In Import notes (up to 6,000 characters, 5 times a day), the memo text you paste or dictate and the names of your people are sent to OpenAI only to read it; we don&rsquo;t keep the memo, only the values you choose to add, and the reading is told to ignore phone numbers, addresses and other identifiers. For gift ideas, what you call the person, their folders, the
           upcoming date and age, your records about them (tastes, sizes, allergies and things to avoid, gift ideas) and your private notes about them are sent to OpenAI only to pick
           gifts. Only search words (like &ldquo;camping mug&rdquo;) are sent to Coupang; opening a gift takes you to Coupang, which follows its
           own privacy policy. Sending a link through KakaoTalk or another app passes only the link to that app.
@@ -136,6 +137,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
           <li>Until you delete your account. Deleting removes About me, people, records, notes, question links and notifications right away; database backups roll off within 7 days.</li>
           <li>Demo accounts are deleted automatically 7 days after they are created.</li>
           <li>Unanswered question links stop working after 7 days.</li>
+          <li>Links that send About me stop working after 7 days or 10 receipts, and the copy kept for the link is deleted shortly after. A copy someone saved to their own list stays there until they delete it or their account.</li>
           <li>Answers you send stay in the asker&rsquo;s record until they delete them or their account. Deleting your own account doesn&rsquo;t remove them. To have your answer removed, ask the asker or email us.</li>
         </ul>
 
@@ -149,7 +151,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
           <li>All traffic is encrypted (HTTPS).</li>
           <li>Allergies, sizes, dates of birth and anniversaries, private notes and prefilled question values are encrypted (AES-256-GCM) before they are stored.</li>
           <li>The database itself checks that each person can only read their own data (row-level security).</li>
-          <li>Question links are random, stored only as a hash, work once, and expire.</li>
+          <li>Question links are random, stored only as a hash, work once, and expire. Links that send About me are random, stored only as a hash, and expire.</li>
         </ul>
 
         <h2>9. Children</h2>
@@ -225,6 +227,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
         <li>나에 대한 기록는 나만 봅니다. 내 사람들에 있는 사람도 읽을 수 없습니다.</li>
         <li>다른 사람에 대해 적어 둔 기록과 메모는 나만 봅니다. 그 사람에게도 보이지 않습니다.</li>
         <li>물어보기 링크는 7일 안에 한 번만 답할 수 있습니다. 답한 내용은 물어본 사람의 기록이 되어, 물어본 사람이 고치거나 지울 수 있습니다.</li>
+        <li>나에 대한 기록을 링크로 보내면 링크에는 정보가 없습니다. 고른 항목은 암호화해 서버에 최대 7일(받을 수 있는 횟수 10번까지) 보관하며, 로그인한 사람이 링크를 열어야만 볼 수 있고 그 사람이 저장하기로 한 것은 그 사람의 사람들 기록에 복사본으로 남습니다.</li>
       </ul>
 
       <h2>5. 처리 위탁과 국외 이전</h2>
@@ -254,7 +257,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
           </tr>
           <tr>
             <td>OpenAI, L.L.C.</td>
-            <td>말로 적기에서 말하거나 적은 문장을 사람·항목으로 나누기, 선물 추천에서 그 사람 기록·메모로 선물 고르기(쓸 때만)</td>
+            <td>말로 적기에서 말하거나 적은 문장, 메모 가져오기에서 붙여 넣거나 말한 메모를 사람·항목으로 나누기, 선물 추천에서 그 사람 기록·메모로 선물 고르기(쓸 때만)</td>
             <td>미국(쓸 때마다 네트워크로 전송)</td>
           </tr>
           <tr>
@@ -277,7 +280,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
       <p>
         보유 기간은 회원 탈퇴 때까지입니다. 국외 이전을 원하지 않으면 가입하지 않거나 계정을 삭제할 수 있으며, 이 경우 서비스를 쓸 수 없습니다. 앱·웹의 말로 입력하기는 기기·브라우저의 음성
         인식(Apple·Google 등)을 쓰며 운영자는 음성을 받지 않습니다. 말로 적기에서는 글로 바뀐 문장과 내 사람들의 이름을 문장을 나누는 데만 OpenAI에 보내고, 운영자는 문장 자체는 보관하지 않고 기록에 넣은 값만
-        저장합니다. 선물 추천에서는 부르는 말, 든 폴더, 다가오는 날과 나이, 그 사람에 대한 기록(취향·사이즈·알레르기 같은 피할 것·해주고 싶은 선물)과 그 사람 메모를 선물을
+        저장합니다. 메모 가져오기(한 번에 6천 자까지, 하루 5번)에서는 붙여 넣거나 말한 메모 글과 내 사람들의 이름을 메모를 읽는 데만 OpenAI에 보내고, 운영자는 메모 원문을 보관하지 않고 내가 고른 값만 저장하며, 전화번호·주소 같은 식별 정보는 읽지 않도록 합니다. 선물 추천에서는 부르는 말, 든 폴더, 다가오는 날과 나이, 그 사람에 대한 기록(취향·사이즈·알레르기 같은 피할 것·해주고 싶은 선물)과 그 사람 메모를 선물을
         고르는 데만 OpenAI에 보냅니다. 쿠팡에는 찾을 말(예: 캠핑 머그컵)만 보내며, 선물을 누르면 쿠팡으로 이동해 쿠팡의 개인정보처리방침을 따릅니다.
         카카오톡 등 다른 앱으로 보내기는 링크만 그 앱에 넘깁니다.
       </p>
@@ -287,6 +290,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
         <li>계정을 삭제할 때까지 보관합니다. 삭제하면 기억해유·사람들·기록·메모·물어보기 링크·알림을 바로 지우고, 데이터베이스 백업에서도 7일 안에 사라집니다.</li>
         <li>데모 계정은 만든 지 7일 뒤 자동으로 지웁니다.</li>
         <li>답하지 않은 물어보기 링크는 7일 뒤 열리지 않습니다.</li>
+        <li>나에 대한 기록을 보내는 링크는 7일 뒤 또는 10번 받으면 열리지 않고, 링크를 위해 보관한 사본은 곧 지웁니다. 받은 사람이 자기 사람들에 저장한 복사본은 그 사람이 지우거나 탈퇴할 때까지 남습니다.</li>
         <li>내가 보낸 답은 물어본 사람이 지우거나 탈퇴할 때까지 그 사람의 기록에 남습니다. 내 계정을 지워도 지워지지 않습니다. 지우고 싶으면 물어본 사람에게 말하거나 메일로 알려 주세요.</li>
       </ul>
 
@@ -298,7 +302,7 @@ export function PrivacyBody({ locale }: { locale: Locale }) {
         <li>모든 통신을 암호화(HTTPS)합니다.</li>
         <li>알레르기·사이즈·생년월일과 기념일·메모·물어볼 때 미리 채운 값은 저장 전에 암호화(AES-256-GCM)합니다.</li>
         <li>데이터베이스가 직접 &lsquo;본인&rsquo;만 자기 정보를 읽게 막습니다(행 수준 보안).</li>
-        <li>물어보기 링크는 무작위로 만들고 해시로만 보관하며, 한 번만 쓰이고 기한이 지나면 열리지 않습니다.</li>
+        <li>물어보기 링크는 무작위로 만들고 해시로만 보관하며, 한 번만 쓰이고 기한이 지나면 열리지 않습니다. 나에 대한 기록을 보내는 링크도 무작위로 만들고 해시로만 보관하며 기한이 지나면 열리지 않습니다.</li>
       </ul>
 
       <h2>9. 만 14세 미만</h2>

@@ -1,8 +1,10 @@
 import { SECTIONS, type Section } from "@readme/core";
+import Link from "next/link";
 import { leaveTour } from "@/app/actions/tour";
 import { VoiceCapture } from "@/app/(app)/voice/VoiceCapture";
 import { TopBar } from "@/components/chrome";
 import { Heart, Star } from "@/components/diary";
+import { Icon } from "@/components/marks";
 import type { VoiceData } from "@/lib/pages/types";
 import { makeT } from "@/lib/t";
 
@@ -22,7 +24,13 @@ export function VoiceView({ locale, people, tour }: VoiceData) {
               <input type="hidden" name="source" value="voice" />
               <button className="flex min-h-11 items-center px-3 text-[19px] text-muted">{t("common.skip")}</button>
             </form>
-          ) : undefined
+          ) : (
+            // 가운데 구슬에서도: 적어 둔 메모를 통째로 가져오기(쓰기·말하기)
+            <Link href="/import" className="flex min-h-11 items-center gap-1 px-3 text-[19px] text-accent">
+              <Icon name="pencil" size={18} strokeWidth={2} />
+              {t("import.open")}
+            </Link>
+          )
         }
       />
       {/* 키보드가 뜨면(적는 동안) 제목은 숨겨 적는 칸과 사람 줄이 한 화면에. 체험이면 제목 대신 아래 안내(이렇게 말해보세요) */}

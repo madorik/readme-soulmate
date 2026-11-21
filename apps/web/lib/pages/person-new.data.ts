@@ -10,4 +10,6 @@ export interface PersonNewData {
   error: string | null;
   /** 주소 ?name=…: 미리 채울 이름 */
   name: string | null;
+  /** 메모 가져오기를 쓸 수 있나(AI 키가 있을 때) */
+  ai: boolean;
 }

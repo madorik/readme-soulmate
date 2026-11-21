@@ -28,6 +28,9 @@ export const SERVER_EVENTS = [
   // 내 기록을 링크로 보내고(share_create), 받은 사람이 자기 사람들에 저장한 것(share_claim)
   "share_create",
   "share_claim",
+  // 메모 가져오기: 읽기 요청(import_draft)과 저장(import_save)
+  "import_draft",
+  "import_save",
   "favorite",
   "folder_create",
   "demo_start",
@@ -60,6 +63,8 @@ export const FEATURE_LABEL: Record<string, string> = {
   ask_answer: "물어보기에 답함",
   share_create: "내 기록 링크 만듦",
   share_claim: "받은 기록 저장",
+  import_draft: "메모 가져오기 읽음",
+  import_save: "메모 가져오기 저장",
   favorite: "즐겨찾기",
   folder_create: "폴더 만들기",
   demo_start: "데모로 둘러보기",

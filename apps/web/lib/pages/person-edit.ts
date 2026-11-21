@@ -1,6 +1,7 @@
 import "server-only";
 import { isSection } from "@readme/core";
 import { notFound } from "next/navigation";
+import { aiConfigured } from "@/lib/ai";
 import { displayName, listPeople, requireSession } from "@/lib/data";
 import type { PersonEditData } from "./person-edit.data";
 import type { PageInput } from "./routes";
@@ -12,5 +13,5 @@ export async function loadPersonEdit({ params, searchParams }: PageInput): Promi
   const s = await requireSession();
   const p = (await listPeople(s)).find((x) => x.contactId === id);
   if (!p) notFound();
-  return { locale: s.profile.locale, contactId: p.contactId, name: displayName(p), avatar: p.avatar, card: p.card, open: isSection(open) ? open : null };
+  return { locale: s.profile.locale, contactId: p.contactId, name: displayName(p), avatar: p.avatar, card: p.card, ai: aiConfigured(), open: isSection(open) ? open : null };
 }

@@ -1,11 +1,11 @@
 "use server";
 
 import { track } from "@/lib/track";
-import { captureField, clip, describeCapture, isSection, mergeCapture, sanitizeSection, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
+import { captureField, cleanMemo, clip, describeCapture, isSection, mergeCapture, mergeImport, sanitizeSection, splitMemo, translate, type CaptureOp, type CardData, type PartialCard, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
-import { aiConfigured, classifyCapture, type CaptureItem } from "@/lib/ai";
+import { aiConfigured, classifyCapture, classifyImport, type CaptureItem, type ImportScope } from "@/lib/ai";
 import { cleanCaptureItems, type CapturePerson } from "@/lib/capture-ai";
-import { holdsForConfirm, nameKey, resolveCapture, resolveSaved, sameSectionValue, whoOf, type CaptureTarget, type ResolvedCapture } from "@/lib/capture-target";
+import { holdsForConfirm, nameKey, resolveCapture, resolveSaved, sameSectionValue, tidyName, whoOf, type CaptureTarget, type ResolvedCapture } from "@/lib/capture-target";
 import { refundAi, reserveAi } from "@/lib/ai-quota";
 import { displayName, listNotes, listPeopleLite, readCard, readContactCard, requireSession, sealNote, writeContactSection, writeSection, type Note, type Person, type Session } from "@/lib/data";
 import { LIMITS } from "@/lib/data-core";
@@ -125,8 +125,9 @@ const ghost = (id: string) => id.startsWith("new:") || id.startsWith("pick:");
  * 대상이 정해진 항목을 사람 기록·내 리드미·메모에 넣는다(write). 새 사람은 같은 이름당 한 명만 새로 더한다.
  * write가 false면 같은 길을 가되 아무것도 쓰지 않고(새 사람도 만들지 않는다) 어떻게 적힐지 줄만 돌려준다 — 확인 화면의 초안·미리 보기.
  * 대상이 내 사람이 아니거나(사람 목록에 없다) 저장인데 아직 못 정한 줄(pick)은 건너뛴다
+ * importing이면 메모 가져오기: 더하기만 한다(바꾸기는 더하기로, 지우기는 건너뛴다). 이미 값이 있는 한 칸짜리는 건드리지 않는다(mergeImport)
  */
-async function apply(s: Session, people: Person[], rows: ResolvedCapture[], write: boolean): Promise<{ lines: CaptureDraftLine[]; undo: UndoOp[] }> {
+async function apply(s: Session, people: Person[], rows: ResolvedCapture[], write: boolean, importing = false): Promise<{ lines: CaptureDraftLine[]; undo: UndoOp[] }> {
   const { locale } = s.profile;
   const lines: CaptureDraftLine[] = [];
   const undo: UndoOp[] = [];
@@ -157,6 +158,7 @@ async function apply(s: Session, people: Person[], rows: ResolvedCapture[], writ
     };
 
     for (const row of rows) {
+      if (importing && row.item.op === "remove") continue; // 가져오기는 지우지 않는다
       const { target } = row;
       let who: string;
       if (target.kind === "me") who = "me";
@@ -190,7 +192,7 @@ async function apply(s: Session, people: Person[], rows: ResolvedCapture[], writ
         names.set(who, row.spoken);
       }
       // 화면이 줄과 함께 되돌려 받는 것: 대상까지 반영한 항목과 대상·말한 이름·후보
-      const item = { ...row.item, who: whoOf(target, row.spoken) };
+      const item = { ...row.item, who: whoOf(target, row.spoken), ...(importing ? { op: "add" as const } : {}) };
       const extra = { item, idx: row.idx, target, spoken: row.spoken, candidates: row.candidates };
       const isNew = [...created.values()].includes(who);
       const href = who === "me" ? "/me" : ghost(who) ? "" : `/people/${who}`;
@@ -220,13 +222,13 @@ async function apply(s: Session, people: Person[], rows: ResolvedCapture[], writ
       if (!field) continue;
       const card = await cardOf(who);
       const op = item.op;
-      const merged = mergeCapture(field, card[field.section], item, op);
+      const merged = importing ? mergeImport(field, card[field.section], item) : mergeCapture(field, card[field.section], item, op);
       // 내 리드미의 선물 목록은 '받고 싶은 것', 다른 사람 기록에서는 '해주고 싶은 선물'
       const label = who === "me" && field.key === "gifts.wishlist" ? translate(locale, "gift.wishTitle") : field.label[locale];
       const line = { who: names.get(who)!, isNew, op, field: label, value: describeCapture(field, item, locale), href, ...extra };
       if (!merged) {
         // 이미 그대로 적혀 있으면 '이미 알고 있어요', 지울 게 없으면 '이미 없어요'(값이 틀린 더하기·바꾸기는 버린다)
-        if (op === "remove" || mergeCapture(field, null, item, op)) lines.push({ ...line, same: true });
+        if (op === "remove" || (importing ? mergeImport(field, null, item) : mergeCapture(field, null, item, op))) lines.push({ ...line, same: true });
         continue;
       }
       const key = `${who}:${field.section}`;
@@ -379,4 +381,111 @@ export async function undoCapture(ops: UndoOp[]): Promise<{ ok: boolean }> {
   revalidatePath("/home");
   revalidatePath("/me");
   return { ok: true };
+}
+
+// ── 메모 가져오기 ─────────────────────────────────────────────
+// 사람들이 따로 적어 둔 메모(붙여넣은 글·받아쓴 글)를 긴 채로 읽어 새 사람을 더하거나 있는 사람에 없는 것만 더한다.
+// 말로 적기와 같은 길(나누기 초안 → 확인 → 저장 → 되돌리기)을 쓰되: 글이 길어 조각으로 잘라 동시에 읽고(한 번 가져오기가 하루 한도 한 번),
+// 더하기만 하고(이미 값이 있는 칸은 그대로), 범위를 정할 수 있다 — any: 메모에 여러 사람 / 내 사람 한 명(contactId): 그 사람 이야기뿐 / new: 아직 없는 한 사람.
+
+/** 가져오기 초안: 말로 적기 초안과 같고, new 범위에서는 AI가 읽은 이름(없으면 빈 글)을 같이 돌려준다 */
+export interface ImportDraft extends CaptureDraft {
+  name: string;
+}
+
+/** 조각 사이를 이어 주는 앞 조각의 끝(누구 목록인지 알려 주는 용도) */
+const PREVIOUS_CHARS = 200;
+
+/** new 범위에서 메모가 한 사람을 부르는 이름: AI가 새 사람으로 읽은 이름 중 가장 많이 나온 것 */
+function commonName(items: readonly CaptureItem[]): string {
+  const count = new Map<string, { name: string; n: number }>();
+  for (const it of items) {
+    if (it.who.type !== "new") continue;
+    const name = tidyName(it.who.name);
+    if (!name) continue;
+    const key = nameKey(name);
+    const cur = count.get(key);
+    if (cur) cur.n++;
+    else count.set(key, { name, n: 1 });
+  }
+  return [...count.values()].sort((a, b) => b.n - a.n)[0]?.name ?? "";
+}
+
+/**
+ * 메모 가져오기 1단계 — 읽기만 한다(아무것도 저장하지 않는다): 글을 조각으로 잘라 동시에 읽고, 말로 적기 초안과 같은 줄들로 돌려준다.
+ * scope: "new" | "any"(그 밖의 값) | 내 사람의 contactId. 하루 한도(가져오기 5번)는 한 번 가져오기가 한 번이고, 못 읽었으면 돌려준다
+ */
+export async function draftImport(raw: string, scopeRaw: string): Promise<ImportDraft> {
+  const none = (error: NonNullable<CaptureState["error"]>): ImportDraft => ({ lines: [], error, name: "" });
+  const s = await requireSession();
+  const { locale } = s.profile;
+  const memo = cleanMemo(raw);
+  if (!memo) return none("nothing");
+  if (!aiConfigured()) return none("ai_off");
+  const people = await listPeopleLite(s);
+  let scope: ImportScope = { kind: "any" };
+  let about: Person | undefined;
+  if (scopeRaw === "new") scope = { kind: "new" };
+  else if (isUuid(scopeRaw)) {
+    about = people.find((p) => p.contactId === scopeRaw);
+    if (!about) return none("failed");
+    scope = { kind: "person", person: asCapture(about) };
+  }
+  const gate = await reserveAi({ id: s.user.id, demo: s.user.isAnonymous || s.profile.isDemo }, "import");
+  if (gate === "user_limit" || gate === "global_limit") return none("limit");
+  if (gate !== "ok") return none("failed");
+  const chunks = splitMemo(memo);
+  let items: CaptureItem[];
+  try {
+    items = (await Promise.all(chunks.map((c, i) => classifyImport(c, i ? chunks[i - 1]!.slice(-PREVIOUS_CHARS) : "", people.map(asCapture), locale, scope)))).flat();
+  } catch {
+    // 한 조각이라도 못 읽었으면 일부만 적히는 일이 없게 통째로 실패로 하고 한도는 돌려준다
+    await refundAi(s.user.id, "import");
+    return none("failed");
+  }
+  track("import_draft", { userId: s.user.id, source: scope.kind });
+  if (!items.length) return none("nothing");
+  let name = "";
+  let rows: ResolvedCapture[];
+  if (scope.kind === "person") {
+    // 그 사람 이야기뿐: 누구 이야기라고 했든 그 사람으로
+    rows = resolveSaved(items.map((it) => ({ ...it, who: { type: "existing" as const, contactId: about!.contactId, name: null } })), people.map(asCapture));
+  } else if (scope.kind === "new") {
+    name = commonName(items);
+    const label = name || translate(locale, "import.unnamed");
+    rows = resolveSaved(items.map((it) => ({ ...it, who: { type: "new" as const, contactId: null, name: label } })), people.map(asCapture));
+  } else {
+    rows = resolveCapture(items, people.map(asCapture), { detect: true });
+  }
+  let done;
+  try {
+    done = await apply(s, people, rows, false, true);
+  } catch {
+    return none("failed");
+  }
+  if (!done.lines.length) return none("nothing");
+  return { lines: done.lines, error: null, name };
+}
+
+/**
+ * 메모 가져오기 2단계 — 저장: 초안에서 대상을 정하고 줄을 뺀 항목들을 더하기만으로 기록에 넣는다(AI는 부르지 않는다). 되돌리기 정보를 같이 돌려준다.
+ * 항목의 who가 정해진 대상이다(내 사람 contactId 또는 새 사람 이름, 내 사람이 아닌 contactId는 줄째 버린다). 새 사람은 같은 이름당 한 명만 만든다
+ */
+export async function saveImport(raw: unknown): Promise<CaptureState> {
+  const s = await requireSession();
+  const items = cleanCaptureItems(raw, new Date(), 240);
+  if (!items.length) return { lines: [], undo: [], error: "nothing" };
+  let done;
+  try {
+    const people = await listPeopleLite(s);
+    done = await apply(s, people, resolveSaved(items, people.map(asCapture)), true, true);
+  } catch {
+    return { lines: [], undo: [], error: "failed" };
+  }
+  if (!done.lines.length) return { lines: [], undo: [], error: "nothing" };
+  track("import_save", { userId: s.user.id });
+  revalidatePath("/people", "layout");
+  revalidatePath("/home");
+  revalidatePath("/me");
+  return { lines: done.lines.map(plain), undo: done.undo, error: null };
 }

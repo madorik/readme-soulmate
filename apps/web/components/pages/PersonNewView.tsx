@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createPerson } from "@/app/actions/people";
 import { TopBar } from "@/components/chrome";
 import { Heart, MarginLine, Squiggle, SKY_STAR, Star, Tape } from "@/components/diary";
@@ -7,11 +8,22 @@ import type { PersonNewData } from "@/lib/pages/person-new.data";
 import { makeT } from "@/lib/t";
 
 // 직접 적어 두기: 이름(부르는 말)과 폴더, 선택으로 생일만 받고 카드를 만든다. 나머지는 그 사람 화면에서 항목별로 적는다
-export function PersonNewView({ locale, folders, error, name }: PersonNewData) {
+export function PersonNewView({ locale, folders, error, name, ai }: PersonNewData) {
   const t = makeT(locale);
   return (
     <form action={createPerson} className="flex flex-1 flex-col">
-      <TopBar close="/people" label={t("common.close")} />
+      <TopBar
+        close="/people"
+        label={t("common.close")}
+        right={
+          ai ? (
+            <Link href="/import?new=1" className="flex min-h-11 items-center gap-1 px-3 text-[19px] text-accent">
+              <Icon name="pencil" size={18} strokeWidth={2} />
+              {t("import.open")}
+            </Link>
+          ) : undefined
+        }
+      />
       <div className="relative px-6 pt-1.5">
         <h1 className="hl inline-block px-1 text-[34px] font-normal leading-[1.2]">{t("people.newTitle")}</h1>
         <Star size={22} rotate={14} className="right-[42px] top-0" />

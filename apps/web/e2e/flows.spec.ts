@@ -1656,6 +1656,169 @@ test("내 기록 링크로 보내기: 글에는 정보가 없고, 받은 사람�
   await other.close();
 });
 
+/** 홈에 보이는 사람의 id(이름으로 시작하는 첫 링크) */
+async function personId(page: import("@playwright/test").Page, name: string) {
+  await page.goto("/home");
+  const href = await page.getByRole("link", { name: new RegExp(`^${name}`) }).first().getAttribute("href");
+  expect(href).toMatch(/^\/people\/[0-9a-f-]{36}$/);
+  return href!.split("/").pop()!;
+}
+
+/**
+ * 메모 가져오기의 AI 읽기(draftImport 서버 액션 응답)를 정해 둔 줄로 바꿔 끼운다(AI 키·비용 없이). 저장·되돌리기는 그대로 서버로 간다.
+ * 돌려주는 함수에 {줄, 이름}을 넘기면 다음 '읽어 보기'가 그 줄을 받는다
+ */
+async function fakeImport(page: import("@playwright/test").Page) {
+  let next: { lines: FakeLine[]; name?: string } = { lines: [] };
+  await page.route("**/import**", async (route) => {
+    const req = route.request();
+    const args = req.method() === "POST" && req.headers()["next-action"] ? (JSON.parse(req.postData() ?? "[]") as unknown[]) : null;
+    // draftImport만(첫 인자가 글, 둘째 인자가 범위). saveImport·undoCapture는 첫 인자가 배열이다
+    if (!args || typeof args[0] !== "string" || typeof args[1] !== "string") return route.continue();
+    const lines = next.lines.map((l, idx) => {
+      const name = l.target.kind === "new" ? l.target.name : l.spoken;
+      const who = l.target.kind === "new" ? { type: "new", contactId: null, name } : l.target.kind === "person" ? { type: "existing", contactId: l.target.id, name: null } : l.target.kind === "me" ? { type: "me", contactId: null, name: null } : { type: "new", contactId: null, name };
+      return {
+        who: name,
+        isNew: l.target.kind === "new",
+        op: "add",
+        field: l.field,
+        value: l.text,
+        href: "",
+        item: { who, target: l.key, op: "add", text: l.text, codes: null, number: null, date: null, label: null },
+        idx,
+        target: l.target,
+        spoken: l.spoken,
+        candidates: l.candidates ?? [],
+        ...(l.same ? { same: true } : {}),
+      };
+    });
+    return route.fulfill({
+      status: 200,
+      headers: { "content-type": "text/x-component" },
+      body: `0:{"a":"$@1","f":"","q":"","i":true,"b":"development"}\n1:${JSON.stringify({ lines, error: null, name: next.name ?? "" })}\n`,
+    });
+  });
+  return (v: { lines: (FakeLine & { same?: boolean })[]; name?: string }) => {
+    next = v;
+  };
+}
+
+test("메모 가져오기: 구슬·사람 추가·편집에서 들어가고, 읽은 것을 사람별로 확인해 없는 것만 더하며, 되돌릴 수 있다", async ({ browser }) => {
+  const page = await newPage(browser);
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  const mom = { id: await personId(page, "엄마") };
+
+  // 세 곳의 들어가는 길: 가운데 구슬 화면, 사람 추가, 그 사람 편집
+  await page.goto("/voice");
+  await expect(page.getByRole("link", { name: "메모 가져오기" })).toHaveAttribute("href", "/import");
+  await page.goto("/people/new");
+  await expect(page.getByRole("link", { name: "메모 가져오기" })).toHaveAttribute("href", "/import?new=1");
+  await page.goto(`/people/${mom.id}/edit`);
+  await expect(page.getByRole("link", { name: "메모 가져오기" })).toHaveAttribute("href", `/import?to=${mom.id}`);
+
+  // 넣기: 쓰기·말하기 방법을 고르고, 글이 없으면 읽을 수 없다
+  const setDraft = await fakeImport(page);
+  await page.goto("/import");
+  await expect(page.getByRole("tab", { name: "쓰기" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "말하기" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "읽어 보기" })).toBeDisabled();
+  setDraft({
+    lines: [
+      { spoken: "엄마", target: { kind: "person", id: mom.id }, key: "safety.allergens", field: "알레르기", text: "새우" },
+      { spoken: "엄마", target: { kind: "person", id: mom.id }, key: "sizes.shoe", field: "신발(mm)", text: "235", same: true },
+      { spoken: "김 과장님", target: { kind: "new", name: "김 과장님" }, key: "taste.drinks", field: "요즘 마시는 것", text: "아이스 아메리카노" },
+    ],
+  });
+  await page.getByRole("textbox").fill("엄마\n- 새우 알레르기\n\n김 과장님\n커피는 아이스 아메리카노");
+  await page.getByRole("button", { name: "읽어 보기" }).click();
+
+  // 확인: 사람별 묶음, 이미 알고 있는 줄은 꺼져 있고, 새 사람 표시가 붙는다
+  await expect(page.getByRole("heading", { name: "이렇게 적을까요?" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { level: 3 })).toHaveText(["엄마", "김 과장님"]);
+  const rowOf = (text: string) => page.getByRole("checkbox").filter({ hasText: text });
+  await expect(rowOf("새우")).toHaveAttribute("aria-checked", "true");
+  await expect(rowOf("235")).toHaveAttribute("aria-checked", "false");
+  await expect(rowOf("235")).toBeDisabled();
+  await expect(page.getByText("새로", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "2줄 적기" })).toBeVisible();
+  // 줄을 빼면 저장 수가 줄어든다
+  await rowOf("아이스 아메리카노").click();
+  await expect(page.getByRole("button", { name: "1줄 적기" })).toBeVisible();
+  await rowOf("아이스 아메리카노").click();
+  await page.getByRole("button", { name: "2줄 적기" }).click();
+
+  // 저장: 엄마에게 더해지고 새 사람이 생긴다(끝 화면에 두 사람으로 가는 링크)
+  await expect(page.getByText("2줄을 적었어요")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("link", { name: "엄마" })).toBeVisible();
+  await page.getByRole("link", { name: "김 과장님" }).click();
+  await expect(page.getByRole("heading", { level: 1 }).first()).toContainText("김 과장님");
+  await page.goto(`/people/${mom.id}`);
+  await expect(page.getByText("새우").first()).toBeVisible();
+
+  // 되돌리기: 더한 것이 빠지고 새 사람이 사라진다
+  await page.goto("/import");
+  setDraft({ lines: [{ spoken: "엄마", target: { kind: "person", id: mom.id }, key: "life.hobbies", field: "취미", text: "뜨개질" }] });
+  await page.getByRole("textbox").fill("엄마 취미 뜨개질");
+  await page.getByRole("button", { name: "읽어 보기" }).click();
+  await page.getByRole("button", { name: "1줄 적기" }).click();
+  await expect(page.getByText("1줄을 적었어요")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "되돌리기" }).click();
+  await expect(page.getByText("되돌렸어요")).toBeVisible({ timeout: 30_000 });
+  await page.goto(`/people/${mom.id}`);
+  await expect(page.getByText("뜨개질")).toHaveCount(0);
+});
+
+test("메모 가져오기: 사람 추가에서는 한 사람 이야기로 읽어 이름을 정해 새로 만들고, 편집에서는 그 사람 이야기뿐이라 누구인지 묻지 않는다", async ({ browser }) => {
+  const page = await newPage(browser);
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  const setDraft = await fakeImport(page);
+
+  // 사람 추가: 읽은 이름이 이름 칸에 들어가고, 비우면 저장할 수 없다
+  await page.goto("/import?new=1");
+  await expect(page.getByRole("textbox", { name: /한 사람에 대해/ })).toBeVisible();
+  setDraft({
+    name: "다은이",
+    lines: [
+      { spoken: "다은이", target: { kind: "new", name: "다은이" }, key: "safety.allergens", field: "알레르기", text: "땅콩" },
+      { spoken: "다은이", target: { kind: "new", name: "다은이" }, key: "taste.drinks", field: "요즘 마시는 것", text: "라떼" },
+    ],
+  });
+  await page.getByRole("textbox").fill("다은이 땅콩 알레르기, 라떼 좋아함");
+  await page.getByRole("button", { name: "읽어 보기" }).click();
+  await expect(page.getByRole("heading", { name: "이렇게 적을까요?" })).toBeVisible({ timeout: 30_000 });
+  const name = page.getByLabel("이름이나 부르는 말");
+  await expect(name).toHaveValue("다은이");
+  await name.fill("");
+  await page.getByRole("button", { name: "2줄 적기" }).click();
+  await expect(page.getByText("이름을 적어 주세요")).toBeVisible();
+  await name.fill("다은");
+  await page.getByRole("button", { name: "2줄 적기" }).click();
+  await expect(page.getByText("2줄을 적었어요")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "다음" }).click();
+  await expect(page).toHaveURL(/\/people\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("heading", { level: 1 }).first()).toContainText("다은");
+  await expect(page.getByText("땅콩").first()).toBeVisible();
+
+  // 편집: 그 사람 이야기뿐(범위가 정해져 있어 같은 이름이 둘이어도 고르지 않는다)
+  const wife = { id: await personId(page, "아내") };
+  await page.goto(`/import?to=${wife.id}`);
+  await expect(page.getByRole("textbox", { name: /아내에 대해/ })).toBeVisible();
+  setDraft({ lines: [{ spoken: "아내", target: { kind: "person", id: wife.id }, key: "favorites.flowers", field: "꽃", text: "라넌큘러스" }] });
+  await page.getByRole("textbox").fill("라넌큘러스 좋아함");
+  await page.getByRole("button", { name: "읽어 보기" }).click();
+  await expect(page.getByRole("heading", { level: 3 })).toHaveText(["아내"]);
+  await page.getByRole("button", { name: "1줄 적기" }).click();
+  await expect(page.getByText("1줄을 적었어요")).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "다음" }).click();
+  await expect(page).toHaveURL(new RegExp(`/people/${wife.id}$`));
+  await expect(page.getByText("라넌큘러스").first()).toBeVisible();
+});
+
 test("설정: 명절·챙기는 날 알림 스위치(알림 받기가 켜져 있을 때만 보이고, 끄고 켤 수 있다)", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "데모로 둘러보기" }).click();

@@ -112,6 +112,52 @@ function outputText(body: unknown): string {
   return "";
 }
 
+// ── 메모 가져오기 ─────────────────────────────────────────────
+
+/** 가져오기: 조각 하나에서 받는 항목 수 위쪽 한도 */
+export const IMPORT_ITEMS_MAX = 40;
+
+/** 가져오기의 대상 범위: any = 메모에 여러 사람이 있을 수 있다(나·내 사람·새 사람), person = 그 사람 한 명 이야기, new = 아직 없는 한 사람 이야기 */
+export type ImportScope = { kind: "any" } | { kind: "person"; person: CapturePerson } | { kind: "new" };
+
+const IMPORT_ADDENDUM = `IMPORT MODE: the input is not one spoken note but a memo the user pasted or dictated from somewhere else (notes app, messenger, document). It may hold many people, headings, bullets or tables.
+- Read it top to bottom. A line that is only a name or a name with a relation ("엄마", "김 과장님 -", "[동생]", "아내 (생일 3/2)") is a heading: the lines under it are about that person until the next heading.
+- Record only facts about people that belong in FIELDS. Skip everything else (schedules, to-dos, links, prices, chat chatter).
+- NEVER output phone numbers, street addresses, emails, bank, card or ID numbers, passwords or other identifiers: not as a value and not inside a memo.
+- op is always "add". Never "replace" or "remove".
+- memo target only for a useful fact that fits no field, short (under 60 characters). Never copy a whole line or chat message.
+- If you cannot tell who a fact is about, skip it. Never guess values.
+- At most ${IMPORT_ITEMS_MAX} items.
+- PREVIOUS (when given) is the end of the memo part before this one, only so you know whose list you are in. Do not extract facts from it.`;
+
+const IMPORT_SCOPE: Record<ImportScope["kind"], string> = {
+  any: "",
+  person: `ONLY_ABOUT: this whole memo is about the single person ABOUT. Every item is about ABOUT: who = existing with contactId ABOUT.id and name null, even when other names appear. Ignore facts that are clearly about other people.`,
+  new: `ONLY_NEW: this whole memo is about one person who is not in the app yet. Every item has who = new with contactId null and name = how the memo calls that person (a title, heading or name), or null if it never says. Ignore facts that are clearly about other people.`,
+};
+
+/** 메모 한 조각을 읽는 OpenAI Responses API 요청 몸. 사람 이름은 any일 때만 보낸다(그 사람 한 명 이야기면 이름 목록이 필요 없다) */
+export function importRequest(
+  text: string,
+  previous: string,
+  people: CapturePerson[],
+  locale: Locale,
+  scope: ImportScope,
+  model = "gpt-6-luna",
+  effort: "none" | "low" | "medium" | "high" = "low",
+) {
+  const about = scope.kind === "person" ? scope.person : null;
+  const names = scope.kind === "any" ? capturePeople(people) : about ? [slim(about)] : [];
+  return {
+    model,
+    reasoning: { effort },
+    instructions: `${INSTRUCTIONS}\n\n${IMPORT_ADDENDUM}${IMPORT_SCOPE[scope.kind] ? `\n${IMPORT_SCOPE[scope.kind]}` : ""}`,
+    input: `LANGUAGE: ${locale}\nPEOPLE: ${JSON.stringify(names)}\n${about ? `ABOUT: ${JSON.stringify(slim(about))}\n` : ""}${previous ? `PREVIOUS: ${previous}\n` : ""}NOTE: ${text}`,
+    text: { format: { type: "json_schema", name: "capture", strict: true, schema: SCHEMA } },
+    store: false,
+  };
+}
+
 /** 모델에 보내는 사람 수 위쪽 한도(프롬프트가 한없이 길어지지 않게) */
 export const PEOPLE_MAX = 300;
 
@@ -191,16 +237,16 @@ function cleanItem(raw: unknown, now: Date): CaptureItem {
   };
 }
 
-/** 항목 목록(최대 12개)의 모양을 맞춘다. 배열이 아니면 빈 목록 */
-export function cleanCaptureItems(items: unknown, now: Date = new Date()): CaptureItem[] {
-  return Array.isArray(items) ? items.slice(0, 12).map((raw) => cleanItem(raw, now)) : [];
+/** 항목 목록(기본 12개, 가져오기는 더 많이)의 모양을 맞춘다. 배열이 아니면 빈 목록 */
+export function cleanCaptureItems(items: unknown, now: Date = new Date(), max = 12): CaptureItem[] {
+  return Array.isArray(items) ? items.slice(0, max).map((raw) => cleanItem(raw, now)) : [];
 }
 
 /** 응답에서 항목을 꺼내 모양을 맞춘다 */
-export function parseCapture(body: unknown, now: Date = new Date()): CaptureItem[] {
+export function parseCapture(body: unknown, now: Date = new Date(), max = 12): CaptureItem[] {
   const text = outputText(body);
   // 길이 한도에 걸려 끊긴 응답은 '이해 못 함'이 아니라 실패다(다시 해 보면 된다)
   if (!text && (body as { status?: unknown } | null)?.status === "incomplete") throw new Error("ai_incomplete");
   const parsed = JSON.parse(text || "{}") as { items?: unknown };
-  return cleanCaptureItems(parsed.items, now);
+  return cleanCaptureItems(parsed.items, now, max);
 }

@@ -5,6 +5,10 @@ import { AI_DEFAULTS, aiLimits, isAiGate, isMissingQuotaTable } from "../ai-quot
 test("환경 변수가 없으면 기본 한도", () => {
   assert.deepEqual(aiLimits("capture", false, {}), { user: AI_DEFAULTS.capture, global: AI_DEFAULTS.global });
   assert.deepEqual(aiLimits("gift", false, {}), { user: AI_DEFAULTS.gift, global: AI_DEFAULTS.global });
+  // 메모 가져오기: 하루 5번, 환경 변수로 바꾼다(데모 계정도 5번을 넘지 못한다)
+  assert.deepEqual(aiLimits("import", false, {}), { user: 5, global: AI_DEFAULTS.global });
+  assert.equal(aiLimits("import", false, { AI_IMPORT_DAILY_LIMIT: "2" }).user, 2);
+  assert.equal(aiLimits("import", true, { AI_IMPORT_DAILY_LIMIT: "50" }).user, AI_DEFAULTS.demo);
 });
 
 test("데모(익명) 계정은 종류별 한도와 데모 한도 중 낮은 쪽", () => {
