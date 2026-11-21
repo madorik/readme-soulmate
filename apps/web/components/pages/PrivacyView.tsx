@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { cancelInvite } from "@/app/actions/request";
 import { AppLockSetting, HolidaySetting, PendingButton, PushSetting, ReminderSetting, WebPushSetting } from "@/app/(app)/privacy/Settings";
 import { DeleteAccount } from "@/components/DeleteAccount";

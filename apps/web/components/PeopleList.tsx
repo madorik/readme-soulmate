@@ -1,5 +1,5 @@
 import { formatDotted, formatSpec, nextOccurrence, type Locale, type YMD } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import type { T } from "@/lib/i18n";
 import { displayName, type Person } from "@/lib/data";
 import { RowBody, type PersonRow } from "./PersonRow";

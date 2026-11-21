@@ -1,5 +1,5 @@
 import { SECTIONS, type Section } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { leaveTour } from "@/app/actions/tour";
 import { VoiceCapture } from "@/app/(app)/voice/VoiceCapture";
 import { TopBar } from "@/components/chrome";

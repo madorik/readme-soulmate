@@ -1,7 +1,7 @@
 "use client";
 
 import type { AvatarConfig, Locale } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { addToFolder, removeContacts, setFolderMembers } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";

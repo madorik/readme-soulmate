@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { createPerson } from "@/app/actions/people";
 import { TopBar } from "@/components/chrome";
 import { Heart, MarginLine, Squiggle, SKY_STAR, Star, Tape } from "@/components/diary";

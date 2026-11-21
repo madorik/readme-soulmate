@@ -1,7 +1,7 @@
 "use client";
 
 import type { Locale } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { useOptimistic, useRef, useState, useTransition } from "react";
 import { addToFolder, removeFromFolder } from "@/app/actions/people";
 import { Icon } from "@/components/marks";

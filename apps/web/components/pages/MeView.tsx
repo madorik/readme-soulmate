@@ -1,5 +1,5 @@
 import { SECTIONS_BY_IMPORTANCE } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { Avatar } from "@/components/Avatar";
 import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";

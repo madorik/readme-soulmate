@@ -21,7 +21,7 @@ import {
   type UpcomingEvent,
   type YMD,
 } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Avatar } from "@/components/Avatar";

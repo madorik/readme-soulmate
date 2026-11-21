@@ -1,5 +1,5 @@
 import { SECTIONS_BY_IMPORTANCE } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { MyReadmeList } from "@/app/(app)/me/MyReadmeList";
 import { TopBar } from "@/components/chrome";
 import { NameChip, Star } from "@/components/diary";

@@ -10,7 +10,7 @@ export function TopBar({ back, close, label, center, right }: { back?: string; c
   return (
     <div className="flex min-h-11 items-center justify-between px-3">
       {href ? (
-        <Link href={href} aria-label={label} className="flex h-11 w-11 items-center justify-center">
+        <Link href={href} prefetch={false} aria-label={label} className="flex h-11 w-11 items-center justify-center">
           <Icon name={back ? "back" : "close"} size={back ? 24 : 22} />
         </Link>
       ) : (
@@ -83,8 +83,9 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
       <Link
         key={item.key}
         href={item.href}
-        // 탭 화면은 데이터까지 미리 받아 둔다(누르거나 좌우로 밀 때 빈 화면 없이 바로)
-        prefetch={true}
+        // 다른 탭 화면은 데이터까지 미리 받아 둔다(누르거나 좌우로 밀 때 빈 화면 없이 바로).
+        // 지금 보고 있는 탭은 받지 않는다: 이미 떠 있는 화면을 서버가 한 번 더 그리는 낭비다(미리 받기 하나가 함수 한 번, 2026-11-21 CPU 한도)
+        prefetch={!on}
         aria-current={on ? "page" : undefined}
         className={`flex flex-col items-center justify-center gap-0.5 whitespace-nowrap text-[15px] leading-[1.2] ${on ? "text-ink" : "text-muted"}`}
       >
@@ -114,7 +115,7 @@ export function TabBar({ active, t, fab, voice = false }: { active: "home" | "pe
         {voice ? (
           <div className="flex items-center justify-center">
             {/* 가운데 물방울(막대 한가운데): 누르면 말로 또는 글로 기억해 두기 */}
-            <Link href="/voice" aria-label={t("voice.title")} className="flex h-[56px] w-[56px] items-center justify-center rounded-full transition-transform active:scale-95">
+            <Link href="/voice" prefetch={false} aria-label={t("voice.title")} className="flex h-[56px] w-[56px] items-center justify-center rounded-full transition-transform active:scale-95">
               <DropOrb size={52} />
             </Link>
           </div>

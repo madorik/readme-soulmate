@@ -109,7 +109,7 @@ export function SwipeTabs() {
 
   useEffect(() => {
     if (index < 0) return;
-    for (const href of [TABS[index - 1], TABS[index + 1]]) if (href) router.prefetch(href);
+    // 옆 탭은 하단 탭 막대의 링크(components/chrome.tsx, prefetch)가 이미 받아 둔다. 여기서 또 받으면 같은 화면을 서버가 두 번 그린다
 
     let g: { x: number; y: number; lastX: number; lastT: number; v: number; mode: "wait" | "drag" | "scroll"; els: HTMLElement[]; width: number } | null = null;
     let busy = false;

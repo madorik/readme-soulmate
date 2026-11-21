@@ -1,7 +1,7 @@
 "use client";
 
 import { IMAGE_MAX_COUNT, type AvatarConfig, type Locale } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { draftImport, draftImportImages, saveImport, undoCapture, type CaptureDraftLine, type CaptureState, type ImportError, type UndoOp } from "@/app/actions/capture";

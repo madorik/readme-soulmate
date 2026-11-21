@@ -1,5 +1,5 @@
 import { formatMonthDay, parseYmd, SECTIONS_BY_IMPORTANCE } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { AskOnButton } from "@/app/(app)/people/[id]/AskOnButton";
 import { FavoriteStar } from "@/app/(app)/people/[id]/FavoriteStar";
 import { NotesButton } from "@/app/(app)/people/[id]/NotesButton";

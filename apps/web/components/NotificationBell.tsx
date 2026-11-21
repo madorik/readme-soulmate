@@ -1,7 +1,7 @@
 "use client";
 
 import type { AvatarConfig } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { useEffect, useId, useRef, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/marks";

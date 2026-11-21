@@ -1,5 +1,5 @@
 import { formatSpec, monthName, weekdayLong } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { SeeAnswers } from "@/components/SeeAnswers";
 import { Suspense } from "react";
 import { Avatar } from "@/components/Avatar";

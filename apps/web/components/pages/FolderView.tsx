@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { FolderMembers } from "@/app/(app)/people/folder/[id]/FolderMembers";
 import { FolderSheets } from "@/app/(app)/people/folder/[id]/FolderSheets";
 import { TopBar } from "@/components/chrome";

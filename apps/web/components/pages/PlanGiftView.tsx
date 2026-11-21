@@ -1,5 +1,5 @@
 import { COLORS, METALS, PATTERNS, STYLES, describeShoe, describeTop, labelOf, type UpcomingEvent } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
 import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";

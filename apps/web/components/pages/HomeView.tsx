@@ -1,5 +1,5 @@
 import { aboutPrompt, addDays, canAnswerOwn, countWord, formatDayFull, formatMonthDay, formatSpec, holidayKey, nextHoliday, NONE, NONE_LABEL, sameYmd, solarToLunar, weekday, weekdayNames, yearEnd } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { answerAbout, askAbout, muteAbout, skipAbout } from "@/app/actions/people";
 import { Avatar } from "@/components/Avatar";
 import { ChiliMeter } from "@/components/Chili";

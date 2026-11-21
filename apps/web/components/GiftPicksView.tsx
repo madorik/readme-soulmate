@@ -1,5 +1,5 @@
 import type { Locale } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { use } from "react";
 import { BasisTags, GiftLinkTabs } from "@/components/GiftLinkTabs";
 import { Icon } from "@/components/marks";

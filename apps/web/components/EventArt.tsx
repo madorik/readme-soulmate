@@ -1,5 +1,5 @@
 import type { AvatarConfig } from "@readme/core";
-import Link from "next/link";
+import Link from "@/components/AppLink";
 import { Avatar } from "@/components/Avatar";
 import { Heart, Polaroid } from "@/components/diary";
 
