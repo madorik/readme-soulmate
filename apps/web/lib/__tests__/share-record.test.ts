@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { SECTIONS_BY_IMPORTANCE, sanitizeSection, type PartialCard } from "@readme/core";
-import { composeShareText, sectionShareLines, shareParts } from "../share-record";
+import { sectionShareLines, shareParts } from "../share-record";
 import { makeT } from "../t";
 
 const ko = makeT("ko");
@@ -48,17 +48,4 @@ test("보낼 항목들: 적어 둔 것만, 중요한 순서(생일 → 알레르
   const parts = shareParts(SECTIONS_BY_IMPORTANCE, card, "ko", ko);
   assert.deepEqual(parts.map((p) => p.section), ["dates", "safety", "taste", "gifts", "sizes", "favorites"]);
   assert.equal(parts[1]!.title, "알레르기와 못 먹는 음식");
-});
-
-test("보낼 글: 머리 · 항목마다 [이름]과 줄들 · 꼬리", () => {
-  const parts = shareParts(["safety", "sizes"], card, "ko", ko);
-  const text = composeShareText(parts, "엄마에 대해 기억해 둔 것", "기억해유 · https://example.test/get");
-  assert.equal(
-    text.split("\n").slice(0, 7).join("\n"),
-    ["엄마에 대해 기억해 둔 것", "", "[알레르기와 못 먹는 음식]", "알레르기: 땅콩, 새우", "안 먹어요: 오이", "“국물도 안 돼요”", "", ].join("\n"),
-  );
-  assert.ok(text.includes("[사이즈]\n상의: 55"));
-  assert.ok(text.endsWith("기억해유 · https://example.test/get"));
-  // 고른 항목이 없으면 머리와 꼬리만
-  assert.equal(composeShareText([], "머리", "꼬리"), "머리\n\n꼬리");
 });

@@ -395,6 +395,25 @@ describe("속도 제한(rate_hit)", () => {
   });
 });
 
+describe("내 기록 링크(record_shares)", () => {
+  test("앱 역할은 읽지도 쓰지도 못하고, 계정을 지우면 함께 지워진다", async () => {
+    const owner = await makeUser("링크 보낸 사람");
+    const hash = createHash("sha256").update(randomUUID()).digest("hex");
+    await pool.query(`insert into record_shares (token_hash, user_id, payload, expires_at) values ($1, $2, '{"v":1,"enc":"x"}', now() + interval '7 days')`, [hash, owner]);
+    await rejects(rows(owner, "select * from record_shares"), /permission denied/);
+    await rejects(rows(owner, "insert into record_shares (token_hash, user_id, payload, expires_at) values ($1, $2, '{}', now())", [hash.replace(/^./, "0"), owner]), /permission denied/);
+    await pool.query(`delete from "user" where id = $1`, [owner]);
+    assert.equal((await pool.query("select 1 from record_shares where token_hash = $1", [hash])).rows.length, 0);
+  });
+
+  test("해시 모양이 아니거나 받을 횟수가 범위 밖이면 넣을 수 없다", async () => {
+    const owner = await makeUser("링크 검사");
+    await rejects(pool.query(`insert into record_shares (token_hash, user_id, payload, expires_at) values ('abc', $1, '{}', now())`, [owner]), /check/);
+    const hash = createHash("sha256").update(randomUUID()).digest("hex");
+    await rejects(pool.query(`insert into record_shares (token_hash, user_id, payload, max_claims, expires_at) values ($1, $2, '{}', 0, now())`, [hash, owner]), /check/);
+  });
+});
+
 describe("토스 정리", () => {
   test("토스 연결 코드 표와 토스 알림 칸은 없다", async () => {
     assert.equal((await pool.query("select to_regclass('public.toss_link_codes') as t")).rows[0].t, null);

@@ -30,7 +30,7 @@
                 <data android:scheme="kr.readme.app" />
             </intent-filter>
 
-            <!-- 앱 링크: 운영 도메인의 /i/*, /r/* 를 앱으로 연다. 도메인은 res/values/strings.xml 의 app_link_host,
+            <!-- 앱 링크: 운영 도메인의 /r/*(물어보기)와 /s/*(링크로 받은 기록)를 앱으로 연다. 도메인은 res/values/strings.xml 의 app_link_host,
                  서버의 /.well-known/assetlinks.json 에 서명 지문이 있어야 검증된다(README "앱 링크") -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
@@ -38,6 +38,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="@string/app_link_host" android:pathPrefix="/r/" />
                 <data android:scheme="https" android:host="@string/app_link_host_legacy" android:pathPrefix="/r/" />
+                <data android:scheme="https" android:host="@string/app_link_host" android:pathPrefix="/s/" />
+                <data android:scheme="https" android:host="@string/app_link_host_legacy" android:pathPrefix="/s/" />
             </intent-filter>
 
         </activity>

@@ -30,8 +30,8 @@ import {
 } from "@readme/core";
 import type { T } from "./t";
 
-// 적어 둔 기록을 글로 풀어 다른 사람에게 보내는 것(카카오톡·문자 등 공유창으로). 화면의 항목 보기(components/SectionBody)와 같은 순서·같은 이름표로 쓴다.
-// 서버 전용 코드가 없는 순수 함수라 시험에서 바로 돌린다. 링크를 만들지 않는다: 글이 그대로 나가고, 기억해유에는 아무것도 남지 않는다
+// 적어 둔 기록을 항목별 줄로 풀어 보여 주는 것(보내는 쪽 시트의 미리보기, 링크로 받은 기록을 보여 주는 화면). 화면의 항목 보기(components/SectionBody)와 같은 순서·같은 이름표로 쓴다.
+// 서버 전용 코드가 없는 순수 함수라 시험에서 바로 돌린다. 이 줄들을 글로 이어 붙여 밖으로 내보내지 않는다(개인정보): 기록은 링크(lib/record-share)로만 나간다
 
 export interface SharePart {
   section: Section;
@@ -155,9 +155,4 @@ export function shareParts(sections: readonly Section[], card: PartialCard, loca
   return sections
     .map((section) => ({ section, title: t(`section.${section}`), lines: sectionShareLines(section, card, locale, t, opts) }))
     .filter((p) => p.lines.length > 0);
-}
-
-/** 고른 항목을 보낼 글로: 머리 한 줄 + 항목마다 [이름]과 줄들 + 꼬리 한 줄 */
-export function composeShareText(parts: { title: string; lines: string[] }[], header: string, footer: string): string {
-  return [header, ...parts.flatMap((p) => ["", `[${p.title}]`, ...p.lines]), "", footer].join("\n").trim();
 }

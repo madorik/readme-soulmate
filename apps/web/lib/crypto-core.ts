@@ -41,6 +41,8 @@ export const aad = {
   guest: (inviteId: string, section: string) => `guest:${inviteId}:${section}`,
   note: (authorId: string, contactId: string) => `note:${authorId}:${contactId}`,
   prefill: (tokenHash: string) => `prefill:${tokenHash}`,
+  /** 링크로 보내는 내 기록(record_shares): 그 링크(토큰 해시)에서만 풀린다 */
+  share: (tokenHash: string) => `share:${tokenHash}`,
   /** 내가 직접 적어 둔 사람의 리드미(contact_cards) */
   contact: (authorId: string, contactId: string, section: string) => `contact:${authorId}:${contactId}:${section}`,
 };

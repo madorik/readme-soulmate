@@ -5,6 +5,7 @@ export * from "./birth";
 export * from "./format";
 export * from "./catalog";
 export * from "./card";
+export * from "./merge";
 export * from "./menus";
 export * from "./sizes";
 export * from "./avatar";

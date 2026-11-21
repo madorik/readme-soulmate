@@ -9,7 +9,7 @@
 
 ```
 readme/
-├─ apps/web/        Next.js 16 앱 화면 전체 + 앱 없이 답하는 웹 화면(/r/[token]) + 크론·푸시·앱 링크 API
+├─ apps/web/        Next.js 16 앱 화면 전체 + 앱 없이 답하는 웹 화면(/r/[token]) + 내 기록 링크로 받는 화면(/s/[token]) + 크론·푸시·앱 링크 API
 ├─ apps/mobile/     Capacitor 8 iOS·Android 껍데기(배포된 웹을 띄운다)
 ├─ packages/core/   음력 변환·다음 생일·알림 시점, 항목 사전, 사이즈 환산, 한/영 문구, 초대 토큰(순수 TS)
 ├─ db/              PostgreSQL 마이그레이션(db/migrations)과 RLS 통합 테스트(db/tests)
@@ -99,7 +99,7 @@ pnpm open:ios / pnpm open:android                          # Xcode·Android Stud
 
 1. **구글 로그인**: Google Cloud 프로젝트 `readme-514623`(Google 인증 플랫폼, 앱 이름 리드미, 외부, 승인된 도메인 watalabs.com), 웹 클라이언트 `readme web`(리디렉션 `https://remember-you.watalabs.com/api/auth/callback/google`, 예전 주소 `https://readme.watalabs.com/api/auth/callback/google`, `http://localhost:3200/api/auth/callback/google`). 값은 Vercel·`apps/web/.env.local`·`~/.readme/google-oauth.env`. **게시 상태가 '테스트 중'이면 테스트 사용자만 로그인된다** → 대상 > 앱 게시로 프로덕션.
 2. **Apple 로그인**(iOS 출시 전): Services ID + Sign in with Apple 키로 client secret(JWT)을 만들어 `APPLE_CLIENT_ID`·`APPLE_CLIENT_SECRET`. Return URL `https://remember-you.watalabs.com/api/auth/callback/apple`.
-3. **앱 링크**: Android는 업로드 키와 Play 앱 서명 키 SHA-256이 `ANDROID_SHA256_FINGERPRINTS`에 있다(`/.well-known/*`는 요청 때 환경 변수를 읽는다). iOS는 Xcode에서 Associated Domains `applinks:remember-you.watalabs.com`, 서버에 `APPLE_TEAM_ID`.
+3. **앱 링크**: Android는 업로드 키와 Play 앱 서명 키 SHA-256이 `ANDROID_SHA256_FINGERPRINTS`에 있다(`/.well-known/*`는 요청 때 환경 변수를 읽는다). iOS는 `apps/mobile/ios/App/App/App.entitlements`의 Associated Domains `applinks:remember-you.watalabs.com`(프로젝트에 이미 연결, 다음 빌드부터 적용·Apple 개발자 계정에서 Associated Domains 기능이 켜져 있어야 한다), 서버에 `APPLE_TEAM_ID`. 앱 링크는 물어보기(`/r/*`)와 내 기록 링크(`/s/*`) 둘이고, 네이티브 설정을 바꿨으니 앱을 새로 빌드해야 /s/ 링크가 앱에서 바로 열린다.
 4. **카카오톡 공유(선택)**: JavaScript 키를 `NEXT_PUBLIC_KAKAO_JS_KEY`에, 플랫폼에 운영 도메인 등록.
 5. **서버 푸시(선택)**: Firebase 프로젝트 → `google-services.json`·APNs 키, 서비스 계정 값을 `FCM_*`에. 없으면 앱은 기기 로컬 알림만 쓴다. **웹 브라우저 푸시(선택)**: `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`(`apps/web/.env.example` 참고)를 넣으면 설정에 '이 브라우저에서 알림'이 생기고 크론(`/api/cron/reminders`)이 그 브라우저로 생일·기념일을 보낸다(앱은 기기 로컬 알림이라 크론이 보내지 않는다)(처리방침의 위탁 목록에 Google FCM을 더해야 한다).
 

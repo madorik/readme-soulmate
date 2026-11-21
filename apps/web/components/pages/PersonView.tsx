@@ -14,11 +14,7 @@ import { RemovePersonButton } from "@/components/RemovePersonButton";
 import { SectionBody } from "@/components/SectionBody";
 import { SectionIcon } from "@/components/SectionIcon";
 import { SeeAnswers } from "@/components/SeeAnswers";
-// 사람 기록 공유하기는 개인정보 노출 우려로 잠시 껐다(2026-11-21). 되살리려면 아래 주석 네 곳을 풀면 된다.
-// import { ShareRecord } from "@/components/ShareRecord";
 import type { PersonData } from "@/lib/pages/person.data";
-// import { shareParts } from "@/lib/share-record";
-// import { absoluteUrl } from "@/lib/site";
 import { makeT } from "@/lib/t";
 
 export function PersonView({ locale, back, today, person: p, name, notes, folders, answered, waiting, ai }: PersonData) {
@@ -26,7 +22,6 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
   // 적어 둔 항목만(중요한 순서)
   const filled = SECTIONS_BY_IMPORTANCE.map((section) => ({ section, body: SectionBody({ section, card: p.card, today, locale, t }) })).filter((x) => x.body != null);
   // 보낼 수 있는 글(적어 둔 항목만). 선물 칸의 '해주고 싶은 선물'은 몰래 준비하는 것이라 뺀다
-  // const shareable = shareParts(SECTIONS_BY_IMPORTANCE, p.card, locale, t, { wishlist: false });
 
   return (
     <>
@@ -36,16 +31,7 @@ export function PersonView({ locale, back, today, person: p, name, notes, folder
         label={t("common.back")}
         right={
           <div className="flex items-center gap-2 pr-1.5">
-            {/* 적어 둔 기록을 글로 보내기(카카오톡·문자 등): 개인정보 노출 우려로 잠시 껐다
-            <ShareRecord
-              parts={shareable}
-              header={t("share.recordHeader")}
-              headerNamed={t("share.recordHeaderNamed", { name })}
-              footer={t("share.recordFooter", { url: absoluteUrl("/get?from=share") })}
-              nameToggle
-              labels={{ open: t("share.record"), title: t("share.recordTitle"), share: t("plan.share"), done: t("share.done"), withName: t("plan.withNames"), close: t("common.close") }}
-            />
-            */}
+            {/* 사람 기록 공유하기는 개인정보 우려로 껐다(2026-11-21). 내 기록만 링크로 보낸다(나 화면 위쪽) */}
             {/* 사람들에서 지우기: 누르면 누구를 지우는지 한 번 더 묻고, 지우면 사람들 화면으로 */}
             <RemovePersonButton
               variant="icon"

@@ -1589,34 +1589,71 @@ test("달력: 공휴일·연휴(대체공휴일 포함)가 보이고, 좌우로 
   await expect(page.getByRole("region", { name: "공휴일과 챙기는 날" }).getByText("4일 연휴")).toBeVisible();
 });
 
-// 사람 기록 공유하기 버튼을 개인정보 노출 우려로 잠시 껐다(PersonView) → 되살릴 때 test.skip을 test로
-test.skip("기록 공유하기: 적어 둔 항목을 골라 글로 보낸다(이름도 같이 끌 수 있고, 몰래 준비하는 선물은 빠진다)", async ({ page }) => {
+test("내 기록 링크로 보내기: 글에는 정보가 없고, 받은 사람이 앱에서 저장할 곳과 있던 값 유지·덮어쓰기를 골라 저장한다", async ({ page, browser }) => {
+  const base = "http://localhost:3200";
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   await page.getByRole("button", { name: "데모로 둘러보기" }).click();
   await expect(page).toHaveURL(/\/home/);
-  // 홈의 내 사람들에서 한 사람 화면으로
-  await page.getByRole("link", { name: /^엄마/ }).first().click();
-  await expect(page).toHaveURL(/\/people\/[0-9a-f-]{36}/);
-  await page.getByRole("button", { name: "기록 공유하기" }).click();
-  const dialog = page.getByRole("dialog", { name: "기록 공유" });
-  const preview = dialog.locator("pre");
-  await expect(preview).toContainText("엄마에 대해 기억해 둔 것");
-  await expect(preview).toContainText("[알레르기와 못 먹는 음식]");
-  await expect(preview).toContainText("기억해유 · ");
-  // 이름을 끄면 머리 줄이 이름 없이, 항목을 끄면 그 항목이 글에서 빠진다
-  await dialog.getByRole("button", { name: "이름도 같이" }).click();
-  await expect(preview).not.toContainText("엄마");
-  await dialog.getByRole("button", { name: "알레르기와 못 먹는 음식", exact: false }).first().click();
-  await expect(preview).not.toContainText("[알레르기와 못 먹는 음식]");
-  // 보내면(공유창이 없는 환경이라 복사) '공유했어요', 복사된 글이 미리보기와 같다
-  await dialog.getByRole("button", { name: "공유하기" }).click();
-  await expect(dialog.getByRole("button", { name: "공유했어요" })).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(await preview.innerText());
-  await page.keyboard.press("Escape");
-  // 나에 대한 기록도 보낼 수 있다
+  // 나 화면 위쪽의 공유 버튼(사람 화면에는 없다)
   await page.goto("/me");
-  await expect(page.getByRole("button", { name: "기록 공유하기" })).toBeEnabled();
+  const share = page.getByRole("button", { name: "기록 공유하기" });
+  await expect(share).toBeVisible();
+  expect((await share.boundingBox())!.y).toBeLessThan(120);
+  await share.click();
+  const dialog = page.getByRole("dialog", { name: "기록 공유" });
+  await dialog.getByRole("button", { name: "링크 공유하기" }).click();
+  // 공유창이 없는 환경이라 복사한다. 복사된 글에는 짧은 링크와 인사말뿐, 내 정보는 한 줄도 없다
+  await expect(dialog.getByRole("button", { name: "링크를 복사했어요" })).toBeVisible();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  const path = /\/s\/[A-Za-z0-9]{10}/.exec(copied)?.[0];
+  expect(path, copied).toBeTruthy();
+  for (const secret of ["복숭아", "오이", "떡볶이", "생일"]) expect(copied).not.toContain(secret);
+  await page.keyboard.press("Escape");
+
+  // 보낸 사람이 자기 링크를 열면 받을 수 없다
+  await page.goto(path!);
+  await expect(page.getByText("내가 보낸 링크예요.")).toBeVisible();
+
+  // 로그인 안 한 사람: 앱에서 열기·앱 받기·로그인만 보이고 내용은 보이지 않는다
+  const anon = await browser.newContext({ baseURL: base, locale: "ko-KR" });
+  const a = await anon.newPage();
+  await a.goto(path!);
+  await expect(a.getByText("정보가 도착했어요")).toBeVisible();
+  await expect(a.getByRole("link", { name: "앱에서 열기" })).toHaveAttribute("href", `kr.readme.app://${path!.slice(1)}`);
+  await expect(a.getByRole("link", { name: "로그인하고 받기" })).toBeVisible();
+  await expect(a.getByText("복숭아")).toHaveCount(0);
+  await a.goto("/s/ZZZZZZZZZZ");
+  await expect(a.getByText("링크를 찾을 수 없어요")).toBeVisible();
+  await anon.close();
+
+  // 받는 사람(다른 계정): 받은 내용을 보고, 이미 있는 '엄마'에 저장하면서 덮어쓰기를 고른다
+  const other = await browser.newContext({ baseURL: base, locale: "ko-KR" });
+  const r = await other.newPage();
+  await r.goto("/");
+  await r.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(r).toHaveURL(/\/home/);
+  await r.goto(path!);
+  await expect(r.getByRole("heading", { name: /님이 보낸 정보/ })).toBeVisible();
+  await expect(r.getByText("복숭아").first()).toBeVisible();
+  // 이름이 다르면 처음에는 '새 사람으로 추가'가 골라져 있고, 물을 것이 없다
+  await expect(r.getByRole("radio", { name: "새 사람으로 추가" })).toHaveAttribute("aria-checked", "true");
+  await expect(r.getByText("이미 적어 둔 값이 있어요")).toHaveCount(0);
+  await r.getByRole("radio", { name: /^엄마/ }).click();
+  await expect(r.getByText("이미 적어 둔 값이 있어요")).toBeVisible();
+  await expect(r.getByRole("radio", { name: /^있던 값은 그대로/ })).toHaveAttribute("aria-checked", "true");
+  await r.getByRole("radio", { name: "받은 값으로 덮어쓰기" }).click();
+  await r.getByRole("button", { name: "저장하기" }).click();
+  await expect(r).toHaveURL(/\/people\/[0-9a-f-]{36}$/);
+  await expect(r.getByText("복숭아").first()).toBeVisible();
+
+  // 같은 링크로 새 사람으로도 저장된다(보낸 사람 이름으로)
+  await r.goto(path!);
+  await r.getByRole("radio", { name: "새 사람으로 추가" }).click();
+  await r.getByRole("button", { name: "저장하기" }).click();
+  await expect(r).toHaveURL(/\/people\/[0-9a-f-]{36}$/);
+  await expect(r.getByRole("heading", { level: 1 }).first()).toContainText("데모");
+  await other.close();
 });
 
 test("설정: 명절·챙기는 날 알림 스위치(알림 받기가 켜져 있을 때만 보이고, 끄고 켤 수 있다)", async ({ page }) => {
