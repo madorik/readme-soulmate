@@ -1,6 +1,6 @@
 import "server-only";
 import { aiConfigured } from "@/lib/ai";
-import { listPeople, requireSession, todayFor } from "@/lib/data";
+import { displayName, listPeople, requireSession, todayFor } from "@/lib/data";
 import type { CalendarData, Month } from "./calendar.data";
 import type { PageInput } from "./routes";
 
@@ -18,6 +18,13 @@ export async function loadCalendar({ searchParams }: PageInput): Promise<Calenda
   const s = await requireSession();
   const today = todayFor(s.profile);
   const cur = parseMonth(searchParams.m) ?? { y: today.y, m: today.m };
-  const people = await listPeople(s);
+  // 화면에는 생일·기념일 날짜와 얼굴·이름만 보낸다(달을 옮길 때 화면에서 계산한다)
+  const people = (await listPeople(s)).map((p) => ({
+    contactId: p.contactId,
+    name: displayName(p),
+    avatar: p.avatar,
+    birthday: p.card.dates?.birthday ?? null,
+    anniversaries: p.card.dates?.anniversaries ?? [],
+  }));
   return { locale: s.profile.locale, today, cur, people, ai: aiConfigured() };
 }

@@ -44,6 +44,8 @@ export interface Profile {
   appLock: boolean;
   /** 설정 > 알림 받기 */
   pushEnabled: boolean;
+  /** 설정 > 명절·챙기는 날 알림(설날·추석·크리스마스 …) */
+  holidayReminders: boolean;
   isDemo: boolean;
   onboardedAt: string | null;
 }
@@ -66,6 +68,7 @@ function toProfile(row: Row, detected: Locale): Profile {
     reminderOffsets: Array.isArray(row.reminder_offsets) ? sanitizeOffsets(row.reminder_offsets) : DEFAULT_OFFSETS,
     appLock: row.app_lock === true,
     pushEnabled: row.push_enabled !== false,
+    holidayReminders: row.holiday_reminders !== false,
     isDemo: row.is_demo === true,
     onboardedAt: iso(row.onboarded_at),
   };

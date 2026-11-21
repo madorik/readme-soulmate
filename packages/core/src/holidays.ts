@@ -1,5 +1,7 @@
-import { nextOccurrence, type DateSpec, type YMD } from "./calendar";
-import type { MessageKey } from "./i18n";
+import { addDays, diffDays, nextOccurrence, ymdKey, type DateSpec, type YMD } from "./calendar";
+import { translate, type MessageKey } from "./i18n";
+import type { Locale } from "./locale";
+import type { ReminderOffset } from "./reminders";
 
 // 명절·챙기는 날(한국 기준). 홈 '다가오는 날'에 챙길 사람 기념일이 하나도 없을 때 대신 보여 준다.
 // 날짜는 해마다 돌아오는 DateSpec(양력·음력)으로 적어 두고, 가까운 날은 calendar.ts의 nextOccurrence가 구한다(음력 변환 포함).
@@ -62,3 +64,65 @@ export function yearEnd(today: YMD): UpcomingHoliday | null {
 export function nextHoliday(today: YMD, withinDays = HOLIDAY_WINDOW_DAYS): UpcomingHoliday | null {
   return upcomingHolidays(today, withinDays)[0] ?? null;
 }
+
+// ── 명절·챙기는 날 알림 ─────────────────────────────
+
+/** 알림 문구에 쓰는 날 이름(설날·크리스마스…) */
+export function holidayName(locale: Locale, id: HolidayId): string {
+  return translate(locale, holidayKey(id));
+}
+
+/** 알림 제목: 남은 날이 0이면 "오늘은 설날이에요", 아니면 "설날까지 7일 남았어요" */
+export function holidayNoticeTitle(locale: Locale, id: HolidayId, left: number): string {
+  const event = holidayName(locale, id);
+  return left <= 0 ? translate(locale, "notif.today", { event }) : translate(locale, "notif.left", { event, n: left });
+}
+
+export interface DueHoliday {
+  holiday: UpcomingHoliday;
+  offset: ReminderOffset;
+}
+
+/**
+ * 오늘 알릴 명절·챙기는 날: 남은 날이 알림 시점(offsets)과 같은 것 + 어제 알렸어야 하는데 못 알린 것(아직 안 지난 것, 크론이 어제 못 돌았을 때).
+ * 같은 알림이 두 번 가지 않게 저장하는 쪽이 (사람·날짜·알림 시점·날 이름)으로 겹침을 막는다(notifications_holiday_once)
+ */
+export function dueHolidays(today: YMD, offsets: readonly ReminderOffset[], horizonDays = 15): DueHoliday[] {
+  const out: DueHoliday[] = [];
+  const seen = new Set<string>();
+  for (const [base, catchUp] of [[today, false] as const, [addDays(today, -1), true] as const]) {
+    for (const holiday of upcomingHolidays(base, horizonDays + (catchUp ? 1 : 0))) {
+      const offset = offsets.find((o) => o === holiday.daysUntil);
+      if (offset === undefined || (catchUp && diffDays(today, holiday.date) < 0)) continue;
+      const key = `${holiday.id}|${ymdKey(holiday.date)}|${offset}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ holiday, offset });
+    }
+  }
+  return out;
+}
+
+export interface HolidayReminder {
+  /** 겹치지 않는 이름표(기기 알림 id를 만드는 데 쓴다) */
+  key: string;
+  id: HolidayId;
+  /** 그 날 */
+  date: YMD;
+  /** 알릴 날(그 날의 offset일 전) */
+  day: YMD;
+  offset: ReminderOffset;
+  title: string;
+}
+
+/** 앞으로 알릴 명절·챙기는 날 알림(앱이 기기에 예약한다): 오늘부터 horizonDays+14일 안의 날마다 알림 시점별로 */
+export function holidayReminders(today: YMD, offsets: readonly ReminderOffset[], locale: Locale, horizonDays = 60): HolidayReminder[] {
+  const out: HolidayReminder[] = [];
+  for (const h of upcomingHolidays(today, horizonDays + 14)) {
+    for (const offset of offsets) {
+      out.push({ key: `holiday:${h.id}:${ymdKey(h.date)}:${offset}`, id: h.id, date: h.date, day: addDays(h.date, -offset), offset, title: holidayNoticeTitle(locale, h.id, offset) });
+    }
+  }
+  return out;
+}
+

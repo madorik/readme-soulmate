@@ -10,6 +10,7 @@ export * from "./sizes";
 export * from "./avatar";
 export * from "./reminders";
 export * from "./holidays";
+export * from "./publicholidays";
 export * from "./questions";
 export * from "./invite";
 export * from "./i18n";

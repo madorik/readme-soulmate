@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cancelInvite } from "@/app/actions/request";
-import { AppLockSetting, PendingButton, PushSetting, ReminderSetting, WebPushSetting } from "@/app/(app)/privacy/Settings";
+import { AppLockSetting, HolidaySetting, PendingButton, PushSetting, ReminderSetting, WebPushSetting } from "@/app/(app)/privacy/Settings";
 import { DeleteAccount } from "@/components/DeleteAccount";
 import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { LanguageSetting } from "@/components/LanguageSetting";
@@ -11,7 +11,7 @@ import { qrShape } from "@/lib/qr";
 import { absoluteUrl } from "@/lib/site";
 import { makeT } from "@/lib/t";
 
-export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLock, pushEnabled, reminderOffsets, ai, webPushKey }: PrivacyData) {
+export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLock, pushEnabled, holidayReminders, reminderOffsets, ai, webPushKey }: PrivacyData) {
   const t = makeT(locale);
   // 앱 공유하기: 보는 사람 기기에 맞는 스토어로 이어 주는 주소(/get). QR은 서버에서 모양만 만들어 넘긴다
   const shareUrl = absoluteUrl("/get?from=share");
@@ -62,6 +62,7 @@ export function PrivacyView({ locale, isAnonymous, invites, localeChoice, appLoc
         <AppLockSetting locale={locale} enabled={appLock} />
         <PushSetting locale={locale} enabled={pushEnabled} />
         {pushEnabled && webPushKey ? <WebPushSetting locale={locale} publicKey={webPushKey} /> : null}
+        {pushEnabled ? <HolidaySetting locale={locale} enabled={holidayReminders} /> : null}
         {/* 알림을 끄면 언제 알릴지는 숨긴다 */}
         {pushEnabled ? (
           <div id="reminders" className="border-t-[1.5px] border-dashed border-rule pb-4 pt-3.5">

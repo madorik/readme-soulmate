@@ -5,7 +5,10 @@ import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
 import { SectionBody } from "@/components/SectionBody";
 import { SectionIcon } from "@/components/SectionIcon";
+import { ShareRecord } from "@/components/ShareRecord";
 import type { MeData } from "@/lib/pages/types";
+import { shareParts } from "@/lib/share-record";
+import { absoluteUrl } from "@/lib/site";
 import { makeT } from "@/lib/t";
 
 // 나: 적어 둔 것을 미리보기로(사람 화면과 같은 모양). 고치기는 /me/edit에서 항목을 펼쳐서
@@ -13,6 +16,9 @@ export function MeView({ locale, name, avatar, card, today }: MeData) {
   const t = makeT(locale);
   // 적어 둔 항목만(중요한 순서)
   const filled = SECTIONS_BY_IMPORTANCE.map((section) => ({ section, body: SectionBody({ section, card, today, locale, t }) })).filter((x) => x.body != null);
+  // 내가 적어 둔 것을 가족·친구에게 보내기(선물 칸은 '받고 싶은 것'이라 같이 보낸다)
+  const shareable = shareParts(SECTIONS_BY_IMPORTANCE, card, locale, t, { wishlist: true });
+  const who = name || t("voice.me");
 
   return (
     <>
@@ -41,9 +47,19 @@ export function MeView({ locale, name, avatar, card, today }: MeData) {
           <h2 id="me-title" className="text-[22px] font-normal">
             {t("me.title")}
           </h2>
-          <Link href="/me/edit" aria-label={t("me.edit")} className="flex h-11 w-11 items-center justify-center rounded-full text-ink-2 active:bg-fill">
-            <Icon name="pencil" size={21} strokeWidth={1.9} />
-          </Link>
+          <div className="flex items-center gap-1">
+            <ShareRecord
+              parts={shareable}
+              header={t("share.meHeader", { name: who })}
+              headerNamed={t("share.meHeader", { name: who })}
+              footer={t("share.recordFooter", { url: absoluteUrl("/get?from=share") })}
+              nameToggle={false}
+              labels={{ open: t("share.record"), title: t("share.recordTitle"), share: t("plan.share"), done: t("share.done"), withName: t("plan.withNames"), close: t("common.close") }}
+            />
+            <Link href="/me/edit" aria-label={t("me.edit")} className="flex h-11 w-11 items-center justify-center rounded-full text-ink-2 active:bg-fill">
+              <Icon name="pencil" size={21} strokeWidth={1.9} />
+            </Link>
+          </div>
         </div>
         {filled.length ? (
           <div className="card relative mt-1 px-4">

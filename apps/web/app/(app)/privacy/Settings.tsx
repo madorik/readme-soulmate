@@ -86,6 +86,12 @@ export function PushSetting({ locale, enabled }: { locale: Locale; enabled: bool
   return <SwitchRow locale={locale} prefKey="push_enabled" enabled={enabled} label={t("privacy.push")} />;
 }
 
+/** 명절·챙기는 날 알림(설날·추석·크리스마스·어버이날 …): 알림 받기가 켜져 있을 때만 보인다. 언제 알릴지는 아래 알림 시점을 같이 쓴다 */
+export function HolidaySetting({ locale, enabled }: { locale: Locale; enabled: boolean }) {
+  const t = useT(locale);
+  return <SwitchRow locale={locale} prefKey="holiday_reminders" enabled={enabled} label={t("privacy.holidayReminders")} />;
+}
+
 export function ReminderSetting({ locale, offsets }: { locale: Locale; offsets: ReminderOffset[] }) {
   const t = useT(locale);
   const [value, setValue] = useState(offsets);

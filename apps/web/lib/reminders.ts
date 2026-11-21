@@ -1,4 +1,4 @@
-import { addDays, translate, type Locale, type ReminderOffset, type UpcomingEvent, type YMD } from "@readme/core";
+import { addDays, holidayReminders, translate, type Locale, type ReminderOffset, type UpcomingEvent, type YMD } from "@readme/core";
 import type { LocalReminder } from "@/components/native";
 import { makeT } from "./i18n";
 import { eventName } from "./events";
@@ -32,3 +32,19 @@ export function localReminders(events: UpcomingEvent[], offsets: readonly Remind
   }
   return out;
 }
+
+/** 명절·챙기는 날(설날·추석·크리스마스·어버이날 …) 알림: 눌러서 열면 사람을 골라 선물 고르기로 간다 */
+const HOLIDAY_PATH = "/people?pick=1&to=gift";
+
+export function holidayLocalReminders(today: YMD, offsets: readonly ReminderOffset[], locale: Locale, horizonDays = 60): LocalReminder[] {
+  return holidayReminders(today, offsets, locale, horizonDays).map((r) => ({
+    id: hashId(r.key),
+    title: r.title,
+    body: translate(locale, "notif.holidayBody"),
+    y: r.day.y,
+    m: r.day.m,
+    d: r.day.d,
+    path: HOLIDAY_PATH,
+  }));
+}
+

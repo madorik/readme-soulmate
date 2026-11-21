@@ -61,6 +61,8 @@ export interface PrivacyData {
   localeChoice: Locale | null;
   appLock: boolean;
   pushEnabled: boolean;
+  /** 명절·챙기는 날 알림 */
+  holidayReminders: boolean;
   reminderOffsets: ReminderOffset[];
   ai: boolean;
   /** 브라우저 푸시 공개 키(서버에 VAPID 키가 없으면 null: 브라우저 알림 스위치를 숨긴다) */

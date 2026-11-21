@@ -401,3 +401,43 @@ describe("토스 정리", () => {
     assert.equal((await pool.query("select 1 from information_schema.columns where table_name = 'profiles' and column_name = 'toss_reminders'")).rowCount, 0);
   });
 });
+
+describe("명절 알림(notifications kind = holiday)", () => {
+  const ins = async (uid: string, offset: number, label = "christmas", date = "2026-12-25") =>
+    (
+      await pool.query(
+        `insert into notifications (user_id, kind, event_date, offset_days, label) values ($1, 'holiday', $2::date, $3, $4)
+         on conflict (user_id, event_date, offset_days, label) where kind = 'holiday' do nothing returning id`,
+        [uid, date, offset, label],
+      )
+    ).rowCount;
+
+  test("같은 사람·날·알림 시점·이름은 한 번만 남고, 다르면 따로 남는다(사람 없이도: contact_id는 비어 있다)", async () => {
+    assert.equal(await ins(alice, 7), 1);
+    assert.equal(await ins(alice, 7), 0, "같은 알림은 겹치지 않는다");
+    assert.equal(await ins(alice, 0), 1, "알림 시점이 다르면 따로");
+    assert.equal(await ins(alice, 7, "seollal", "2027-02-07"), 1, "날이 다르면 따로");
+    assert.equal(await ins(bob, 7), 1, "다른 사람은 따로");
+  });
+
+  test("사람 알림(생일)의 겹침 방지는 그대로(contact_id가 있을 때)", async () => {
+    const c = await person(alice, "생일 겹침");
+    const add = async () =>
+      (
+        await pool.query(
+          `insert into notifications (user_id, kind, contact_id, event_date, offset_days, label) values ($1, 'birthday', $2, '2026-12-01', 7, '')
+           on conflict on constraint notifications_once do nothing returning id`,
+          [alice, c],
+        )
+      ).rowCount;
+    assert.equal(await add(), 1);
+    assert.equal(await add(), 0);
+  });
+
+  test("알 수 없는 종류는 막고, 앱 역할은 남의 알림을 못 읽는다", async () => {
+    await rejects(pool.query(`insert into notifications (user_id, kind) values ($1, 'nope')`, [alice]), /notifications_kind_check/);
+    const mine = await rows(alice, "select label from notifications where kind = 'holiday'");
+    assert.ok(mine.length >= 3);
+    assert.equal((await rows(carol, "select 1 from notifications where kind = 'holiday'")).length, 0);
+  });
+});

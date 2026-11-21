@@ -86,11 +86,12 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   await page.getByRole("link", { name: "달력 보기" }).click();
   await expect(page).toHaveURL(/\/calendar$/);
   const month = await page.getByRole("heading", { level: 1 }).textContent();
-  await page.getByRole("link", { name: "다음 달" }).click();
+  await page.getByRole("button", { name: "다음 달" }).click();
   await expect(page).toHaveURL(/\/calendar\?m=\d{4}-\d{2}$/);
   await expect(page.getByRole("heading", { level: 1 })).not.toHaveText(month ?? "");
-  await page.getByRole("link", { name: "이번 달로" }).click();
+  await page.getByRole("button", { name: "이번 달로" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(month ?? "");
+  await expect(page).toHaveURL(/\/calendar$/);
   await shot(page, "02b-calendar");
   await page.goto("/me");
   await expect(page.getByRole("heading", { name: "지수" })).toBeVisible();
@@ -1537,3 +1538,102 @@ test("연말엔 사람이 있어도 가까운 기념일이 없으면 크리스�
   await expect(page.getByRole("button", { name: ko["request.topic.gifts"] })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: ko["request.topic.dates"] })).toHaveAttribute("aria-pressed", "false");
 });
+
+/** 크로미움 CDP로 손가락 밀기(가로): fromX에서 toX로 */
+async function swipe(page: import("@playwright/test").Page, fromX: number, toX: number, y = 520) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: fromX, y }] });
+  for (let i = 1; i <= 8; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: fromX + ((toX - fromX) * i) / 8, y }] });
+    await page.waitForTimeout(16);
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+  // 넘어가거나 제자리로 돌아오는 움직임이 끝나기를 기다린다(움직이는 동안 다음 밀기는 받지 않는다)
+  await page.waitForTimeout(450);
+}
+
+test("달력: 공휴일·연휴(대체공휴일 포함)가 보이고, 좌우로 밀면 달이 넘어간다", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  // 2026년 9월: 추석(9/25) 연휴 9/24~9/27(일) 4일
+  await page.goto("/calendar?m=2026-09");
+  const title = page.getByRole("heading", { level: 1 });
+  await expect(title).toHaveText("2026년 9월");
+  const holidays = page.getByRole("region", { name: "공휴일과 챙기는 날" });
+  await expect(holidays.getByText("추석 연휴")).toBeVisible();
+  await expect(holidays.getByText("4일 연휴")).toBeVisible();
+  await expect(holidays.getByText("추석", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "2026년 9월" }).getByText("추석", { exact: true })).toBeVisible();
+  // 오른쪽에서 왼쪽으로 밀면 다음 달(10월): 개천절(토) 대체공휴일 10/5, 한글날
+  await swipe(page, 300, 60);
+  await expect(title).toHaveText("2026년 10월");
+  await expect(page).toHaveURL(/\/calendar\?m=2026-10$/);
+  await expect(page.getByText("대체공휴일(개천절)")).toBeVisible();
+  await expect(page.getByText("한글날", { exact: true }).first()).toBeVisible();
+  // 조금만 밀면 제자리, 왼쪽에서 오른쪽으로 밀면 이전 달
+  await swipe(page, 220, 190);
+  await expect(title).toHaveText("2026년 10월");
+  await swipe(page, 60, 300);
+  await expect(title).toHaveText("2026년 9월");
+  // 12월: 크리스마스(성탄절) 쉬는 날 + 크리스마스 이브, 선물 고르러 가는 길
+  await page.goto("/calendar?m=2026-12");
+  await expect(page.getByRole("region", { name: "2026년 12월" }).getByText("성탄절", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "2026년 12월" }).getByText("이브", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "공휴일과 챙기는 날" }).getByText("크리스마스(성탄절)")).toBeVisible();
+  await expect(page.getByRole("region", { name: "공휴일과 챙기는 날" }).getByRole("link", { name: /크리스마스\(성탄절\)/ })).toHaveAttribute("href", "/people?pick=1&to=gift");
+  // 2027년 설날(일요일 2/7): 연휴 2/6~2/9, 대체공휴일 2/9
+  await page.goto("/calendar?m=2027-02");
+  await expect(page.getByText("대체공휴일(설날)")).toBeVisible();
+  await expect(page.getByRole("region", { name: "공휴일과 챙기는 날" }).getByText("4일 연휴")).toBeVisible();
+});
+
+test("기록 공유하기: 적어 둔 항목을 골라 글로 보낸다(이름도 같이 끌 수 있고, 몰래 준비하는 선물은 빠진다)", async ({ page }) => {
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  // 홈의 내 사람들에서 한 사람 화면으로
+  await page.getByRole("link", { name: /^엄마/ }).first().click();
+  await expect(page).toHaveURL(/\/people\/[0-9a-f-]{36}/);
+  await page.getByRole("button", { name: "기록 공유하기" }).click();
+  const dialog = page.getByRole("dialog", { name: "기록 공유" });
+  const preview = dialog.locator("pre");
+  await expect(preview).toContainText("엄마에 대해 기억해 둔 것");
+  await expect(preview).toContainText("[알레르기와 못 먹는 음식]");
+  await expect(preview).toContainText("기억해유 · ");
+  // 이름을 끄면 머리 줄이 이름 없이, 항목을 끄면 그 항목이 글에서 빠진다
+  await dialog.getByRole("button", { name: "이름도 같이" }).click();
+  await expect(preview).not.toContainText("엄마");
+  await dialog.getByRole("button", { name: "알레르기와 못 먹는 음식", exact: false }).first().click();
+  await expect(preview).not.toContainText("[알레르기와 못 먹는 음식]");
+  // 보내면(공유창이 없는 환경이라 복사) '공유했어요', 복사된 글이 미리보기와 같다
+  await dialog.getByRole("button", { name: "공유하기" }).click();
+  await expect(dialog.getByRole("button", { name: "공유했어요" })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(await preview.innerText());
+  await page.keyboard.press("Escape");
+  // 나에 대한 기록도 보낼 수 있다
+  await page.goto("/me");
+  await expect(page.getByRole("button", { name: "기록 공유하기" })).toBeEnabled();
+});
+
+test("설정: 명절·챙기는 날 알림 스위치(알림 받기가 켜져 있을 때만 보이고, 끄고 켤 수 있다)", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "데모로 둘러보기" }).click();
+  await expect(page).toHaveURL(/\/home/);
+  await page.goto("/privacy", { waitUntil: "networkidle" });
+  const sw = page.getByRole("button", { name: "명절·챙기는 날 알림" });
+  await expect(sw).toHaveAttribute("aria-pressed", "true");
+  // 저장 요청(서버 액션)이 끝난 뒤에 새로 고친다(끝나기 전에 새로 고치면 요청이 끊긴다)
+  const saved = page.waitForResponse((r) => r.request().method() === "POST" && !!r.request().headers()["next-action"]);
+  await sw.click();
+  await expect(sw).toHaveAttribute("aria-pressed", "false");
+  await saved;
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.getByRole("button", { name: "명절·챙기는 날 알림" })).toHaveAttribute("aria-pressed", "false");
+  // 알림 받기를 끄면 이 줄도 숨는다
+  await page.getByRole("button", { name: "알림 받기", exact: true }).click();
+  await expect(page.getByRole("button", { name: "명절·챙기는 날 알림" })).toHaveCount(0);
+});
+

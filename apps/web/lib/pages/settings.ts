@@ -21,6 +21,7 @@ export async function loadPrivacy(): Promise<PrivacyData> {
     localeChoice: s.profile.localeChoice,
     appLock: s.profile.appLock,
     pushEnabled: s.profile.pushEnabled,
+    holidayReminders: s.profile.holidayReminders,
     reminderOffsets: s.profile.reminderOffsets,
     ai: aiConfigured(),
     webPushKey: webPushPublicKey(),

@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/data";
 import { revokeApple } from "@/lib/apple";
 
-const PREFS = ["app_lock", "push_enabled"] as const;
+const PREFS = ["app_lock", "push_enabled", "holiday_reminders"] as const;
 
 export async function setPreference(form: FormData): Promise<void> {
   const s = await requireSession();

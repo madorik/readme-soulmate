@@ -1,4 +1,4 @@
-import { diffDays, dueWithCatchUp, eventTitle, isLocale, sanitizeOffsets, sanitizeSection, todayIn, translate, type DatesData, type PersonDates } from "@readme/core";
+import { diffDays, dueHolidays, dueWithCatchUp, eventTitle, holidayNoticeTitle, isLocale, sanitizeOffsets, sanitizeSection, todayIn, translate, type DatesData, type PersonDates } from "@readme/core";
 import { NextResponse, type NextRequest } from "next/server";
 import { aad, open } from "@/lib/crypto";
 import { asSystem, systemQuery } from "@/lib/db";
@@ -8,7 +8,7 @@ import { pushToToken } from "@/lib/push";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// 매일 아침 한 번(vercel.json): ① 웹 브라우저 알림을 켠 사람에게 오늘 알릴 생일·기념일을 알림으로 남기고 웹 푸시로 보내고, ② 정리(데모 계정·이용 기록·표 청소)를 한다.
+// 매일 아침 한 번(vercel.json): ① 웹 브라우저 알림을 켠 사람에게 오늘 알릴 생일·기념일과 명절·챙기는 날(설날·추석·크리스마스 …, 설정에서 켠 사람만)을 알림으로 남기고 웹 푸시로 보내고, ② 정리(데모 계정·이용 기록·표 청소)를 한다.
 // 앱(안드로이드·iOS)은 생일·기념일 알림을 기기에 직접 예약하니(components/native.tsx) 여기서 보내지 않는다(서버 푸시까지 보내면 두 번 온다). 서버 푸시는 답장처럼 기기가 알 수 없는 것만(lib/push).
 // 그래서 브라우저 구독이 있는 사람만 읽는다: 보낼 곳이 없는 사람의 기록까지 풀어 보지 않는다(웹 푸시 키(VAPID)가 없으면 구독도 생기지 않는다).
 // 시스템 권한으로 모든 사람을 보므로, 각자 자기 주소록 사람의 기록(contact_cards)만 읽도록 쿼리에서 직접 지킨다.
@@ -36,7 +36,10 @@ type Profile = {
   system_locale: string;
   time_zone: string;
   reminder_offsets: number[];
+  holiday_reminders: boolean;
 };
+
+type Token = { token: string; platform: string };
 
 type Counts = { created: number; pushed: number; failed: number };
 
@@ -44,14 +47,58 @@ type Counts = { created: number; pushed: number; failed: number };
 async function remindOne(profile: Profile, sources: Source[], counts: Counts): Promise<void> {
   const me = profile.id;
   const locale = isLocale(profile.locale) ? profile.locale : isLocale(profile.system_locale) ? profile.system_locale : "ko";
+  const today = todayIn(profile.time_zone || "Asia/Seoul");
+  const offsets = sanitizeOffsets(profile.reminder_offsets);
+  const tokens = await systemQuery<Token>("select token, platform from push_tokens where user_id = $1 and platform = 'web'", [me]);
+  if (!tokens.length) return;
+  await remindPeople(profile, sources, tokens, locale, today, offsets, counts);
+  // 명절·챙기는 날은 사람 기록과 상관없다(등록한 사람이 없어도 받는다)
+  if (profile.holiday_reminders) await remindHolidays(me, tokens, locale, today, offsets, counts);
+}
+
+/** 한 알림을 이 사람의 브라우저들로 보낸다. 하나라도 갔으면 알림 행에 보낸 때를 적는다 */
+async function deliver(me: string, tokens: Token[], notificationId: string, title: string, body: string, path: string, counts: Counts): Promise<void> {
+  const sent = (await Promise.all(tokens.map((tk) => pushToToken(me, tk, title, body, path)))).some(Boolean);
+  if (sent) {
+    counts.pushed++;
+    await systemQuery("update notifications set pushed_at = now() where id = $1", [notificationId]);
+  }
+}
+
+async function remindHolidays(me: string, tokens: Token[], locale: "ko" | "en", today: ReturnType<typeof todayIn>, offsets: ReturnType<typeof sanitizeOffsets>, counts: Counts): Promise<void> {
+  const due = dueHolidays(today, offsets);
+  for (const { holiday, offset } of due) {
+    // 알림 하나가 실패해도 나머지는 계속 보낸다(알림 행은 이미 남았으니 다음 번에 다시 만들지 않는다)
+    try {
+      const row = await asSystem((q) =>
+        q.one<{ id: string }>(
+          `insert into notifications (user_id, kind, event_date, offset_days, label)
+           values ($1, 'holiday', make_date($2, $3, $4), $5, $6)
+           on conflict (user_id, event_date, offset_days, label) where kind = 'holiday' do nothing
+           returning id`,
+          [me, holiday.date.y, holiday.date.m, holiday.date.d, offset, holiday.id],
+        ),
+      );
+      if (!row) continue;
+      counts.created++;
+      // 남은 날은 오늘 기준으로(어제 것을 오늘 보내면 offset보다 하루 적다)
+      await deliver(me, tokens, row.id, holidayNoticeTitle(locale, holiday.id, diffDays(today, holiday.date)), translate(locale, "notif.holidayBody"), "/people?pick=1&to=gift", counts);
+    } catch (err) {
+      counts.failed++;
+      console.warn("holiday reminder failed", err instanceof Error ? err.message : err);
+    }
+  }
+}
+
+async function remindPeople(profile: Profile, sources: Source[], tokens: Token[], locale: "ko" | "en", today: ReturnType<typeof todayIn>, offsets: ReturnType<typeof sanitizeOffsets>, counts: Counts): Promise<void> {
+  const me = profile.id;
   const people: PersonDates[] = [];
   for (const s of sources) {
     const d = datesOf(s.payload, aad.contact(s.user_id, s.contact_id, "dates"));
     if (d) people.push({ contactId: s.contact_id, name: s.name, birthday: d.birthday, anniversaries: d.anniversaries });
   }
   if (!people.length) return;
-  const today = todayIn(profile.time_zone || "Asia/Seoul");
-  const due = dueWithCatchUp(people, today, sanitizeOffsets(profile.reminder_offsets));
+  const due = dueWithCatchUp(people, today, offsets);
   if (!due.length) return;
 
   type Inserted = { id: string; contact_id: string; kind: string; offset_days: number; label: string; event_date: string };
@@ -72,7 +119,6 @@ async function remindOne(profile: Profile, sources: Source[], counts: Counts): P
   counts.created += inserted.length;
   if (!inserted.length) return;
 
-  const tokens = await systemQuery<{ token: string; platform: string }>("select token, platform from push_tokens where user_id = $1 and platform = 'web'", [me]);
   for (const n of inserted) {
     // 알림 하나가 실패해도 같은 사람의 나머지는 계속 보낸다(알림 행은 이미 남았으니 다음 번에 다시 만들지 않는다)
     try {
@@ -84,12 +130,7 @@ async function remindOne(profile: Profile, sources: Source[], counts: Counts): P
       const left = diffDays(today, e.date);
       const title = left <= 0 ? translate(locale, "notif.today", { event }) : translate(locale, "notif.left", { event, n: left });
       const path = `/people/${e.contactId}/reminder?kind=${e.kind}${e.label ? `&label=${encodeURIComponent(e.label)}` : ""}`;
-      const body = translate(locale, "notif.body");
-      const sent = (await Promise.all(tokens.map((tk) => pushToToken(me, tk, title, body, path)))).some(Boolean);
-      if (sent) {
-        counts.pushed++;
-        await systemQuery("update notifications set pushed_at = now() where id = $1", [n.id]);
-      }
+      await deliver(me, tokens, n.id, title, translate(locale, "notif.body"), path, counts);
     } catch (err) {
       counts.failed++;
       console.warn("reminder send failed", err instanceof Error ? err.message : err);
@@ -104,7 +145,7 @@ async function remindAll(counts: Counts): Promise<number> {
   for (;;) {
     // id 순서로 이어서 읽는다(OFFSET은 도는 사이 사람이 바뀌면 건너뛰거나 겹친다)
     const profiles = await systemQuery<Profile>(
-      `select p.id, p.locale, p.system_locale, p.time_zone, p.reminder_offsets
+      `select p.id, p.locale, p.system_locale, p.time_zone, p.reminder_offsets, p.holiday_reminders
          from profiles p
         where p.onboarded_at is not null and p.push_enabled and p.id > $2
           and exists (select 1 from push_tokens t where t.user_id = p.id and t.platform = 'web')
