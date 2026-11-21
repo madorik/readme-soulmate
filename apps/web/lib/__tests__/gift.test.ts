@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { test } from "node:test";
 import type { PartialCard } from "@readme/core";
-import { GIFT_CATALOG, PRICE_BANDS } from "../gift-catalog";
+import { BAND_RANGE, GIFT_CATALOG, PRICE_BANDS } from "../gift-catalog";
 import { PICKS_PER_BAND } from "../gift-core";
 import {
   ageWord,
@@ -154,6 +154,18 @@ test("선물 목록: 링크·id·가격대가 바르다", () => {
   }
   for (const b of PRICE_BANDS) assert.ok(GIFT_CATALOG.filter((x) => x.band === b).length >= 15, b);
   assert.ok(GIFT_CATALOG.some((x) => x.ages[1] >= 80 && x.ages[0] >= 60), "70·80대 선물도 있다");
+});
+
+test("선물 목록: 칸마다 상품 하나, 그 값이 칸의 가격대 안에 든다", () => {
+  for (const x of GIFT_CATALOG) {
+    const [lo, hi] = BAND_RANGE[x.band];
+    assert.ok(Number.isInteger(x.price) && x.price >= lo && x.price <= hi, `${x.id}: ${x.band}만원대 칸인데 상품 값이 ${x.price}원`);
+    assert.ok(x.name.trim().length > 0, `${x.id}: 상품명이 없다`);
+    assert.ok(x.image.length > 0, `${x.id}: 사진이 없다`);
+  }
+  // 같은 상품(사진)을 두 칸이 쓰지 않는다
+  const photo = (u: string) => (u.match(/\/image\/.*$/) ?? [u])[0].split("?")[0];
+  assert.equal(new Set(GIFT_CATALOG.map((x) => photo(x.image))).size, GIFT_CATALOG.length);
 });
 
 test("목록 고르기: 알레르기·나이·사양·안 마시는 술·메모에 이미 준 것은 뺀다", () => {
