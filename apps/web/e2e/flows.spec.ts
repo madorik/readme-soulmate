@@ -450,6 +450,11 @@ test("직접 적어 두기: 물어보지 않아도 적어 두면 나만 보고, 
   await jisu.goto("/people");
   await jisu.getByRole("link", { name: "직접 적기" }).click();
   await expect(jisu).toHaveURL(/\/people\/new/);
+  // 이름이나 부르는 말 · 프로필(얼굴) · 폴더만 나온다(생일 같은 건 사람 화면에서 적는다)
+  await expect(jisu.getByLabel("이름이나 부르는 말")).toBeVisible();
+  await expect(jisu.getByRole("button", { name: "아무거나", exact: true })).toBeVisible();
+  await expect(jisu.getByLabel("폴더")).toBeVisible();
+  await expect(jisu.getByText("생일", { exact: true })).toHaveCount(0);
   await jisu.getByLabel("이름이나 부르는 말").fill("할머니");
   await jisu.getByRole("button", { name: "만들기", exact: true }).click();
   await expect(jisu.getByRole("heading", { name: "할머니" })).toBeVisible();
@@ -927,11 +932,7 @@ test("영어로 바꾸면 영어 화면", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /사랑하는 사람들의/ })).toBeVisible();
 });
 
-test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정이라고 알려 준다", async ({ page, browser }) => {
-  // 공유창 대신 보낸 것을 잡아 둔다
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, "share", { configurable: true, value: async (d: unknown) => void ((window as unknown as { __shared: unknown }).__shared = d) });
-  });
+test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정이라고 알려 준다", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "데모로 둘러보기" }).click();
   await expect(page).toHaveURL(/\/home/);
@@ -952,6 +953,10 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
 
   // 선물 고르기 → 이런 선물은 어때요: 가격대 넷, 아내(연인)는 5만원대가 먼저 열리고, 누르면 쿠팡 파트너스 링크
   await page.getByRole("link", { name: "선물 고르기" }).click();
+  // 날을 짚지 않고 열면 생일이라고 단정하지 않는다: 제목은 '○○에게 줄 선물', 컨닝페이퍼는 위쪽 막대에
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("아내에게 줄 선물");
+  await expect(page.getByRole("heading", { level: 1 })).not.toContainText("생일");
+  await expect(page.getByRole("button", { name: "컨닝페이퍼", exact: true })).toBeVisible();
   const picks = page.locator("#picks");
   await expect(picks.getByRole("tab")).toHaveText(["1만원대", "3만원대", "5만원대", "10만원 이상"], { timeout: 45_000 });
   await expect(picks.getByRole("tab", { name: "5만원대" })).toHaveAttribute("aria-selected", "true");
@@ -987,29 +992,9 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   const after = await picks.getByRole("tabpanel").getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
   expect(after.some((h) => before.includes(h))).toBe(false);
 
-  // 가족과 같이 준비: 고른 선물 카드 주소를 보내고, 그 카드는 로그인 없이 가격대별 선물·쿠팡 링크로 열린다
-  await page.getByRole("button", { name: "가족과 같이 준비" }).click();
-  const shared = (await page.evaluate(() => (window as unknown as { __shared?: { url?: string; text?: string } }).__shared)) ?? {};
-  expect(shared.text).toContain("아내에게 줄 선물, 우리 같이 골라요");
-  // 짧은 주소(/g/8글자)
-  expect(shared.url).toMatch(/\/g\/[A-Za-z0-9]{8}\?b=1$/);
-  const guest = await browser.newContext();
-  const card = await guest.newPage();
-  await card.goto(shared.url!);
-  await expect(card.getByRole("heading", { name: "아내에게 줄 선물, 같이 골라요" })).toBeVisible();
-  await expect(card.getByRole("tab", { name: "1만원대" })).toHaveAttribute("aria-selected", "true");
-  await expect(card.getByRole("tabpanel").getByRole("link")).toHaveCount(5);
-  await expect(card.getByRole("tabpanel").getByRole("link").first()).toHaveAttribute("href", /^https:\/\/link\.coupang\.com\/a\//);
-  await guest.close();
-
-  // 선물 완료: 고른 것 중 하나를 골라 남기면 완료로 바뀌고 무엇을 했는지 보인다
-  await page.getByRole("button", { name: "선물 완료" }).click();
-  const sheet = page.getByRole("dialog", { name: "어떤 선물을 했나요?" });
-  const first = (await sheet.getByRole("button").filter({ hasNotText: "기록하기" }).nth(1).innerText()).trim();
-  await sheet.getByRole("button", { name: first, exact: true }).click();
-  await sheet.getByRole("button", { name: "기록하기" }).click();
-  await expect(page.getByText(new RegExp(`^${first}[을를] 선물했어요$`))).toBeVisible();
-  await expect(page.getByRole("button", { name: /선물 완료 · .* · 다시 적기/ })).toBeVisible();
+  // 아래에는 단추 줄이 없다(가족과 같이 준비·선물 완료는 뺐다)
+  await expect(page.getByRole("button", { name: "가족과 같이 준비" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "선물 완료" })).toHaveCount(0);
 
   // 힌트는 접혀 있다가, 앱 아이콘 + '컨닝페이퍼'를 누르면 오른쪽에서 나온다
   await expect(page.getByText("튤립", { exact: true })).toHaveCount(0);
@@ -1710,7 +1695,7 @@ test("연말 카드의 흐름: 사람이 없으면 추가 → 곧바로 물어�
   await expect(page).toHaveURL(`/people/${id}/reminder?xmas=1`);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(/크리스마스까지 \d+일 남았어요|오늘은 크리스마스/);
   await expect(page.getByRole("heading", { name: "선물 힌트" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: ko["reminder.together"] })).toBeVisible();
+  await expect(page.getByRole("button", { name: ko["reminder.peek"], exact: true })).toBeVisible();
 
   // ⑥ 선물 고르기를 열면 그 답장 알림은 읽은 것으로: 카드는 다시 감성 문구, 종에는 숫자가 없다
   await expect.poll(async () => (await page.request.get("/home")).text().then((h) => h.includes('aria-label="알림 1"'))).toBe(false);

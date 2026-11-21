@@ -1,13 +1,12 @@
 "use server";
 
-import { applyAnswer, isSection, josa, QUESTION_SECTION, QUESTIONS, sanitizeAvatar, ymdKey, type AvatarConfig, type DailyQuestion, type Section } from "@readme/core";
+import { applyAnswer, isSection, QUESTION_SECTION, QUESTIONS, sanitizeAvatar, ymdKey, type AvatarConfig, type DailyQuestion, type Section } from "@readme/core";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { readPerson, requireSession, sealNote, todayFor, writeContactSection, type Session } from "@/lib/data";
 import type { Q } from "@/lib/db";
 import { LIMITS } from "@/lib/data-core";
 import { isFolderColor, isFolderIcon } from "@/lib/folders";
-import { GIFT_CATALOG } from "@/lib/gift-catalog";
 import { track } from "@/lib/track";
 import { isUuid } from "@/lib/uuid";
 import type { SaveState } from "./card";
@@ -47,34 +46,6 @@ export async function addNote(form: FormData): Promise<void> {
     if (added) track("note_add", { userId: s.user.id });
   }
   revalidatePath(`/people/${contactId}`);
-}
-
-/**
- * 선물 완료: 이번 챙길 날(label, 예: "2026 아빠 생일")에 한 선물을 메모로 남긴다(같은 날 것은 바꾼다).
- * 메모에 '선물'이 들어가 다음 선물 추천에서 같은 것은 빠진다
- */
-export async function markGiftDone(contactId: string, rawLabel: string, rawGift: string): Promise<{ ok: boolean; note?: string }> {
-  if (typeof contactId !== "string" || typeof rawLabel !== "string" || typeof rawGift !== "string") return { ok: false };
-  const { s } = await ownContact(contactId);
-  const label = rawLabel.replace(/\s+/g, " ").trim().slice(0, 40);
-  const gift = rawGift.replace(/\s+/g, " ").trim().slice(0, 80);
-  if (!label || !gift) return { ok: false };
-  const body = s.profile.locale === "ko" ? `${josa(gift, "을")} 선물했어요` : `Gave ${gift}`;
-  const saved = await s.tx(async (q) => {
-    // 같은 날 메모는 바꾸는 것이니 그것만 빼고 센다
-    const n = await q.one<{ n: number }>("select count(*)::int as n from notes where contact_id = $1 and label <> $2", [contactId, label]);
-    if ((n?.n ?? 0) >= LIMITS.notes) return false;
-    await q("delete from notes where contact_id = $1 and label = $2", [contactId, label]);
-    await q("insert into notes (author_id, contact_id, label, payload) values ($1, $2, $3, $4)", [s.user.id, contactId, label, JSON.stringify(sealNote(s.user.id, contactId, body))]);
-    return true;
-  });
-  if (!saved) return { ok: false };
-  revalidatePath(`/people/${contactId}`);
-  revalidatePath(`/people/${contactId}/reminder`);
-  // 통계: 추천 목록에서 고른 선물이면 그 id(직접 적은 건 내용 없이)
-  const fromList = GIFT_CATALOG.find((x) => x.q === gift);
-  track("gift_done", { userId: s.user.id, item: fromList?.id ?? null, band: fromList?.band ?? null, source: fromList ? "list" : "own" });
-  return { ok: true, note: body };
 }
 
 /** 이 사람이 보낸 답장 알림을 읽은 것으로(사람 화면을 열었을 때). 홈 위의 답장 카드가 사라진다 */
@@ -248,6 +219,15 @@ export async function createPerson(form: FormData): Promise<void> {
   const xmas = form.get("xmas") === "1";
   const again = xmas ? "&xmas=1" : "";
   if (!name) redirect(`/people/new?error=name${again}`);
+  // 프로필(얼굴): 화면이 보낸 것을 걸러서 받는다. 없거나 깨졌으면 비워 둔다(이니셜 원)
+  let avatar: AvatarConfig | null = null;
+  if (form.get("avatar")) {
+    try {
+      avatar = sanitizeAvatar(JSON.parse(String(form.get("avatar"))));
+    } catch {
+      avatar = null;
+    }
+  }
   const made = await s.tx(async (q) => {
     // 같은 사람이 동시에 두 번 보내도(두 번 누름) 한 줄씩만 지나가게 사람별로 줄 세운다
     await q("select pg_advisory_xact_lock(hashtext($1))", [`person:${s.user.id}`]);
@@ -260,11 +240,8 @@ export async function createPerson(form: FormData): Promise<void> {
     // 방금(5초 안에) 같은 이름으로 만든 사람이 있으면 두 번 누른 것이니 그 사람으로
     if (cur?.dup) return { id: cur.dup, created: false };
     if ((cur?.n ?? 0) >= LIMITS.people) return null;
-    const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname) values ($1, $2) returning id", [s.user.id, name]);
+    const c = await q.one<{ id: string }>("insert into contacts (user_id, nickname, avatar) values ($1, $2, $3) returning id", [s.user.id, name, avatar ? JSON.stringify(avatar) : null]);
     await q("insert into contact_cards (contact_id, author_id) values ($1, $2)", [c!.id, s.user.id]);
-    // 생일을 골랐으면 같이 적어 둔다(고르지 않으면 비워 둔다. 값이 틀리면 저장하는 쪽이 걸러 낸다)
-    const birthday = json(form.get("birthday"));
-    if (birthday && typeof birthday === "object") await writeContactSection(q, s.user.id, c!.id, "dates", { birthday, anniversaries: [] });
     // 고른 폴더에 바로 넣는다(내 폴더만, DB가 확인). uuid 모양이 아니면 넣지 않는다
     const folder = String(form.get("folderId") ?? "");
     if (isUuid(folder)) await q("insert into contact_group_members (group_id, contact_id, user_id) values ($1, $2, $3)", [folder, c!.id, s.user.id]);

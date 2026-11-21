@@ -24,12 +24,8 @@ export interface PersonReminderData {
   skip: string[];
   /** 다시 고르기 주소의 앞부분(지금 화면 주소) */
   again: string;
-  /** 같이 준비하기로 보낼 한 줄(날짜까지) */
-  shareText: string;
-  /** 선물 완료 메모 이름 */
-  doneLabel: string;
-  /** 선물 완료로 남긴 것 */
-  done: string | null;
+  /** 챙길 날(생일·기념일·크리스마스)을 짚어 열었다. 아니면 날짜·'생일까지 N일' 없이 '○○님에게 줄 선물'로 연다 */
+  eventKnown: boolean;
   /** 당일 알림을 받는다(설정 > 언제 알릴지) */
   remindOnDay: boolean;
   /** 이 사람의 안 본 답장이 있다(이 화면을 열면 읽은 것으로: 홈 연말 카드에서 답이 온 사람의 선물 고르기로 곧장 왔을 때) */

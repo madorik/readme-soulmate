@@ -1,5 +1,5 @@
 import "server-only";
-import { eventTitle, formatDayFull, formatSpec, nextOccurrence, type DateSpec } from "@readme/core";
+import { eventTitle, nextOccurrence, type DateSpec } from "@readme/core";
 import { notFound } from "next/navigation";
 import { parseSkip } from "@/components/GiftPicksView";
 import { displayName, listNotes, listPeople, requireSession, todayFor, unreadAnswers } from "@/lib/data";
@@ -25,8 +25,11 @@ export async function startPersonReminder({ params, searchParams: sp }: PageInpu
   const name = displayName(p);
   const today = todayFor(s.profile);
   const dates = p.card.dates;
-  // 홈 연말 카드에서 왔다(?xmas=1): 그 사람의 생일이 아니라 크리스마스를 위한 선물 고르기(제목·고르는 맥락·선물 완료 메모가 크리스마스)
+  // 홈 연말 카드에서 왔다(?xmas=1): 그 사람의 생일이 아니라 크리스마스를 위한 선물 고르기(제목·고르는 맥락이 크리스마스)
   const xmas = !!sp.xmas;
+  // 챙길 날을 짚어 열었다(홈·달력·알림의 ?kind=birthday|anniversary, 또는 크리스마스). 사람 화면의 '선물 고르기'처럼 날을 정하지 않고 열면
+  // 생일 선물이라고 단정하지 않으므로 화면은 날짜·'생일까지 N일' 제목 없이 '○○님에게 줄 선물'로 연다
+  const eventKnown = xmas || sp.kind === "birthday" || sp.kind === "anniversary";
   const anniversary = !xmas && sp.kind === "anniversary" ? dates?.anniversaries.find((a) => a.label === sp.label) : undefined;
   const spec: DateSpec | null = xmas ? { calendar: "solar", month: 12, day: 25 } : (anniversary?.spec ?? dates?.birthday ?? null);
   const next = spec ? nextOccurrence(spec, today) : null;
@@ -49,12 +52,7 @@ export async function startPersonReminder({ params, searchParams: sp }: PageInpu
   const again = `/people/${p.contactId}/reminder${here.size ? `?${here.toString()}` : ""}`;
   // 크리스마스면 챙길 날 없이(생일이 가까워도 그 날이 아니라) 크리스마스·연말 선물로 고른다
   const occasion = xmas ? null : anniversary ? { kind: "anniversary" as const, label: anniversary.label } : dates?.birthday ? { kind: "birthday" as const, label: "" } : null;
-  const shareText = next ? `${event} ${formatDayFull(next.date, locale)}${spec?.calendar === "lunar" ? ` (${formatSpec(spec, locale)})` : ""}` : event;
-  // 선물 완료: 이번 챙길 날 메모 이름(지난 지 얼마 안 된 날이면 그해). 남겼으면 무엇을 했는지
-  const doneYear = next ? (next.daysUntil > 180 ? next.date.y - 1 : next.date.y) : today.y;
-  const doneLabel = `${doneYear} ${event}`.slice(0, 40);
-  const done = notes.find((n) => n.label === doneLabel)?.body ?? null;
-  const picks = picksOn ? loadGiftPicks(s, p, { occasion, today, skip, card: { name, event: shareText } }) : null;
+  const picks = picksOn ? loadGiftPicks(s, p, { occasion, today, skip, source: "reminder" }) : null;
   // 화면이 받기 전에 실패해도 처리 안 된 거절로 남지 않게(화면은 같은 실패를 그대로 받는다)
   picks?.catch(() => {});
   return {
@@ -63,16 +61,14 @@ export async function startPersonReminder({ params, searchParams: sp }: PageInpu
     avatar: p.avatar,
     card: p.card,
     name,
-    spec,
-    next,
-    event,
+    spec: eventKnown ? spec : null,
+    next: eventKnown ? next : null,
+    event: eventKnown ? event : "",
+    eventKnown,
     notes: notes.map((n) => ({ label: n.label, body: n.body })),
     picksOn,
     skip,
     again,
-    shareText,
-    doneLabel,
-    done,
     // 크리스마스는 명절·챙기는 날 알림을 켜 둔 때만 당일 아침에 알려 준다
     remindOnDay: s.profile.reminderOffsets.includes(0) && (!xmas || s.profile.holidayReminders),
     answered: (await s.tx((q) => unreadAnswers(q, s.user.id, p.contactId))).length > 0,

@@ -4,7 +4,6 @@ import { SeeAnswers } from "@/components/SeeAnswers";
 import { Suspense } from "react";
 import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
-import { GiftActions } from "@/components/GiftActions";
 import { GiftPicksBody } from "@/components/GiftPicksView";
 import { HandCircle, Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { HintsPeek } from "@/components/HintsPeek";
@@ -26,7 +25,7 @@ function Hint({ label, children, sub }: { label: string; children: React.ReactNo
   );
 }
 
-export function PersonReminderView({ locale, contactId, avatar, card, name, spec, next, event, notes, picksOn, skip, again, shareText, doneLabel, done, remindOnDay, answered, picks }: PersonReminderProps) {
+export function PersonReminderView({ locale, contactId, avatar, card, name, spec, next, event, notes, picksOn, skip, again, eventKnown, remindOnDay, answered, picks }: PersonReminderProps) {
   const t = makeT(locale);
   const { gifts, safety, taste, sizes } = card;
   const { favorites: fav, life } = card;
@@ -77,9 +76,17 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
     <>
       {/* 답이 온 사람의 선물 고르기로 곧장 왔으면(홈 연말 카드) 그 답장 알림은 읽은 것으로 */}
       {answered ? <SeeAnswers contactId={contactId} /> : null}
-      <TopBar back={`/people/${contactId}`} label={t("common.back")} right={<Link href="/privacy#reminders" aria-label={t("privacy.reminders")} className="flex h-11 w-11 items-center justify-center"><Icon name="bell" /></Link>} />
+      <TopBar back={`/people/${contactId}`} label={t("common.back")} right={
+          <div className="flex items-center gap-1">
+            {peek}
+            <Link href="/privacy#reminders" aria-label={t("privacy.reminders")} className="flex h-11 w-11 items-center justify-center">
+              <Icon name="bell" />
+            </Link>
+          </div>
+        }
+      />
 
-      {next && spec ? (
+      {eventKnown && next && spec ? (
         <div className="relative flex items-center gap-4 pb-0 pl-[30px] pr-6 pt-2.5">
           <span className="num relative flex w-28 shrink-0 items-center justify-center text-[104px] !leading-[0.9] tracking-[-0.02em]">
             <HandCircle w={138} h={118} stroke={1.5} className="left-1/2 top-1/2 -ml-[69px] -mt-[59px]" />
@@ -96,10 +103,18 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
         </div>
       ) : null}
 
-      <h1 className="relative mx-6 mt-[22px] text-[31px] font-normal leading-[1.35]">{next ? (next.daysUntil === 0 ? t("reminder.today", { event }) : t("reminder.left", { event, n: next.daysUntil })) : event}</h1>
-
-      {/* 선물을 안 보이는 설정이면 힌트 단추는 여기(보이면 가격대 칩 바로 위 오른쪽) */}
-      {!picksOn ? <div className="flex px-6 pt-4">{peek}</div> : null}
+      {/* 홈·달력·알림에서 챙길 날(생일·기념일·크리스마스)을 짚어 열었을 때만 그 날을 제목으로. 사람 화면의 '선물 고르기'처럼 날을 정하지 않고 열면 생일이라고 단정하지 않는다 */}
+      {eventKnown ? (
+        <>
+          <h1 className="relative mx-6 mt-[22px] text-[31px] font-normal leading-[1.35]">{next ? (next.daysUntil === 0 ? t("reminder.today", { event }) : t("reminder.left", { event, n: next.daysUntil })) : event}</h1>
+          {next && next.daysUntil > 0 && remindOnDay ? <p className="mx-6 mt-1 text-[16px] text-muted">{t("reminder.again")}</p> : null}
+        </>
+      ) : (
+        <div className="relative mx-6 mt-3 flex items-center gap-3.5">
+          <Avatar config={avatar} size={56} label={t("avatar.of", { name })} />
+          <h1 className="min-w-0 text-[31px] font-normal leading-[1.35]">{t("reminder.giftFor", { name })}</h1>
+        </div>
+      )}
 
       {picksOn ? (
         <section id="picks" aria-labelledby="picks-title" className="card relative mx-4 mt-7 flex scroll-mt-2 flex-col pb-4 pt-7">
@@ -109,10 +124,9 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
           <Star size={20} rotate={-12} color={SKY_STAR} className="-left-2 top-[330px]" />
           <Squiggle w={54} width={2.4} className="-bottom-2 left-[30px]" />
           {/* 아래(채워지면) 무엇을 보고 골랐는지 풀어 쓴 한두 문장. 오른쪽 위 다시 고르기 단추 자리는 float라 첫 두 줄만 비켜 가고 아래 줄은 전체 폭을 쓴다 */}
-          {/* 고르는 동안엔 컨닝페이퍼 단추가 제목 줄 오른쪽 끝에(.picks-peek-top), 다 고르면 그 자리는 다시 고르기 단추(.picks-again-slot) */}
+          {/* 다 고르면 제목 줄 오른쪽 끝은 다시 고르기 단추(.picks-again-slot이 그 자리를 비워 둔다) */}
           <div className="flow-root min-h-10 px-[18px]">
             <span aria-hidden="true" className="picks-again-slot float-right h-10 w-28" />
-            <span className="picks-peek-top float-right -mt-0.5">{peek}</span>
             <h2 id="picks-title" className="text-[24px] font-normal leading-[1.35]">
               <span className="picks-t-done">{t("picks.titleFor", { name })}</span>
               <span className="picks-t-busy">{t("picks.titleBusy", { name })}</span>
@@ -122,35 +136,14 @@ export function PersonReminderView({ locale, contactId, avatar, card, name, spec
           <PicksStage key={skip.join(",")} lines={[1, 2, 3, 4].map((n) => t(`picks.loading.${n}` as "picks.loading.1", { name }))} shout={t("picks.shout")}>
             <Suspense fallback={<PicksPending />}>
               <PicksContent>
-                <GiftPicksBody picks={picks} locale={locale} again={again} peek={peek} pad="px-[18px]" />
+                <GiftPicksBody picks={picks} locale={locale} again={again} pad="px-[18px]" />
               </PicksContent>
             </Suspense>
           </PicksStage>
         </section>
       ) : null}
 
-      <div className="h-6" />
-
-      <div className="bottom-bar mt-auto flex flex-col gap-2.5 bg-bg px-6 pt-4">
-        {next && next.daysUntil > 0 && remindOnDay ? <span className="text-[16px] text-muted">{t("reminder.again")}</span> : null}
-        <GiftActions
-          contactId={contactId}
-          doneLabel={doneLabel}
-          done={done}
-          fallbackText={shareText}
-          labels={{
-            together: t("reminder.together"),
-            shared: t("reminder.shared"),
-            done: t("picks.done"),
-            doneTitle: t("picks.doneTitle"),
-            doneOwn: t("picks.doneOwn"),
-            doneSave: t("picks.doneSave"),
-            doneEdit: t("picks.doneEdit"),
-            copyFailed: t("common.copyFailed"),
-            close: t("common.close"),
-          }}
-        />
-      </div>
+      <div className="page-end mt-6" />
     </>
   );
 }

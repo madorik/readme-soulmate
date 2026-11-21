@@ -1183,21 +1183,11 @@ html.ry-seen .ry-boot {
 #picks:has(.picks-stage[data-phase="finale"]) .picks-t-done {
   display: none;
 }
-/* 떠오르는 건 투명도만(transform을 쓰면 안쪽 absolute인 다시 고르기 단추의 기준 자리가 바뀐다) */
-/* 컨닝페이퍼 힐끗 보기: 고르는 동안엔 제목 줄 오른쪽 끝에 둔다(다 고르면 선물 위쪽 제자리로).
-   한 번만 그려 두고 단추만 보였다 숨겨서, 힌트를 열어 둔 채로 선물이 와도 닫히지 않는다 */
-.picks-peek-top > button {
-  display: none;
-}
-#picks:has([data-picks-pending]) .picks-peek-top > button,
-#picks:has(.picks-stage[data-phase="finale"]) .picks-peek-top > button {
-  display: flex;
-  margin-left: 0.75rem;
-}
 #picks:has([data-picks-pending]) .picks-again-slot,
 #picks:has(.picks-stage[data-phase="finale"]) .picks-again-slot {
   display: none;
 }
+/* 떠오르는 건 투명도만(transform을 쓰면 안쪽 absolute인 다시 고르기 단추의 기준 자리가 바뀐다) */
 @keyframes picks-reveal {
   from {
     opacity: 0;

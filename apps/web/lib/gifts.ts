@@ -8,7 +8,6 @@ import { displayName, folderName, listFolders, listNotes, type Person, type Sess
 import { asSystem } from "./db";
 import { GIFT_CATALOG, type PriceBand } from "./gift-catalog";
 import { makeT } from "./i18n";
-import { absoluteUrl } from "./site";
 import {
   COUPANG_SEARCH_PATH,
   IDEA_COUNT,
@@ -28,7 +27,6 @@ import {
   ruleCatalogPicks,
   sanitizeCatalogPicks,
   openCard,
-  sealCard,
   type BandPicks,
   type CatalogPick,
   type GiftCard,
@@ -303,30 +301,6 @@ function cardKey(): Buffer {
 }
 
 const SHORT_ID = /^[A-Za-z0-9]{8}$/;
-const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-
-/** 카드 내용에서 만든 짧은 id(8글자). 같은 카드는 같은 id */
-function shortId(token: string): string {
-  const h = createHash("sha256").update(cardKey()).update(token).digest();
-  return Array.from(h.subarray(0, 8), (b) => BASE62[b % 62]).join("");
-}
-
-/**
- * 가족에게 보낼 카드 주소: 짧은 주소(/g/<8글자>, gift_cards에 둔다). 표가 없거나 못 쓰면 긴 주소(/g/<서명 토큰>)
- */
-export async function giftCardUrl(userId: string, card: GiftCard): Promise<string> {
-  const token = sealCard(cardKey(), card);
-  const id = shortId(token);
-  try {
-    await asSystem((q) =>
-      q("insert into gift_cards (id, user_id, payload) values ($1, $2, $3) on conflict (id) do nothing", [id, userId, JSON.stringify({ l: card.locale, n: card.name, e: card.event, i: card.ids })]),
-    );
-    return absoluteUrl(`/g/${id}`);
-  } catch (e) {
-    console.warn("gift card short link failed", e instanceof Error ? e.message : e);
-    return absoluteUrl(`/g/${token}`);
-  }
-}
 
 /** 카드 주소를 연다: 짧은 id면 gift_cards에서, 아니면 서명 토큰(서명이 안 맞거나 깨졌으면 null) */
 export async function readGiftCard(raw: string): Promise<GiftCard | null> {

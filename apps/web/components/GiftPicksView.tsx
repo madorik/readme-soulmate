@@ -63,11 +63,6 @@ function Row({ pick, pad, t, priceOf }: { pick: GiftPickData; pad: string; t: T;
   );
 }
 
-/** 가격대 칩 바로 위 오른쪽 줄 */
-function PeekRow({ pad, children }: { pad: string; children: React.ReactNode }) {
-  return <div className={`flex justify-end pt-3 ${pad}`}>{children}</div>;
-}
-
 export function PicksDisclosure({ text, pad = "px-6" }: { text: string; pad?: string }) {
   return <p className={`pt-4 text-[15px] leading-[1.45] text-muted ${pad}`}>{text}</p>;
 }
@@ -82,15 +77,13 @@ export function parseSkip(v: string | undefined): string[] {
  * 고른 선물 그리기(picks: lib/pages/gift-picks가 고른 것). title이 없으면 고지 없이(여러 사람 화면).
  * picks가 Promise면(웹) 여기서 기다린다: 부모 Suspense가 먼저 빈 자리를 보이고 다 고르면 채운다.
  * again: 다시 고르기 주소의 앞부분(지금 화면 주소). 주면 오른쪽 위에 다시 고르기 단추(부모 section이 relative여야 한다)
- * peek: 가격대 칩 바로 위 오른쪽에 둘 것(선물 힌트 화면의 '컨닝페이퍼')
  */
-export function GiftPicksBody({ picks, locale, pad = "px-6", title = true, again, peek }: { picks: GiftPicksData | null | Promise<GiftPicksData | null>; locale: Locale; pad?: string; title?: boolean; again?: string; peek?: React.ReactNode }) {
+export function GiftPicksBody({ picks, locale, pad = "px-6", title = true, again }: { picks: GiftPicksData | null | Promise<GiftPicksData | null>; locale: Locale; pad?: string; title?: boolean; again?: string }) {
   const data = picks instanceof Promise ? use(picks) : picks;
   const t = makeT(locale);
-  const peekRow = peek ? <PeekRow pad={pad}>{peek}</PeekRow> : null;
-  if (!data) return peekRow;
+  if (!data) return null;
   if (data.kind === "links") {
-    const { bands, initial, note, next, share, source } = data;
+    const { bands, initial, note, next, source } = data;
     return (
       <>
         {again ? (
@@ -110,11 +103,9 @@ export function GiftPicksBody({ picks, locale, pad = "px-6", title = true, again
             </p>
           </div>
         ) : null}
-        {peekRow}
         <GiftLinkTabs
           pad={pad}
           initial={initial}
-          share={share ?? undefined}
           source={source}
           label={t("picks.bands")}
           badges={{ pick: t("picks.badge.pick"), top: t("picks.badge.top") }}
@@ -128,7 +119,6 @@ export function GiftPicksBody({ picks, locale, pad = "px-6", title = true, again
   const priceOf = (n: number) => t("picks.price", { n: num.format(n) });
   return (
     <>
-      {peekRow}
       {data.picks.map((pick) => (
         <Row key={pick.keyword} pick={pick} pad={pad} t={t} priceOf={priceOf} />
       ))}

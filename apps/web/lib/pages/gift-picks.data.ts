@@ -22,7 +22,7 @@ export interface GiftPickData {
   more: string;
 }
 
-/** 고른 선물. 하나도 못 고르면 null(힌트 단추 줄만 보인다) */
+/** 고른 선물. 하나도 못 고르면 null */
 export type GiftPicksData =
   | {
       /** 목록 방식(쿠팡 API 키가 없을 때): 가격대 칩 + 파트너스 링크 목록 */
@@ -34,8 +34,6 @@ export type GiftPicksData =
       note: string;
       /** 다시 고르기에 실어 보낼 '지금까지 보인 것'(skip) */
       next: string;
-      /** 가족에게 보낼 카드(선물 힌트 화면에서만) */
-      share: { url: string; text: string } | null;
       source: "reminder" | "plan";
     }
   | { kind: "products"; picks: GiftPickData[] };

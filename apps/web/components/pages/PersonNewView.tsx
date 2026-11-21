@@ -2,12 +2,12 @@ import Link from "next/link";
 import { createPerson } from "@/app/actions/people";
 import { TopBar } from "@/components/chrome";
 import { Heart, MarginLine, Squiggle, SKY_STAR, Star, Tape } from "@/components/diary";
-import { BirthdayField } from "@/components/editors/BirthdayField";
+import { AvatarField } from "@/components/editors/AvatarField";
 import { Icon } from "@/components/marks";
 import type { PersonNewData } from "@/lib/pages/person-new.data";
 import { makeT } from "@/lib/t";
 
-// 직접 적어 두기: 이름(부르는 말)과 폴더, 선택으로 생일만 받고 카드를 만든다. 나머지는 그 사람 화면에서 항목별로 적는다
+// 직접 적어 두기: 이름(부르는 말)·프로필(얼굴)·폴더만 받고 카드를 만든다. 나머지(생일 포함)는 그 사람 화면에서 항목별로 적는다
 export function PersonNewView({ locale, folders, error, name, ai, xmas }: PersonNewData) {
   const t = makeT(locale);
   return (
@@ -65,11 +65,15 @@ export function PersonNewView({ locale, folders, error, name, ai, xmas }: Person
           <Icon name="chevron" size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-muted" />
         </span>
       </label>
-      <BirthdayField locale={locale} />
       <Heart size={24} rotate={16} className="-right-2 top-[70px]" />
-      <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[7px] top-[250px]" />
+      <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[7px] top-[150px]" />
       <Squiggle w={54} width={2.4} className="-bottom-2 right-9" />
       </div>
+      {/* 프로필: 그 사람의 얼굴(사람 화면의 프로필 고치기와 같은 만들기). 안 만져도 보이는 얼굴이 그대로 저장된다 */}
+      <div className="mt-7 px-4">
+        <AvatarField locale={locale} />
+      </div>
+      <div className="h-6" />
       <div className="bottom-bar mt-auto bg-bg px-6 pt-4">
         <button className="btn-primary w-full">{t(xmas ? "people.createAsk" : "people.create")}</button>
       </div>

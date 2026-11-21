@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { beacon } from "@/components/beacon";
-import { setGiftShare } from "@/components/giftShare";
 import { Icon } from "@/components/marks";
 
 // 이런 선물은 어때요(목록 방식): 가격대 칩을 누르거나 목록을 좌우로 밀면 그 가격대에서 고른 선물들.
@@ -52,10 +51,9 @@ function Sticker({ kind, labels, className }: { kind: "pick" | "top"; labels: Ba
 
 /**
  * badges: 주면 고른 선물의 라벨(추천·강력추천)이 제목 위에 보인다(글자는 화면 언어로)
- * share: 주면 아래 단추 줄(가족과 같이 준비·선물 완료)에 카드 주소와 지금 가격대를 알린다(선물 힌트 화면 하나에서만)
  * look="paper": 가족 카드(/g)처럼 한 칸씩 종이 카드에 상품 사진을 폴라로이드 틀로
  */
-export function GiftLinkTabs({ bands, initial, pad = "px-6", label, badges, share, source, look = "list" }: { bands: LinkBand[]; initial: string; pad?: string; label: string; badges?: BadgeLabels; share?: { url: string; text: string }; source: "reminder" | "plan" | "card"; look?: "list" | "paper" }) {
+export function GiftLinkTabs({ bands, initial, pad = "px-6", label, badges, source, look = "list" }: { bands: LinkBand[]; initial: string; pad?: string; label: string; badges?: BadgeLabels; source: "reminder" | "plan" | "card"; look?: "list" | "paper" }) {
   const paper = look === "paper";
   const [index, setIndex] = useState(() => Math.max(0, bands.findIndex((b) => b.band === initial)));
   const [enter, setEnter] = useState<"left" | "right" | null>(null);
@@ -67,14 +65,6 @@ export function GiftLinkTabs({ bands, initial, pad = "px-6", label, badges, shar
   useEffect(() => {
     chips.current[index]?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
   }, [index]);
-
-  const curBand = cur?.band ?? null;
-  const curItems = (cur?.items ?? []).map((i) => i.title).join("\n");
-  useEffect(() => {
-    if (!share) return;
-    setGiftShare({ url: share.url, text: share.text, band: curBand, items: curItems ? curItems.split("\n") : [] });
-  }, [share, curBand, curItems]);
-  useEffect(() => (share ? () => setGiftShare(null) : undefined), [share]);
 
   if (!cur) return null;
   const go = (to: number) => {
