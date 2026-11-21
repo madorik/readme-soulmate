@@ -224,6 +224,56 @@ test("하나만 물으면 답하는 화면도 하나: 진행 막대 없이 바�
   await expect(aunt.getByRole("heading", { name: "마음이 전해졌어요" })).toBeVisible();
 });
 
+test("답하기: 아무것도 적지 않고 '다음'만 눌러 가면 보낼 수 없고(빈 답이 저장·알림되지 않는다), 받고 싶은 선물을 적으면 그 사람 기록에 들어간다", async ({ browser }) => {
+  const page = await newPage(browser);
+  await page.goto("/");
+  await signIn(page);
+  await onboard(page, { name: "하나" });
+  await page.goto("/request");
+  await askNew(page, "삼촌");
+  await onlyTopics(page, ["좋아하는 음식", "선물"]);
+  const url = await makeLink(page);
+
+  const uncle = await newPage(browser);
+  await uncle.goto(url);
+  await expect(uncle.getByText("1/3")).toBeVisible();
+  // 아무것도 적지 않고 '다음'만 눌러 끝까지 가면: 적은 게 없어서 보낼 수 없다
+  await uncle.getByRole("button", { name: "다음", exact: true }).click();
+  await expect(uncle.getByText("2/3")).toBeVisible();
+  await uncle.getByRole("button", { name: "다음", exact: true }).click();
+  await expect(uncle.getByRole("heading", { name: ko["answer.almost"] })).toBeVisible();
+  await expect(uncle.getByText(ko["answer.needOne"])).toBeVisible();
+  await expect(uncle.getByRole("button", { name: ko["answer.send"], exact: true })).toBeDisabled();
+  // 선물 화면으로 돌아가 받고 싶은 것을 적으면 보낼 수 있다
+  await uncle.getByRole("button", { name: ko["common.back"] }).click();
+  await uncle.getByPlaceholder(ko["gift.wishPlaceholder"]).fill("따뜻한 목도리, 향초");
+  await uncle.getByRole("button", { name: "다음", exact: true }).click();
+  await expect(uncle.getByText(ko["answer.needOne"])).toHaveCount(0);
+  await uncle.getByRole("button", { name: ko["answer.send"], exact: true }).click();
+  await expect(uncle.getByRole("heading", { name: ko["answer.sent.title"] })).toBeVisible();
+
+  // 받은 쪽: 알림이 오고, 적은 선물만 사람 화면에 있다(건드리지 않은 '좋아하는 음식'은 비어 있지 않은 척하지 않는다)
+  await page.goto("/home");
+  await page.getByRole("button", { name: "알림 1" }).click();
+  await page.getByRole("region", { name: "알림" }).getByRole("link", { name: /삼촌이 답장을 보냈어요/ }).click();
+  await expect(page).toHaveURL(/\/people\/[0-9a-f-]{36}$/);
+  await expect(page.getByText("따뜻한 목도리", { exact: true })).toBeVisible();
+  await expect(page.getByText("향초", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /좋아하는 음식/ })).toHaveCount(0);
+
+  // 항목을 건드리지 않았어도 '없어요'를 눌렀으면 그건 답이다(하나만 물은 링크)
+  await page.goto("/request");
+  await askNew(page, "고모");
+  await onlyTopics(page, ["선물"]);
+  const url2 = await makeLink(page);
+  const aunt = await newPage(browser);
+  await aunt.goto(url2);
+  await expect(aunt.getByRole("button", { name: ko["answer.send"], exact: true })).toBeDisabled();
+  await aunt.getByRole("button", { name: ko["answer.none"], exact: true }).click();
+  await aunt.getByRole("button", { name: ko["answer.send"], exact: true }).click();
+  await expect(aunt.getByRole("heading", { name: ko["answer.sent.title"] })).toBeVisible();
+});
+
 test("받은 답도 내가 고친다", async ({ browser }) => {
   const page = await as(browser, "jisu");
   await page.goto("/people");
@@ -516,7 +566,7 @@ test("설정: 앱 공유하기는 다운로드 QR과 보내기·링크 복사를
   expect(scrape.status()).toBe(200);
   const preview = await scrape.text();
   expect(preview).toMatch(/<meta property="og:title" content="기억해유">/);
-  expect(preview).toMatch(/<meta property="og:image" content="[^"]+\/og\.png">/);
+  expect(preview).toMatch(/<meta property="og:image" content="[^"]+\/og-v2\.png">/);
   expect(preview).toMatch(/<meta property="og:url" content="[^"]+\/get\?from=share">/);
   // 닫으면 설정 화면으로 돌아온다
   await sheet.getByRole("button", { name: "닫기" }).click();

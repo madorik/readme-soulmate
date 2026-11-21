@@ -9,6 +9,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { HeroHeadline, LoginHero } from "@/components/LoginHero";
 import { PROVIDERS } from "@/lib/auth";
 import { getSession } from "@/lib/data";
+import { demoEnabled } from "@/lib/demo-core";
 import { makeT, requestLocale } from "@/lib/i18n";
 import { OPERATOR, SUPPORT_EMAIL } from "@/lib/legal";
 import { ogMetadata, siteDescription } from "@/lib/og";
@@ -85,7 +86,7 @@ export default async function Start({ searchParams }: { searchParams: Promise<{ 
       </section>
 
       <div className="px-6 pt-7">
-        <AuthButtons locale={locale} next={next} google={PROVIDERS.google} apple={PROVIDERS.apple} />
+        <AuthButtons locale={locale} next={next} google={PROVIDERS.google} apple={PROVIDERS.apple} demo={demoEnabled()} />
         <LegalLinks locale={locale} t={t} />
       </div>
     </main>

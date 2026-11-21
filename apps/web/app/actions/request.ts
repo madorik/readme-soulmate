@@ -66,7 +66,7 @@ export interface AnswerState {
   sent: boolean;
   /** 로그인하고 답한 사람이 '내 리드미에도 저장'을 골랐으면 */
   savedMine: boolean;
-  error: "consent" | "closed" | "self" | "common" | null;
+  error: "consent" | "closed" | "self" | "empty" | "common" | null;
 }
 
 /**
@@ -78,7 +78,10 @@ export async function submitAnswer(_: AnswerState, form: FormData): Promise<Answ
   const consent = form.get("consent") === "1";
   const session = await getSession();
   const saveMine = !!session && form.get("saveMine") === "1";
-  const r = await answerAsk(token, json(form.get("data")), consent, session?.user.id ?? null);
+  // 사람이 '없어요'를 눌러 직접 비운 항목들(그 밖의 빈 항목은 저장하지 않는다)
+  const rawNone = json(form.get("none"));
+  const none = (Array.isArray(rawNone) ? rawNone : []).filter((x): x is string => typeof x === "string").slice(0, 12);
+  const r = await answerAsk(token, json(form.get("data")), consent, session?.user.id ?? null, none);
   if (!r.ok) return { sent: false, savedMine: false, error: r.error };
   const answer = r.answer;
   const notify = { to: r.inviter, name: r.name, contactId: r.contactId };

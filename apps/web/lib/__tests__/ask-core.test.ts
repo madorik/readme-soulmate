@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { GiftsData, PartialCard } from "@readme/core";
-import { keepAskerWishes, prefillForRecipient } from "../ask-core";
+import { keepAnswered, keepAskerWishes, prefillForRecipient } from "../ask-core";
 
 const gifts = (g: Partial<GiftsData>): GiftsData => ({ giftCard: null, wishlist: [], skip: [], brands: [], ...g });
 const wish = (title: string, url = "") => ({ title, url });
@@ -48,4 +48,29 @@ test("내 wishlist가 없으면 상대 답 그대로", () => {
   assert.equal(keepAskerWishes(answer, undefined), answer);
   assert.equal(keepAskerWishes(answer, null), answer);
   assert.equal(keepAskerWishes(answer, gifts({})), answer);
+});
+
+test("답: 값이 없는 항목은 저장하지 않는다(건드리지 않고 넘긴 칸이 빈 값으로 저장되던 버그)", () => {
+  const answer: PartialCard = {
+    gifts: gifts({}),
+    taste: { likes: [], spicy: null, dessert: "", drinks: "", alcohol: { level: null, kinds: [] } } as never,
+    sizes: { top: "L", bottom: "", shoe: null, ring: null },
+  };
+  const out = keepAnswered(answer);
+  assert.deepEqual(Object.keys(out), ["sizes"]);
+});
+
+test("답: 사람이 '없어요'로 직접 비운 항목은 남긴다", () => {
+  const out = keepAnswered({ gifts: gifts({}), sizes: { top: "", bottom: "", shoe: null, ring: null } }, ["gifts"]);
+  assert.deepEqual(Object.keys(out), ["gifts"]);
+});
+
+test("답: 전부 비었으면 아무것도 남지 않는다(서버는 이걸 '답이 없다'로 거절한다)", () => {
+  assert.deepEqual(keepAnswered({ gifts: gifts({}) }), {});
+  assert.deepEqual(keepAnswered({}), {});
+});
+
+test("답: 받고 싶은 선물만 적어도 답이다", () => {
+  const out = keepAnswered({ gifts: gifts({ wishlist: [wish("목도리")] }) });
+  assert.deepEqual(Object.keys(out), ["gifts"]);
 });

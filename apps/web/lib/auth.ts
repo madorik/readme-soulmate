@@ -1,10 +1,12 @@
 import "server-only";
 import { APP_ID } from "@readme/core";
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { anonymous } from "better-auth/plugins/anonymous";
 import { oneTimeToken } from "better-auth/plugins/one-time-token";
 import { appleClientSecret } from "./apple";
+import { demoEnabled } from "./demo-core";
 import { pool } from "./db";
 import { dbHit } from "./rate-limit";
 import { PRODUCTION_ORIGINS, SITE_URL } from "./site";
@@ -47,6 +49,12 @@ function create() {
       },
     },
     account: { accountLinking: { enabled: true, trustedProviders: ["google", "apple"] } },
+    // 운영에서는 데모(익명) 로그인을 받지 않는다: 버튼만 숨기면 요청은 그대로 통하므로 서버가 직접 거절한다(DEMO_ENABLED=1이면 연다)
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === "/sign-in/anonymous" && !demoEnabled()) throw new APIError("FORBIDDEN", { message: "demo is off" });
+      }),
+    },
     plugins: [
       // 데모 계정. 나중에 구글·애플로 로그인하면 데모 계정은 지워진다(데모 데이터는 샘플이라 옮기지 않는다)
       anonymous({ emailDomainName: "demo.readme.invalid", generateName: () => "" }),

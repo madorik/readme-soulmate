@@ -227,14 +227,14 @@ const featureInner = `<div style="position:relative;width:1024px;height:500px;di
 const feature = page(featureInner, 1024, 500, { bg: CREAM, fonts: true });
 await render(feature, 1024, 500, `${store}/feature-1024x500.png`, { transparent: false });
 
-// ── 링크 미리보기 1200×630(카카오톡·문자·메신저): 위 그래픽 장면을 1200 너비에 맞춰 키우고 세로로 가운데. 웹 public/og.png ──
+// ── 링크 미리보기 1200×630(카카오톡·문자·메신저): 위 그래픽 장면을 1200 너비에 맞춰 키우고 세로로 가운데. 웹 public/og-v2.png(카카오톡이 같은 주소의 그림을 오래 기억해서 그림을 바꿀 때는 이름을 og-v3으로 올린다, apps/web/lib/og.ts) ──
 const og = page(
   `<div style="width:1200px;height:630px;display:flex;align-items:center;justify-content:center;background:${CREAM}"><div style="width:1024px;height:500px;flex-shrink:0;transform:scale(${1200 / 1024})">${featureInner}</div></div>`,
   1200,
   630,
   { bg: CREAM, fonts: true },
 );
-await render(og, 1200, 630, resolve(mobile, "../web/public/og.png"), { transparent: false });
+await render(og, 1200, 630, resolve(mobile, "../web/public/og-v2.png"), { transparent: false });
 
 await browser.close();
 console.log("done");

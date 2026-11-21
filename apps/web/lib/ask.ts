@@ -1,7 +1,7 @@
 import "server-only";
 import { hashToken, isSection, sanitizeSection, sanitizeSections, type PartialCard, type Section } from "@readme/core";
 import { cache } from "react";
-import { keepAskerWishes, prefillForRecipient } from "./ask-core";
+import { keepAnswered, keepAskerWishes, prefillForRecipient } from "./ask-core";
 import { aad, open } from "./crypto";
 import { isLockedPayload, LIMITS } from "./data-core";
 import { openContactSections, openPrefill, sealContactSections, sealPrefill, type Session } from "./data";
@@ -80,7 +80,8 @@ export async function readAsk(token: string): Promise<{ row: AskRow; prefill: Pa
 /** 한 요청 안에서는 한 번만 읽는다(링크 미리보기 generateMetadata와 화면이 같이 쓴다) */
 export const readAskOnce = cache(readAsk);
 
-export type AnswerError = "consent" | "closed" | "self" | "common";
+/** empty: 적은 것이 하나도 없다(항목을 건드리지 않고 보냈다) */
+export type AnswerError = "consent" | "closed" | "self" | "empty" | "common";
 
 /**
  * 답하기(로그인 없이도 된다). 답은 물어본 사람의 기록에 들어간다(그 뒤로는 그 사람 것이라 그 사람이 고친다).
@@ -91,13 +92,15 @@ export async function answerAsk(
   data: unknown,
   consent: boolean,
   answererId: string | null,
+  none: readonly string[] = [],
 ): Promise<{ ok: true; answer: PartialCard; inviter: string; name: string; contactId: string } | { ok: false; error: AnswerError }> {
   const hash = await hashToken(token);
   try {
     return await asSystem(async (q) => {
       const row = await q.one<AskRow>("select * from request_for_answer($1)", [hash]);
       if (!row || row.state !== "active") throw new Error("closed");
-      const answer = cleanCard(data, sanitizeSections(row.sections));
+      // 값이 있는 항목만(건드리지 않은 빈 항목은 저장하지 않는다). 적은 게 하나도 없으면 답으로 치지 않는다(링크도 그대로 두어 다시 답할 수 있다)
+      const answer = keepAnswered(cleanCard(data, sanitizeSections(row.sections)), none);
       if (!Object.keys(answer).length) throw new Error("empty");
       if (answer.safety && !consent) throw new Error("consent_required");
       // 물어본 사람의 기록에 이미 있는 항목: 키가 다른 환경에서 못 푸는 값은 덮어쓰지 않고(진짜 기록 보호), 선물 칸은 내가 적어 둔 wishlist를 지킨다
@@ -116,6 +119,6 @@ export async function answerAsk(
     });
   } catch (e) {
     const reason = dbReason(e);
-    return { ok: false, error: reason.includes("consent") ? "consent" : reason.includes("self") ? "self" : /closed|used|expired|canceled|not_found/.test(reason) ? "closed" : "common" };
+    return { ok: false, error: reason.includes("consent") ? "consent" : reason.includes("self") ? "self" : reason.includes("empty") ? "empty" : /closed|used|expired|canceled|not_found/.test(reason) ? "closed" : "common" };
   }
 }

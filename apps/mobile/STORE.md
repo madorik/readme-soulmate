@@ -51,6 +51,8 @@ Vercel 운영에 `FCM_PROJECT_ID`·`FCM_CLIENT_EMAIL`·`FCM_PRIVATE_KEY`(줄바�
 
 ## 3. 앱 콘텐츠(정책) 답
 
+> **2026-11-21부터 운영 서버는 '데모로 둘러보기'를 닫았다(DEMO_ENABLED, README·PLAN 참고). 아래 심사 메모·앱 액세스 안내는 이 버튼에 기댄다. 심사를 받는 동안은 Vercel 운영 환경 변수 `DEMO_ENABLED=1`로 켜 두거나(재배포 필요) 다른 심사용 로그인 방법을 안내해야 한다.**
+
 | 항목 | 답 |
 | --- | --- |
 | 개인정보처리방침 | https://remember-you.watalabs.com/privacy-policy |

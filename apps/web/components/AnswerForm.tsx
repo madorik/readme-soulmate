@@ -1,6 +1,6 @@
 "use client";
 
-import { emptySection, sanitizeSection, type CardData, type GiftsData, type Locale, type PartialCard, type Section } from "@readme/core";
+import { emptySection, isEmptySection, sanitizeSection, type CardData, type GiftsData, type Locale, type PartialCard, type Section } from "@readme/core";
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { AnswerState } from "@/app/actions/request";
@@ -27,8 +27,19 @@ const INITIAL: AnswerState = { sent: false, savedMine: false, error: null };
 function GiftsLite({ value, onChange, locale }: { value: GiftsData; onChange: (v: GiftsData) => void; locale: Locale }) {
   const t = useT(locale);
   const [skip, setSkip] = useState(joinList(value.skip));
+  const [wish, setWish] = useState(joinList(value.wishlist.map((w) => w.title)));
   return (
     <div className="flex flex-col gap-5">
+      <TextField
+        label={t("gift.wishTitle")}
+        value={wish}
+        onChange={(v) => {
+          setWish(v);
+          // 같은 이름이 이미 있으면 그 링크는 그대로 둔다
+          onChange({ ...value, wishlist: splitList(v).slice(0, 10).map((title) => ({ title, url: value.wishlist.find((w) => w.title === title)?.url ?? "" })) });
+        }}
+        placeholder={t("gift.wishPlaceholder")}
+      />
       <div className="flex flex-col gap-1">
         <span className="text-[19px]">{t("gift.giftCard")}</span>
         <div className="flex flex-wrap gap-2">
@@ -126,8 +137,16 @@ export function AnswerForm({
     }
   }, [answers, modes, step, saveMine, state.sent, draftKey]);
 
+  // 답한 항목: 맞아요·없어요를 눌렀거나 값을 적은 것. 건드리지 않고 '다음'만 누른 빈 항목은 답이 아니다(보내면 물어본 사람 기록에 빈 값이 저장되고 '답했다'는 알림만 간다)
+  const isAnswered = (x: Section) => {
+    const m = modes[x];
+    return m === "ok" || m === "none" || ((m === "new" || m === "fix") && !isEmptySection(x, answers[x]));
+  };
+  const answered = sections.filter(isAnswered);
+  const none = sections.filter((x) => modes[x] === "none");
+
   if (state.sent) {
-    const sent = sections.filter((x) => modes[x] != null);
+    const sent = answered;
     // 답한 뒤: 나도 그 사람에게 물어보기. 웹에서는 앱 받기(기기에 맞는 스토어, 아이폰은 아직 웹으로 이어서), 앱 안에서는 바로 물어보기(로그인 안 했으면 로그인부터)
     const askBack = `/request?name=${encodeURIComponent(from)}`;
     const here = signedIn ? askBack : `/?next=${encodeURIComponent(askBack)}`;
@@ -169,7 +188,6 @@ export function AnswerForm({
     setAnswers((a) => ({ ...a, [s]: v }));
     if (modes[s] === "none") setModes((m) => ({ ...m, [s]: "new" }));
   };
-  const answered = sections.filter((s) => modes[s] != null);
   const payload = Object.fromEntries(answered.map((s) => [s, modes[s] === "none" ? emptySection(s) : modes[s] === "ok" ? prefill[s] : answers[s]]));
   const needsConsent = answered.includes("safety");
   // 한 화면에 한 항목씩, 마지막 화면(sections.length)은 동의·보내기.
@@ -213,6 +231,7 @@ export function AnswerForm({
     >
       <input type="hidden" name="token" value={token} />
       <input type="hidden" name="data" value={JSON.stringify(payload)} />
+      <input type="hidden" name="none" value={JSON.stringify(none)} />
       <input type="hidden" name="consent" value={consent ? "1" : "0"} />
       <input type="hidden" name="saveMine" value={signedIn && saveMine ? "1" : "0"} />
 
@@ -357,8 +376,11 @@ export function AnswerForm({
       <div className="bottom-bar mt-auto flex flex-col gap-2 bg-bg px-4 pt-4">
         {state.error ? (
           <p role="alert" className="px-1 text-[17px] text-red">
-            {t(state.error === "consent" ? "answer.needConsent" : state.error === "closed" ? "accept.expired" : state.error === "self" ? "answer.self" : "common.error")}
+            {t(state.error === "consent" ? "answer.needConsent" : state.error === "closed" ? "accept.expired" : state.error === "self" ? "answer.self" : state.error === "empty" ? "answer.needOne" : "common.error")}
           </p>
+        ) : last && !answered.length ? (
+          // 마지막 화면인데 답한 게 하나도 없다(전부 건드리지 않고 넘겼다): 보낼 수 없는 까닭
+          <p className="px-1 text-[17px] text-muted">{t("answer.needOne")}</p>
         ) : null}
         {canSend ? (
           <button disabled={pending || !answered.length || (needsConsent && !consent)} className="btn-primary !min-h-[58px] w-full !text-[22px]">

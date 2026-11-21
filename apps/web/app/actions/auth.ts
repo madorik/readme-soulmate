@@ -6,6 +6,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { getSession } from "@/lib/data";
+import { demoEnabled } from "@/lib/demo-core";
 import { seedDemo } from "@/lib/demo";
 import { LOCALE_COOKIE, detectLocale } from "@/lib/i18n";
 import { safeNext } from "@/lib/site";
@@ -54,7 +55,7 @@ export async function prepareDemo(form: FormData): Promise<void> {
   const next = safeNext(String(form.get("next") ?? ""));
   if (!session) redirect("/");
   const empty = form.get("empty") === "1" && process.env.NODE_ENV !== "production";
-  if (session.user.isAnonymous && !empty && !session.profile.onboardedAt) {
+  if (demoEnabled() && session.user.isAnonymous && !empty && !session.profile.onboardedAt) {
     await seedDemo(session.user.id, session.profile.localeChoice ?? (await detectLocale()), todayIn(session.profile.timeZone));
     track("demo_start", { userId: session.user.id });
   }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AuthButtons } from "@/components/AuthButtons";
+import { demoEnabled } from "@/lib/demo-core";
 import { LegalLinks, TopBar, Wordmark } from "@/components/chrome";
 import { Squiggle, Star, SKY_STAR } from "@/components/diary";
 import { HeroHeadline, LoginHero } from "@/components/LoginHero";
@@ -43,7 +44,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
             {t("login.failed")}
           </p>
         ) : null}
-        <AuthButtons locale={locale} next={next} google={PROVIDERS.google} apple={PROVIDERS.apple} demo={!session} />
+        <AuthButtons locale={locale} next={next} google={PROVIDERS.google} apple={PROVIDERS.apple} demo={!session && demoEnabled()} />
         <LegalLinks locale={locale} t={t} />
       </div>
     </main>

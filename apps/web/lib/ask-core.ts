@@ -1,4 +1,4 @@
-import type { GiftsData, PartialCard, WishItem } from "@readme/core";
+import { isEmptySection, type GiftsData, type PartialCard, type Section, type WishItem } from "@readme/core";
 
 // 물어보기에서 서버 전용 모듈 없이 시험할 수 있는 순수 함수
 
@@ -33,4 +33,17 @@ export function keepAskerWishes(answer: GiftsData, existing: GiftsData | null | 
     wishlist.push(w);
   }
   return { ...answer, wishlist };
+}
+
+/**
+ * 답에서 값이 있는 항목만 남긴다. 값이 하나도 없는 항목(화면에서 건드리지 않고 '다음'만 누른 것)은 저장하지 않는다:
+ * 저장하면 물어본 사람 기록의 그 항목이 빈 값으로 덮이고 '답했다'는 표시와 알림만 남아, 열어 보면 아무것도 없다.
+ * 사람이 '없어요'를 눌러 직접 비운 항목(none)은 그 뜻이라 남긴다
+ */
+export function keepAnswered(answer: PartialCard, none: readonly string[] = []): PartialCard {
+  const out: PartialCard = {};
+  for (const [section, value] of Object.entries(answer)) {
+    if (!isEmptySection(section as Section, value as never) || none.includes(section)) (out as Record<string, unknown>)[section] = value;
+  }
+  return out;
 }

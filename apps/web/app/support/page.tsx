@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage } from "@/components/LegalPage";
+import { demoEnabled } from "@/lib/demo-core";
 import { legalLocale, SUPPORT_EMAIL } from "@/lib/legal";
 
 export const metadata: Metadata = { title: "고객 지원 · Support" };
@@ -8,6 +9,8 @@ export const metadata: Metadata = { title: "고객 지원 · Support" };
 // App Store '지원 URL'로 등록하는 페이지: 문의처와 자주 묻는 것(로그인, 데모, 알림, 내보내기·삭제)
 export default async function Support({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const locale = await legalLocale((await searchParams).lang);
+  // 운영에서는 데모로 둘러보기가 닫혀 있어(lib/demo-core) 그 안내도 뺀다
+  const demo = demoEnabled();
   const mail = <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(locale === "ko" ? "기억해유 문의" : "Remember You support")}`}>{SUPPORT_EMAIL}</a>;
   if (locale === "en") {
     return (
@@ -17,9 +20,11 @@ export default async function Support({ searchParams }: { searchParams: Promise<
 
         <h2>Common questions</h2>
         <ul>
-          <li>
-            <b>Try without an account</b>: tap <b>Try the demo</b> on the first screen. Demo accounts are deleted automatically after 7 days.
-          </li>
+          {demo ? (
+            <li>
+              <b>Try without an account</b>: tap <b>Try the demo</b> on the first screen. Demo accounts are deleted automatically after 7 days.
+            </li>
+          ) : null}
           <li>
             <b>Sign in</b>: use Apple or Google. We never receive your password.
           </li>
@@ -45,9 +50,11 @@ export default async function Support({ searchParams }: { searchParams: Promise<
 
       <h2>자주 묻는 것</h2>
       <ul>
-        <li>
-          <b>가입 없이 써 보기</b>: 첫 화면에서 <b>데모로 둘러보기</b>를 누르세요. 데모 계정은 7일 뒤 자동으로 지워져요.
-        </li>
+        {demo ? (
+          <li>
+            <b>가입 없이 써 보기</b>: 첫 화면에서 <b>데모로 둘러보기</b>를 누르세요. 데모 계정은 7일 뒤 자동으로 지워져요.
+          </li>
+        ) : null}
         <li>
           <b>로그인</b>: Apple 또는 Google로 로그인해요. 비밀번호는 받지 않아요.
         </li>
