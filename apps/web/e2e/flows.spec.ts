@@ -1242,6 +1242,8 @@ test("통계: 이용 기록을 받고, 관리자 키로 들어가 기간을 바�
   const headings = { "요약·추이": ["요약", "추이"], 유입: ["유입"], 퍼널: ["가입 퍼널"], 리텐션: ["리텐션"], 화면: ["화면별"], 기능: ["기능별 사용"], 기기: ["기기"], 선물: ["선물"], 누적: ["누적(기간과 상관없이 지금까지)"] } as Record<string, string[]>;
   const tabs = page.getByRole("navigation", { name: "탭" });
   await expect(tabs.getByRole("link", { name: "요약·추이" })).toHaveAttribute("aria-current", "page");
+  // 위쪽에서 앱으로 돌아갈 수 있다
+  await expect(page.getByRole("link", { name: "앱으로 이동하기" })).toHaveAttribute("href", "/home");
   for (const [tab, names] of Object.entries(headings)) {
     if (tab !== "요약·추이") {
       await tabs.getByRole("link", { name: tab, exact: true }).click();

@@ -162,7 +162,7 @@ function heat(v: number) {
 
 function Login({ wrong }: { wrong: boolean }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[420px] flex-col px-6 pt-10">
+    <main className="mx-auto flex min-h-dvh max-w-[420px] flex-col px-6 pt-[max(calc(var(--sat)+16px),40px)]">
       <Wordmark size={24} />
       <form action={adminLogin} className="flex flex-col gap-3 pt-10">
         <h1 className="headline text-[24px]">통계</h1>
@@ -199,8 +199,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <main className="min-h-dvh bg-bg pb-20">
-      {/* 위: 기간 고르기 + 바로가기(붙어 있다) */}
-      <header className="sticky top-0 z-20 border-b border-rule bg-bg/95 backdrop-blur">
+      {/* 위: 기간 고르기 + 바로가기(붙어 있다). 앱(웹뷰)에서는 상태 표시줄 높이(--sat)만큼 위를 가림 띠가 덮으니 그 아래에서 시작한다 */}
+      <header className="sticky top-0 z-20 border-b border-rule bg-bg/95 backdrop-blur" style={{ paddingTop: "var(--sat)" }}>
         <div className="mx-auto flex max-w-[1120px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 md:px-8">
           <div className="flex items-center gap-2">
             <Wordmark size={20} />
@@ -225,9 +225,14 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             <input type="date" name="to" defaultValue={period.to} aria-label="끝일" className="h-9 rounded-lg bg-white px-2 ring-1 ring-edge" />
             <button className="h-9 rounded-full bg-ink px-3.5 font-bold text-white">보기</button>
           </form>
-          <form action={adminLogout} className="ml-auto">
-            <button className="flex h-9 items-center px-2 text-[13px] font-semibold text-muted">나가기</button>
-          </form>
+          <div className="ml-auto flex items-center gap-1">
+            <Link href="/home" className="flex h-9 items-center rounded-full bg-white px-3.5 text-[13px] font-bold text-accent shadow-[inset_0_0_0_1.5px_var(--color-edge)]">
+              앱으로 이동하기
+            </Link>
+            <form action={adminLogout}>
+              <button className="flex h-9 items-center px-2 text-[13px] font-semibold text-muted">나가기</button>
+            </form>
+          </div>
         </div>
         <nav aria-label="탭" className="mx-auto flex max-w-[1120px] gap-1 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:px-8">
           {TABS.map(([id, l]) => (
