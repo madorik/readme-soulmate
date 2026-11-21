@@ -1029,7 +1029,9 @@ test("사람들 > 고르기: 사람을 고르면 알레르기를 빼고 메뉴�
   await expect(page.getByRole("link", { name: "메뉴 고르기" })).toHaveCount(0);
   await page.getByRole("link", { name: "선물 고르기" }).click();
   await expect(page.getByText(/캠핑용 접이식 의자/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "공유하기" })).toBeVisible();
+  // 선물 힌트는 글로 내보내지 않는다: 공유하기가 없다(취향·사이즈 같은 사람 정보가 그대로 나가는 길이라 뺐다)
+  await expect(page.getByRole("button", { name: "공유하기" })).toHaveCount(0);
+  await expect(page.getByText("공유하기")).toHaveCount(0);
 });
 
 test("사람들 > 고르기: 고른 사람을 한꺼번에 지운다(확인 시트에서 취소하면 그대로, 지우면 목록에서 빠진다)", async ({ page }) => {

@@ -1,6 +1,5 @@
 import { COLORS, METALS, PATTERNS, STYLES, describeShoe, describeTop, labelOf, type UpcomingEvent } from "@readme/core";
 import Link from "next/link";
-import { ShareBar } from "@/app/(app)/plan/ShareBar";
 import { Avatar } from "@/components/Avatar";
 import { SeeAnswers } from "@/components/SeeAnswers";
 import { TopBar } from "@/components/chrome";
@@ -52,20 +51,9 @@ export function PlanGiftView({ locale, today, people, back, picksOn, answeredIds
     ].filter((x): x is { label: string; value: string; strike?: boolean } => !!x);
   };
 
-  // 공유하기: 같이 준비하는 사람(예: 형제)에게 보낼 선물 힌트
-  const shareText = [
-    t("plan.giftTitle"),
-    ...people.map((p) => {
-      const name = displayName(p);
-      const next = eventsFor([p], today)[0];
-      const head = next ? `${name} · ${t("plan.nextDate", { event: eventName(next, t, locale), n: next.daysUntil })}` : name;
-      const rows = hints(p);
-      return [head, ...(rows.length ? rows.map((r) => `· ${r.label}: ${r.value}`) : [`· ${t("plan.giftNone")}`])].join("\n");
-    }),
-  ].join("\n\n");
-
+  // 선물 힌트는 글로 만들어 내보내지 않는다(취향·사이즈 같은 사람 정보가 그대로 나가는 길이라 공유하기를 뺐다, 2026-11-21)
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="page-end flex flex-1 flex-col">
       {/* 답이 온 사람의 선물 고르기로 곧장 왔으면 그 답장 알림은 읽은 것으로 */}
       {answeredIds.map((id) => (
         <SeeAnswers key={id} contactId={id} />
@@ -130,8 +118,6 @@ export function PlanGiftView({ locale, today, people, back, picksOn, answeredIds
         })}
       </div>
       {picksOn && picks ? picks.disclosure : null}
-      <div className="h-6" />
-      <ShareBar plain={shareText} label={t("plan.share")} doneLabel={t("plan.sent")} />
     </div>
   );
 }
