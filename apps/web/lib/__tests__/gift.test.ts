@@ -149,7 +149,9 @@ test("선물 목록: 링크·id·가격대가 바르다", () => {
   assert.equal(new Set(GIFT_CATALOG.map((x) => x.id)).size, GIFT_CATALOG.length);
   assert.equal(new Set(GIFT_CATALOG.map((x) => x.url)).size, GIFT_CATALOG.length);
   for (const x of GIFT_CATALOG) {
-    assert.match(x.url, /^https:\/\/link\.coupang\.com\/a\/[A-Za-z0-9]+$/, x.id);
+    // 제철 전용(seasonOnly)은 사진·파트너스 링크를 구하기 전이라 쿠팡 검색 화면 링크
+    if (x.seasonOnly) assert.match(x.url, /^https:\/\/www\.coupang\.com\/np\/search\?q=[^&\s]+$/, x.id);
+    else assert.match(x.url, /^https:\/\/link\.coupang\.com\/a\/[A-Za-z0-9]+$/, x.id);
     assert.ok(x.ages[0] >= 20 && x.ages[1] <= 80 && x.ages[0] < x.ages[1], x.id);
   }
   for (const b of PRICE_BANDS) assert.ok(GIFT_CATALOG.filter((x) => x.band === b).length >= 15, b);
@@ -162,7 +164,8 @@ test("목록 고르기: 알레르기·나이·사양·안 마시는 술·메모�
   assert.equal(headWord("14K 귀걸이"), "귀걸이");
   const ids = (xs: { id: string }[]) => new Set(xs.map((x) => x.id));
   const all = ids(eligibleCatalog(GIFT_CATALOG, {}, { ...ctx, age: null }));
-  assert.equal(all.size, GIFT_CATALOG.length);
+  // 철이 아니면 제철 전용(크리스마스 소품 등)은 빠진다
+  assert.equal(all.size, GIFT_CATALOG.filter((x) => !x.seasonOnly).length);
   const e = ids(eligibleCatalog(GIFT_CATALOG, { ...card, safety: { allergens: ["milk"], allergyNote: "", dislikes: [], diets: [] }, gifts: { giftCard: null, wishlist: [], skip: ["머그컵"], brands: [] } }, { ...ctx, age: 30 }, ["작년 생일에 지갑 선물함", "지갑 얘기는 그냥 메모"]));
   assert.ok(!e.has("cookie") && !e.has("chocolate"), "우유 알레르기");
   assert.ok(!e.has("radio") && !e.has("walking-shoes"), "30살에 효도 선물은 빼고");
@@ -207,7 +210,8 @@ test("다시 고르기: 지난번에 보인 것을 빼고, 가격대에 둘도 �
   assert.equal(freshCatalog(eligible, []).length, eligible.length);
   const fewLeft = freshCatalog(eligible, ones.slice(PICKS_PER_BAND - 1));
   assert.equal(fewLeft.filter((x) => x.band === "1").length, ones.length, "다섯도 안 남으면 그 가격대는 다시 전부");
-  assert.ok(GIFT_CATALOG.filter((x) => x.image).length >= GIFT_CATALOG.length - 5);
+  const regular = GIFT_CATALOG.filter((x) => !x.seasonOnly);
+  assert.ok(regular.filter((x) => x.image).length >= regular.length - 5);
   for (const x of GIFT_CATALOG) if (x.image) assert.match(x.image, /^https:\/\/[a-z0-9]+\.coupangcdn\.com\/thumbnails\//, x.id);
 });
 

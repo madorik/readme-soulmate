@@ -121,6 +121,8 @@ export function guidePicks(g: Guide, catalog: CatalogGift[] = GIFT_CATALOG): { b
   const bands = g.bands ?? [...PRICE_BANDS];
   const scored = catalog
     .map((x, i) => {
+      // 제철 전용(사진·파트너스 링크 전)은 늘 열려 있는 가이드에 싣지 않는다
+      if (x.seasonOnly) return null;
       if (g.without?.some((t) => x.tags.includes(t))) return null;
       if (g.ages && (x.ages[1] < g.ages[0] || x.ages[0] > g.ages[1])) return null;
       const hits = x.tags.filter((t) => g.tags.includes(t)).length;

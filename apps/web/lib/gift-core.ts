@@ -3,8 +3,8 @@
 // 서버 전용 표시가 없어 시험에서 바로 불러 쓴다. 쿠팡은 한국 쇼핑몰이라 찾을 말·힌트는 늘 한국어로, 이유(reason)만 화면 언어로.
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { deflateRawSync, inflateRawSync } from "node:zlib";
-import { ALCOHOL_KINDS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, PATTERNS, PET_KINDS, SEASONS, STYLES, VIBES, josa, isLocale, labelOf, realCodes, type Locale, type PartialCard } from "@readme/core";
-import { PRICE_BANDS, type CatalogGift, type PriceBand } from "./gift-catalog";
+import { ALCOHOL_KINDS, ALLERGENS, COLORS, DIETS, DISLIKES, METALS, MOVIE_GENRES, MUSIC_GENRES, PATTERNS, PET_KINDS, SEASONS, STYLES, VIBES, josa, isLocale, labelOf, realCodes, type Locale, type PartialCard, type YMD } from "@readme/core";
+import { PRICE_BANDS, type CatalogGift, type PriceBand, type SeasonId } from "./gift-catalog";
 
 export interface GiftIdea {
   /** 쿠팡 찾을 말(한국어). 예: 캠핑 머그컵 */
@@ -20,10 +20,32 @@ export interface GiftContext {
   call: string;
   /** 이 사람이 든 폴더 이름(가족, 회사…) */
   folders: string[];
-  /** 챙길 날 */
-  occasion: { kind: "birthday" | "anniversary"; label: string } | null;
+  /** 챙길 날. daysUntil: 오늘부터 그 날까지(없으면 사람이 그 날을 짚어 연 것) */
+  occasion: { kind: "birthday" | "anniversary"; label: string; daysUntil?: number } | null;
+  /** 생일·기념일이 가깝지 않을 때의 지금 철(크리스마스·연말). 챙길 날이 있으면 null */
+  season?: SeasonId | null;
   age: number | null;
 }
+
+/** 이 안으로 다가온 생일·기념일은 그 날의 선물로, 더 멀면 지금 철을 본다 */
+export const NEAR_OCCASION_DAYS = 30;
+
+/** 지금이 크리스마스·연말 철인가: 11월과 12월(지금 달이나 다음 달이 크리스마스). 아니면 null */
+export function giftSeason(today: YMD): SeasonId | null {
+  return today.m === 11 || today.m === 12 ? "christmas" : null;
+}
+
+/**
+ * 챙길 날과 철 정하기. 가까운 생일·기념일(NEAR_OCCASION_DAYS 안, 또는 daysUntil 없이 그 날을 짚어 연 것)이면 그 날의 선물이고,
+ * 아니면(먼 챙길 날·없음) 챙길 날은 비우고 지금 철이 있으면 그 철의 선물로 본다. daysUntil은 날마다 달라 고른 것을 다시 쓰는 열쇠(giftBasis)에 넣지 않으려고 뗀다
+ */
+export function giftTiming(occasion: GiftContext["occasion"], today: YMD): Pick<GiftContext, "occasion" | "season"> {
+  if (occasion && (occasion.daysUntil == null || occasion.daysUntil <= NEAR_OCCASION_DAYS)) return { occasion: { kind: occasion.kind, label: occasion.label }, season: null };
+  return { occasion: null, season: giftSeason(today) };
+}
+
+const SEASON_KO = "크리스마스·연말";
+const SEASON_EN = "Christmas and year-end";
 
 export interface GiftProfile {
   /** "취미: 캠핑, 등산" 같은 줄 */
@@ -113,7 +135,7 @@ export function giftProfile(card: PartialCard, notes: string[] = []): GiftProfil
 /** 같은 기록·같은 날이면 같은 값: 지난번에 고른 걸 다시 쓴다(기록이 그대로 남지 않게 해시로) */
 export function giftBasis(profile: GiftProfile, ctx: GiftContext, locale: Locale): string {
   // v: 고르는 지침이 바뀌면 올려서 지난번 것을 다시 고르게
-  return createHash("sha256").update(JSON.stringify({ v: 11, profile, ctx, locale })).digest("hex");
+  return createHash("sha256").update(JSON.stringify({ v: 12, profile, ctx, locale })).digest("hex");
 }
 
 // ── 고른 근거: 이 사람 기록의 어느 부분을 보고 골랐는지(선물마다 한두 개, 위에 모아서도) ──
@@ -131,7 +153,7 @@ const BASIS_STOP = new Set(["선물", "좋아함", "좋아하는", "좋아해요
 /** 근거가 기록에 있는지 견줄 글(띄어쓰기 없이, 소문자): 기록 값·해주고 싶은 선물·메모·부르는 말·폴더·챙길 날·나이대 */
 export function basisCorpus(profile: GiftProfile, ctx: GiftContext): string {
   const values = profile.hints.map((h) => h.slice(h.indexOf(": ") + 2));
-  return [...values, ...profile.wishes, ...profile.notes, ctx.call, ...ctx.folders, ctx.occasion ? occasionText(ctx) : "", ageWord(ctx, "ko"), ageWord(ctx, "en")]
+  return [...values, ...profile.wishes, ...profile.notes, ctx.call, ...ctx.folders, ctx.occasion ? occasionText(ctx) : "", ctx.season ? "크리스마스 연말 christmas" : "", ageWord(ctx, "ko"), ageWord(ctx, "en")]
     .join(" ")
     .toLowerCase()
     .replace(/\s+/g, "");
@@ -165,7 +187,7 @@ export function groundBasis(raw: unknown, corpus: string, wishes: string[], loca
 export function fallbackBasis(ctx: GiftContext, locale: Locale): string[] {
   const who = [ageWord(ctx, locale), clean(ctx.call, 8)].filter(Boolean).join(" ");
   if (who) return [who];
-  if (!ctx.occasion) return [];
+  if (!ctx.occasion) return ctx.season ? [locale === "ko" ? SEASON_KO : "Christmas"] : [];
   return [locale === "ko" ? occasionText(ctx) : ctx.occasion.kind === "birthday" ? "Birthday" : "Anniversary"];
 }
 
@@ -173,7 +195,7 @@ const wishBasis = (locale: Locale) => (locale === "ko" ? "적어 둔 선물" : "
 
 /** 취향이 아닌 일반 근거인지: 낱말이 모두 나이(70세, 60대)·부르는 말·폴더·챙길 날 */
 export function isGenericBasis(w: string, ctx: GiftContext): boolean {
-  const plain = new Set([clean(ctx.call, 40), ...ctx.folders, ...(ctx.occasion ? [occasionText(ctx), "birthday", "anniversary"] : [])].filter(Boolean).map((x) => x.toLowerCase()));
+  const plain = new Set([clean(ctx.call, 40), ...ctx.folders, ...(ctx.occasion ? [occasionText(ctx), "birthday", "anniversary"] : []), ...(ctx.season ? [SEASON_KO, "크리스마스", "연말", "christmas"] : [])].filter(Boolean).map((x) => x.toLowerCase()));
   return w.toLowerCase().split(" ").every((x) => plain.has(x) || /^\d+(세|살|대|s)$/.test(x));
 }
 
@@ -195,12 +217,13 @@ export function picksNote(bands: { items: { basis: string[] }[] }[], left: strin
   const facts = [...(wish ? [wishBasis(locale)] : []), ...seen.filter((w) => w !== wishBasis(locale) && !isGenericBasis(w, ctx))].slice(0, 2);
   const out = left.slice(0, 2);
   const age = ageWord(ctx, locale);
+  const season = ctx.season ? (ko ? `${SEASON_KO}를 맞아` : `for ${SEASON_EN}`) : "";
   if (!ko) {
-    const went = facts.length ? `Picked with ${facts.join(" and ")} in mind` : `Safe picks${age ? ` for their ${age}` : ""}`;
+    const went = facts.length ? `Picked ${season ? `${season}, ` : ""}with ${facts.join(" and ")} in mind` : `${season ? `Picked ${season}` : "Safe picks"}${age ? ` for their ${age}` : ""}`;
     return `${went}${out.length ? `, leaving out ${out.join(" and ")}` : ""}.`;
   }
   const pair = (xs: string[], form: string) => (xs.length > 1 ? `${josa(xs[0]!, "과")} ${josa(xs[1]!, form)}` : josa(xs[0] ?? "", form));
-  const parts = [facts.length ? `${pair(facts, "을")} 보고` : `${age ? `${age}에 ` : ""}무난한 것들로`];
+  const parts = [...(season ? [season] : []), facts.length ? `${pair(facts, "을")} 보고` : `${age ? `${age}에 ` : ""}무난한 것들로`];
   if (out.length) parts.push(`${pair(out, "은")} 빼고`);
   return `${parts.join(", ")} 골랐어요`;
 }
@@ -236,13 +259,14 @@ Input:
 - CALL: what the user calls this person (e.g. 아내, 아빠, or a name)
 - GROUPS: the user's folders this person is in (e.g. 가족, 회사, 친구들)
 - OCCASION: birthday or an anniversary name, if any
+- SEASON: christmas when there is no close birthday or anniversary and it is November or December (Christmas and year-end gift season), else none
 - AGE: if known
 - WISHES: gifts written down for this person: either what the user wants to give or what the person said they want, so refer to them neutrally (e.g. "적어 둔 캠핑 의자"), never as "원하셨으니"
 - HINTS: what the user knows about this person's tastes
 - AVOID: things they don't want, allergies, foods they dislike
 - GIFT_CARD: whether they like gift cards (yes, no, unknown)
 - NOTES: the user's own notes about this person, newest first. Read them closely: a gift already given (e.g. "작년 생일에 지갑 선물함") must not be suggested again, not even the same kind; worries or wants in notes (e.g. "요즘 허리가 아프대", "캠핑 시작했대") are strong hints.
-Return exactly ${IDEA_COUNT} ideas, each a different kind of gift, best first.
+Return exactly ${IDEA_COUNT} ideas, each a different kind of gift, best first. When SEASON is christmas, make at least two of the ideas fit Christmas and the year-end (e.g. "크리스마스 쿠키", "연말 홈파티 장식", "겨울 머플러", "핫초코 선물세트") and build the rest from their tastes; reasons may mention the season.
 keyword: a Korean Coupang search query for one concrete product sold online, 2 to 4 words (e.g. "캠핑 머그컵", "조말론 디퓨저", "튤립 꽃다발", "등산 양말"). Build it from the recorded brands, tastes and wishes. Use at most one wish: the first wish that is a thing sold online goes first; skip experiences like classes, trips or meals. No people words, names, sizes, prices, or words like 고급, 추천, 인기. Sizes are only for judging style or gender, never put them in the query. Never a vague query like "선물세트" alone.
 ${PITCH}
 ${BASIS}
@@ -277,6 +301,7 @@ export function ideasRequest(profile: GiftProfile, ctx: GiftContext, locale: Loc
     `CALL: ${clean(ctx.call, 40) || "unknown"}`,
     `GROUPS: ${ctx.folders.map((x) => clean(x, 30)).join(", ") || "none"}`,
     `OCCASION: ${occasionText(ctx)}`,
+    `SEASON: ${ctx.season ? `christmas (${SEASON_EN}; it is November or December now)` : "none"}`,
     `AGE: ${ctx.age ?? "unknown"}`,
     `WISHES: ${profile.wishes.join(" | ") || "none"}`,
     `HINTS:\n${profile.hints.map((h) => `- ${h}`).join("\n") || "none"}`,
@@ -339,17 +364,21 @@ export function parseIdeas(body: unknown, avoid: string[] = [], ground?: (raw: u
   }
 }
 
-/** AI 없이 고를 때의 이유 문장(포장한 틀): 해주고 싶던 선물 · 좋아하는 것 · 챙길 날 */
-export function pitch(kind: "wish" | "likes" | "occasion", ctx: GiftContext, locale: Locale, value = ""): string {
+/** AI 없이 고를 때의 이유 문장(포장한 틀): 해주고 싶던 선물 · 좋아하는 것 · 제철 · 챙길 날(없으면 그냥 마음) */
+export function pitch(kind: "wish" | "likes" | "occasion" | "season", ctx: GiftContext, locale: Locale, value = ""): string {
   const occasion = ctx.occasion?.kind === "anniversary" ? ctx.occasion.label || "기념일" : "생일";
   if (locale !== "ko") {
     if (kind === "wish") return "The very gift you noted you wanted to give";
     if (kind === "likes") return `A gift that fits their love of ${value}`;
-    return ctx.occasion?.kind === "anniversary" ? "A warm way to mark your anniversary" : "A warm way to say happy birthday";
+    if (kind === "season") return "A cozy gift for Christmas and the year-end";
+    if (!ctx.occasion) return "A thoughtful way to show you care";
+    return ctx.occasion.kind === "anniversary" ? "A warm way to mark your anniversary" : "A warm way to say happy birthday";
   }
   // 부르는 말(엄마·아빠)은 넣지 않는다
   if (kind === "wish") return "해 주고 싶다고 적어 둔 바로 그 선물이에요";
   if (kind === "likes") return `${josa(value, "을")} 좋아하니 반길 만한 선물이에요`;
+  if (kind === "season") return `${SEASON_KO}에 마음을 전하기 좋은 선물이에요`;
+  if (!ctx.occasion) return "마음을 전하기 좋은 선물이에요";
   return `${occasion}에 마음을 전하기 좋은 선물이에요`;
 }
 
@@ -375,14 +404,22 @@ export function ruleIdeas(card: PartialCard, ctx: GiftContext, locale: Locale): 
   if (dessert) likes(dessert, dessert);
   const book = first(c?.book);
   if (book) likes(book, book);
-  const occasion = ctx.occasion?.kind === "anniversary" ? ctx.occasion.label || "기념일" : "생일";
-  add([clean(ctx.call, 12), `${occasion} 선물`].filter(Boolean).join(" "), pitch("occasion", ctx, locale), fallbackBasis(ctx, locale));
+  // 챙길 날이 가깝지 않은 크리스마스·연말에는 철에 맞는 찾을 말을 앞세운다(취향보다 뒤, 맨 끝의 기본 한두 개 앞)
+  if (ctx.season && !ctx.occasion) {
+    add("크리스마스 선물세트", pitch("season", ctx, locale), fallbackBasis(ctx, locale));
+    add("연말 선물", pitch("season", ctx, locale), fallbackBasis(ctx, locale));
+  }
+  const occasion = ctx.occasion ? (ctx.occasion.kind === "anniversary" ? ctx.occasion.label || "기념일" : "생일") : ctx.season ? "크리스마스" : "";
+  add([clean(ctx.call, 12), `${occasion} 선물`.trim()].filter(Boolean).join(" "), ctx.occasion ? pitch("occasion", ctx, locale) : ctx.season ? pitch("season", ctx, locale) : pitch("occasion", ctx, locale), fallbackBasis(ctx, locale));
   return sanitizeIdeas(out, giftProfile(card).avoid);
 }
 
 // ── 찾을 말 목록에서 고르기(쿠팡 API 키가 없을 때) ──────────────────
 
 export const PICKS_PER_BAND = 5;
+
+/** 제철(크리스마스·연말)에는 가격대마다 제철 선물을 이만큼은 넣는다(있으면) */
+export const SEASON_MIN = 2;
 
 export interface CatalogPick {
   id: string;
@@ -413,7 +450,7 @@ export function headWord(q: string): string {
 /** 메모가 '준 선물' 이야기인지 */
 const GAVE = /선물|줬|주었|드렸|드림|사\s?줌|사\s?줬|사\s?드렸|받았/;
 
-/** 고를 수 있는 것: 든 알레르기·나이(알면, 앞뒤 3살 여유)·사양하는 것·안 마시면 술·메모에 이미 준 것을 뺀다 */
+/** 고를 수 있는 것: 제철이 아닌 때의 제철 전용·든 알레르기·나이(알면, 앞뒤 3살 여유)·사양하는 것·안 마시면 술·메모에 이미 준 것을 뺀다 */
 export function eligibleCatalog(catalog: CatalogGift[], card: PartialCard, ctx: GiftContext, notes: string[] = []): CatalogGift[] {
   const allergies = new Set(realCodes(card.safety?.allergens));
   const skip = (card.gifts?.skip ?? []).map((x) => x.replace(/\s+/g, "")).filter((x) => x.length >= 2);
@@ -422,6 +459,8 @@ export function eligibleCatalog(catalog: CatalogGift[], card: PartialCard, ctx: 
   return catalog.filter((x) => {
     const q = x.q.replace(/\s+/g, "");
     const head = headWord(x.q);
+    // 제철 전용(크리스마스 소품·케이크 등)은 그 철에만
+    if (x.seasonOnly && !(ctx.season && x.seasons.includes(ctx.season))) return false;
     if (x.allergens.some((a) => allergies.has(a))) return false;
     if (ctx.age != null && (ctx.age < x.ages[0] - 3 || ctx.age > x.ages[1] + 3)) return false;
     if (skip.some((w) => q.includes(w) || w.includes(head))) return false;
@@ -454,7 +493,7 @@ export function defaultBand(ctx: GiftContext): PriceBand {
 
 const BAND_WORDS: Record<PriceBand, string> = { "1": "₩10,000s", "3": "₩30,000s", "5": "₩50,000s", "10": "₩100,000 and up" };
 
-const NOTE = `note: one short sentence in LANGUAGE telling the user what you went by: the 1 or 2 key facts from WISHES, HINTS or NOTES that shaped the picks, and, if any, one thing left out because NOTES say it was already given or it is in AVOID. Korean 18 to 40 characters ending with 골랐어요; English up to 80 characters. Never name or address the person: no CALL words (엄마, 아빠, 아내 …), no names, no honorific subject. Only facts in the input. No lists of three or more, quotes or emoji.
+const NOTE = `note: one short sentence in LANGUAGE telling the user what you went by (when SEASON is christmas, say briefly that you picked for Christmas and the year-end too, e.g. "크리스마스를 맞아 …"): the 1 or 2 key facts from WISHES, HINTS or NOTES that shaped the picks, and, if any, one thing left out because NOTES say it was already given or it is in AVOID. Korean 18 to 40 characters ending with 골랐어요; English up to 80 characters. Never name or address the person: no CALL words (엄마, 아빠, 아내 …), no names, no honorific subject. Only facts in the input. No lists of three or more, quotes or emoji.
 Good: "걷기와 트로트를 보고, 작년에 드린 홍삼은 빼고 골랐어요", "적어 둔 안마 쿠션과 수국 취향을 보고 골랐어요", "우디 향과 미니멀한 취향을 보고 골랐어요".`;
 
 const CATALOG_INSTRUCTIONS = `You pick gifts for one person from a fixed list (CATALOG) of Coupang searches, grouped by price band (${PRICE_BANDS.map((b) => `${b} = about ${BAND_WORDS[b]}`).join(", ")}).
@@ -462,14 +501,15 @@ Input:
 - CALL: what the user calls this person (e.g. 아내, 아빠, or a name)
 - GROUPS: the user's folders this person is in (e.g. 가족, 회사, 친구들)
 - OCCASION: birthday or an anniversary name, if any
+- SEASON: christmas when there is no close birthday or anniversary and it is November or December (Christmas and year-end gift season), else none
 - AGE: if known
 - WISHES: gifts written down for this person: either what the user wants to give or what the person said they want, so refer to them neutrally (e.g. "적어 둔 캠핑 의자"), never as "원하셨으니"
 - HINTS: everything the user recorded about this person (tastes, hobbies, sizes for judging style or gender)
 - AVOID: things they don't want, allergies, foods they dislike
 - GIFT_CARD: whether they like gift cards
 - NOTES: the user's own notes about this person, newest first. A gift already given (e.g. "작년 생일에 지갑 선물함") must not be picked again, not even the same kind. Worries or wants in notes (e.g. "요즘 허리가 아프대", "캠핑 시작했대") are strong hints.
-- CATALOG: one item per line: id | search | band | ages | tags
-Pick exactly ${PICKS_PER_BAND} items from each band (${PRICE_BANDS.length * PICKS_PER_BAND} in total), best first within a band. Prefer items that match their wishes, hobbies, tastes and notes; fill the rest with safe picks that suit their age, the relationship (CALL, GROUPS) and the occasion. Never pick anything in AVOID or something the notes say was already given.
+- CATALOG: one item per line: id | search | band | ages | tags (items for the Christmas and year-end season carry the tag SEASON:christmas)
+Pick exactly ${PICKS_PER_BAND} items from each band (${PRICE_BANDS.length * PICKS_PER_BAND} in total), best first within a band. When SEASON is christmas, at least ${SEASON_MIN} of the ${PICKS_PER_BAND} picks in each band must be items tagged SEASON:christmas (whenever the band has them), choosing the ones that fit this person best; the rest follow their tastes. Prefer items that match their wishes, hobbies, tastes and notes; fill the rest with safe picks that suit their age, the relationship (CALL, GROUPS) and the occasion. Never pick anything in AVOID or something the notes say was already given.
 For parents and elders (엄마, 아빠, 부모님, 어머니, 아버님, 할머니, 할아버지 …): Korean parents most want cash (용돈 박스), clothes, travel and health foods, so favor health foods and supplements, comfort and massage items (효도), outdoor clothing, and gear for their hobbies (등산, 골프, 파크골프, 여행) unless their records point elsewhere.
 ${PITCH}
 ${BASIS}
@@ -478,7 +518,8 @@ ${NOTE}`;
 /** 목록에서 고르기 AI 요청 몸(고를 수 있는 것만 보여 주고, id는 그 안에서만) */
 export function catalogRequest(profile: GiftProfile, ctx: GiftContext, locale: Locale, model: string, eligible: CatalogGift[]) {
   const base = ideasRequest(profile, ctx, locale, model);
-  const lines = eligible.map((x) => `${x.id} | ${x.q} | ${x.band} | ${x.ages[0]}-${x.ages[1]} | ${x.tags.join(",")}`);
+  // 제철(크리스마스·연말) 선물에는 SEASON:christmas 표시를 붙여 AI가 가려내게 한다
+  const lines = eligible.map((x) => `${x.id} | ${x.q} | ${x.band} | ${x.ages[0]}-${x.ages[1]} | ${[...x.tags, ...x.seasons.map((z) => `SEASON:${z}`)].join(",")}`);
   return {
     ...base,
     instructions: CATALOG_INSTRUCTIONS,
@@ -562,7 +603,45 @@ export function leftOut(catalog: CatalogGift[], card: PartialCard, notes: string
   return [...new Set(out.filter(Boolean))].slice(0, max);
 }
 
-/** AI 없이: 기록·해주고 싶은 선물·메모에 든 말과 맞는 것부터, 가격대마다 PICKS_PER_BAND개 */
+/** 사진·파트너스 링크 전인 제철 전용 선물은 가격대마다 이만큼까지만(나머지는 사진이 있는 선물로) */
+const THIN_MAX = 2;
+
+/**
+ * 한 가격대에서 n개 고르기(sorted는 잘 맞는 순서). ① 사진 없는 제철 전용(isThin)은 THIN_MAX개까지만 ② 제철이면 제철 선물을 SEASON_MIN개는 넣는다:
+ * 모자라면 뒤쪽의 덜 맞는 것을 남은 제철 선물로 바꾼다(앞쪽 = 이 사람에게 잘 맞는 것은 그대로)
+ */
+function pickBand<T>(sorted: T[], n: number, o: { season: SeasonId | null | undefined; isSeason: (v: T) => boolean; isThin: (v: T) => boolean }): T[] {
+  const top: T[] = [];
+  const later: T[] = [];
+  let thin = 0;
+  for (const v of sorted) {
+    if (top.length >= n) break;
+    if (o.isThin(v) && thin >= THIN_MAX) later.push(v);
+    else {
+      top.push(v);
+      if (o.isThin(v)) thin++;
+    }
+  }
+  for (const v of later) if (top.length < n) top.push(v);
+  if (!o.season) return top;
+  let have = top.filter(o.isSeason).length;
+  const extra = sorted.filter((v) => !top.includes(v) && o.isSeason(v));
+  for (let i = top.length - 1; i >= 0 && have < SEASON_MIN && extra.length; i--) {
+    if (o.isSeason(top[i]!)) continue;
+    // 바꿔 넣는 것도 사진 없는 것이 THIN_MAX를 넘지 않게
+    const j = extra.findIndex((v) => !o.isThin(v) || top.filter(o.isThin).length < THIN_MAX);
+    if (j < 0) break;
+    top[i] = extra.splice(j, 1)[0]!;
+    have++;
+  }
+  return top;
+}
+
+/** 제철 선물이 개인 취향 한 가지 맞음(3점)보다는 뒤, 아무것도 안 맞는 것(0점)보다는 앞서도록. 제철 전용(크리스마스 소품 등)은 같은 점수대에서 조금 앞 */
+const SEASON_SCORE = 2.5;
+const SEASON_ONLY_SCORE = 2.8;
+
+/** AI 없이: 기록·해주고 싶은 선물·메모에 든 말과 맞는 것부터(제철이면 제철 선물을 가격대마다 둘 이상), 가격대마다 PICKS_PER_BAND개 */
 export function ruleCatalogPicks(card: PartialCard, ctx: GiftContext, locale: Locale, eligible: CatalogGift[], notes: string[] = []): CatalogPick[] {
   const profile = giftProfile(card, notes);
   const corpus = [...profile.hints, ...profile.wishes, ...profile.notes].join(" ").replace(/\s+/g, "");
@@ -573,31 +652,33 @@ export function ruleCatalogPicks(card: PartialCard, ctx: GiftContext, locale: Lo
     const hits = x.tags.filter((tag) => corpus.includes(tag));
     const taste = hits.find((tag) => !CONTEXT_TAGS.has(tag));
     const inAge = ctx.age != null && ctx.age >= x.ages[0] && ctx.age <= x.ages[1];
-    const score = (wish ? 10 : 0) + hits.length * 3 + (inAge ? 1 : 0);
-    const reason = wish ? pitch("wish", ctx, locale) : taste ? pitch("likes", ctx, locale, taste) : pitch("occasion", ctx, locale);
-    return { x, i, score, reason, basis: catalogBasis(x, shown, wishes, ctx, locale) };
+    const seasonal = !!ctx.season && x.seasons.includes(ctx.season);
+    const score = (wish ? 10 : 0) + hits.length * 3 + (inAge ? 1 : 0) + (seasonal ? (x.seasonOnly ? SEASON_ONLY_SCORE : SEASON_SCORE) : 0);
+    const reason = wish ? pitch("wish", ctx, locale) : taste ? pitch("likes", ctx, locale, taste) : seasonal ? pitch("season", ctx, locale) : pitch("occasion", ctx, locale);
+    return { x, i, score, seasonal, reason, basis: catalogBasis(x, shown, wishes, ctx, locale) };
   });
   const out: CatalogPick[] = [];
   for (const band of PRICE_BANDS) {
-    scored
-      .filter((s) => s.x.band === band)
-      .sort((a, b) => b.score - a.score || a.i - b.i)
-      .slice(0, PICKS_PER_BAND)
-      .forEach((s) => out.push({ id: s.x.id, reason: s.reason, basis: s.basis }));
+    const sorted = scored.filter((s) => s.x.band === band).sort((a, b) => b.score - a.score || a.i - b.i);
+    pickBand(sorted, PICKS_PER_BAND, { season: ctx.season, isSeason: (s) => s.seasonal, isThin: (s) => !!s.x.seasonOnly }).forEach((s) => out.push({ id: s.x.id, reason: s.reason, basis: s.basis }));
   }
   return out;
 }
 
-/** AI가 고른 것에 모자란 가격대를 기록만으로 고른 것으로 채워 가격대별로 묶는다. 근거가 빈 것(기록에 없는 근거만 댄 것)은 fill로 */
-export function bandPicks(ai: CatalogPick[], rules: CatalogPick[], eligible: CatalogGift[], fill: (x: CatalogGift) => string[] = () => []): BandPicks[] {
+/**
+ * AI가 고른 것에 모자란 가격대를 기록만으로 고른 것으로 채워 가격대별로 묶는다. 근거가 빈 것(기록에 없는 근거만 댄 것)은 fill로.
+ * season이면 가격대마다 제철 선물을 SEASON_MIN개는 넣는다(AI가 못 넣었으면 뒤쪽을 남은 제철 선물로 바꾼다)
+ */
+export function bandPicks(ai: CatalogPick[], rules: CatalogPick[], eligible: CatalogGift[], fill: (x: CatalogGift) => string[] = () => [], season?: SeasonId | null): BandPicks[] {
   const byId = new Map(eligible.map((x) => [x.id, x]));
   return PRICE_BANDS.map((band) => {
-    const items: BandPicks["items"] = [];
+    const pool: BandPicks["items"] = [];
     for (const p of [...ai, ...rules]) {
       const x = byId.get(p.id);
-      if (!x || x.band !== band || items.some((i) => i.id === x.id) || items.length >= PICKS_PER_BAND) continue;
-      items.push({ ...x, reason: p.reason, basis: p.basis.length ? p.basis : fill(x) });
+      if (!x || x.band !== band || pool.some((i) => i.id === x.id)) continue;
+      pool.push({ ...x, reason: p.reason, basis: p.basis.length ? p.basis : fill(x) });
     }
+    const items = pickBand(pool, PICKS_PER_BAND, { season, isSeason: (i) => !!season && i.seasons.includes(season), isThin: (i) => !!i.seasonOnly });
     return { band, items: badgeItems(band, items) };
   }).filter((b) => b.items.length);
 }

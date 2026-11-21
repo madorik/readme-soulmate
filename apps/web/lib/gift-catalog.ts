@@ -4,9 +4,17 @@
 // 가격대는 찾을 말을 그 가격대에 드는 것으로 골라 나눴다(파트너스 링크는 가격 필터를 지운다).
 // 부모님·어르신 쪽(용돈 박스·건강식품·효도·파크골프·등산·여행)은 2026 어버이날 조사(용돈·의류·여행·건강식품 순)를 보고 더했다.
 // 고치려면: 파트너스 > 링크 생성 > 상품 링크에서 상품을 골라 '링크 생성'으로 만든 단축 URL과 그 상품 사진으로 바꾼다(품절되면 바꾼다).
+//
+// 제철 선물(seasons): 크리스마스·연말(11~12월)에 챙기는 선물은 생일·기념일이 가깝지 않을 때 이 철의 것을 먼저 고른다.
+//  - 위 목록 중 크리스마스·연말에 어울리는 것은 CHRISTMAS_IDS로 표시한다(파트너스 링크·사진 그대로).
+//  - 목록에 없던 크리스마스 소품·케이크 같은 것은 SEASONAL에 더했다(seasonOnly: 철이 아닐 때는 안 보인다). 쿠팡이 자동 접속을 막아(403) 상품 사진·파트너스 링크를
+//    못 가져와서 지금은 쿠팡 검색 화면 링크·선물 아이콘이다. 고치려면 위와 같이 파트너스에서 상품 링크를 만들어 url·image·name을 채우면 된다.
 
 export const PRICE_BANDS = ["1", "3", "5", "10"] as const;
 export type PriceBand = (typeof PRICE_BANDS)[number];
+
+/** 선물을 챙기는 철: christmas = 크리스마스·연말(11~12월) */
+export type SeasonId = "christmas";
 
 export interface CatalogGift {
   id: string;
@@ -25,13 +33,22 @@ export interface CatalogGift {
   name: string;
   /** 든 알레르기(ALLERGENS 코드). 이 알레르기가 있는 사람에게는 고르지 않는다 */
   allergens: string[];
+  /** 어울리는 철(크리스마스·연말). 그 철에 생일·기념일이 가깝지 않으면 이것을 먼저 고른다 */
+  seasons: SeasonId[];
+  /** 그 철에만 보이는 것(사진·파트너스 링크 전이라 쿠팡 검색 링크). 철이 아니면 고르지도, 가이드에 싣지도 않는다 */
+  seasonOnly?: boolean;
 }
 
 function g(id: string, q: string, band: PriceBand, ages: [number, number], tags: string[], url: string, image: string, name: string, allergens: string[]): CatalogGift {
-  return { id, q, band, ages, tags, url, image, name, allergens };
+  return { id, q, band, ages, tags, url, image, name, allergens, seasons: [] };
 }
 
-export const GIFT_CATALOG: CatalogGift[] = [
+/** 제철 전용(seasonOnly): 쿠팡 검색 화면 링크 + 선물 아이콘. 파트너스 링크·사진을 구하면 url·image·name을 채워 g()처럼 쓴다 */
+function s(id: string, q: string, band: PriceBand, ages: [number, number], tags: string[], allergens: string[] = []): CatalogGift {
+  return { id, q, band, ages, tags, url: `https://www.coupang.com/np/search?q=${encodeURIComponent(q)}`, image: "", name: "", allergens, seasons: ["christmas"], seasonOnly: true };
+}
+
+const BASE: CatalogGift[] = [
   // 1만원대
   g("hand-cream", "핸드크림 선물세트", "1", [20, 80], ["향", "뷰티", "핸드크림"], "https://link.coupang.com/a/iIEsiinAXI", "https://thumbnail5.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/9bcc/08b78d17f93bddde37f5f34f251278d8339f16fe9cf21a6a122f6f5f0361.jpg", "[선물세트] 시오리스 유기농 핸드크림&립밤 2종 선물세트", []),
   g("lip-balm", "립밤 선물세트", "1", [20, 50], ["뷰티", "화장품"], "https://link.coupang.com/a/iIEswm4VRA", "https://t2a.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/image_audit/prod/5ee5bd51-39ac-46e7-b8a3-4d19567b6ac8_fixing_v2.png", "아델리오 보르피린 선키스 립밤 SPF50+ PA++++, 1개, 4.2g, 02 소프트핑크", []),
@@ -163,5 +180,48 @@ export const GIFT_CATALOG: CatalogGift[] = [
   g("padding-vest", "경량 패딩 조끼", "10", [40, 80], ["등산", "여행", "산책", "겨울", "옷"], "https://link.coupang.com/a/iIFbHtfmeW", "https://thumbnail11.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/9a06/344391e50b283c487236daaf712820e108851070ee6cff35a9d8a8abc7b1.jpg", "워킹맨 아울렛 1+1 겨울 시즌 경량 라이트 패딩 조끼 베스트 브이넥 라운드 조끼 외출복 일상복 근무복 작업복 아웃도어 D10", []),
   g("water-mat", "온수매트", "10", [50, 80], ["겨울", "건강", "휴식", "효도"], "https://link.coupang.com/a/iIE6t2vySG", "https://thumbnail2.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/2026/09/03/11/6/f01356c8-7092-4d65-942b-908d89be4a20.jpg", "포레몽 침대 바닥 겸용 프리미엄 온수매트 분리난방, 프리미엄 퀸 분리난방 (1500x1900), 퀸 Q(1500 x 1900m", []),
 ];
+
+/** 위 목록 중 크리스마스·연말 선물로 어울리는 것(따뜻한 겨울 소품·간식·향·뷰티·연말 감사 선물세트·파티·가족 선물) */
+export const CHRISTMAS_IDS: ReadonlySet<string> = new Set([
+  // 1만원대
+  "hand-cream", "lip-balm", "drip-bag", "tea-bag", "cookie", "candle", "socks", "photo-album", "puzzle", "honey-stick", "money-box",
+  // 3만원대
+  "diffuser", "coffee-beans", "black-tea", "macaron", "chocolate", "nuts", "wine-glass", "mood-light", "blanket", "muffler", "slippers", "board-game", "baking", "heat-pad",
+  // 5만원대
+  "perfume", "preserved-flower", "hand-drip", "ginseng-stick", "cosmetics", "silver-necklace", "leather-gloves", "pajamas", "electric-blanket", "liquor", "lego", "card-wallet",
+  // 10만원 이상
+  "niche-perfume", "red-ginseng", "hanwoo", "earbuds", "smartwatch", "instant-camera", "wallet", "watch", "gold-earrings", "turntable", "water-mat", "padding-vest",
+]);
+
+/** 크리스마스·연말에만 보이는 선물(목록에 없던 트리·오너먼트·케이크·파티·새해 용품) */
+const SEASONAL: CatalogGift[] = [
+  // 1만원대
+  s("xmas-cookie", "크리스마스 쿠키 선물세트", "1", [20, 60], ["디저트", "간식", "쿠키", "빵"], ["wheat", "egg", "milk"]),
+  s("xmas-socks", "크리스마스 양말 선물세트", "1", [20, 60], ["패션", "실용", "양말"]),
+  s("hot-cocoa", "핫초코 선물세트", "1", [20, 70], ["디저트", "간식", "차", "커피"], ["milk"]),
+  s("mini-tree", "미니 크리스마스 트리", "1", [20, 60], ["인테리어", "집", "감성"]),
+  s("ornament-set", "크리스마스 오너먼트 세트", "1", [20, 60], ["인테리어", "집", "감성"]),
+  s("xmas-card", "크리스마스 카드 편지 세트", "1", [20, 80], ["편지", "감성", "추억"]),
+  s("hand-warmer", "핫팩 손난로 선물세트", "1", [20, 80], ["겨울", "실용"]),
+  // 3만원대
+  s("xmas-cake", "크리스마스 케이크", "3", [20, 60], ["디저트", "케이크", "파티"], ["milk", "egg", "wheat"]),
+  s("snow-globe", "스노우볼 오르골", "3", [20, 60], ["인테리어", "감성", "집", "음악"]),
+  s("xmas-light", "크리스마스 LED 전구 무드등", "3", [20, 60], ["인테리어", "감성", "집", "휴식"]),
+  s("party-set", "홈파티 장식 세트", "3", [20, 50], ["파티", "인테리어", "집"]),
+  s("knit-beanie", "겨울 니트 비니", "3", [20, 60], ["패션", "겨울", "옷"]),
+  s("warm-tumbler", "보온 텀블러 선물세트", "3", [20, 70], ["커피", "카페", "실용", "겨울"]),
+  s("diary-2027", "2027 다이어리", "3", [20, 60], ["독서", "기록", "실용", "새해"]),
+  s("sparkling-wine", "스파클링 와인 선물세트", "3", [25, 70], ["와인", "술", "파티"]),
+  // 5만원대
+  s("xmas-tree-full", "크리스마스 트리 풀세트", "5", [20, 60], ["인테리어", "집", "파티", "감성"]),
+  s("wine-set", "와인 선물세트", "5", [30, 80], ["와인", "술", "파티"]),
+  s("cashmere-muffler", "캐시미어 머플러", "5", [25, 70], ["패션", "겨울", "옷"]),
+  s("lego-winter", "레고 윈터 빌리지", "5", [20, 50], ["레고", "조립", "장난감", "겨울"]),
+  // 10만원 이상
+  s("premium-wine", "프리미엄 와인 선물세트", "10", [30, 80], ["와인", "술"]),
+  s("cashmere-knit", "캐시미어 니트", "10", [30, 70], ["패션", "겨울", "옷"]),
+];
+
+export const GIFT_CATALOG: CatalogGift[] = [...BASE.map((x): CatalogGift => (CHRISTMAS_IDS.has(x.id) ? { ...x, seasons: ["christmas"] } : x)), ...SEASONAL];
 
 export const CATALOG_BY_ID = new Map(GIFT_CATALOG.map((x) => [x.id, x]));

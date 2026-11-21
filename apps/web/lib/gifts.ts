@@ -36,6 +36,7 @@ import {
   coupangSearchQuery,
   coupangSearchUrl,
   giftBasis,
+  giftTiming,
   giftProfile,
   ideasRequest,
   normalizeKeyword,
@@ -97,7 +98,8 @@ export async function giftContext(s: Session, p: Person, occasion: GiftContext["
   return {
     call: displayName(p),
     folders: folders.filter((f) => p.folderIds.includes(f.id)).map((f) => folderName(f, ko)),
-    occasion,
+    // 가까운 생일·기념일이면 그 날의 선물, 아니면(먼 챙길 날·없음) 11~12월에는 크리스마스·연말 선물
+    ...giftTiming(occasion, today),
     age: year && year > 1900 && year <= today.y ? today.y - year : null,
   };
 }
@@ -215,7 +217,7 @@ export async function giftLinkPicks(s: Session, p: Person, ctx: GiftContext, not
     if (ai.length) await keep(s, p.contactId, basis, { picks: ai, note: aiNote });
   }
   const wishes = profile.wishes.map((w) => w.replace(/\s+/g, ""));
-  const bands = bandPicks(ai, rules, eligible, (x) => catalogBasis(x, corpus, wishes, ctx, locale));
+  const bands = bandPicks(ai, rules, eligible, (x) => catalogBasis(x, corpus, wishes, ctx, locale), ctx.season);
   const want = defaultBand(ctx);
   return {
     bands,
