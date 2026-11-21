@@ -39,6 +39,8 @@ interface Labels {
   pickOne: string;
   empty: string;
   folders: string;
+  /** 즐겨찾기 구역 제목(폴더 위, 접고 펴는) */
+  favorites: string;
   /** 아래 목록 제목: 폴더 없음 */
   unfiled: string;
   /** 찾기 칸: "이름이나 태그로 찾기" */
@@ -121,7 +123,7 @@ const FOLDER_TILT = ["-rotate-[0.8deg]", "rotate-[0.6deg]", "-rotate-[0.5deg]", 
 const LAZY_ROW = "[content-visibility:auto] [contain-intrinsic-size:auto_71px]";
 
 /**
- * 내 사람들: 위에 폴더 칸(누르면 그 폴더, 맨 끝은 새 폴더), 아래에 아직 폴더에 없는 사람(즐겨찾기 먼저).
+ * 내 사람들: 맨 위에 즐겨찾기한 사람(어느 폴더에 있든 모아서, 제목을 눌러 접고 편다), 그 아래 폴더 칸(누르면 그 폴더, 맨 끝은 새 폴더), 아래에 아직 폴더에 없는 사람(즐겨찾기 먼저).
  * 아래 사람을 길게 눌러(마우스는 끌어) 위 폴더 칸에 놓으면 그 폴더에 들어간다.
  * "선택"을 누르면 사람을 고르는 모드가 되고(머리가 ✕ · N명 선택 · 전체 선택으로 바뀌고, 칩 한 줄로 나도 같이·폴더 사람을 한 번에, 줄 어디를 눌러도 체크),
  * 한 명이라도 고르면 탭 막대 자리에 동작 막대(지우기 · 폴더에 넣기 · 메뉴 고르기)가 들어선다.
@@ -196,6 +198,8 @@ export function PeopleBoard({
     if (window.location.pathname + window.location.search !== here) window.history.replaceState(window.history.state, "", here);
   }, [here]);
   const [making, setMaking] = useState(false);
+  // 즐겨찾기 구역은 처음엔 펴져 있고, 제목을 누르면 접힌다
+  const [favOpen, setFavOpen] = useState(true);
   // 찾기: 적는 동안은 폴더 칸 대신 찾은 사람(폴더와 상관없이 모두에서). 선택 중이면 고르는 목록을 줄인다
   const [find, setFind] = useState("");
   const searching = !!find.trim();
@@ -231,6 +235,7 @@ export function PeopleBoard({
   });
   const membersOf = (f: FolderView) => [...f.memberIds, ...Object.keys(added).filter((id) => added[id]!.includes(f.id) && !f.memberIds.includes(id))];
   const unfiled = ordered.filter((r) => !r.folderIds.length && !added[r.contactId]?.length);
+  const favRows = ordered.filter((r) => r.favorite);
   const lazyRow = rows.length > LONG_LIST ? LAZY_ROW : "";
 
   const byId = new Map(rows.map((r) => [r.contactId, r]));
@@ -499,6 +504,31 @@ export function PeopleBoard({
               </div>
             </section>
           )}
+          {/* 즐겨찾기: 어느 폴더에 있든 한곳에 모아 바로 본다. 제목을 누르면 접힌다 */}
+          {favRows.length ? (
+            <section aria-label={labels.favorites} className="relative">
+              <h2 className="px-6 pt-3">
+                <button type="button" aria-expanded={favOpen} aria-controls="people-fav" onClick={() => setFavOpen(!favOpen)} className="flex min-h-11 w-full items-center gap-2 text-left">
+                  <span className="text-[22px] font-normal">{labels.favorites}</span>
+                  <span className="text-[17px] text-muted">{favRows.length}</span>
+                  <Icon name="chevron" size={18} strokeWidth={2.2} className={`ml-auto text-muted transition-transform ${favOpen ? "-rotate-90" : "rotate-90"}`} />
+                </button>
+              </h2>
+              {favOpen ? (
+                <div id="people-fav" className="card relative mx-4 mt-1.5 px-3.5">
+                  <ul className="flex flex-col">
+                    {favRows.map((r) => (
+                      <li key={r.contactId} className={`border-t border-dashed border-rule first:border-t-0 ${lazyRow}`}>
+                        <Link href={`/people/${r.contactId}`} className="flex min-h-[72px] items-center gap-3">
+                          <RowBody row={r} avatarLabel={labels.avatarOf.replace("{name}", r.name)} />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
           <section aria-label={labels.folders} className="relative">
           <h2 className="flex items-baseline gap-2 px-6 pb-3 pt-6">
             <span className="text-[22px] font-normal">{labels.folders}</span>

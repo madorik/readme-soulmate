@@ -38,6 +38,7 @@ export function PeopleView({ locale, rows, folders, meAvatar, initialPick, initi
           pickOne: t("people.pickOne", { name: "{name}" }),
           empty: t("people.empty"),
           folders: t("folder.label"),
+          favorites: t("people.favorites"),
           unfiled: t("folder.none"),
           search: t("people.search"),
           searchEmpty: t("people.searchEmpty"),

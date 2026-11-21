@@ -12,7 +12,7 @@ import { PicksStage } from "@/components/PicksStage";
 import type { PersonReminderProps } from "@/lib/pages/person-reminder.data";
 import { makeT } from "@/lib/t";
 
-export function PersonReminderView({ locale, contactId, avatar, name, spec, next, event, picksOn, skip, again, eventKnown, remindOnDay, answered, picks }: PersonReminderProps) {
+export function PersonReminderView({ locale, contactId, avatar, name, spec, next, event, picksOn, skip, again, eventKnown, answered, picks }: PersonReminderProps) {
   const t = makeT(locale);
   return (
     <>
@@ -39,10 +39,7 @@ export function PersonReminderView({ locale, contactId, avatar, name, spec, next
 
       {/* 홈·달력·알림에서 챙길 날(생일·기념일·크리스마스)을 짚어 열었을 때만 그 날을 제목으로. 사람 화면의 '선물 고르기'처럼 날을 정하지 않고 열면 생일이라고 단정하지 않는다 */}
       {eventKnown ? (
-        <>
-          <h1 className="relative mx-6 mt-[22px] text-[31px] font-normal leading-[1.35]">{next ? (next.daysUntil === 0 ? t("reminder.today", { event }) : t("reminder.left", { event, n: next.daysUntil })) : event}</h1>
-          {next && next.daysUntil > 0 && remindOnDay ? <p className="mx-6 mt-1 text-[16px] text-muted">{t("reminder.again")}</p> : null}
-        </>
+        <h1 className="relative mx-6 mt-[22px] text-[31px] font-normal leading-[1.35]">{next ? (next.daysUntil === 0 ? t("reminder.today", { event }) : t("reminder.left", { event, n: next.daysUntil })) : event}</h1>
       ) : (
         <div className="relative mx-6 mt-3 flex items-center gap-3.5">
           <Avatar config={avatar} size={56} label={t("avatar.of", { name })} />

@@ -51,21 +51,18 @@ export function PersonNewView({ locale, folders, error, name, ai, xmas }: Person
           </span>
         ) : null}
       </div>
-      {/* 처음 넣을 폴더(드롭다운): 라벨과 칸이 한 줄. 다른 폴더는 그 사람 화면에서 더 넣는다 */}
-      <label className="flex items-center gap-3">
-        <span className="shrink-0 text-[20px]">{t("folder.label")}</span>
-        <span className="relative flex min-w-0 flex-1">
-          <select name="folderId" defaultValue="" className="field appearance-none pr-10 !text-[21px] !shadow-none !border-[1.5px]">
-            <option value="">{t("folder.none")}</option>
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-          <Icon name="chevron" size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-muted" />
-        </span>
-      </label>
+      {/* 처음 넣을 폴더(드롭다운): 문구 없이 칸 하나(안에 '폴더 없음', 스크린리더용 aria-label). 다른 폴더는 그 사람 화면에서 더 넣는다 */}
+      <span className="relative flex">
+        <select name="folderId" defaultValue="" aria-label={t("folder.label")} className="field appearance-none pr-10 !text-[21px] !shadow-none !border-[1.5px]">
+          <option value="">{t("folder.none")}</option>
+          {folders.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </select>
+        <Icon name="chevron" size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rotate-90 text-muted" />
+      </span>
       <Heart size={24} rotate={16} className="-right-2 top-[70px]" />
       <Star size={20} rotate={-12} color={SKY_STAR} className="-left-[7px] top-[100px]" />
       <Squiggle w={54} width={2.4} className="-bottom-2 right-9" />

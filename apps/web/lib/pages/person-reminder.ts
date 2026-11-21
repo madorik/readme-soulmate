@@ -66,8 +66,6 @@ export async function startPersonReminder({ params, searchParams: sp }: PageInpu
     picksOn,
     skip,
     again,
-    // 크리스마스는 명절·챙기는 날 알림을 켜 둔 때만 당일 아침에 알려 준다
-    remindOnDay: s.profile.reminderOffsets.includes(0) && (!xmas || s.profile.holidayReminders),
     answered: (await s.tx((q) => unreadAnswers(q, s.user.id, p.contactId))).length > 0,
     picks,
   };

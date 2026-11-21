@@ -720,13 +720,25 @@ test("사람들: 폴더(기본 4개 + 직접 만들기, 한 사람이 여러 폴
   // 목록에는 아직 폴더에 없는 사람만(폴더에 넣은 단짝·아빠는 빠진다)
   await jisu.goto("/people");
   await expect(jisu.getByRole("link", { name: /^본가 / })).toContainText("1명");
-  const unfiled = jisu.locator('li a[href^="/people/"]:not([href*="folder"])');
+  const unfiled = jisu.getByRole("region", { name: "폴더 없음" }).locator('li a[href^="/people/"]');
   await expect(unfiled.filter({ hasText: "아빠" })).toHaveCount(0);
   await expect(unfiled.filter({ hasText: "단짝" })).toHaveCount(0);
 
+  // 즐겨찾기한 사람은 어느 폴더에 있든 폴더 위에 모여 보이고(단짝은 친구들 폴더에 있다), 제목을 누르면 접히고 다시 누르면 펴진다
+  const fav = jisu.getByRole("region", { name: "즐겨찾기" });
+  const favToggle = fav.getByRole("button", { name: /^즐겨찾기/ });
+  await expect(fav.getByRole("link", { name: /단짝/ })).toBeVisible();
+  await expect(fav.getByRole("link", { name: /아빠/ })).toHaveCount(0);
+  await expect(favToggle).toHaveAttribute("aria-expanded", "true");
+  await favToggle.click();
+  await expect(favToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(fav.getByRole("link", { name: /단짝/ })).toHaveCount(0);
+  await favToggle.click();
+  await expect(fav.getByRole("link", { name: /단짝/ })).toBeVisible();
+
   // 끌어서 폴더에: 폴더 없는 첫 사람을 회사 칸에 놓으면 회사에 들어가고 목록에서 빠진다(새로 고쳐도 그대로).
   // 놓기만 보려고 화면을 길게(사람과 폴더가 한 화면에)
-  await jisu.setViewportSize({ width: 390, height: 1100 });
+  await jisu.setViewportSize({ width: 390, height: 1400 });
   const first = unfiled.first();
   const href = await first.getAttribute("href");
   const work = jisu.getByRole("link", { name: /^회사 / });
