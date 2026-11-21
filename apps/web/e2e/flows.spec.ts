@@ -63,10 +63,11 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   const holiday = nextHoliday(today);
   const yearEndNow = !!yearEnd(today);
   await expect(upcoming.getByText(yearEndNow ? ko["home.yearEnd"] : holiday ? ko[holidayKey(holiday.id)] : "새 친구 추가해 봐요")).toBeVisible();
-  // 연말엔 '사람 추가하기' 대신 물어보고 선물 챙기기 하나로 이끈다(물어보기에서 이름을 적으면 그 사람이 들어간다)
+  // 연말엔 사람이 아직 없으면 '받고 싶은 선물 물어보기' 대신 '챙기고 싶은 사람 추가하기'로 이끈다(사람 추가 화면으로)
   if (yearEndNow) {
-    await expect(upcoming.getByRole("link", { name: ko["home.yearEndAsk"] })).toHaveAttribute("href", "/request?xmas=1");
-    await expect(upcoming.getByRole("link", { name: "사람 추가하기" })).toHaveCount(0);
+    await expect(upcoming.getByRole("link", { name: ko["home.yearEndAdd"] })).toHaveAttribute("href", "/people/new");
+    await expect(upcoming.getByRole("link", { name: ko["home.yearEndAsk"] })).toHaveCount(0);
+    await expect(upcoming.getByRole("link", { name: "사람 추가하기", exact: true })).toHaveCount(0);
   } else {
     await expect(upcoming.getByRole("link", { name: "사람 추가하기" })).toBeVisible();
   }
@@ -1530,6 +1531,8 @@ test("연말엔 사람이 있어도 가까운 기념일이 없으면 크리스�
     const upcoming = page.getByRole("region", { name: "다가오는 날" });
     await expect(upcoming.getByText(ko["home.yearEnd"])).toBeVisible();
     await expect(upcoming.getByRole("link", { name: ko["home.yearEndAsk"] })).toHaveAttribute("href", "/request?xmas=1");
+    // 사람이 있으니 '사람 추가하기'로 이끄는 쪽은 없다
+    await expect(upcoming.getByRole("link", { name: ko["home.yearEndAdd"] })).toHaveCount(0);
     await expect(page.getByText("새 친구 추가해 봐요")).toHaveCount(0);
   }
   // 있는 사람을 골라도 선물 쪽이 켜져 있다(그 사람의 빈 칸인 생일·기념일이 아니라)

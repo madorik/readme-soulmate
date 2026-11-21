@@ -202,11 +202,18 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
                 <span className="whitespace-pre-line text-[19px] leading-[1.4] text-ink-2">{t("home.yearEndLine")}</span>
               </div>
             </div>
-            {/* 사람 추가 단추는 따로 없다: 물어보기에서 이름을 적으면 그 사람이 내 사람으로 들어간다. 선물 쪽을 먼저 묻는 물어보기로(?xmas=1) */}
-            <Link href="/request?xmas=1" className="btn-primary mt-[18px]">
-              <Icon name="gift" size={20} strokeWidth={2} />
-              {t("home.yearEndAsk")}
-            </Link>
+            {/* 아직 등록한 사람이 없으면 '받고 싶은 선물'을 묻기보다 챙기고 싶은 사람부터 더하게 이끈다. 사람이 있으면 선물 쪽을 먼저 묻는 물어보기로(?xmas=1) */}
+            {people.length ? (
+              <Link href="/request?xmas=1" className="btn-primary mt-[18px]">
+                <Icon name="gift" size={20} strokeWidth={2} />
+                {t("home.yearEndAsk")}
+              </Link>
+            ) : (
+              <Link href="/people/new" className="btn-primary mt-[18px]">
+                <Icon name="personAdd" size={20} strokeWidth={2} />
+                {t("home.yearEndAdd")}
+              </Link>
+            )}
           </>
         ) : holiday ? (
           <>
