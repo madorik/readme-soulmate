@@ -7,8 +7,8 @@
 //
 // 제철 선물(seasons): 크리스마스·연말(11~12월)에 챙기는 선물은 생일·기념일이 가깝지 않을 때 이 철의 것을 먼저 고른다.
 //  - 위 목록 중 크리스마스·연말에 어울리는 것은 CHRISTMAS_IDS로 표시한다(파트너스 링크·사진 그대로).
-//  - 목록에 없던 크리스마스 소품·케이크 같은 것은 SEASONAL에 더했다(seasonOnly: 철이 아닐 때는 안 보인다). 쿠팡이 자동 접속을 막아(403) 상품 사진·파트너스 링크를
-//    못 가져와서 지금은 쿠팡 검색 화면 링크·선물 아이콘이다. 고치려면 위와 같이 파트너스에서 상품 링크를 만들어 url·image·name을 채우면 된다.
+//  - 목록에 없던 크리스마스 소품·케이크 같은 것은 SEASONAL에 더했다(seasonOnly: 철이 아닐 때는 안 보인다). 2026-11-21 파트너스 상품 링크로 만든 단축 URL·사진·상품명이고,
+//    쿠팡이 와인·술은 안 팔아서 와인은 와인잔·디캔터로 했다. 가격대는 그 상품 값에 맞췄다(철 상품은 가격 폭이 좁아 찾을 말과 달라진 것이 있다). 고치려면 위와 같이 바꾼다.
 
 export const PRICE_BANDS = ["1", "3", "5", "10"] as const;
 export type PriceBand = (typeof PRICE_BANDS)[number];
@@ -35,7 +35,7 @@ export interface CatalogGift {
   allergens: string[];
   /** 어울리는 철(크리스마스·연말). 그 철에 생일·기념일이 가깝지 않으면 이것을 먼저 고른다 */
   seasons: SeasonId[];
-  /** 그 철에만 보이는 것(사진·파트너스 링크 전이라 쿠팡 검색 링크). 철이 아니면 고르지도, 가이드에 싣지도 않는다 */
+  /** 그 철에만 보이는 것(크리스마스 소품·케이크 등). 철이 아니면 고르지도, 가이드에 싣지도 않는다 */
   seasonOnly?: boolean;
 }
 
@@ -43,9 +43,9 @@ function g(id: string, q: string, band: PriceBand, ages: [number, number], tags:
   return { id, q, band, ages, tags, url, image, name, allergens, seasons: [] };
 }
 
-/** 제철 전용(seasonOnly): 쿠팡 검색 화면 링크 + 선물 아이콘. 파트너스 링크·사진을 구하면 url·image·name을 채워 g()처럼 쓴다 */
-function s(id: string, q: string, band: PriceBand, ages: [number, number], tags: string[], allergens: string[] = []): CatalogGift {
-  return { id, q, band, ages, tags, url: `https://www.coupang.com/np/search?q=${encodeURIComponent(q)}`, image: "", name: "", allergens, seasons: ["christmas"], seasonOnly: true };
+/** 제철 전용(seasonOnly): 크리스마스·연말에만 보이는 선물. g()와 같되 철 표시가 붙고 철이 아니면 고르지도, 가이드에 싣지도 않는다 */
+function s(id: string, q: string, band: PriceBand, ages: [number, number], tags: string[], url: string, image: string, name: string, allergens: string[]): CatalogGift {
+  return { id, q, band, ages, tags, url, image, name, allergens, seasons: ["christmas"], seasonOnly: true };
 }
 
 const BASE: CatalogGift[] = [
@@ -193,33 +193,33 @@ export const CHRISTMAS_IDS: ReadonlySet<string> = new Set([
   "niche-perfume", "red-ginseng", "hanwoo", "earbuds", "smartwatch", "instant-camera", "wallet", "watch", "gold-earrings", "turntable", "water-mat", "padding-vest",
 ]);
 
-/** 크리스마스·연말에만 보이는 선물(목록에 없던 트리·오너먼트·케이크·파티·새해 용품) */
+/** 크리스마스·연말에만 보이는 선물(목록에 없던 트리·오너먼트·케이크·파티·새해 용품, 파트너스 링크·사진 포함) */
 const SEASONAL: CatalogGift[] = [
   // 1만원대
-  s("xmas-cookie", "크리스마스 쿠키 선물세트", "1", [20, 60], ["디저트", "간식", "쿠키", "빵"], ["wheat", "egg", "milk"]),
-  s("xmas-socks", "크리스마스 양말 선물세트", "1", [20, 60], ["패션", "실용", "양말"]),
-  s("hot-cocoa", "핫초코 선물세트", "1", [20, 70], ["디저트", "간식", "차", "커피"], ["milk"]),
-  s("mini-tree", "미니 크리스마스 트리", "1", [20, 60], ["인테리어", "집", "감성"]),
-  s("ornament-set", "크리스마스 오너먼트 세트", "1", [20, 60], ["인테리어", "집", "감성"]),
-  s("xmas-card", "크리스마스 카드 편지 세트", "1", [20, 80], ["편지", "감성", "추억"]),
-  s("hand-warmer", "핫팩 손난로 선물세트", "1", [20, 80], ["겨울", "실용"]),
+  s("xmas-cookie", "크리스마스 쿠키 선물세트", "1", [20, 60], ["디저트","간식","쿠키","빵"], "https://link.coupang.com/a/iQAIkyKw1Y", "https://thumbnail11.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/1a0f/5f3d768fa65d4930a0ea7757a4ab0d5ee3f9c8593de8b63429f78d969377.jpg", "[레드쇼핑백포함] 피터래빗 틴케이스 크리스마스 쿠키 선물 세트, 1개", ["wheat","egg","milk"]),
+  s("xmas-socks", "크리스마스 양말 선물세트", "1", [20, 60], ["패션","실용","양말"], "https://link.coupang.com/a/iQAIF4fPIO", "https://thumbnail12.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/7a4f/d53af7cfabe94094df2e81172d52e072061a3e3179b45726c5cc0a792bc5.jpg", "Malikay.크리스마스 양말 5종선물세트 사슴뿔 산타 고급 털양말 WE-576", []),
+  s("hot-cocoa", "핫초코 선물세트", "1", [20, 70], ["디저트","간식","차","커피"], "https://link.coupang.com/a/iQAI1I9552", "https://thumbnail14.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/3b41/af557e83c397de437552694d1aa46fddc575861ded7e22fb97172e167923.jpg", "스위스미스 핫코코아 기프트 디자인 선물세트, 28g, 1세트, 20개입", ["milk"]),
+  s("mini-tree", "미니 크리스마스 트리", "1", [20, 60], ["인테리어","집","감성"], "https://link.coupang.com/a/iQAJnn3Z5U", "https://thumbnail8.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/6c6c/aff71c3a906f5208a6d6534ae922f07f1a836f5994774334c57ad98cfed3.png", "크리스마스 미니트리 눈꽃 장식 전구 풀세트 45cm NO.HM6203L, 눈 내린 그린", []),
+  s("ornament-set", "크리스마스 오너먼트 세트", "1", [20, 60], ["인테리어","집","감성"], "https://link.coupang.com/a/iQAJI3PqeG", "https://thumbnail13.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/07f5/4518ea17a0175e350e0186318920d0db3674314aa27607dd8da70334d6af.png", "메리온 프리미엄 크리스마스 트리장식 오너먼트, 1세트, 레드골드", []),
+  s("xmas-card", "크리스마스 카드 편지 세트", "1", [20, 80], ["편지","감성","추억"], "https://link.coupang.com/a/iQAJ4LzFUy", "https://thumbnail13.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/9fe2/49debe642c6ad0d9238425d8a02fe39d130227c7f3763a7e308613b1ff46.JPG", "꼼씨라라 국내제작 귀여운 손그림 크리스마스카드 편지지 봉투 성탄 카드, 30개, 초록빨강", []),
+  s("hand-warmer", "핫팩 손난로 선물세트", "1", [20, 80], ["겨울","실용"], "https://link.coupang.com/a/iQAKqoMlvo", "https://thumbnail12.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/517c/862ba905377ec664d748ec6e15778fec48941c0a473123299ac51241e902.jpg", "동국제약 굿잠 포켓핫팩 무직타이거 콜라보, 30개", []),
+  s("party-set", "크리스마스 홈파티 세트", "1", [20, 50], ["파티","인테리어","집"], "https://link.coupang.com/a/iQAKLW8Cey", "https://t1c.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/3333233395030-571eb8e0-c343-45dd-b0e7-19c44a88351a.jpg", "파티해 크리스마스 파티 테이블 셋팅 패키지 10인용 5종 세트 눈사람, 혼합색상, 1세트", []),
   // 3만원대
-  s("xmas-cake", "크리스마스 케이크", "3", [20, 60], ["디저트", "케이크", "파티"], ["milk", "egg", "wheat"]),
-  s("snow-globe", "스노우볼 오르골", "3", [20, 60], ["인테리어", "감성", "집", "음악"]),
-  s("xmas-light", "크리스마스 LED 전구 무드등", "3", [20, 60], ["인테리어", "감성", "집", "휴식"]),
-  s("party-set", "홈파티 장식 세트", "3", [20, 50], ["파티", "인테리어", "집"]),
-  s("knit-beanie", "겨울 니트 비니", "3", [20, 60], ["패션", "겨울", "옷"]),
-  s("warm-tumbler", "보온 텀블러 선물세트", "3", [20, 70], ["커피", "카페", "실용", "겨울"]),
-  s("diary-2027", "2027 다이어리", "3", [20, 60], ["독서", "기록", "실용", "새해"]),
-  s("sparkling-wine", "스파클링 와인 선물세트", "3", [25, 70], ["와인", "술", "파티"]),
+  s("xmas-cake", "크리스마스 케이크", "3", [20, 60], ["디저트","케이크","파티"], "https://link.coupang.com/a/iQAK7EBgMm", "https://t1c.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/8794/57841dff5b8bc437462bcbe837a4a11ae08b53fd8c63f7ae9b527a65705c.jpg", "(평일 낮 12시전 주문 오늘출발) 케익팩토리 메리크리스마스, 1개, 420g", ["milk","egg","wheat"]),
+  s("snow-globe", "스노우볼 오르골", "3", [20, 60], ["인테리어","감성","집","음악"], "https://link.coupang.com/a/iQALtolzDU", "https://t5a.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/8303/3dc04feb2b13fc42c066ce4dc1601a66c7cdddc59ec6d9a7ad725c8cc703.png", "에이폼 크리스마스 오르골 트리 스노우볼 대형, 트리그린", []),
+  s("xmas-light", "크리스마스 무드 프로젝터 조명", "3", [20, 60], ["인테리어","감성","집","휴식"], "https://link.coupang.com/a/iQALONEgeW", "https://t5c.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/bbb0/999b547488ce3a0f88271e7b72aea22cc94ca9812a9392dc895b251550a3.png", "1+1가정용 크리스마스 무드 프로젝터 조명 국산 led 크리스마스 조명등 크리스마스 트리 프로젝터, 화이트 충전식 크리스마스*2", []),
+  s("winter-set", "캐시미어 모자 장갑 목도리 세트", "3", [20, 60], ["패션","겨울","옷"], "https://link.coupang.com/a/iQAMaq8aAu", "https://thumbnail1.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/715e/8e9fab769321b5ab19ecc59796eea27bb522ba6f15a8907b8a2b2b470aca.png", "[고퀄리티보장] 멀론 캐시미어 울 모자 장갑 목도리세트", []),
+  s("warm-tumbler", "보온 텀블러 선물세트", "3", [20, 70], ["커피","카페","실용","겨울"], "https://link.coupang.com/a/iQAMwaRYya", "https://t5a.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/4ab9/3c816cd1d389fdc1f578213c2b475e5c2279f1b64af5a734f85a0c476bce.png", "MorningSea 크리스마스선물세트 스테인레스 텀블러 2P 귀여운 보온 티 텀블러 사무실 손잡이 머그컵 커플 선물 추천, 1세트, 700ml, 믹스컬러A", []),
+  s("wine-decanter-set", "와인잔 디캔터 세트", "3", [30, 80], ["와인","술","파티"], "https://link.coupang.com/a/iQAMRMEh7k", "https://thumbnail15.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/76869560690944-ef674f9d-1f90-4af1-aefa-42e0be253070.jpg", "RCR 아리아 와인잔 460ml x 2p + 디켄터 크리스탈 2L 세트, 1세트", []),
   // 5만원대
-  s("xmas-tree-full", "크리스마스 트리 풀세트", "5", [20, 60], ["인테리어", "집", "파티", "감성"]),
-  s("wine-set", "와인 선물세트", "5", [30, 80], ["와인", "술", "파티"]),
-  s("cashmere-muffler", "캐시미어 머플러", "5", [25, 70], ["패션", "겨울", "옷"]),
-  s("lego-winter", "레고 윈터 빌리지", "5", [20, 50], ["레고", "조립", "장난감", "겨울"]),
+  s("xmas-tree-full", "크리스마스 트리 풀세트", "5", [20, 60], ["인테리어","집","파티","감성"], "https://link.coupang.com/a/iQANdwHTBk", "https://t5c.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/e90c/d211273da49e791b903437302cd8cc807f8df00b8101fecfaf0dea672af4.jpg", "트리킹 크리스마스트리 풀세트 전구 장식 보관가방 포함", []),
+  s("advent-beauty", "뷰티 어드벤트 캘린더", "5", [20, 50], ["뷰티","화장품","스킨케어"], "https://link.coupang.com/a/iQANy2L2aW", "https://t5a.coupangcdn.com/thumbnails/remote/212x212ex/image/retail/images/2025/12/03/10/2/baaf6821-4997-42ca-ae8a-98a41fc14c9e.png", "오휘 홀리데이 어드벤트 캘린더 6종 세트, 1세트, 쿠션 + 선블랙 + 앰플세럼 + 부스터샷 + 글로우크림 + 클렌징폼", []),
+  s("cashmere-muffler", "캐시미어 머플러", "5", [25, 70], ["패션","겨울","옷"], "https://link.coupang.com/a/iQANUG7sFp", "https://thumbnail4.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/c7a4/f9542bfb70972e91eb324530c8f9b583830ae59f462f59ac0cabd3835d42.jpg", "[백화점 정품] 레노마 겨울 목도리 캐시미어 선물포장", []),
+  s("lego-winter", "레고 윈터 홀리데이 트레인", "5", [20, 50], ["레고","조립","장난감","겨울"], "https://link.coupang.com/a/iQAOgf2VEG", "https://thumbnail12.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/b514/bb1c942832a5152e5bf10b144d3e2312a88f4ef0067cde8046bba08a4b09.png", "레고 40700 윈터 홀리데이 트레인, 1개", []),
+  s("diary-2027", "2027 프리미엄 다이어리", "5", [20, 60], ["독서","기록","실용","새해"], "https://link.coupang.com/a/iQAOBUX3i8", "https://thumbnail3.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/5694/1028393b539bea34d83d01998ed629b79c263d98837c0c6e87a140665a5a.jpg", "2027년 프리미엄 로디아 하드커버 A5 다이어리+양지 50주년 카렌다+흑색 0.7 볼펜 세트, 1세트, 사파이어+네이비+흑색볼펜", []),
   // 10만원 이상
-  s("premium-wine", "프리미엄 와인 선물세트", "10", [30, 80], ["와인", "술"]),
-  s("cashmere-knit", "캐시미어 니트", "10", [30, 70], ["패션", "겨울", "옷"]),
+  s("cashmere-knit", "캐시미어 니트", "10", [30, 70], ["패션","겨울","옷"], "https://link.coupang.com/a/iQAOXCY2PQ", "https://t1c.coupangcdn.com/thumbnails/remote/212x212ex/image/rs_quotation_api/kpucuoey/f483656e9b154de0b175418519ea5000.jpg", "아티드 여성용 캐시미어 100 브이넥 루즈핏 니트 ATI3KT13", []),
+  s("premium-decanter", "프리미엄 와인 디캔터", "10", [30, 80], ["와인","술"], "https://link.coupang.com/a/iQAPjmr6WG", "https://thumbnail8.coupangcdn.com/thumbnails/remote/212x212ex/image/vendor_inventory/3d18/40796f4002990b371f802979f14836c5c1b66fcc4a4e1c3aaeb2e78cf014.jpg", "레만글라스 디켄터 비그노블 150 와인 디켄팅 카라페 크리스탈, 1개, 750ml", []),
 ];
 
 export const GIFT_CATALOG: CatalogGift[] = [...BASE.map((x): CatalogGift => (CHRISTMAS_IDS.has(x.id) ? { ...x, seasons: ["christmas"] } : x)), ...SEASONAL];

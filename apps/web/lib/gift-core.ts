@@ -603,35 +603,18 @@ export function leftOut(catalog: CatalogGift[], card: PartialCard, notes: string
   return [...new Set(out.filter(Boolean))].slice(0, max);
 }
 
-/** 사진·파트너스 링크 전인 제철 전용 선물은 가격대마다 이만큼까지만(나머지는 사진이 있는 선물로) */
-const THIN_MAX = 2;
-
 /**
- * 한 가격대에서 n개 고르기(sorted는 잘 맞는 순서). ① 사진 없는 제철 전용(isThin)은 THIN_MAX개까지만 ② 제철이면 제철 선물을 SEASON_MIN개는 넣는다:
+ * 한 가격대에서 n개 고르기(sorted는 잘 맞는 순서). 제철이면 제철 선물을 SEASON_MIN개는 넣는다:
  * 모자라면 뒤쪽의 덜 맞는 것을 남은 제철 선물로 바꾼다(앞쪽 = 이 사람에게 잘 맞는 것은 그대로)
  */
-function pickBand<T>(sorted: T[], n: number, o: { season: SeasonId | null | undefined; isSeason: (v: T) => boolean; isThin: (v: T) => boolean }): T[] {
-  const top: T[] = [];
-  const later: T[] = [];
-  let thin = 0;
-  for (const v of sorted) {
-    if (top.length >= n) break;
-    if (o.isThin(v) && thin >= THIN_MAX) later.push(v);
-    else {
-      top.push(v);
-      if (o.isThin(v)) thin++;
-    }
-  }
-  for (const v of later) if (top.length < n) top.push(v);
+function pickBand<T>(sorted: T[], n: number, o: { season: SeasonId | null | undefined; isSeason: (v: T) => boolean }): T[] {
+  const top = sorted.slice(0, n);
   if (!o.season) return top;
   let have = top.filter(o.isSeason).length;
-  const extra = sorted.filter((v) => !top.includes(v) && o.isSeason(v));
+  const extra = sorted.slice(n).filter(o.isSeason);
   for (let i = top.length - 1; i >= 0 && have < SEASON_MIN && extra.length; i--) {
     if (o.isSeason(top[i]!)) continue;
-    // 바꿔 넣는 것도 사진 없는 것이 THIN_MAX를 넘지 않게
-    const j = extra.findIndex((v) => !o.isThin(v) || top.filter(o.isThin).length < THIN_MAX);
-    if (j < 0) break;
-    top[i] = extra.splice(j, 1)[0]!;
+    top[i] = extra.shift()!;
     have++;
   }
   return top;
@@ -660,7 +643,7 @@ export function ruleCatalogPicks(card: PartialCard, ctx: GiftContext, locale: Lo
   const out: CatalogPick[] = [];
   for (const band of PRICE_BANDS) {
     const sorted = scored.filter((s) => s.x.band === band).sort((a, b) => b.score - a.score || a.i - b.i);
-    pickBand(sorted, PICKS_PER_BAND, { season: ctx.season, isSeason: (s) => s.seasonal, isThin: (s) => !!s.x.seasonOnly }).forEach((s) => out.push({ id: s.x.id, reason: s.reason, basis: s.basis }));
+    pickBand(sorted, PICKS_PER_BAND, { season: ctx.season, isSeason: (s) => s.seasonal }).forEach((s) => out.push({ id: s.x.id, reason: s.reason, basis: s.basis }));
   }
   return out;
 }
@@ -678,7 +661,7 @@ export function bandPicks(ai: CatalogPick[], rules: CatalogPick[], eligible: Cat
       if (!x || x.band !== band || pool.some((i) => i.id === x.id)) continue;
       pool.push({ ...x, reason: p.reason, basis: p.basis.length ? p.basis : fill(x) });
     }
-    const items = pickBand(pool, PICKS_PER_BAND, { season, isSeason: (i) => !!season && i.seasons.includes(season), isThin: (i) => !!i.seasonOnly });
+    const items = pickBand(pool, PICKS_PER_BAND, { season, isSeason: (i) => !!season && i.seasons.includes(season) });
     return { band, items: badgeItems(band, items) };
   }).filter((b) => b.items.length);
 }

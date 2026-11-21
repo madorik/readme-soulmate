@@ -61,14 +61,15 @@ test("챙길 날과 철: 가까운 생일·기념일(30일 안, 또는 그 날�
   assert.equal(giftBasis(giftProfile({}), { ...base, ...a }, "ko"), giftBasis(giftProfile({}), { ...base, ...b }, "ko"));
 });
 
-test("제철 선물 목록: 표시한 것은 모두 있고, 제철 전용은 쿠팡 검색 링크, 가격대마다 제철 선물이 충분하다", () => {
+test("제철 선물 목록: 표시한 것은 모두 있고, 제철 전용은 파트너스 링크·사진·상품명이 있고, 가격대마다 제철 선물이 충분하다", () => {
   for (const id of CHRISTMAS_IDS) assert.ok(byId.has(id) && byId.get(id)!.seasons.includes("christmas") && !byId.get(id)!.seasonOnly, id);
   const only = GIFT_CATALOG.filter((x) => x.seasonOnly);
   assert.ok(only.length >= 15);
   for (const x of only) {
     assert.deepEqual(x.seasons, ["christmas"], x.id);
-    assert.equal(x.image, "");
-    assert.ok(x.url.includes(encodeURIComponent(x.q)), x.id);
+    assert.match(x.url, /^https:\/\/link\.coupang\.com\/a\/[A-Za-z0-9]+$/, x.id);
+    assert.match(x.image, /^https:\/\/[a-z0-9]+\.coupangcdn\.com\/thumbnails\//, x.id);
+    assert.ok(x.name.length >= 6, x.id);
   }
   for (const b of PRICE_BANDS) assert.ok(GIFT_CATALOG.filter((x) => x.band === b && x.seasons.includes("christmas")).length >= 2 * SEASON_MIN, `제철 선물 ${b}`);
 });
@@ -77,11 +78,11 @@ test("목록 고르기: 제철 전용은 철에만 나오고, 알레르기·술�
   const ids = (xs: { id: string }[]) => new Set(xs.map((x) => x.id));
   assert.ok(!ids(eligibleCatalog(GIFT_CATALOG, {}, { ...base, age: null })).has("xmas-cake"));
   const e = ids(eligibleCatalog(GIFT_CATALOG, {}, { ...xmas, age: null }));
-  assert.ok(e.has("xmas-cake") && e.has("mini-tree") && e.has("sparkling-wine"));
+  assert.ok(e.has("xmas-cake") && e.has("mini-tree") && e.has("wine-decanter-set"));
   // 우유 알레르기: 케이크·핫초코·쿠키는 뺀다. 술을 안 마시면 와인도 뺀다
   const milk = ids(eligibleCatalog(GIFT_CATALOG, { safety: { allergens: ["milk"], allergyNote: "", dislikes: [], diets: [] }, taste: { likes: [], spicy: null, dessert: "", drinks: "", alcohol: { level: "none", kinds: [] } } }, { ...xmas, age: null }));
   assert.ok(!milk.has("xmas-cake") && !milk.has("hot-cocoa") && !milk.has("xmas-cookie"));
-  assert.ok(!milk.has("sparkling-wine") && !milk.has("wine-set") && !milk.has("premium-wine"));
+  assert.ok(!milk.has("wine-decanter-set") && !milk.has("premium-decanter"));
   assert.ok(milk.has("mini-tree"));
   // 철이 아닌 때는 제철 표시가 있는 일반 선물도 그냥 일반 선물로 고른다(없어지지 않는다)
   assert.ok(ids(eligibleCatalog(GIFT_CATALOG, {}, { ...base, age: null })).has("hand-cream"));
@@ -96,10 +97,10 @@ test("기록만으로 고르기(제철): 가격대마다 제철 선물이 둘 �
     assert.equal(inBand.length, PICKS_PER_BAND, b);
     assert.ok(inBand.filter((p) => byId.get(p.id)!.seasons.includes("christmas")).length >= SEASON_MIN, `가격대 ${b}의 제철 선물`);
   }
-  // 사진·파트너스 링크가 없는 제철 전용은 가격대마다 최대 둘(나머지 제철 선물은 사진이 있는 것), 크리스마스 소품은 가격대마다 하나 이상 보인다
+  // 크리스마스 소품·케이크 같은 제철 전용은 가격대마다 하나 이상 보인다
   for (const b of PRICE_BANDS) {
-    const thin = picks.filter((p) => byId.get(p.id)!.band === b && byId.get(p.id)!.seasonOnly).length;
-    assert.ok(thin >= 1 && thin <= 2, `가격대 ${b}의 제철 전용 ${thin}개`);
+    const only = picks.filter((p) => byId.get(p.id)!.band === b && byId.get(p.id)!.seasonOnly).length;
+    assert.ok(only >= 1, `가격대 ${b}의 제철 전용 ${only}개`);
   }
   // 등산 취향이 맞는 것(등산 양말·스틱·모자 …)은 여전히 들어 있다
   assert.ok(picks.some((p) => byId.get(p.id)!.tags.includes("등산")));
