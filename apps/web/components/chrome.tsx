@@ -42,7 +42,7 @@ export function Wordmark({ size = 26, locale = "ko" }: { size?: number; locale?:
   );
 }
 
-/** 탭 아이콘(다이어리 v2 모양): 챙길 날(달력 + 하트) · 사람들 · 나(웃는 얼굴) · 설정은 marks의 톱니 */
+/** 탭 아이콘(다이어리 v2 모양): 챙길 날(달력 + 하트) · 사람들 · 나(한 사람) · 설정은 marks의 톱니 */
 const TAB_ICONS = {
   home: (
     <>
@@ -59,12 +59,11 @@ const TAB_ICONS = {
       <path d="M16.5 13.2c2.6.1 4.4 1.6 5 4.3" />
     </>
   ),
+  // 나: 한 사람(머리 + 어깨). 사람들 아이콘과 같은 짜임이라 한 사람과 여러 사람으로 짝이 맞는다
   me: (
     <>
-      <circle cx="12" cy="12" r="8.5" />
-      <circle cx="9.3" cy="11" r=".6" fill="currentColor" />
-      <circle cx="14.7" cy="11" r=".6" fill="currentColor" />
-      <path d="M9.5 14.5q2.5 2 5 0" />
+      <circle cx="12" cy="8.5" r="3.7" />
+      <path d="M4.5 20.5c.9-3.9 3.7-5.9 7.5-5.9s6.6 2 7.5 5.9" />
     </>
   ),
 } as const;
