@@ -1589,7 +1589,8 @@ test("달력: 공휴일·연휴(대체공휴일 포함)가 보이고, 좌우로 
   await expect(page.getByRole("region", { name: "공휴일과 챙기는 날" }).getByText("4일 연휴")).toBeVisible();
 });
 
-test("기록 공유하기: 적어 둔 항목을 골라 글로 보낸다(이름도 같이 끌 수 있고, 몰래 준비하는 선물은 빠진다)", async ({ page }) => {
+// 사람 기록 공유하기 버튼을 개인정보 노출 우려로 잠시 껐다(PersonView) → 되살릴 때 test.skip을 test로
+test.skip("기록 공유하기: 적어 둔 항목을 골라 글로 보낸다(이름도 같이 끌 수 있고, 몰래 준비하는 선물은 빠진다)", async ({ page }) => {
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   await page.getByRole("button", { name: "데모로 둘러보기" }).click();
