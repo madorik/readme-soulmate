@@ -2,7 +2,7 @@ import { BRAND, type Locale } from "@readme/core";
 import { type NextRequest, NextResponse } from "next/server";
 import { OG_IMAGE, siteDescription } from "@/lib/og";
 import { absoluteUrl, safeNext } from "@/lib/site";
-import { APP_STORE_URL, playUrl, storeTarget } from "@/lib/store";
+import { APP_STORE_URL, playPublic, playUrl, storeTarget } from "@/lib/store";
 import { isBot, platformOf, track } from "@/lib/track";
 
 // 앱 받기 주소(/get?from=answer&next=/request): 기기에 맞는 스토어로 보낸다(lib/store). 누른 것은 이용 기록으로(어디서 눌렀는지·기기)
@@ -35,7 +35,7 @@ function sharePreview(request: NextRequest): NextResponse {
 <meta name="twitter:title" content="${escape(title)}">
 <meta name="twitter:description" content="${escape(description)}">
 <meta name="twitter:image" content="${escape(image)}">
-</head><body><p><a href="${escape(APP_STORE_URL)}">App Store</a> · <a href="${escape(playUrl("share"))}">Google Play</a></p></body></html>`;
+</head><body><p><a href="${escape(APP_STORE_URL)}">App Store</a>${playPublic() ? ` · <a href="${escape(playUrl("share"))}">Google Play</a>` : ""}</p></body></html>`;
   return new NextResponse(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", vary: "User-Agent" } });
 }
 

@@ -153,10 +153,11 @@ test("물어보기(새 사람) → 앱 없이 웹에서 답하기 → 답이 내
   await dad.getByRole("button", { name: /건강 정보를 지수님에게 보내 저장하는 데 동의해요/ }).click();
   await dad.getByRole("button", { name: "보내기", exact: true }).click();
   await expect(dad.getByRole("heading", { name: "마음이 전해졌어요" })).toBeVisible();
-  // 나도 물어보기 = 앱 받기(/get: 안드로이드·PC는 Play 스토어, 아이폰은 아직 웹으로 이어서 로그인 → 물어보기)
+  // 나도 물어보기 = 앱 받기(/get: 아이폰은 웹으로 이어서 로그인 → 물어보기, 안드로이드·PC도 Play가 공개되기 전엔 같은 웹으로)
   await expect(dad.getByRole("link", { name: "나도 물어보기" })).toHaveAttribute("href", /^\/get\?from=answer&next=%2F%3Fnext%3D%252Frequest%253Fname%253D/);
   const store = async (ua: string) => (await dad.request.get("/get?from=answer&next=%2Frequest", { headers: { "user-agent": ua }, maxRedirects: 0 })).headers().location ?? "";
-  expect(await store("Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile Safari/537.36")).toMatch(/^https:\/\/play\.google\.com\/store\/apps\/details\?id=kr\.readme\.app&referrer=utm_source%3Danswer/);
+  expect(await store("Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile Safari/537.36")).toMatch(/\/request$/);
+  expect(await store("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130 Safari/537.36")).toMatch(/\/request$/);
   expect(await store("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148")).toMatch(/\/request$/);
   await shot(dad, "06-answer-done");
 
@@ -562,10 +563,10 @@ test("설정: 앱 공유하기는 다운로드 QR과 보내기·링크 복사를
   await expect(sheet.getByRole("button", { name: "보내기" })).toBeVisible();
   await expect(sheet.getByRole("button", { name: "링크 복사" })).toBeVisible();
   await shot(doyun, "20-share-app");
-  // 이 링크: 아이폰은 App Store, 안드로이드는 Play 스토어
+  // 이 링크: 아이폰은 App Store, 안드로이드·PC는 Play가 공개되기 전엔 웹 첫 화면(막다른 길이 되지 않게)
   const store = async (ua: string) => (await doyun.request.get("/get?from=share", { headers: { "user-agent": ua }, maxRedirects: 0 })).headers().location ?? "";
   expect(await store("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148")).toBe("https://apps.apple.com/kr/app/id6834970170");
-  expect(await store("Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile Safari/537.36")).toMatch(/^https:\/\/play\.google\.com\/store\/apps\/details\?id=kr\.readme\.app&referrer=utm_source%3Dshare/);
+  expect(await store("Mozilla/5.0 (Linux; Android 14) Chrome/130 Mobile Safari/537.36")).toMatch(/^(https?:\/\/[^/]+)?\/$/);
   // 링크 미리보기를 가져가는 로봇(카카오톡 등)에게는 스토어로 보내지 않고 제목·설명·이미지가 있는 페이지를 준다
   const scrape = await doyun.request.get("/get?from=share", { headers: { "user-agent": "facebookexternalhit/1.1;kakaotalk-scrap/1.0" }, maxRedirects: 0 });
   expect(scrape.status()).toBe(200);
