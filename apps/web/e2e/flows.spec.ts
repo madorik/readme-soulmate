@@ -65,7 +65,8 @@ test("가입하고 온보딩을 마치면 홈과 내 리드미가 보인다(음�
   await expect(upcoming.getByText(yearEndNow ? ko["home.yearEnd"] : holiday ? ko[holidayKey(holiday.id)] : "새 친구 추가해 봐요")).toBeVisible();
   // 연말엔 사람이 아직 없으면 '받고 싶은 선물 물어보기' 대신 '챙기고 싶은 사람 추가하기'로 이끈다(사람 추가 화면으로)
   if (yearEndNow) {
-    await expect(upcoming.getByRole("link", { name: ko["home.yearEndAdd"] })).toHaveAttribute("href", "/people/new");
+    await expect(upcoming.getByRole("link", { name: ko["home.yearEndAdd"] })).toHaveAttribute("href", "/people/new?xmas=1");
+    await expect(upcoming.getByRole("link", { name: ko["home.yearEndGift"] })).toHaveCount(0);
     await expect(upcoming.getByRole("link", { name: ko["home.yearEndAsk"] })).toHaveCount(0);
     await expect(upcoming.getByRole("link", { name: "사람 추가하기", exact: true })).toHaveCount(0);
   } else {
@@ -1530,9 +1531,10 @@ test("연말엔 사람이 있어도 가까운 기념일이 없으면 크리스�
   if (yearEnd(todayIn("Asia/Seoul"))) {
     const upcoming = page.getByRole("region", { name: "다가오는 날" });
     await expect(upcoming.getByText(ko["home.yearEnd"])).toBeVisible();
-    await expect(upcoming.getByRole("link", { name: ko["home.yearEndAsk"] })).toHaveAttribute("href", "/request?xmas=1");
-    // 사람이 있으니 '사람 추가하기'로 이끄는 쪽은 없다
+    // 사람이 있으니 곧장 선물 고르기(한 명이면 그 사람 선물 힌트로), '사람 추가하기'로 이끄는 쪽은 없다
+    await expect(upcoming.getByRole("link", { name: ko["home.yearEndGift"] })).toHaveAttribute("href", /^\/plan\/gift\?with=[0-9a-f-]{36}&me=0$/);
     await expect(upcoming.getByRole("link", { name: ko["home.yearEndAdd"] })).toHaveCount(0);
+    await expect(upcoming.getByRole("link", { name: ko["home.yearEndAsk"] })).toHaveCount(0);
     await expect(page.getByText("새 친구 추가해 봐요")).toHaveCount(0);
   }
   // 있는 사람을 골라도 선물 쪽이 켜져 있다(그 사람의 빈 칸인 생일·기념일이 아니라)
@@ -1540,6 +1542,67 @@ test("연말엔 사람이 있어도 가까운 기념일이 없으면 크리스�
   await page.getByRole("button", { name: "할머니" }).click();
   await expect(page.getByRole("button", { name: ko["request.topic.gifts"] })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: ko["request.topic.dates"] })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("연말 카드의 흐름: 사람이 없으면 추가 → 곧바로 물어보기 → 답이 오면 카드가 알려 주고 선물 고르기로 → 읽은 것으로", async ({ browser }) => {
+  test.skip(!yearEnd(todayIn("Asia/Seoul")), "크리스마스 45일 전~당일에만 보이는 카드");
+  const page = await newPage(browser);
+  await page.goto("/");
+  await signIn(page);
+  await onboard(page, { name: "수아" });
+  await page.goto("/home");
+  const upcoming = page.getByRole("region", { name: "다가오는 날" });
+  await shot(page, "xmas-1-card-empty");
+
+  // ① 사람이 없다: 챙기고 싶은 사람 추가하기 → 사람 추가(연말 표시, 만들면 곧바로 물어보기로)
+  await upcoming.getByRole("link", { name: ko["home.yearEndAdd"] }).click();
+  await expect(page).toHaveURL(/\/people\/new\?xmas=1$/);
+  await page.getByLabel("이름이나 부르는 말").fill("엄마");
+  await shot(page, "xmas-2-add");
+  await page.getByRole("button", { name: ko["people.createAsk"] }).click();
+
+  // ② 곧바로 그 사람에게 물어보기: 받고 싶은 것 쪽이 켜져 있고 크리스마스 말이 채워져 있다
+  await expect(page).toHaveURL(/\/request\?to=[0-9a-f-]{36}&xmas=1$/);
+  const id = /to=([0-9a-f-]{36})/.exec(page.url())![1]!;
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("물어보기");
+  await expect(page.getByRole("button", { name: ko["request.topic.gifts"] })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("textbox", { name: ko["request.message"] })).toHaveValue(ko["request.xmasMessage"]);
+  await shot(page, "xmas-3-ask");
+  const url = await makeLink(page);
+
+  // ③ 사람이 생겼고 아직 답이 없다: 카드는 곧장 선물 고르기로 이끈다(알림도 아직 없다)
+  await page.goto("/home");
+  await expect(upcoming.getByRole("link", { name: ko["home.yearEndGift"] })).toHaveAttribute("href", `/plan/gift?with=${id}&me=0`);
+  await expect(upcoming.getByText(ko["home.yearEndLine"].replace("\n", " "))).toBeVisible();
+  await expect(page.getByRole("button", { name: "알림", exact: true })).toBeVisible();
+
+  // ④ 엄마가 앱 없이 웹에서 답한다(좋아하는 것 하나, 나머지는 건너뛰기)
+  const mom = await newPage(browser);
+  await mom.goto(url);
+  await mom.getByRole("button", { name: "분위기 맞춰", exact: true }).click();
+  await mom.getByRole("button", { name: "다음", exact: true }).click();
+  await mom.getByRole("button", { name: "건너뛰기", exact: true }).click();
+  await mom.getByRole("button", { name: "건너뛰기", exact: true }).click();
+  await mom.getByRole("button", { name: "보내기", exact: true }).click();
+  await expect(mom.getByRole("heading", { name: "마음이 전해졌어요" })).toBeVisible();
+
+  // ⑤ 답이 오면 카드가 그 소식을 알려 주고(누가 답했는지), 같은 단추가 그 사람의 선물 고르기로 이끈다
+  await page.goto("/home");
+  await expect(page.getByRole("button", { name: "알림 1" })).toBeVisible();
+  await expect(upcoming.getByText(/엄마.*답장을 보냈어요/)).toBeVisible();
+  await shot(page, "xmas-4-card-answered");
+  await upcoming.getByRole("link", { name: ko["home.yearEndGift"] }).click();
+  await expect(page).toHaveURL(`/plan/gift?with=${id}&me=0`);
+  await expect(page.getByRole("heading", { name: "선물 힌트" })).toBeVisible();
+  // 그 사람의 답이 힌트로 보인다(분위기 맞춰 = 술 취향이 아니라 좋아하는 것 칸 답) — 적어도 이름 카드가 있다
+  await expect(page.getByText("엄마", { exact: false }).first()).toBeVisible();
+
+  // ⑥ 선물 고르기를 열면 그 답장 알림은 읽은 것으로: 카드는 다시 감성 문구, 종에는 숫자가 없다
+  await expect.poll(async () => (await page.request.get("/home")).text().then((h) => h.includes('aria-label="알림 1"'))).toBe(false);
+  await page.goto("/home");
+  await expect(page.getByRole("button", { name: "알림", exact: true })).toBeVisible();
+  await expect(upcoming.getByText(/답장을 보냈어요/)).toHaveCount(0);
+  await expect(upcoming.getByRole("link", { name: ko["home.yearEndGift"] })).toBeVisible();
 });
 
 /** 크로미움 CDP로 손가락 밀기(가로): fromX에서 toX로 */

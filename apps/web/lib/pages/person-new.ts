@@ -10,5 +10,5 @@ export async function loadPersonNew({ searchParams: sp }: PageInput): Promise<Pe
   const s = await requireSession();
   const t = makeT(s.profile.locale);
   const folders = await s.tx((q) => listFolders(q, s.user.id));
-  return { locale: s.profile.locale, folders: folders.map((f) => ({ id: f.id, name: folderName(f, t) })), error: sp.error ?? null, name: sp.name ?? null, ai: aiConfigured() };
+  return { locale: s.profile.locale, folders: folders.map((f) => ({ id: f.id, name: folderName(f, t) })), error: sp.error ?? null, name: sp.name ?? null, ai: aiConfigured(), xmas: !!sp.xmas };
 }

@@ -49,6 +49,14 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
   const xmas = xmasAt && (!nearest || xmasAt.daysUntil < nearest.daysUntil) ? xmasAt : null;
   const next = xmas ? null : nearest;
   const personOf = (contactId: string) => people.find((p) => p.contactId === contactId) ?? null;
+  // 연말 카드의 흐름: 답이 온 사람이 있으면 그 사람 선물 고르기로, 사람이 하나뿐이면 곧장 그 사람 선물 고르기로, 여럿이면 고르러(사람들), 아직 없으면 사람 추가 → 물어보기로
+  const answeredIds = [...new Set(answers.map((a) => a.contactId))].filter((id) => personOf(id));
+  const answeredFirst = answeredIds[0] ? personOf(answeredIds[0]) : null;
+  const xmasGiftHref = answeredIds.length
+    ? `/plan/gift?with=${answeredIds.join(",")}&me=0`
+    : people.length === 1
+      ? `/plan/gift?with=${people[0]!.contactId}&me=0`
+      : "/people?pick=1&me=0&to=gift";
   const bellItems: BellItem[] = answers.map((a) => {
     const who = personOf(a.contactId);
     const name = who ? displayName(who) : a.label;
@@ -199,17 +207,25 @@ export function HomeView({ locale, avatar, today, people, question: asked, quest
                 <span className="text-[26px] leading-[1.25]">
                   <span className="hl">{t("home.yearEnd")}</span>
                 </span>
-                <span className="whitespace-pre-line text-[19px] leading-[1.4] text-ink-2">{t("home.yearEndLine")}</span>
+                {/* 답이 온 사람이 있으면 그 소식이 곧 문구(누가 답했는지), 아니면 감성 문구 */}
+                <span className="whitespace-pre-line text-[19px] leading-[1.4] text-ink-2">
+                  {answeredFirst
+                    ? answeredIds.length > 1
+                      ? t("home.yearEndAnswered", { name: displayName(answeredFirst), n: answeredIds.length - 1 })
+                      : t("notif.answered", { name: displayName(answeredFirst) })
+                    : t("home.yearEndLine")}
+                </span>
               </div>
             </div>
-            {/* 아직 등록한 사람이 없으면 '받고 싶은 선물'을 묻기보다 챙기고 싶은 사람부터 더하게 이끈다. 사람이 있으면 선물 쪽을 먼저 묻는 물어보기로(?xmas=1) */}
+            {/* 사람이 없으면: 챙기고 싶은 사람을 더하고(사람 추가) → 곧바로 그 사람에게 물어보기(받고 싶은 것) → 답이 오면 이 카드가 알려 주며 선물 고르기로.
+                사람이 있으면 곧장 선물 고르기 */}
             {people.length ? (
-              <Link href="/request?xmas=1" className="btn-primary mt-[18px]">
+              <Link href={xmasGiftHref} className="btn-primary mt-[18px]">
                 <Icon name="gift" size={20} strokeWidth={2} />
-                {t("home.yearEndAsk")}
+                {t("home.yearEndGift")}
               </Link>
             ) : (
-              <Link href="/people/new" className="btn-primary mt-[18px]">
+              <Link href="/people/new?xmas=1" className="btn-primary mt-[18px]">
                 <Icon name="personAdd" size={20} strokeWidth={2} />
                 {t("home.yearEndAdd")}
               </Link>

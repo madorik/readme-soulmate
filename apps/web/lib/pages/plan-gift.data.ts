@@ -12,4 +12,6 @@ export interface PlanGiftData {
   back: string;
   /** 선물 추천을 보일지(GIFT_PICKS) */
   picksOn: boolean;
+  /** 이 화면을 열면 읽은 것으로 바꿀 안 본 답장이 있는 사람들(홈 연말 카드·알림에서 답이 온 사람의 선물 고르기로 곧장 왔을 때) */
+  answeredIds: string[];
 }

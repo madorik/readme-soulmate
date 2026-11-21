@@ -1,6 +1,6 @@
 import "server-only";
 import { redirect } from "next/navigation";
-import { requireSession, todayFor } from "@/lib/data";
+import { requireSession, todayFor, unreadAnswers } from "@/lib/data";
 import { giftPicksOn } from "@/lib/gifts";
 import { pickBack, resolvePick } from "@/lib/plan";
 import type { PlanGiftData } from "./plan-gift.data";
@@ -12,5 +12,6 @@ export async function loadPlanGift({ searchParams }: PageInput): Promise<PlanGif
   const today = todayFor(s.profile);
   const pick = await resolvePick(s, searchParams);
   if (!pick.people.length) redirect(pickBack(pick.query, "gift"));
-  return { locale: s.profile.locale, today, people: pick.people, back: pickBack(pick.query, "gift"), picksOn: giftPicksOn() };
+  const answered = new Set((await s.tx((q) => unreadAnswers(q, s.user.id))).map((a) => a.contactId));
+  return { locale: s.profile.locale, today, people: pick.people, back: pickBack(pick.query, "gift"), picksOn: giftPicksOn(), answeredIds: pick.people.map((p) => p.contactId).filter((id) => answered.has(id)) };
 }

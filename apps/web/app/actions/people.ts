@@ -181,7 +181,10 @@ export async function answerAbout(form: FormData): Promise<void> {
 export async function createPerson(form: FormData): Promise<void> {
   const s = await requireSession();
   const name = String(form.get("name") ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
-  if (!name) redirect("/people/new?error=name");
+  // 홈 연말 카드에서 온 사람 추가(?xmas=1): 만든 뒤 곧바로 그 사람에게 받고 싶은 것을 물어보기로 이어 간다
+  const xmas = form.get("xmas") === "1";
+  const again = xmas ? "&xmas=1" : "";
+  if (!name) redirect(`/people/new?error=name${again}`);
   const made = await s.tx(async (q) => {
     // 같은 사람이 동시에 두 번 보내도(두 번 누름) 한 줄씩만 지나가게 사람별로 줄 세운다
     await q("select pg_advisory_xact_lock(hashtext($1))", [`person:${s.user.id}`]);
@@ -205,12 +208,12 @@ export async function createPerson(form: FormData): Promise<void> {
     return { id: c!.id, created: true };
   });
   // 사람 수 한도(LIMITS.people)를 넘으면 이름이 비었을 때처럼 입력 화면으로 되돌린다(화면은 error=name일 때만 문구를 보이니 새 문구는 없다)
-  if (!made) redirect("/people/new?error=limit");
+  if (!made) redirect(`/people/new?error=limit${again}`);
   const contactId = made.id;
   if (made.created) track("person_add", { userId: s.user.id });
   revalidatePath("/people");
   revalidatePath("/home");
-  redirect(`/people/${contactId}`);
+  redirect(xmas ? `/request?to=${contactId}&xmas=1` : `/people/${contactId}`);
 }
 
 /** 사람 기록의 항목 하나 저장(답받은 항목도 내가 고친다) */

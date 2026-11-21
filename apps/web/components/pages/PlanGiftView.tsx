@@ -2,6 +2,7 @@ import { COLORS, METALS, PATTERNS, STYLES, describeShoe, describeTop, labelOf, t
 import Link from "next/link";
 import { ShareBar } from "@/app/(app)/plan/ShareBar";
 import { Avatar } from "@/components/Avatar";
+import { SeeAnswers } from "@/components/SeeAnswers";
 import { TopBar } from "@/components/chrome";
 import { Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
 import { Icon } from "@/components/marks";
@@ -20,7 +21,7 @@ export interface PlanGiftPicks {
 }
 
 /** 같이 고르기 > 선물 고르기: 고른 사람마다 선물 힌트 한 장 */
-export function PlanGiftView({ locale, today, people, back, picksOn, picks }: PlanGiftData & { picks?: PlanGiftPicks }) {
+export function PlanGiftView({ locale, today, people, back, picksOn, answeredIds, picks }: PlanGiftData & { picks?: PlanGiftPicks }) {
   const t = makeT(locale);
   const and = t("common.and");
 
@@ -65,6 +66,10 @@ export function PlanGiftView({ locale, today, people, back, picksOn, picks }: Pl
 
   return (
     <div className="flex flex-1 flex-col">
+      {/* 답이 온 사람의 선물 고르기로 곧장 왔으면 그 답장 알림은 읽은 것으로 */}
+      {answeredIds.map((id) => (
+        <SeeAnswers key={id} contactId={id} />
+      ))}
       <TopBar back={back} label={t("common.back")} />
       <div className="relative px-6 pt-1.5">
         <h1 className="hl inline-block px-1 text-[34px] font-normal leading-[1.2]">{t("plan.giftTitle")}</h1>

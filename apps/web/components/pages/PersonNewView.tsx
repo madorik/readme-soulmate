@@ -8,10 +8,11 @@ import type { PersonNewData } from "@/lib/pages/person-new.data";
 import { makeT } from "@/lib/t";
 
 // 직접 적어 두기: 이름(부르는 말)과 폴더, 선택으로 생일만 받고 카드를 만든다. 나머지는 그 사람 화면에서 항목별로 적는다
-export function PersonNewView({ locale, folders, error, name, ai }: PersonNewData) {
+export function PersonNewView({ locale, folders, error, name, ai, xmas }: PersonNewData) {
   const t = makeT(locale);
   return (
     <form action={createPerson} className="flex flex-1 flex-col">
+      {xmas ? <input type="hidden" name="xmas" value="1" /> : null}
       <TopBar
         close="/people"
         label={t("common.close")}
@@ -70,7 +71,7 @@ export function PersonNewView({ locale, folders, error, name, ai }: PersonNewDat
       <Squiggle w={54} width={2.4} className="-bottom-2 right-9" />
       </div>
       <div className="bottom-bar mt-auto bg-bg px-6 pt-4">
-        <button className="btn-primary w-full">{t("people.create")}</button>
+        <button className="btn-primary w-full">{t(xmas ? "people.createAsk" : "people.create")}</button>
       </div>
     </form>
   );
