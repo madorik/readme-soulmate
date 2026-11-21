@@ -2,7 +2,7 @@ import "server-only";
 import { eventTitle, nextOccurrence, type DateSpec } from "@readme/core";
 import { notFound } from "next/navigation";
 import { parseSkip } from "@/components/GiftPicksView";
-import { displayName, listNotes, listPeople, requireSession, todayFor, unreadAnswers } from "@/lib/data";
+import { displayName, listPeople, requireSession, todayFor, unreadAnswers } from "@/lib/data";
 import { giftPicksOn } from "@/lib/gifts";
 import { makeT } from "@/lib/t";
 import type { GiftPicksData } from "./gift-picks.data";
@@ -40,7 +40,6 @@ export async function startPersonReminder({ params, searchParams: sp }: PageInpu
       : anniversary
         ? t("home.event.anniversary", { name, label: anniversary.label })
         : t("home.event.birthday", { name });
-  const notes = await s.tx((q) => listNotes(q, s.user.id, p.contactId));
   // 이런 선물은 어때요(쿠팡 API 키가 있으면 상품, 없으면 파트너스 링크 목록에서 가격대별로)
   const picksOn = giftPicksOn();
   // 다시 고르기: 지금 주소(날 종류·이름은 그대로)에 지난번에 보인 것(skip)을 실어 보낸다
@@ -59,13 +58,11 @@ export async function startPersonReminder({ params, searchParams: sp }: PageInpu
     locale,
     contactId: p.contactId,
     avatar: p.avatar,
-    card: p.card,
     name,
     spec: eventKnown ? spec : null,
     next: eventKnown ? next : null,
     event: eventKnown ? event : "",
     eventKnown,
-    notes: notes.map((n) => ({ label: n.label, body: n.body })),
     picksOn,
     skip,
     again,

@@ -1,4 +1,4 @@
-import type { AvatarConfig, DateSpec, Locale, NextOccurrence, PartialCard } from "@readme/core";
+import type { AvatarConfig, DateSpec, Locale, NextOccurrence } from "@readme/core";
 import type { GiftPicksData } from "./gift-picks.data";
 
 // 선물 힌트(챙길 날) 화면 데이터(lib/pages/person-reminder.ts가 만들고 components/pages/PersonReminderView가 그린다). 타입만 둔다
@@ -7,8 +7,6 @@ export interface PersonReminderData {
   locale: Locale;
   contactId: string;
   avatar: AvatarConfig | null;
-  /** 힌트에 쓰는 그 사람 기록 */
-  card: PartialCard;
   /** 부를 이름 */
   name: string;
   /** 챙길 날(기념일이 없으면 생일) */
@@ -16,8 +14,6 @@ export interface PersonReminderData {
   next: NextOccurrence | null;
   /** "엄마 생일" 같은 한 줄 */
   event: string;
-  /** 지난 메모(힌트 맨 아래) */
-  notes: { label: string; body: string }[];
   /** 선물 추천을 보일지(GIFT_PICKS=off면 숨긴다) */
   picksOn: boolean;
   /** 다시 고르기로 넘어온 '지난번에 보인 것' */

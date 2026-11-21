@@ -953,10 +953,9 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
 
   // 선물 고르기 → 이런 선물은 어때요: 가격대 넷, 아내(연인)는 5만원대가 먼저 열리고, 누르면 쿠팡 파트너스 링크
   await page.getByRole("link", { name: "선물 고르기" }).click();
-  // 날을 짚지 않고 열면 생일이라고 단정하지 않는다: 제목은 '○○에게 줄 선물', 컨닝페이퍼는 위쪽 막대에
+  // 날을 짚지 않고 열면 생일이라고 단정하지 않는다: 제목은 '○○에게 줄 선물'
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("아내에게 줄 선물");
   await expect(page.getByRole("heading", { level: 1 })).not.toContainText("생일");
-  await expect(page.getByRole("button", { name: "컨닝페이퍼", exact: true })).toBeVisible();
   const picks = page.locator("#picks");
   await expect(picks.getByRole("tab")).toHaveText(["1만원대", "3만원대", "5만원대", "10만원 이상"], { timeout: 45_000 });
   await expect(picks.getByRole("tab", { name: "5만원대" })).toHaveAttribute("aria-selected", "true");
@@ -992,17 +991,8 @@ test("데모로 둘러보기: 샘플 사람들이 들어 있고, 데모 계정�
   const after = await picks.getByRole("tabpanel").getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
   expect(after.some((h) => before.includes(h))).toBe(false);
 
-  // 아래에는 단추 줄이 없다(가족과 같이 준비·선물 완료는 뺐다)
-  await expect(page.getByRole("button", { name: "가족과 같이 준비" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "선물 완료" })).toHaveCount(0);
-
-  // 힌트는 접혀 있다가, 앱 아이콘 + '컨닝페이퍼'를 누르면 오른쪽에서 나온다
-  await expect(page.getByText("튤립", { exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "컨닝페이퍼", exact: true }).click();
-  const peek = page.getByRole("dialog", { name: "아내를 위한 힌트" });
-  await expect(peek.getByText("튤립", { exact: true })).toBeVisible();
-  await peek.getByRole("button", { name: "닫기" }).click();
-  await expect(peek).toHaveCount(0);
+  // 단추 줄(가족과 같이 준비·선물 완료)과 컨닝페이퍼는 뺐다
+  for (const name of ["가족과 같이 준비", "선물 완료", "컨닝페이퍼"]) await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
   await page.goto("/privacy");
   await expect(page.getByText(/데모 계정이에요/)).toBeVisible();
   await expect(page.getByRole("button", { name: "시스템" })).toHaveAttribute("aria-pressed", "true");
@@ -1695,7 +1685,6 @@ test("연말 카드의 흐름: 사람이 없으면 추가 → 곧바로 물어�
   await expect(page).toHaveURL(`/people/${id}/reminder?xmas=1`);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(/크리스마스까지 \d+일 남았어요|오늘은 크리스마스/);
   await expect(page.getByRole("heading", { name: "선물 힌트" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: ko["reminder.peek"], exact: true })).toBeVisible();
 
   // ⑥ 선물 고르기를 열면 그 답장 알림은 읽은 것으로: 카드는 다시 감성 문구, 종에는 숫자가 없다
   await expect.poll(async () => (await page.request.get("/home")).text().then((h) => h.includes('aria-label="알림 1"'))).toBe(false);

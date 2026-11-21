@@ -1,4 +1,4 @@
-import { realCodes, ALLERGENS, DISLIKES, METALS, PATTERNS, SPICY_LEVELS, formatSpec, labelOf, monthName, weekdayLong } from "@readme/core";
+import { formatSpec, monthName, weekdayLong } from "@readme/core";
 import Link from "next/link";
 import { SeeAnswers } from "@/components/SeeAnswers";
 import { Suspense } from "react";
@@ -6,85 +6,19 @@ import { Avatar } from "@/components/Avatar";
 import { TopBar } from "@/components/chrome";
 import { GiftPicksBody } from "@/components/GiftPicksView";
 import { HandCircle, Heart, SKY_STAR, Squiggle, Star, Tape } from "@/components/diary";
-import { HintsPeek } from "@/components/HintsPeek";
 import { Icon } from "@/components/marks";
 import { PicksContent, PicksPending } from "@/components/PicksContent";
 import { PicksStage } from "@/components/PicksStage";
 import type { PersonReminderProps } from "@/lib/pages/person-reminder.data";
 import { makeT } from "@/lib/t";
 
-function Hint({ label, children, sub }: { label: string; children: React.ReactNode; sub?: string }) {
-  return (
-    <div className="row">
-      <span className="w-[76px] shrink-0 pt-[3px] text-[16px] text-muted">{label}</span>
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="text-[20px] leading-[1.4]">{children}</span>
-        {sub ? <span className="text-[16px] text-muted">{sub}</span> : null}
-      </span>
-    </div>
-  );
-}
-
-export function PersonReminderView({ locale, contactId, avatar, card, name, spec, next, event, notes, picksOn, skip, again, eventKnown, remindOnDay, answered, picks }: PersonReminderProps) {
+export function PersonReminderView({ locale, contactId, avatar, name, spec, next, event, picksOn, skip, again, eventKnown, remindOnDay, answered, picks }: PersonReminderProps) {
   const t = makeT(locale);
-  const { gifts, safety, taste, sizes } = card;
-  const { favorites: fav, life } = card;
-  const favHint = [fav?.idol, fav?.character, fav?.team, fav?.animal].filter(Boolean).join(t("common.and"));
-  const styleHint = [...(fav?.patterns ?? []).map((c) => labelOf(PATTERNS, c, locale)), ...(fav?.metals ?? []).map((c) => labelOf(METALS, c, locale))].join(t("common.and"));
-
-  const meal = [
-    ...realCodes(safety?.allergens).map((c) => `${labelOf(ALLERGENS, c, locale)} ${t("person.allergy")}`),
-    ...realCodes(safety?.dislikes).map((c) => labelOf(DISLIKES, c, locale)),
-  ];
-  const hasHints = !!(favHint || styleHint || taste?.dessert || life?.hobbies.length || fav?.flowers || fav?.scent || fav?.places?.length || gifts?.wishlist.length || gifts?.skip.length || meal.length || taste?.spicy != null || notes.length || sizes?.shoe);
-
-  // 컨닝페이퍼 단추: 앱 아이콘 + 한 줄. 누르면 오른쪽에서 힌트가 나온다. 가격대 칩 바로 위 오른쪽에 둔다
-  const peek = (
-    <HintsPeek label={t("reminder.peek")} title={t("reminder.hints", { name })} closeLabel={t("common.close")}>
-      {!hasHints ? <p className="row text-[18px] leading-[1.5] text-muted">{t("reminder.noHints", { name })}</p> : null}
-      {life?.hobbies.length ? <Hint label={t("life.hobbies")}>{life.hobbies.join(t("common.and"))}</Hint> : null}
-      {favHint ? <Hint label={t("fav.people")}>{favHint}</Hint> : null}
-      {gifts?.wishlist.length ? <Hint label={t("reminder.wish")}>{gifts.wishlist.map((w) => w.title).join(t("common.and"))}</Hint> : null}
-      {fav?.flowers ? <Hint label={t("reminder.flowers")}>{fav.flowers}</Hint> : null}
-      {fav?.scent ? <Hint label={t("reminder.scent")}>{fav.scent}</Hint> : null}
-      {fav?.places?.length ? <Hint label={t("fav.places")}>{fav.places.join(t("common.and"))}</Hint> : null}
-      {sizes?.shoe ? <Hint label={t("size.shoe")}>{sizes.shoe}mm</Hint> : null}
-      {styleHint ? <Hint label={t("fav.style")}>{styleHint}</Hint> : null}
-      {taste?.dessert ? <Hint label={t("fav.dessert")}>{taste.dessert}</Hint> : null}
-      {gifts?.skip.length ? (
-        <Hint label={t("reminder.skip")}>
-          <span className="text-muted line-through decoration-red decoration-2">{gifts.skip.join(t("common.and"))}</span>
-        </Hint>
-      ) : null}
-      {meal.length || taste?.spicy != null ? (
-        <Hint label={t("reminder.meal")}>
-          {[...meal, ...(taste?.spicy != null ? [`${t("taste.spicy")} ${SPICY_LEVELS[taste.spicy]?.[locale]}`] : [])].join(t("common.and"))}
-        </Hint>
-      ) : null}
-      {notes.length ? (
-        <Hint label={t("reminder.pastNotes")}>
-          {notes
-            .slice(0, 3)
-            .map((n) => (n.label ? `${n.label} ${n.body}` : n.body))
-            .join(" / ")}
-        </Hint>
-      ) : null}
-    </HintsPeek>
-  );
-
   return (
     <>
       {/* 답이 온 사람의 선물 고르기로 곧장 왔으면(홈 연말 카드) 그 답장 알림은 읽은 것으로 */}
       {answered ? <SeeAnswers contactId={contactId} /> : null}
-      <TopBar back={`/people/${contactId}`} label={t("common.back")} right={
-          <div className="flex items-center gap-1">
-            {peek}
-            <Link href="/privacy#reminders" aria-label={t("privacy.reminders")} className="flex h-11 w-11 items-center justify-center">
-              <Icon name="bell" />
-            </Link>
-          </div>
-        }
-      />
+      <TopBar back={`/people/${contactId}`} label={t("common.back")} right={<Link href="/privacy#reminders" aria-label={t("privacy.reminders")} className="flex h-11 w-11 items-center justify-center"><Icon name="bell" /></Link>} />
 
       {eventKnown && next && spec ? (
         <div className="relative flex items-center gap-4 pb-0 pl-[30px] pr-6 pt-2.5">

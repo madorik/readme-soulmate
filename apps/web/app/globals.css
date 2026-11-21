@@ -1197,11 +1197,3 @@ html.ry-seen .ry-boot {
   }
 }
 /* 컨닝페이퍼 힐끗 보기: 오른쪽에서 밀려 나온다 */
-@keyframes peek-in {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: none;
-  }
-}

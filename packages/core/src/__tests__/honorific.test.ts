@@ -6,7 +6,7 @@ test("가족 호칭에는 '님'을 붙이지 않고 조사를 받침에 맞춘�
   assert.equal(translate("ko", "notif.answered", { name: "아빠" }), "아빠가 답장을 보냈어요");
   assert.equal(translate("ko", "notif.answered", { name: "아내" }), "아내가 답장을 보냈어요");
   assert.equal(translate("ko", "request.titleTo", { name: "엄마" }), "엄마에게 물어보기");
-  assert.equal(translate("ko", "reminder.hints", { name: "와이프" }), "와이프를 위한 힌트");
+  assert.equal(translate("ko", "person.removeTitle", { name: "와이프" }), "와이프를 지울까요?");
 });
 
 test("이름에는 '님'을 붙인다, 이미 님·씨로 끝나면 중복하지 않는다", () => {
